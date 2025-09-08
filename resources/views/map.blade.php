@@ -8,7 +8,7 @@
     <div id="main-map" class="absolute inset-0 z-10"></div>
     
     <!-- Map Controls Panel -->
-    <div class="absolute top-4 left-4 z-50 bg-white rounded-lg shadow-lg p-4 space-y-4 w-64">
+    <div class="absolute top-4 left-4 z-30 bg-white rounded-lg shadow-lg p-4 space-y-4 w-64">
         <!-- Season Toggle -->
         <div>
             <label class="block text-sm font-medium text-gray-700 mb-2">Season View</label>
@@ -78,35 +78,35 @@
         <button id="clear-filters" class="w-full bg-gray-200 hover:bg-gray-300 text-gray-800 py-2 px-4 rounded-md text-sm transition-colors">
             Clear All Filters
         </button>
-    </div>
 
-    <!-- Trail Info Panel (Hidden by default) -->
-    <div id="trail-info-panel" class="absolute top-4 right-4 z-50 bg-white rounded-lg shadow-lg w-80 hidden">
-        <div id="trail-info-content" class="p-6">
-            <!-- Dynamic content will be loaded here -->
+        <!-- Legend -->
+        <div class="border-t pt-4">
+            <h4 class="font-medium text-gray-900 text-sm mb-2">Legend</h4>
+            <div class="space-y-1 text-xs">
+                <div class="flex items-center">
+                    <div class="w-3 h-3 bg-green-500 rounded-full mr-2"></div>
+                    <span>Hiking Trails</span>
+                </div>
+                <div class="flex items-center">
+                    <div class="w-3 h-3 bg-blue-500 rounded-full mr-2"></div>
+                    <span>Fishing Spots</span>
+                </div>
+                <div class="flex items-center">
+                    <div class="w-3 h-3 bg-orange-500 rounded-full mr-2"></div>
+                    <span>Camping Areas</span>
+                </div>
+                <div class="flex items-center">
+                    <div class="w-3 h-3 bg-purple-500 rounded-full mr-2"></div>
+                    <span>Viewpoints</span>
+                </div>
+            </div>
         </div>
     </div>
 
-    <!-- Map Legend -->
-    <div class="absolute top-4 right-4 z-50 bg-white bg-opacity-95 rounded-lg shadow-lg p-3">
-        <h4 class="font-medium text-gray-900 text-sm mb-2">Legend</h4>
-        <div class="space-y-1 text-xs">
-            <div class="flex items-center">
-                <div class="w-3 h-3 bg-green-500 rounded-full mr-2"></div>
-                <span>Hiking Trails</span>
-            </div>
-            <div class="flex items-center">
-                <div class="w-3 h-3 bg-blue-500 rounded-full mr-2"></div>
-                <span>Fishing Spots</span>
-            </div>
-            <div class="flex items-center">
-                <div class="w-3 h-3 bg-orange-500 rounded-full mr-2"></div>
-                <span>Camping Areas</span>
-            </div>
-            <div class="flex items-center">
-                <div class="w-3 h-3 bg-purple-500 rounded-full mr-2"></div>
-                <span>Viewpoints</span>
-            </div>
+    <!-- Trail Info Panel (Hidden by default) -->
+    <div id="trail-info-panel" class="absolute top-4 right-4 z-30 bg-white rounded-lg shadow-lg w-80 hidden">
+        <div id="trail-info-content" class="p-6">
+            <!-- Dynamic content will be loaded here -->
         </div>
     </div>
 </div>
@@ -117,11 +117,15 @@
         constructor() {
             this.map = null;
             this.currentSeason = 'summer';
-            this.activeFilters = ['hiking']; // Default show hiking
+            this.activeFilters = ['hiking'];
             this.baseLayers = {};
             this.overlayLayers = {};
+            this.routeLayer = null;  // Add this line
             this.allTrails = [];
+            this.highlightedRoute = null;
             this.init();
+
+            window.trailMap = this;
         }
 
         init() {
@@ -191,6 +195,36 @@
             });
         }
 
+        // Add this function to your EnhancedTrailMap class
+        getDistanceColor(distance) {
+            if (distance <= 5) return '#10B981';      // Green - Short trails
+            if (distance <= 10) return '#F59E0B';     // Orange - Medium trails  
+            if (distance <= 20) return '#EF4444';     // Red - Long trails
+            return '#7C2D12';                         // Dark Red - Very long trails
+        }
+
+        addTrailRoute(trail) {
+            if (trail.route_coordinates && trail.route_coordinates.length > 0) {
+                const routeColor = this.getDistanceColor(trail.distance);
+                
+                const route = L.polyline(trail.route_coordinates, {
+                    color: routeColor,
+                    weight: 4,
+                    opacity: 0.8,
+                    dashArray: trail.status === 'seasonal' ? '10, 5' : null
+                }).addTo(this.map);
+
+                route.bindPopup(`
+                    <b>${trail.name}</b><br>
+                    ${trail.distance}km trail route<br>
+                    <a href="/trails/${trail.id}">View Details</a>
+                `);
+
+                return route;
+            }
+            return null;
+        }
+
         switchSeason(season) {
             // Update UI
             document.querySelectorAll('.season-btn').forEach(btn => {
@@ -220,6 +254,7 @@
             this.applyFilters();
         }
 
+        // In your applyFilters function, make sure you have these variable declarations at the top:
         applyFilters() {
             // Clear all overlay layers
             Object.values(this.overlayLayers).forEach(layer => {
@@ -227,8 +262,15 @@
                 layer.clearLayers();
             });
 
+            // Add these variable declarations
             const difficultyFilter = document.getElementById('difficulty-filter').value;
             const distanceFilter = document.getElementById('distance-filter').value;
+
+            // Clear existing routes
+            if (this.routeLayer) {
+                this.map.removeLayer(this.routeLayer);
+            }
+            this.routeLayer = L.layerGroup().addTo(this.map);
 
             // Filter and display trails
             this.allTrails.forEach(trail => {
@@ -245,6 +287,12 @@
                 // Apply seasonal recommendation filter
                 if (trail.seasonal_info && !trail.seasonal_info.recommended) {
                     return;
+                }
+
+                // Add trail route
+                const route = this.addTrailRoute(trail);
+                if (route) {
+                    this.routeLayer.addLayer(route);
                 }
 
                 // Add markers for active activity types
@@ -313,12 +361,65 @@
                     </div>
                     ${seasonalNote}
                     <div class="mt-3">
-                        <a href="/trails/${trail.id}" class="bg-primary-500 text-white px-3 py-1 rounded text-sm hover:bg-primary-600 inline-block">
-                            View Details
-                        </a>
+                        <button onclick="window.trailMap.viewRoute(${trail.id})" class="bg-primary-500 text-white px-3 py-1 rounded text-sm hover:bg-primary-600 inline-block">
+                            View Route
+                        </button>
                     </div>
                 </div>
             `;
+        }
+
+        viewRoute(trailId) {
+            const trail = this.allTrails.find(t => t.id == trailId);
+            if (!trail) return;
+
+            // Close any open popups
+            this.map.closePopup();
+
+            // Clear existing route highlights
+            if (this.highlightedRoute) {
+                this.map.removeLayer(this.highlightedRoute);
+            }
+
+            // Check if trail has route coordinates
+            if (!trail.route_coordinates || trail.route_coordinates.length === 0) {
+                alert('Route data not available for this trail.');
+                return;
+            }
+
+            // Create highlighted route
+            this.highlightedRoute = L.polyline(trail.route_coordinates, {
+                color: '#FF0000',
+                weight: 6,
+                opacity: 0.9,
+                dashArray: '10, 5'
+            }).addTo(this.map);
+
+            // Zoom to route bounds with padding
+            this.map.fitBounds(this.highlightedRoute.getBounds(), { 
+                padding: [20, 20],
+                maxZoom: 14
+            });
+
+            // Add route popup
+            this.highlightedRoute.bindPopup(`
+                <div class="text-center">
+                    <b>${trail.name} Route</b><br>
+                    <span class="text-sm">${trail.distance}km trail path</span><br>
+                    <button onclick="window.trailMap.clearRoute()" class="mt-2 bg-gray-500 text-white px-2 py-1 rounded text-xs">
+                        Clear Route
+                    </button>
+                </div>
+            `).openPopup();
+        }
+
+        // Add method to clear highlighted route
+        clearRoute() {
+            if (this.highlightedRoute) {
+                this.map.removeLayer(this.highlightedRoute);
+                this.highlightedRoute = null;
+            }
+            this.map.closePopup();
         }
 
         showTrailInfo(trail) {
