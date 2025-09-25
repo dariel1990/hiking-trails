@@ -1,7 +1,7 @@
 @extends('layouts.admin')
 
-@section('title', 'Add New Trail')
-@section('page-title', 'Add New Trail')
+@section('title', 'Edit Trail')
+@section('page-title', 'Edit Trail')
 
 @section('content')
 <div class="max-w-6xl mx-auto space-y-8">
@@ -12,16 +12,21 @@
             <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
             </svg>
-            <span>Create Trail</span>
+            <a href="{{ route('admin.trails.show', $trail) }}" class="hover:text-foreground transition-colors">{{ $trail->name }}</a>
+            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+            </svg>
+            <span>Edit</span>
         </div>
         <div class="space-y-1">
-            <h1 class="text-3xl font-bold tracking-tight">Create New Trail</h1>
-            <p class="text-muted-foreground">Add a new hiking trail to your collection with detailed information and coordinates.</p>
+            <h1 class="text-3xl font-bold tracking-tight">Edit {{ $trail->name }}</h1>
+            <p class="text-muted-foreground">Update trail information, coordinates, and route data.</p>
         </div>
     </div>
 
-    <form action="{{ route('admin.trails.store') }}" method="POST" enctype="multipart/form-data" class="space-y-8" onsubmit="return window.trailBuilder.validateBeforeSubmit()">
+    <form action="{{ route('admin.trails.update', $trail) }}" method="POST" enctype="multipart/form-data" class="space-y-8">
         @csrf
+        @method('PATCH')
         
         <!-- Basic Information -->
         <div class="rounded-lg border bg-card text-card-foreground shadow-sm">
@@ -36,7 +41,7 @@
                         <label class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
                             Trail Name <span class="text-red-500">*</span>
                         </label>
-                        <input type="text" name="name" required value="{{ old('name') }}"
+                        <input type="text" name="name" required value="{{ old('name', $trail->name) }}"
                                placeholder="Enter trail name"
                                class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 @error('name') border-red-300 @enderror">
                         @error('name')
@@ -48,7 +53,7 @@
                         <label class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
                             Location
                         </label>
-                        <input type="text" name="location" value="{{ old('location') }}"
+                        <input type="text" name="location" value="{{ old('location', $trail->location) }}"
                                placeholder="e.g., North Vancouver, BC"
                                class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 @error('location') border-red-300 @enderror">
                         @error('location')
@@ -62,8 +67,105 @@
                         </label>
                         <textarea name="description" rows="4" required
                                   placeholder="Describe the trail, its features, and what hikers can expect..."
-                                  class="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 @error('description') border-red-300 @enderror">{{ old('description') }}</textarea>
+                                  class="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 @error('description') border-red-300 @enderror">{{ old('description', $trail->description) }}</textarea>
                         @error('description')
+                            <p class="text-sm text-red-500">{{ $message }}</p>
+                        @enderror
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Trail Details -->
+        <div class="rounded-lg border bg-card text-card-foreground shadow-sm">
+            <div class="p-6 space-y-6">
+                <div class="space-y-2">
+                    <h3 class="text-lg font-semibold">Trail Specifications</h3>
+                    <p class="text-sm text-muted-foreground">Technical details and difficulty metrics</p>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div class="space-y-2">
+                        <label class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                            Difficulty Level <span class="text-red-500">*</span>
+                        </label>
+                        <select name="difficulty_level" required
+                                class="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 @error('difficulty_level') border-red-300 @enderror">
+                            <option value="">Select difficulty</option>
+                            <option value="1" {{ old('difficulty_level', $trail->difficulty_level) == '1' ? 'selected' : '' }}>1 - Very Easy</option>
+                            <option value="2" {{ old('difficulty_level', $trail->difficulty_level) == '2' ? 'selected' : '' }}>2 - Easy</option>
+                            <option value="3" {{ old('difficulty_level', $trail->difficulty_level) == '3' ? 'selected' : '' }}>3 - Moderate</option>
+                            <option value="4" {{ old('difficulty_level', $trail->difficulty_level) == '4' ? 'selected' : '' }}>4 - Hard</option>
+                            <option value="5" {{ old('difficulty_level', $trail->difficulty_level) == '5' ? 'selected' : '' }}>5 - Very Hard</option>
+                        </select>
+                        @error('difficulty_level')
+                            <p class="text-sm text-red-500">{{ $message }}</p>
+                        @enderror
+                    </div>
+
+                    <div class="space-y-2">
+                        <label class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                            Distance (km) <span class="text-red-500">*</span>
+                        </label>
+                        <input type="number" name="distance_km" step="0.01" required value="{{ old('distance_km', $trail->distance_km) }}"
+                               placeholder="0.0"
+                               class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 @error('distance_km') border-red-300 @enderror">
+                        @error('distance_km')
+                            <p class="text-sm text-red-500">{{ $message }}</p>
+                        @enderror
+                    </div>
+
+                    <div class="space-y-2">
+                        <label class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                            Elevation Gain (m) <span class="text-red-500">*</span>
+                        </label>
+                        <input type="number" name="elevation_gain_m" required value="{{ old('elevation_gain_m', $trail->elevation_gain_m) }}"
+                               placeholder="0"
+                               class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 @error('elevation_gain_m') border-red-300 @enderror">
+                        @error('elevation_gain_m')
+                            <p class="text-sm text-red-500">{{ $message }}</p>
+                        @enderror
+                    </div>
+
+                    <div class="space-y-2">
+                        <label class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                            Estimated Time (hours) <span class="text-red-500">*</span>
+                        </label>
+                        <input type="number" name="estimated_time_hours" step="0.1" required value="{{ old('estimated_time_hours', $trail->estimated_time_hours) }}"
+                               placeholder="0.0"
+                               class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 @error('estimated_time_hours') border-red-300 @enderror">
+                        @error('estimated_time_hours')
+                            <p class="text-sm text-red-500">{{ $message }}</p>
+                        @enderror
+                    </div>
+
+                    <div class="space-y-2">
+                        <label class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                            Trail Type <span class="text-red-500">*</span>
+                        </label>
+                        <select name="trail_type" required
+                                class="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 @error('trail_type') border-red-300 @enderror">
+                            <option value="">Select type</option>
+                            <option value="loop" {{ old('trail_type', $trail->trail_type) == 'loop' ? 'selected' : '' }}>Loop</option>
+                            <option value="out-and-back" {{ old('trail_type', $trail->trail_type) == 'out-and-back' ? 'selected' : '' }}>Out and Back</option>
+                            <option value="point-to-point" {{ old('trail_type', $trail->trail_type) == 'point-to-point' ? 'selected' : '' }}>Point to Point</option>
+                        </select>
+                        @error('trail_type')
+                            <p class="text-sm text-red-500">{{ $message }}</p>
+                        @enderror
+                    </div>
+
+                    <div class="space-y-2">
+                        <label class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                            Status <span class="text-red-500">*</span>
+                        </label>
+                        <select name="status" required
+                                class="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 @error('status') border-red-300 @enderror">
+                            <option value="active" {{ old('status', $trail->status) == 'active' ? 'selected' : '' }}>Active</option>
+                            <option value="closed" {{ old('status', $trail->status) == 'closed' ? 'selected' : '' }}>Closed</option>
+                            <option value="seasonal" {{ old('status', $trail->status) == 'seasonal' ? 'selected' : '' }}>Seasonal</option>
+                        </select>
+                        @error('status')
                             <p class="text-sm text-red-500">{{ $message }}</p>
                         @enderror
                     </div>
@@ -128,12 +230,12 @@
             </div>
         </div>
 
-        <!-- Trail Route Import -->
+        <!-- Trail Route Import/Management -->
         <div class="rounded-lg border bg-card text-card-foreground shadow-sm">
             <div class="p-6 space-y-6">
                 <div class="space-y-2">
                     <h3 class="text-lg font-semibold">Interactive Trail Builder</h3>
-                    <p class="text-sm text-muted-foreground">Click on the map to create waypoints. Routes will automatically snap to walking paths and trails.</p>
+                    <p class="text-sm text-muted-foreground">Click on the map to modify waypoints or import a new GPX file. Current route will be preserved unless you make changes.</p>
                 </div>
                 
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -156,7 +258,7 @@
                                     </svg>
                                     Undo Last Point
                                 </button>
-                                 <button type="button" id="optimize-route" 
+                                <button type="button" id="optimize-route" 
                                         class="w-full inline-flex items-center justify-center rounded-md border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2 text-sm font-medium">
                                     <svg class="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
@@ -167,10 +269,10 @@
                         </div>
 
                         <div class="rounded-lg border border-input p-4 space-y-4">
-                            <h4 class="font-medium">Import from GPX (Optional)</h4>
+                            <h4 class="font-medium">Import from GPX</h4>
                             <input type="file" id="gpx-import" accept=".gpx"
                                 class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
-                            <p class="text-xs text-muted-foreground">Or import an existing GPX file to override manual route creation</p>
+                            <p class="text-xs text-muted-foreground">Upload a GPX file to replace or modify the current route</p>
                         </div>
 
                         <!-- Route Statistics -->
@@ -179,11 +281,11 @@
                             <div class="grid grid-cols-2 gap-3 text-sm">
                                 <div class="space-y-1">
                                     <span class="text-muted-foreground">Distance</span>
-                                    <div id="route-distance" class="font-medium text-blue-600">Click map to start</div>
+                                    <div id="route-distance" class="font-medium text-blue-600">{{ $trail->distance_km }} km</div>
                                 </div>
                                 <div class="space-y-1">
                                     <span class="text-muted-foreground">Est. Time</span>
-                                    <div id="route-time" class="font-medium text-green-600">-</div>
+                                    <div id="route-time" class="font-medium text-green-600">{{ $trail->estimated_time_hours }}h</div>
                                 </div>
                                 <div class="space-y-1">
                                     <span class="text-muted-foreground">Waypoints</span>
@@ -244,7 +346,7 @@
                                 <li>• Routes automatically snap to walking paths</li>
                                 <li>• Drag waypoint markers to adjust the route</li>
                                 <li>• Use "Undo" to remove the last waypoint</li>
-                                <li>• Toggle smart routing off for straight lines</li>
+                                <li>• Import GPX to replace entire route</li>
                             </ul>
                         </div>
                     </div>
@@ -252,57 +354,44 @@
                     <!-- Map Display -->
                     <div class="space-y-4">
                         <div id="trail-map" class="w-full h-96 rounded-md border border-input bg-muted"></div>
-                        <div id="map-status" class="text-xs text-muted-foreground">Ready to create trail route</div>
+                        <div id="map-status" class="text-xs text-muted-foreground">
+                            @if($trail->route_coordinates && is_array($trail->route_coordinates) && count($trail->route_coordinates) > 0)
+                                Loaded existing route with {{ count($trail->route_coordinates) }} points
+                            @else
+                                Click map to create trail route or import GPX file
+                            @endif
+                        </div>
                         <!-- Trail Specifications -->
                         <div class="border-t pt-4 space-y-4">
-                            <h5 class="font-medium">Trail Specifications</h5>
+                            <h5 class="font-medium">Auto-Update Specifications</h5>
                             <div class="grid grid-cols-2 gap-3">
                                 <div class="space-y-2">
-                                    <label class="text-xs font-medium">Difficulty (1-5) *</label>
-                                    <select name="difficulty_level" required class="flex h-8 w-full text-xs rounded border border-input bg-background px-2 py-1">
-                                        <option value="">Auto-detect</option>
-                                        <option value="1">1 - Very Easy</option>
-                                        <option value="2">2 - Easy</option>
-                                        <option value="3">3 - Moderate</option>
-                                        <option value="4">4 - Hard</option>
-                                        <option value="5">5 - Very Hard</option>
-                                    </select>
-                                </div>
-                                
-                                <div class="space-y-2">
-                                    <label class="text-xs font-medium">Trail Type *</label>
-                                    <select name="trail_type" required class="flex h-8 w-full text-xs rounded border border-input bg-background px-2 py-1">
-                                        <option value="">Auto-detect</option>
-                                        <option value="loop">Loop</option>
-                                        <option value="out-and-back">Out and Back</option>
-                                        <option value="point-to-point">Point to Point</option>
-                                    </select>
-                                </div>
-                                
-                                <div class="space-y-2">
                                     <label class="text-xs font-medium">Distance (km) *</label>
-                                    <input type="number" name="distance_km" step="0.01" required readonly 
-                                        class="flex h-8 w-full text-xs rounded border border-input bg-gray-50 px-2 py-1">
+                                    <input type="number" name="distance_km" step="0.01" required 
+                                        value="{{ old('distance_km', $trail->distance_km) }}"
+                                        class="flex h-8 w-full text-xs rounded border border-input bg-background px-2 py-1">
                                 </div>
                                 
                                 <div class="space-y-2">
                                     <label class="text-xs font-medium">Time (hours) *</label>
-                                    <input type="number" name="estimated_time_hours" step="0.01" required readonly 
-                                        class="flex h-8 w-full text-xs rounded border border-input bg-gray-50 px-2 py-1">
+                                    <input type="number" name="estimated_time_hours" step="0.01" required 
+                                        value="{{ old('estimated_time_hours', $trail->estimated_time_hours) }}"
+                                        class="flex h-8 w-full text-xs rounded border border-input bg-background px-2 py-1">
                                 </div>
                                 
                                 <div class="space-y-2">
                                     <label class="text-xs font-medium">Elevation Gain (m) *</label>
-                                    <input type="number" name="elevation_gain_m" required readonly 
-                                        class="flex h-8 w-full text-xs rounded border border-input bg-gray-50 px-2 py-1">
+                                    <input type="number" name="elevation_gain_m" required 
+                                        value="{{ old('elevation_gain_m', $trail->elevation_gain_m) }}"
+                                        class="flex h-8 w-full text-xs rounded border border-input bg-background px-2 py-1">
                                 </div>
                                 
                                 <div class="space-y-2">
-                                    <label class="text-xs font-medium">Status *</label>
-                                    <select name="status" required class="flex h-8 w-full text-xs rounded border border-input bg-background px-2 py-1">
-                                        <option value="active">Active</option>
-                                        <option value="closed">Closed</option>
-                                        <option value="seasonal">Seasonal</option>
+                                    <label class="text-xs font-medium">Difficulty (1-5) *</label>
+                                    <select name="difficulty_level" required class="flex h-8 w-full text-xs rounded border border-input bg-background px-2 py-1">
+                                        @for($i = 1; $i <= 5; $i++)
+                                            <option value="{{ $i }}" {{ old('difficulty_level', $trail->difficulty_level) == $i ? 'selected' : '' }}>{{ $i }}</option>
+                                        @endfor
                                     </select>
                                 </div>
                             </div>
@@ -311,11 +400,11 @@
                 </div>
 
                 <!-- Hidden Form Inputs -->
-                <input type="hidden" name="route_coordinates" id="route-coordinates-input">
-                <input type="hidden" name="start_lat" id="start-lat-input">
-                <input type="hidden" name="start_lng" id="start-lng-input">
-                <input type="hidden" name="end_lat" id="end-lat-input">
-                <input type="hidden" name="end_lng" id="end-lng-input">
+                <input type="hidden" name="route_coordinates" id="route-coordinates-input" value="{{ $trail->route_coordinates ? json_encode($trail->route_coordinates) : '' }}">
+                <input type="hidden" name="start_lat" id="start-lat-input" value="{{ $trail->start_coordinates[0] ?? '' }}">
+                <input type="hidden" name="start_lng" id="start-lng-input" value="{{ $trail->start_coordinates[1] ?? '' }}">
+                <input type="hidden" name="end_lat" id="end-lat-input" value="{{ $trail->end_coordinates[0] ?? '' }}">
+                <input type="hidden" name="end_lng" id="end-lng-input" value="{{ $trail->end_coordinates[1] ?? '' }}">
             </div>
         </div>
 
@@ -331,7 +420,7 @@
                     <!-- Add Highlight Form -->
                     <div class="space-y-4">
                         <div class="rounded-lg border border-input p-4 space-y-4">
-                            <h4 class="font-medium">Add Highlight</h4>
+                            <h4 class="font-medium">Add New Highlight</h4>
                             <p class="text-xs text-muted-foreground">Click on the map to place a highlight marker</p>
                             
                             <div id="highlight-form-section" class="space-y-3">
@@ -391,13 +480,12 @@
 
                         <!-- Instructions -->
                         <div class="rounded-lg border border-blue-200 bg-blue-50 p-4 space-y-2">
-                            <h4 class="font-medium text-blue-800">How to Add Highlights</h4>
+                            <h4 class="font-medium text-blue-800">How to Manage Highlights</h4>
                             <ul class="text-xs text-blue-700 space-y-1">
-                                <li>• Select a highlight type from the dropdown</li>
-                                <li>• Click on the trail map to place the marker</li>
-                                <li>• Fill in the name and optional description</li>
-                                <li>• Click "Add Highlight" to save</li>
-                                <li>• Highlights will be saved when you create the trail</li>
+                                <li>• Existing highlights are shown in the list</li>
+                                <li>• Click map to add new highlights</li>
+                                <li>• Delete unwanted highlights from the list</li>
+                                <li>• Changes save when you update the trail</li>
                             </ul>
                         </div>
                     </div>
@@ -405,16 +493,39 @@
                     <!-- Highlights List -->
                     <div class="space-y-4">
                         <div class="rounded-lg border border-input p-4">
-                            <h4 class="font-medium mb-3">Added Highlights (<span id="highlights-count">0</span>)</h4>
+                            <h4 class="font-medium mb-3">Trail Highlights (<span id="highlights-count">{{ $trail->highlights->count() }}</span>)</h4>
                             <div id="highlights-list" class="space-y-2 max-h-96 overflow-y-auto">
-                                <p class="text-sm text-muted-foreground text-center py-8">No highlights added yet</p>
+                                @if($trail->highlights->count() > 0)
+                                    @foreach($trail->highlights as $highlight)
+                                        <div class="flex items-start gap-3 p-3 bg-gray-50 rounded-lg" data-highlight-id="{{ $highlight->id }}">
+                                            <div style="background-color: {{ $highlight->color }};" class="w-8 h-8 rounded-full flex items-center justify-center text-white shrink-0">
+                                                {{ $highlight->display_icon }}
+                                            </div>
+                                            <div class="flex-1 min-w-0">
+                                                <h5 class="font-medium text-sm">{{ $highlight->name }}</h5>
+                                                <p class="text-xs text-muted-foreground capitalize">{{ str_replace('_', ' ', $highlight->type) }}</p>
+                                                @if($highlight->description)
+                                                    <p class="text-xs text-gray-600 mt-1">{{ $highlight->description }}</p>
+                                                @endif
+                                            </div>
+                                            <button onclick="window.trailBuilder.removeExistingHighlight({{ $highlight->id }})" class="text-red-500 hover:text-red-700">
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                                                </svg>
+                                            </button>
+                                        </div>
+                                    @endforeach
+                                @else
+                                    <p class="text-sm text-muted-foreground text-center py-8">No highlights added yet</p>
+                                @endif
                             </div>
                         </div>
                     </div>
                 </div>
 
                 <!-- Hidden inputs for highlights data -->
-                <input type="hidden" name="highlights_data" id="highlights-data-input" value="[]">
+                <input type="hidden" name="highlights_data" id="highlights-data-input" value="">
+                <input type="hidden" name="deleted_highlights" id="deleted-highlights-input" value="[]">
             </div>
         </div>
 
@@ -427,6 +538,17 @@
                 </div>
                 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    @php
+                        $seasonalData = collect(['spring', 'summer', 'fall', 'winter'])->mapWithKeys(function($season) use ($trail) {
+                            $data = $trail->seasonalData()->where('season', $season)->first();
+                            return [$season => [
+                                'conditions' => $data->trail_conditions ?? null,
+                                'recommended' => $data->recommended ?? true,
+                                'notes' => $data->seasonal_notes ?? null
+                            ]];
+                        });
+                    @endphp
+
                     <!-- Spring -->
                     <div class="rounded-lg border border-input p-4 space-y-4">
                         <div class="flex items-center gap-2">
@@ -436,77 +558,15 @@
                         <div class="space-y-3">
                             <div class="space-y-2">
                                 <label class="text-sm font-medium">Trail Conditions</label>
-                                <input type="text" name="seasonal[spring][conditions]" 
-                                       placeholder="e.g., Muddy, Snow patches"
-                                       value="{{ old('seasonal.spring.conditions') }}"
-                                       class="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">
-                            </div>
-                            
-                            <div class="flex items-center space-x-2">
-                                <input type="checkbox" name="seasonal[spring][recommended]" value="1" 
-                                       {{ old('seasonal.spring.recommended', true) ? 'checked' : '' }}
-                                       class="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary">
-                                <label class="text-sm font-medium">Recommended in Spring</label>
-                            </div>
-                            
-                            <div class="space-y-2">
-                                <label class="text-sm font-medium">Notes</label>
-                                <textarea name="seasonal[spring][notes]" rows="2" 
-                                          placeholder="Special spring considerations..."
-                                          class="flex min-h-[60px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">{{ old('seasonal.spring.notes') }}</textarea>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Summer -->
-                    <div class="rounded-lg border border-input p-4 space-y-4">
-                        <div class="flex items-center gap-2">
-                            <span class="text-lg">Summer</span>
-                        </div>
-                        
-                        <div class="space-y-3">
-                            <div class="space-y-2">
-                                <label class="text-sm font-medium">Trail Conditions</label>
-                                <input type="text" name="seasonal[summer][conditions]" 
-                                       placeholder="e.g., Dry, Clear"
-                                       value="{{ old('seasonal.summer.conditions') }}"
-                                       class="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">
-                            </div>
-                            
-                            <div class="flex items-center space-x-2">
-                                <input type="checkbox" name="seasonal[summer][recommended]" value="1" 
-                                       {{ old('seasonal.summer.recommended', true) ? 'checked' : '' }}
-                                       class="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary">
-                                <label class="text-sm font-medium">Recommended in Summer</label>
-                            </div>
-                            
-                            <div class="space-y-2">
-                                <label class="text-sm font-medium">Notes</label>
-                                <textarea name="seasonal[summer][notes]" rows="2" 
-                                          placeholder="Special summer considerations..."
-                                          class="flex min-h-[60px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">{{ old('seasonal.summer.notes') }}</textarea>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Fall -->
-                    <div class="rounded-lg border border-input p-4 space-y-4">
-                        <div class="flex items-center gap-2">
-                            <span class="text-lg">Fall</span>
-                        </div>
-                        
-                        <div class="space-y-3">
-                            <div class="space-y-2">
-                                <label class="text-sm font-medium">Trail Conditions</label>
                                 <input type="text" name="seasonal[fall][conditions]" 
                                        placeholder="e.g., Wet leaves, Early snow"
-                                       value="{{ old('seasonal.fall.conditions') }}"
+                                       value="{{ old('seasonal.fall.conditions', $seasonalData['fall']['conditions']) }}"
                                        class="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">
                             </div>
                             
                             <div class="flex items-center space-x-2">
                                 <input type="checkbox" name="seasonal[fall][recommended]" value="1" 
-                                       {{ old('seasonal.fall.recommended', true) ? 'checked' : '' }}
+                                       {{ old('seasonal.fall.recommended', $seasonalData['fall']['recommended']) ? 'checked' : '' }}
                                        class="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary">
                                 <label class="text-sm font-medium">Recommended in Fall</label>
                             </div>
@@ -515,7 +575,7 @@
                                 <label class="text-sm font-medium">Notes</label>
                                 <textarea name="seasonal[fall][notes]" rows="2" 
                                           placeholder="Special fall considerations..."
-                                          class="flex min-h-[60px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">{{ old('seasonal.fall.notes') }}</textarea>
+                                          class="flex min-h-[60px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">{{ old('seasonal.fall.notes', $seasonalData['fall']['notes']) }}</textarea>
                             </div>
                         </div>
                     </div>
@@ -531,13 +591,13 @@
                                 <label class="text-sm font-medium">Trail Conditions</label>
                                 <input type="text" name="seasonal[winter][conditions]" 
                                        placeholder="e.g., Snow, Ice, Closed"
-                                       value="{{ old('seasonal.winter.conditions') }}"
+                                       value="{{ old('seasonal.winter.conditions', $seasonalData['winter']['conditions']) }}"
                                        class="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">
                             </div>
                             
                             <div class="flex items-center space-x-2">
                                 <input type="checkbox" name="seasonal[winter][recommended]" value="1" 
-                                       {{ old('seasonal.winter.recommended', false) ? 'checked' : '' }}
+                                       {{ old('seasonal.winter.recommended', $seasonalData['winter']['recommended']) ? 'checked' : '' }}
                                        class="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary">
                                 <label class="text-sm font-medium">Recommended in Winter</label>
                             </div>
@@ -546,7 +606,7 @@
                                 <label class="text-sm font-medium">Notes</label>
                                 <textarea name="seasonal[winter][notes]" rows="2" 
                                           placeholder="Special winter considerations..."
-                                          class="flex min-h-[60px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">{{ old('seasonal.winter.notes') }}</textarea>
+                                          class="flex min-h-[60px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">{{ old('seasonal.winter.notes', $seasonalData['winter']['notes']) }}</textarea>
                             </div>
                         </div>
                     </div>
@@ -572,7 +632,7 @@
                             @foreach($seasons as $season)
                                 <label class="flex items-center space-x-2 cursor-pointer">
                                     <input type="checkbox" name="best_seasons[]" value="{{ $season }}" 
-                                           {{ in_array($season, old('best_seasons', ['Spring', 'Summer', 'Fall'])) ? 'checked' : '' }}
+                                           {{ in_array($season, old('best_seasons', $trail->best_seasons ?? [])) ? 'checked' : '' }}
                                            class="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary">
                                     <span class="text-sm font-medium">{{ $season }}</span>
                                 </label>
@@ -586,7 +646,7 @@
                         </label>
                         <textarea name="directions" rows="3" 
                                   placeholder="Detailed directions on how to reach the trailhead..."
-                                  class="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50">{{ old('directions') }}</textarea>
+                                  class="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50">{{ old('directions', $trail->directions) }}</textarea>
                     </div>
 
                     <div class="space-y-2">
@@ -595,7 +655,7 @@
                         </label>
                         <textarea name="parking_info" rows="3" 
                                   placeholder="Parking availability, fees, restrictions, and tips..."
-                                  class="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50">{{ old('parking_info') }}</textarea>
+                                  class="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50">{{ old('parking_info', $trail->parking_info) }}</textarea>
                     </div>
 
                     <div class="space-y-2">
@@ -604,12 +664,12 @@
                         </label>
                         <textarea name="safety_notes" rows="3" 
                                   placeholder="Important safety information, hazards, equipment recommendations..."
-                                  class="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50">{{ old('safety_notes') }}</textarea>
+                                  class="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50">{{ old('safety_notes', $trail->safety_notes) }}</textarea>
                     </div>
 
                     <div class="flex items-center space-x-2">
                         <input type="checkbox" name="is_featured" value="1" 
-                               {{ old('is_featured') ? 'checked' : '' }}
+                               {{ old('is_featured', $trail->is_featured) ? 'checked' : '' }}
                                class="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary">
                         <label class="text-sm font-medium cursor-pointer">Feature this trail on homepage</label>
                     </div>
@@ -617,67 +677,150 @@
             </div>
         </div>
 
-        <!-- Photo Upload -->
+        <!-- Photo Management -->
         <div class="rounded-lg border bg-card text-card-foreground shadow-sm">
             <div class="p-6 space-y-6">
                 <div class="space-y-2">
                     <h3 class="text-lg font-semibold">Trail Photos</h3>
-                    <p class="text-sm text-muted-foreground">Upload up to 5 images. Drag to reorder, click star to set featured image.</p>
-                </div>
-                
-                <!-- Drag & Drop Zone -->
-                <div id="photo-upload-zone" class="border-2 border-dashed border-input rounded-lg p-8 text-center hover:border-primary transition-colors cursor-pointer">
-                    <input type="file" id="photo-input" name="photos[]" multiple accept="image/*" class="hidden" max="5">
-                    <div id="upload-prompt">
-                        <svg class="mx-auto h-12 w-12 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
-                        </svg>
-                        <p class="mt-2 text-sm text-muted-foreground">
-                            <span class="font-semibold text-primary">Click to upload</span> or drag and drop
-                        </p>
-                        <p class="text-xs text-muted-foreground mt-1">PNG, JPG, GIF up to 10MB (max 5 photos)</p>
-                    </div>
+                    <p class="text-sm text-muted-foreground">Manage existing photos and upload new ones (max 5 total)</p>
                 </div>
 
-                <!-- Photo Preview Grid -->
-                <div id="photo-preview-grid" class="hidden">
-                    <div class="flex items-center justify-between mb-3">
-                        <p class="text-sm font-medium">Uploaded Photos (<span id="photo-count">0</span>/5)</p>
-                        <button type="button" id="clear-photos" class="text-sm text-red-600 hover:text-red-800">Clear All</button>
+                <!-- Existing Photos -->
+                @if($trail->photos->count() > 0)
+                <div class="space-y-4">
+                    <div class="flex items-center justify-between">
+                        <h4 class="font-medium">Current Photos (<span id="existing-photo-count">{{ $trail->photos->count() }}</span>)</h4>
                     </div>
-                    <div id="photo-previews" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-                        <!-- Photo previews will be inserted here -->
+                    
+                    <div id="existing-photos-grid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+                        @foreach($trail->photos as $photo)
+                        <div class="relative group photo-item" data-photo-id="{{ $photo->id }}" data-is-existing="true">
+                            <img src="{{ $photo->url }}" alt="{{ $photo->caption ?: $trail->name }}" 
+                                class="w-full h-32 object-cover rounded-lg border-2 {{ $photo->is_featured ? 'border-yellow-400' : 'border-gray-200' }}">
+                            
+                            <!-- Featured Badge -->
+                            @if($photo->is_featured)
+                            <div class="absolute top-2 left-2">
+                                <span class="inline-flex items-center rounded-full bg-yellow-400 px-2 py-1 text-xs font-medium text-yellow-900">
+                                    <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
+                                    </svg>
+                                    Featured
+                                </span>
+                            </div>
+                            @endif
+
+                            <!-- Controls overlay -->
+                            <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-50 transition-all duration-200 rounded-lg flex items-center justify-center gap-2">
+                                <button type="button" onclick="window.photoEditor.setExistingFeatured({{ $photo->id }})" 
+                                        class="opacity-0 group-hover:opacity-100 transition-opacity bg-white rounded-full p-2 hover:bg-yellow-100"
+                                        title="Set as featured">
+                                    <svg class="w-4 h-4 {{ $photo->is_featured ? 'text-yellow-500' : 'text-gray-600' }}" fill="currentColor" viewBox="0 0 20 20">
+                                        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
+                                    </svg>
+                                </button>
+                                <button type="button" onclick="window.photoEditor.deleteExisting({{ $photo->id }})" 
+                                        class="opacity-0 group-hover:opacity-100 transition-opacity bg-white rounded-full p-2 hover:bg-red-100"
+                                        title="Delete photo">
+                                    <svg class="w-4 h-4 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                                    </svg>
+                                </button>
+                            </div>
+
+                            <!-- Drag handle -->
+                            <div class="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity cursor-move">
+                                <svg class="w-5 h-5 text-white drop-shadow-lg" fill="currentColor" viewBox="0 0 20 20">
+                                    <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z"/>
+                                </svg>
+                            </div>
+                        </div>
+                        @endforeach
                     </div>
                 </div>
+                @endif
 
-                <!-- Hidden inputs for photo data -->
-                <input type="hidden" name="featured_photo_index" id="featured-photo-index" value="0">
+                <!-- Upload New Photos -->
+                @if($trail->photos->count() < 5)
+                <div class="space-y-4">
+                    <div class="border-t pt-4">
+                        <h4 class="font-medium mb-3">Add New Photos</h4>
+                        
+                        <!-- Drag & Drop Zone -->
+                        <div id="photo-upload-zone" class="border-2 border-dashed border-input rounded-lg p-8 text-center hover:border-primary transition-colors cursor-pointer">
+                            <input type="file" id="photo-input" name="photos[]" multiple accept="image/*" class="hidden">
+                            <div id="upload-prompt">
+                                <svg class="mx-auto h-12 w-12 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+                                </svg>
+                                <p class="mt-2 text-sm text-muted-foreground">
+                                    <span class="font-semibold text-primary">Click to upload</span> or drag and drop
+                                </p>
+                                <p class="text-xs text-muted-foreground mt-1">
+                                    PNG, JPG, GIF up to 10MB ({{ 5 - $trail->photos->count() }} slots remaining)
+                                </p>
+                            </div>
+                        </div>
+
+                        <!-- New Photo Preview Grid -->
+                        <div id="new-photo-preview-grid" class="hidden mt-4">
+                            <div class="flex items-center justify-between mb-3">
+                                <p class="text-sm font-medium">New Photos (<span id="new-photo-count">0</span>)</p>
+                                <button type="button" id="clear-new-photos" class="text-sm text-red-600 hover:text-red-800">Clear All</button>
+                            </div>
+                            <div id="new-photo-previews" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+                                <!-- New photo previews will be inserted here -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                @else
+                <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                    <p class="text-sm text-blue-800">You've reached the maximum of 5 photos. Delete some existing photos to upload new ones.</p>
+                </div>
+                @endif
+
+                <!-- Hidden inputs -->
+                <input type="hidden" name="deleted_photos" id="deleted-photos-input" value="[]">
+                <input type="hidden" name="photo_order" id="photo-order-input" value="">
+                <input type="hidden" name="featured_photo_id" id="featured-photo-id-input" value="{{ $trail->featuredPhoto?->id ?? '' }}">
             </div>
         </div>
 
         <!-- Form Actions -->
         <div class="flex items-center justify-between pt-6 border-t">
-            <a href="{{ route('admin.trails.index') }}" 
-               class="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2">
-                <svg class="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
-                </svg>
-                Cancel
-            </a>
-            <button type="submit" 
-                    class="inline-flex items-center justify-center rounded-md bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-8 py-2 text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50">
-                <svg class="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-                </svg>
-                Create Trail
-            </button>
+            <div class="flex items-center gap-4">
+                <a href="{{ route('admin.trails.show', $trail) }}" 
+                   class="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2">
+                    <svg class="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
+                    </svg>
+                    Cancel
+                </a>
+                <a href="{{ route('trails.show', $trail) }}" target="_blank"
+                   class="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2">
+                    <svg class="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
+                    </svg>
+                    Preview Trail
+                </a>
+            </div>
+            <div class="flex items-center gap-3">
+                <button type="submit" 
+                        class="inline-flex items-center justify-center rounded-md bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-8 py-2 text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50">
+                    <svg class="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                    </svg>
+                    Update Trail
+                </button>
+            </div>
         </div>
     </form>
 </div>
 
 @push('scripts')
 <script>
-    // Simplified TrailBuilder focused on import/display
+    // Enhanced TrailEditor for existing trail management
     class TrailBuilder {
         constructor() {
             this.map = null;
@@ -690,6 +833,8 @@
             this.highlights = []; 
             this.highlightsLayer = null; 
             this.pendingHighlight = null; 
+            this.deletedHighlights = []; 
+            this.existingHighlights = @json($trail->highlights); 
             this.init();
         }
 
@@ -743,20 +888,56 @@
 
         init() {
             this.map = L.map('trail-map', {
-                maxZoom: 20,  // Allow zooming to very detailed level
-                minZoom: 5    // Prevent zooming out too far
+                maxZoom: 20,
+                minZoom: 5
             }).setView([49.2827, -122.7927], 13);
             
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 attribution: '© OpenStreetMap contributors',
-                maxZoom: 20  // Support higher zoom levels
+                maxZoom: 20
             }).addTo(this.map);
 
             this.routeLayer = L.layerGroup().addTo(this.map);
-            this.highlightsLayer = L.layerGroup().addTo(this.map); 
+            this.highlightsLayer = L.layerGroup().addTo(this.map);
+            
+            // Load existing route data if available
+            this.loadExistingRoute();
+            this.loadExistingHighlights();
+            
             this.setupEventListeners();
             this.setupMapClicks();
-            this.setupHighlightHandlers(); 
+            this.setupHighlightHandlers();
+        }
+
+        loadExistingRoute() {
+            const routeInput = document.getElementById('route-coordinates-input');
+            
+            if (routeInput && routeInput.value && routeInput.value !== '[]' && routeInput.value !== '') {
+                try {
+                    const existingRoute = JSON.parse(routeInput.value);
+                    
+                    if (existingRoute && existingRoute.length > 1) {
+                        console.log('Loading existing route with', existingRoute.length, 'points');
+                        
+                        // Display the existing route
+                        this.displayGPXRoute(existingRoute);
+                        
+                        // Create waypoints from the route (sample key points)
+                        this.createWaypointsFromGPX(existingRoute);
+                        
+                        // Update the UI
+                        this.updateStats();
+                        this.updateFormInputs();
+                        
+                        // Load elevation profile
+                        setTimeout(() => {
+                            this.loadElevationProfile();
+                        }, 1000);
+                    }
+                } catch (error) {
+                    console.error('Error loading existing route:', error);
+                }
+            }
         }
 
         setupEventListeners() {
@@ -1643,6 +1824,25 @@
             }
         }
 
+        loadExistingHighlights() {
+            if (this.existingHighlights && this.existingHighlights.length > 0) {
+                this.existingHighlights.forEach(h => {
+                    const marker = L.marker(h.coordinates, {
+                        icon: L.divIcon({
+                            html: `<div style="background-color: ${h.color};" class="w-8 h-8 rounded-full border-2 border-white shadow-lg flex items-center justify-center text-white text-lg">${h.display_icon}</div>`,
+                            className: 'custom-marker',
+                            iconSize: [32, 32],
+                            iconAnchor: [16, 16]
+                        })
+                    }).addTo(this.highlightsLayer);
+
+                    marker.bindPopup(`<b>${h.name}</b><br>${h.description || ''}`);
+                    marker.highlightId = h.id;
+                    marker.isExisting = true;
+                });
+            }
+        }
+
         setupHighlightHandlers() {
             // Type selector change
             const typeSelect = document.getElementById('highlight-type-select');
@@ -1663,25 +1863,24 @@
                 addBtn.addEventListener('click', () => this.addHighlightToList());
             }
 
-            // Map click for highlights - override when in highlight mode
-            const originalMapClick = this.map._events.click[0].fn;
-            this.map.off('click');
-            
-            this.map.on('click', (e) => {
-                const highlightType = document.getElementById('highlight-type-select').value;
+            // Override map click for highlight mode
+            const originalClick = this.map._events.click?.[0]?.fn;
+            if (originalClick) {
+                this.map.off('click');
                 
-                if (highlightType) {
-                    // Highlight mode - place highlight marker
-                    this.placeHighlightMarker(e.latlng.lat, e.latlng.lng);
-                } else {
-                    // Normal mode - add waypoint
-                    originalMapClick.call(this, e);
-                }
-            });
+                this.map.on('click', (e) => {
+                    const highlightType = document.getElementById('highlight-type-select').value;
+                    
+                    if (highlightType) {
+                        this.placeHighlightMarker(e.latlng.lat, e.latlng.lng);
+                    } else {
+                        this.addWaypoint(e.latlng.lat, e.latlng.lng);
+                    }
+                });
+            }
         }
 
         placeHighlightMarker(lat, lng) {
-            // Remove previous pending highlight
             if (this.pendingHighlight) {
                 this.highlightsLayer.removeLayer(this.pendingHighlight);
             }
@@ -1715,7 +1914,7 @@
             }
 
             const highlight = {
-                id: Date.now(),
+                id: 'new_' + Date.now(),
                 type: type,
                 name: name,
                 description: description,
@@ -1734,7 +1933,6 @@
             document.getElementById('highlight-description-input').value = '';
             document.getElementById('highlight-icon-input').value = '';
             
-            // Remove pending marker and add permanent one
             if (this.pendingHighlight) {
                 this.highlightsLayer.removeLayer(this.pendingHighlight);
                 this.pendingHighlight = null;
@@ -1760,30 +1958,68 @@
             
             if (!listContainer) return;
 
-            countSpan.textContent = this.highlights.length;
+            const totalCount = this.existingHighlights.filter(h => !this.deletedHighlights.includes(h.id)).length + this.highlights.length;
+            countSpan.textContent = totalCount;
 
-            if (this.highlights.length === 0) {
-                listContainer.innerHTML = '<p class="text-sm text-muted-foreground text-center py-8">No highlights added yet</p>';
-                return;
-            }
+            // Get existing highlights that aren't deleted
+            const existingHTML = this.existingHighlights
+                .filter(h => !this.deletedHighlights.includes(h.id))
+                .map(h => `
+                    <div class="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
+                        <div style="background-color: ${h.color};" class="w-8 h-8 rounded-full flex items-center justify-center text-white shrink-0">
+                            ${h.display_icon}
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <h5 class="font-medium text-sm">${h.name}</h5>
+                            <p class="text-xs text-muted-foreground capitalize">${h.type.replace('_', ' ')}</p>
+                            ${h.description ? `<p class="text-xs text-gray-600 mt-1">${h.description}</p>` : ''}
+                        </div>
+                        <button onclick="window.trailBuilder.removeExistingHighlight(${h.id})" class="text-red-500 hover:text-red-700">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                            </svg>
+                        </button>
+                    </div>
+                `).join('');
 
-            listContainer.innerHTML = this.highlights.map(h => `
-                <div class="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
+            // Get new highlights
+            const newHTML = this.highlights.map(h => `
+                <div class="flex items-start gap-3 p-3 bg-green-50 rounded-lg border border-green-200">
                     <div style="background-color: ${h.color};" class="w-8 h-8 rounded-full flex items-center justify-center text-white shrink-0">
                         ${h.icon}
                     </div>
                     <div class="flex-1 min-w-0">
-                        <h5 class="font-medium text-sm">${h.name}</h5>
+                        <h5 class="font-medium text-sm">${h.name} <span class="text-xs text-green-600">(new)</span></h5>
                         <p class="text-xs text-muted-foreground capitalize">${h.type.replace('_', ' ')}</p>
                         ${h.description ? `<p class="text-xs text-gray-600 mt-1">${h.description}</p>` : ''}
                     </div>
-                    <button onclick="window.trailBuilder.removeHighlight(${h.id})" class="text-red-500 hover:text-red-700">
+                    <button onclick="window.trailBuilder.removeHighlight('${h.id}')" class="text-red-500 hover:text-red-700">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
                         </svg>
                     </button>
                 </div>
             `).join('');
+
+            if (!existingHTML && !newHTML) {
+                listContainer.innerHTML = '<p class="text-sm text-muted-foreground text-center py-8">No highlights added yet</p>';
+            } else {
+                listContainer.innerHTML = existingHTML + newHTML;
+            }
+        }
+
+        removeExistingHighlight(id) {
+            this.deletedHighlights.push(id);
+            
+            // Remove marker from map
+            this.highlightsLayer.eachLayer(layer => {
+                if (layer.highlightId === id && layer.isExisting) {
+                    this.highlightsLayer.removeLayer(layer);
+                }
+            });
+
+            this.updateHighlightsList();
+            this.updateHighlightsInput();
         }
 
         removeHighlight(id) {
@@ -1801,19 +2037,41 @@
         }
 
         updateHighlightsInput() {
-            const input = document.getElementById('highlights-data-input');
-            if (input) {
-                input.value = JSON.stringify(this.highlights);
+            const highlightsInput = document.getElementById('highlights-data-input');
+            const deletedInput = document.getElementById('deleted-highlights-input');
+            
+            if (highlightsInput) {
+                highlightsInput.value = JSON.stringify(this.highlights);
+            }
+            
+            if (deletedInput) {
+                deletedInput.value = JSON.stringify(this.deletedHighlights);
             }
         }
     }
 
-    // Photo Upload Handler
-    class PhotoUploadManager {
+    // Prepare photo data
+    const trailPhotosData = {!! json_encode($trail->photos->map(function($photo) {
+        return [
+            'id' => $photo->id,
+            'url' => $photo->url,
+            'caption' => $photo->caption,
+            'is_featured' => $photo->is_featured,
+            'sort_order' => $photo->sort_order,
+        ];
+    })->values()) !!};
+
+    const featuredPhotoId = {{ $trail->featuredPhoto?->id ?? 'null' }};
+
+    class PhotoEditor {
         constructor() {
-            this.photos = [];
+            // Load existing photos from the server
+            this.existingPhotos = trailPhotosData;
+            this.newPhotos = [];
+            this.deletedPhotoIds = [];
+            this.featuredPhotoId = featuredPhotoId;
             this.maxPhotos = 5;
-            this.featuredIndex = 0;
+            this.draggedElement = null;
             this.init();
         }
 
@@ -1821,15 +2079,24 @@
             const uploadZone = document.getElementById('photo-upload-zone');
             const photoInput = document.getElementById('photo-input');
 
+            if (!uploadZone || !photoInput) return;
+
             // Click to upload
-            uploadZone.addEventListener('click', () => photoInput.click());
+            uploadZone.addEventListener('click', () => {
+                if (this.canAddMore()) {
+                    photoInput.click();
+                } else {
+                    alert(`Maximum ${this.maxPhotos} photos reached. Delete some photos to add more.`);
+                }
+            });
 
             // File input change
             photoInput.addEventListener('change', (e) => {
                 this.handleFiles(e.target.files);
+                e.target.value = ''; // Reset input so same file can be selected again
             });
 
-            // Drag and drop
+            // Drag and drop on upload zone
             uploadZone.addEventListener('dragover', (e) => {
                 e.preventDefault();
                 uploadZone.classList.add('border-primary', 'bg-primary/5');
@@ -1843,20 +2110,37 @@
             uploadZone.addEventListener('drop', (e) => {
                 e.preventDefault();
                 uploadZone.classList.remove('border-primary', 'bg-primary/5');
-                this.handleFiles(e.dataTransfer.files);
+                if (this.canAddMore()) {
+                    this.handleFiles(e.dataTransfer.files);
+                } else {
+                    alert(`Maximum ${this.maxPhotos} photos reached.`);
+                }
             });
 
-            // Clear all photos
-            document.getElementById('clear-photos')?.addEventListener('click', () => {
-                this.clearAll();
-            });
+            // Clear new photos button
+            const clearBtn = document.getElementById('clear-new-photos');
+            if (clearBtn) {
+                clearBtn.addEventListener('click', () => this.clearNewPhotos());
+            }
+
+            // Initial render
+            this.updateCounts();
+        }
+
+        getTotalPhotoCount() {
+            const activeExisting = this.existingPhotos.filter(p => !this.deletedPhotoIds.includes(p.id)).length;
+            return activeExisting + this.newPhotos.length;
+        }
+
+        canAddMore() {
+            return this.getTotalPhotoCount() < this.maxPhotos;
         }
 
         handleFiles(files) {
-            const remainingSlots = this.maxPhotos - this.photos.length;
+            const remainingSlots = this.maxPhotos - this.getTotalPhotoCount();
             
             if (files.length > remainingSlots) {
-                alert(`You can only upload ${remainingSlots} more photo(s). Maximum is ${this.maxPhotos} photos.`);
+                alert(`You can only upload ${remainingSlots} more photo(s). Maximum is ${this.maxPhotos} photos total.`);
                 return;
             }
 
@@ -1871,218 +2155,249 @@
                     return;
                 }
 
-                this.addPhoto(file);
+                this.addNewPhoto(file);
             });
         }
 
-        addPhoto(file) {
+        addNewPhoto(file) {
             const reader = new FileReader();
             
             reader.onload = (e) => {
                 const photo = {
                     file: file,
                     dataUrl: e.target.result,
-                    id: Date.now() + Math.random()
+                    id: 'new_' + Date.now() + Math.random(),
+                    isNew: true
                 };
 
-                this.photos.push(photo);
-                this.render();
+                this.newPhotos.push(photo);
+                this.renderNewPhotos();
+                this.updateCounts();
+                this.updateFormData();
             };
 
             reader.readAsDataURL(file);
         }
 
-        removePhoto(id) {
-            const index = this.photos.findIndex(p => p.id === id);
-            if (index === -1) return;
-
-            this.photos.splice(index, 1);
+        deleteExisting(photoId) {
+            if (!confirm('Delete this photo? This action cannot be undone.')) return;
             
-            // Adjust featured index if needed
-            if (this.featuredIndex >= this.photos.length) {
-                this.featuredIndex = Math.max(0, this.photos.length - 1);
+            // Add to deleted list
+            if (!this.deletedPhotoIds.includes(photoId)) {
+                this.deletedPhotoIds.push(photoId);
             }
-
-            this.render();
-        }
-
-        setFeatured(index) {
-            this.featuredIndex = index;
-            this.render();
-        }
-
-        clearAll() {
-            if (this.photos.length === 0) return;
             
-            if (confirm('Remove all photos?')) {
-                this.photos = [];
-                this.featuredIndex = 0;
-                this.render();
+            // If this was the featured photo, clear featured status
+            if (this.featuredPhotoId === photoId) {
+                this.featuredPhotoId = null;
             }
+            
+            // Remove from UI - find the photo item correctly
+            const photoElement = document.querySelector(`.photo-item[data-photo-id="${photoId}"][data-is-existing="true"]`);
+            if (photoElement) {
+                photoElement.remove();
+            }
+            
+            // Update the counts
+            this.updateCounts();
+            
+            // Update form inputs
+            this.updateFormData();
+            
+            // Log for debugging
+            console.log('Deleted photo:', photoId);
+            console.log('All deleted IDs:', this.deletedPhotoIds);
         }
 
-        render() {
-            const previewGrid = document.getElementById('photo-preview-grid');
-            const previewsContainer = document.getElementById('photo-previews');
-            const photoCount = document.getElementById('photo-count');
-            const uploadPrompt = document.getElementById('upload-prompt');
-            const uploadZone = document.getElementById('photo-upload-zone');
-
-            // Update count
-            photoCount.textContent = this.photos.length;
-
-            // Show/hide sections
-            if (this.photos.length > 0) {
-                previewGrid.classList.remove('hidden');
-                uploadPrompt.classList.add('hidden');
-                uploadZone.classList.add('border-solid');
-            } else {
-                previewGrid.classList.add('hidden');
-                uploadPrompt.classList.remove('hidden');
-                uploadZone.classList.remove('border-solid');
-            }
-
-            // Render previews
-            previewsContainer.innerHTML = this.photos.map((photo, index) => `
-                <div class="relative group photo-preview-item" data-photo-id="${photo.id}" draggable="true">
-                    <img src="${photo.dataUrl}" alt="Preview ${index + 1}" 
-                        class="w-full h-32 object-cover rounded-lg border-2 ${index === this.featuredIndex ? 'border-yellow-400' : 'border-gray-200'}">
-                    
-                    <!-- Featured Badge -->
-                    ${index === this.featuredIndex ? `
-                        <div class="absolute top-2 left-2">
-                            <span class="inline-flex items-center rounded-full bg-yellow-400 px-2 py-1 text-xs font-medium text-yellow-900">
-                                <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
-                                </svg>
-                                Featured
-                            </span>
-                        </div>
-                    ` : ''}
-                    
-                    <!-- Controls overlay -->
-                    <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-50 transition-all duration-200 rounded-lg flex items-center justify-center gap-2">
-                        <button type="button" onclick="window.photoManager.setFeatured(${index})" 
-                                class="opacity-0 group-hover:opacity-100 transition-opacity bg-white rounded-full p-2 hover:bg-yellow-100"
-                                title="Set as featured">
-                            <svg class="w-4 h-4 ${index === this.featuredIndex ? 'text-yellow-500' : 'text-gray-600'}" fill="currentColor" viewBox="0 0 20 20">
-                                <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
-                            </svg>
-                        </button>
-                        <button type="button" onclick="window.photoManager.removePhoto('${photo.id}')" 
-                                class="opacity-0 group-hover:opacity-100 transition-opacity bg-white rounded-full p-2 hover:bg-red-100"
-                                title="Remove photo">
-                            <svg class="w-4 h-4 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-                            </svg>
-                        </button>
-                    </div>
-
-                    <!-- Drag handle -->
-                    <div class="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity cursor-move">
-                        <svg class="w-5 h-5 text-white drop-shadow-lg" fill="currentColor" viewBox="0 0 20 20">
-                            <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z"/>
-                        </svg>
-                    </div>
-                </div>
-            `).join('');
-
-            // Setup drag and drop reordering
-            this.setupDragAndDrop();
-
-            // Update form data
+        deleteNew(photoId) {
+            if (!confirm('Remove this photo?')) return;
+            
+            this.newPhotos = this.newPhotos.filter(p => p.id !== photoId);
+            
+            this.renderNewPhotos();
+            this.updateCounts();
             this.updateFormData();
         }
 
-        setupDragAndDrop() {
-            const items = document.querySelectorAll('.photo-preview-item');
-            let draggedItem = null;
-
-            items.forEach(item => {
-                item.addEventListener('dragstart', (e) => {
-                    draggedItem = item;
-                    item.classList.add('opacity-50');
-                });
-
-                item.addEventListener('dragend', (e) => {
-                    item.classList.remove('opacity-50');
-                });
-
-                item.addEventListener('dragover', (e) => {
-                    e.preventDefault();
-                    const afterElement = this.getDragAfterElement(e.clientX);
-                    const container = document.getElementById('photo-previews');
-                    
-                    if (afterElement == null) {
-                        container.appendChild(draggedItem);
-                    } else {
-                        container.insertBefore(draggedItem, afterElement);
-                    }
-                });
-
-                item.addEventListener('drop', (e) => {
-                    e.preventDefault();
-                    this.reorderPhotos();
-                });
-            });
-        }
-
-        getDragAfterElement(x) {
-            const draggableElements = [...document.querySelectorAll('.photo-preview-item:not(.opacity-50)')];
-
-            return draggableElements.reduce((closest, child) => {
-                const box = child.getBoundingClientRect();
-                const offset = x - box.left - box.width / 2;
-
-                if (offset < 0 && offset > closest.offset) {
-                    return { offset: offset, element: child };
-                } else {
-                    return closest;
-                }
-            }, { offset: Number.NEGATIVE_INFINITY }).element;
-        }
-
-        reorderPhotos() {
-            const items = document.querySelectorAll('.photo-preview-item');
-            const newOrder = [];
+        setExistingFeatured(photoId) {
+            this.featuredPhotoId = photoId;
             
-            items.forEach(item => {
-                const id = parseFloat(item.dataset.photoId);
-                const photo = this.photos.find(p => p.id === id);
-                if (photo) newOrder.push(photo);
+            // Update UI for all existing photos
+            document.querySelectorAll('[data-is-existing="true"]').forEach(item => {
+                const itemPhotoId = parseInt(item.dataset.photoId);
+                const border = item.querySelector('img');
+                const starBtn = item.querySelector('button[onclick*="setExistingFeatured"]');
+                const starIcon = starBtn?.querySelector('svg');
+                
+                if (itemPhotoId === photoId) {
+                    border.classList.remove('border-gray-200');
+                    border.classList.add('border-yellow-400');
+                    starIcon?.classList.remove('text-gray-600');
+                    starIcon?.classList.add('text-yellow-500');
+                } else {
+                    border.classList.remove('border-yellow-400');
+                    border.classList.add('border-gray-200');
+                    starIcon?.classList.remove('text-yellow-500');
+                    starIcon?.classList.add('text-gray-600');
+                }
             });
+            
+            this.updateFormData();
+        }
 
-            this.photos = newOrder;
-            this.render();
+        setNewFeatured(photoId) {
+            this.featuredPhotoId = photoId;
+            this.renderNewPhotos();
+            this.updateFormData();
+        }
+
+        clearNewPhotos() {
+            if (this.newPhotos.length === 0) return;
+            
+            if (confirm('Remove all new photos?')) {
+                this.newPhotos = [];
+                this.renderNewPhotos();
+                this.updateCounts();
+                this.updateFormData();
+            }
+        }
+
+        renderNewPhotos() {
+            const previewGrid = document.getElementById('new-photo-preview-grid');
+            const previewsContainer = document.getElementById('new-photo-previews');
+            const photoCount = document.getElementById('new-photo-count');
+            
+            if (!previewsContainer) return;
+
+            // Update count
+            if (photoCount) {
+                photoCount.textContent = this.newPhotos.length;
+            }
+
+            // Show/hide section
+            if (this.newPhotos.length > 0) {
+                previewGrid?.classList.remove('hidden');
+            } else {
+                previewGrid?.classList.add('hidden');
+                return;
+            }
+
+            // Render previews
+            previewsContainer.innerHTML = this.newPhotos.map((photo, index) => {
+                const isFeatured = this.featuredPhotoId === photo.id;
+                
+                return `
+                    <div class="relative group photo-item" data-photo-id="${photo.id}" data-is-existing="false">
+                        <img src="${photo.dataUrl}" alt="New photo ${index + 1}" 
+                            class="w-full h-32 object-cover rounded-lg border-2 ${isFeatured ? 'border-yellow-400' : 'border-gray-200'}">
+                        
+                        <!-- New Badge -->
+                        <div class="absolute top-2 left-2">
+                            <span class="inline-flex items-center rounded-full bg-green-500 px-2 py-1 text-xs font-medium text-white">
+                                New
+                            </span>
+                        </div>
+                        
+                        ${isFeatured ? `
+                            <div class="absolute top-2 right-2">
+                                <span class="inline-flex items-center rounded-full bg-yellow-400 px-2 py-1 text-xs font-medium text-yellow-900">
+                                    <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
+                                    </svg>
+                                    Featured
+                                </span>
+                            </div>
+                        ` : ''}
+                        
+                        <!-- Controls overlay -->
+                        <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-50 transition-all duration-200 rounded-lg flex items-center justify-center gap-2">
+                            <button type="button" onclick="window.photoEditor.setNewFeatured('${photo.id}')" 
+                                    class="opacity-0 group-hover:opacity-100 transition-opacity bg-white rounded-full p-2 hover:bg-yellow-100"
+                                    title="Set as featured">
+                                <svg class="w-4 h-4 ${isFeatured ? 'text-yellow-500' : 'text-gray-600'}" fill="currentColor" viewBox="0 0 20 20">
+                                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
+                                </svg>
+                            </button>
+                            <button type="button" onclick="window.photoEditor.deleteNew('${photo.id}')" 
+                                    class="opacity-0 group-hover:opacity-100 transition-opacity bg-white rounded-full p-2 hover:bg-red-100"
+                                    title="Remove photo">
+                                <svg class="w-4 h-4 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        updateCounts() {
+            const existingCount = document.getElementById('existing-photo-count');
+            const newCount = document.getElementById('new-photo-count');
+            
+            if (existingCount) {
+                const activeExisting = this.existingPhotos.filter(p => !this.deletedPhotoIds.includes(p.id)).length;
+                existingCount.textContent = activeExisting;
+            }
+            
+            if (newCount) {
+                newCount.textContent = this.newPhotos.length;
+            }
+
+            // Update upload zone visibility
+            const uploadZone = document.getElementById('photo-upload-zone');
+            if (uploadZone) {
+                if (!this.canAddMore()) {
+                    uploadZone.style.opacity = '0.5';
+                    uploadZone.style.cursor = 'not-allowed';
+                } else {
+                    uploadZone.style.opacity = '1';
+                    uploadZone.style.cursor = 'pointer';
+                }
+            }
         }
 
         updateFormData() {
-            // Create a new FileList-like object
-            const dataTransfer = new DataTransfer();
+            // Update deleted photos input
+            const deletedInput = document.getElementById('deleted-photos-input');
+            if (deletedInput) {
+                deletedInput.value = JSON.stringify(this.deletedPhotoIds);
+                console.log('Updated deleted_photos input:', deletedInput.value); // Debug
+            }
             
-            this.photos.forEach(photo => {
-                dataTransfer.items.add(photo.file);
-            });
-
+            // Update featured photo input
+            const featuredInput = document.getElementById('featured-photo-id-input');
+            if (featuredInput) {
+                featuredInput.value = this.featuredPhotoId || '';
+            }
+            
+            // Update file input with new photos
             const photoInput = document.getElementById('photo-input');
-            photoInput.files = dataTransfer.files;
-
-            // Update featured index
-            document.getElementById('featured-photo-index').value = this.featuredIndex;
+            if (photoInput && this.newPhotos.length > 0) {
+                const dataTransfer = new DataTransfer();
+                
+                this.newPhotos.forEach(photo => {
+                    dataTransfer.items.add(photo.file);
+                });
+                
+                photoInput.files = dataTransfer.files;
+            }
         }
     }
 
-    // Initialize photo manager
-    window.photoManager = new PhotoUploadManager();
+    // Initialize photo editor
+    window.photoEditor = new PhotoEditor();
 
-    // Initialize trail builder when DOM is ready
+    // Initialize trail editor when DOM is ready
     document.addEventListener('DOMContentLoaded', function() {
         window.trailBuilder = new TrailBuilder();
     });
+
+    
 </script>
 
 <style>
-/* shadcn/ui color variables */
+/* Apply the same shadcn/ui styling from create.blade.php */
 :root {
   --background: 0 0% 100%;
   --foreground: 222.2 84% 4.9%;
@@ -2146,26 +2461,13 @@
 .text-accent-foreground { color: hsl(var(--accent-foreground)); }
 .hover\:bg-accent:hover { background-color: hsl(var(--accent)); }
 .hover\:text-accent-foreground:hover { color: hsl(var(--accent-foreground)); }
+.bg-destructive { background-color: hsl(var(--destructive)); }
+.text-destructive-foreground { color: hsl(var(--destructive-foreground)); }
+.hover\:bg-destructive\/90:hover { background-color: hsl(var(--destructive) / 0.9); }
 .border-border { border-color: hsl(var(--border)); }
 .border-input { border-color: hsl(var(--input)); }
 .ring-ring { --tw-ring-color: hsl(var(--ring)); }
 .ring-offset-background { --tw-ring-offset-color: hsl(var(--background)); }
-
-.photo-preview-item {
-    transition: transform 0.2s, opacity 0.2s;
-}
-
-.photo-preview-item:hover {
-    transform: translateY(-2px);
-}
-
-#photo-upload-zone {
-    transition: all 0.3s ease;
-}
-
-#photo-upload-zone:hover {
-    background-color: rgba(59, 130, 246, 0.02);
-}
 </style>
 @endpush
 @endsection

@@ -65,9 +65,9 @@
             @foreach($featuredTrails as $trail)
             <div class="bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-shadow duration-300">
                 <div class="h-64 bg-gradient-to-br from-green-400 to-blue-600 relative overflow-hidden">
-                    @if($trail->featured_image)
-                        <img src="{{ $trail->featured_image }}" alt="{{ $trail->name }}" 
-                             class="w-full h-full object-cover">
+                     @if($trail->featuredPhoto)
+                        <img src="{{ $trail->featuredPhoto->url }}" alt="{{ $trail->name }}" 
+                            class="w-full h-full object-cover">
                     @else
                         <div class="absolute inset-0 flex items-center justify-center">
                             <svg class="w-16 h-16 text-white opacity-75" fill="none" stroke="currentColor" viewBox="0 0 24 24">

@@ -46,6 +46,11 @@
                            data-activity="viewpoint">
                     <span class="ml-2 text-sm text-gray-700">Viewpoints</span>
                 </label>
+                <label class="flex items-center">
+                    <input type="checkbox" class="activity-filter h-4 w-4 text-pink-600 border-gray-300 rounded" 
+                        data-activity="highlights" checked>
+                    <span class="ml-2 text-sm text-gray-700">Points of Interest</span>
+                </label>
             </div>
         </div>
 
@@ -99,6 +104,10 @@
                     <div class="w-3 h-3 bg-purple-500 rounded-full mr-2"></div>
                     <span>Viewpoints</span>
                 </div>
+                <div class="flex items-center">
+                    <div class="w-3 h-3 bg-pink-500 rounded-full mr-2"></div>
+                    <span>Points of Interest</span>
+                </div>
             </div>
         </div>
     </div>
@@ -117,7 +126,7 @@
         constructor() {
             this.map = null;
             this.currentSeason = 'summer';
-            this.activeFilters = ['hiking'];
+            this.activeFilters = ['hiking', 'highlights'];
             this.baseLayers = {};
             this.overlayLayers = {};
             this.routeLayer = null;  // Add this line
@@ -154,7 +163,8 @@
                 'hiking': L.layerGroup(),
                 'fishing': L.layerGroup(),
                 'camping': L.layerGroup(),
-                'viewpoint': L.layerGroup()
+                'viewpoint': L.layerGroup(),
+                'highlights': L.layerGroup()
             };
 
             // Add default base layer
@@ -289,10 +299,15 @@
                     return;
                 }
 
-                // Add trail route
+                // Add trail route (REMOVED DUPLICATE - keep only this one)
                 const route = this.addTrailRoute(trail);
                 if (route) {
                     this.routeLayer.addLayer(route);
+                }
+
+                // Add highlights if enabled
+                if (this.activeFilters.includes('highlights')) {
+                    this.createHighlightMarkers(trail);
                 }
 
                 // Add markers for active activity types
@@ -346,12 +361,128 @@
             return marker;
         }
 
+        createHighlightMarkers(trail) {
+            if (!trail.highlights || trail.highlights.length === 0) return;
+
+            trail.highlights.forEach(highlight => {
+                const icon = L.divIcon({
+                    html: `<div style="background-color: ${highlight.color};" class="w-8 h-8 rounded-full border-2 border-white shadow-lg flex items-center justify-center text-white text-lg font-bold">${highlight.icon}</div>`,
+                    className: 'custom-highlight-marker',
+                    iconSize: [32, 32],
+                    iconAnchor: [16, 16]
+                });
+
+                const marker = L.marker(highlight.coordinates, { icon })
+                    .bindPopup(this.createHighlightPopupContent(trail, highlight));
+
+                // Add click event
+                marker.on('click', () => {
+                    this.showHighlightInfo(trail, highlight);
+                });
+
+                this.overlayLayers['highlights'].addLayer(marker);
+            });
+        }
+
+        createHighlightPopupContent(trail, highlight) {
+            return `
+                <div class="max-w-xs">
+                    <div class="flex items-center mb-2">
+                        <div style="background-color: ${highlight.color};" class="w-8 h-8 rounded-full flex items-center justify-center text-white mr-2">
+                            ${highlight.icon}
+                        </div>
+                        <h5 class="font-bold text-base">${highlight.name}</h5>
+                    </div>
+                    
+                    <p class="text-xs text-gray-600 mb-2 capitalize">${highlight.type.replace('_', ' ')}</p>
+                    
+                    ${highlight.description ? `<p class="text-sm text-gray-700 mb-2">${highlight.description}</p>` : ''}
+                    
+                    <div class="text-xs text-gray-500 mb-2">
+                        On trail: <a href="/trails/${trail.id}" class="text-primary-600 hover:underline">${trail.name}</a>
+                    </div>
+                    
+                    <button onclick="window.trailMap.viewHighlight(${trail.id}, ${JSON.stringify(highlight.coordinates).replace(/"/g, '&quot;')})" 
+                            class="bg-primary-500 text-white px-3 py-1 rounded text-xs hover:bg-primary-600 w-full">
+                        Focus on Map
+                    </button>
+                </div>
+            `;
+        }
+
+        showHighlightInfo(trail, highlight) {
+            const panel = document.getElementById('trail-info-panel');
+            const content = document.getElementById('trail-info-content');
+            
+            content.innerHTML = `
+                <div class="flex justify-between items-start mb-4">
+                    <div class="flex items-center">
+                        <div style="background-color: ${highlight.color};" class="w-10 h-10 rounded-full flex items-center justify-center text-white text-xl mr-3">
+                            ${highlight.icon}
+                        </div>
+                        <div>
+                            <h3 class="text-lg font-bold text-gray-900">${highlight.name}</h3>
+                            <p class="text-sm text-gray-600 capitalize">${highlight.type.replace('_', ' ')}</p>
+                        </div>
+                    </div>
+                    <button onclick="this.closest('#trail-info-panel').classList.add('hidden')" 
+                            class="text-gray-400 hover:text-gray-600">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                    </button>
+                </div>
+                
+                ${highlight.description ? `
+                    <div class="mb-4">
+                        <p class="text-gray-700">${highlight.description}</p>
+                    </div>
+                ` : ''}
+                
+                <div class="border-t pt-4 mb-4">
+                    <h4 class="font-semibold text-gray-900 mb-2">Located on Trail:</h4>
+                    <div class="bg-gray-50 p-3 rounded">
+                        <h5 class="font-medium text-gray-900">${trail.name}</h5>
+                        <div class="grid grid-cols-2 gap-2 mt-2 text-sm">
+                            <span>Distance: ${trail.distance}km</span>
+                            <span>Difficulty: ${trail.difficulty}/5</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="space-y-2">
+                    <a href="/trails/${trail.id}" 
+                    class="block w-full bg-primary-600 hover:bg-primary-700 text-white text-center py-2 px-4 rounded-md font-medium transition-colors">
+                        View Full Trail
+                    </a>
+                    <button onclick="window.trailMap.viewHighlight(${trail.id}, ${JSON.stringify(highlight.coordinates).replace(/"/g, '&quot;')})" 
+                            class="w-full bg-gray-200 hover:bg-gray-300 text-gray-800 py-2 px-4 rounded-md font-medium transition-colors">
+                        Center on Map
+                    </button>
+                </div>
+            `;
+            
+            panel.classList.remove('hidden');
+        }
+
+        viewHighlight(trailId, coordinates) {
+            this.map.closePopup();
+            this.map.setView(coordinates, 16, {
+                animate: true,
+                duration: 1
+            });
+        }
+
         createPopupContent(trail) {
             const seasonalNote = trail.seasonal_info?.notes ? 
                 `<div class="text-xs text-blue-600 mt-1">${trail.seasonal_info.notes}</div>` : '';
 
+            const imageHtml = trail.preview_photo ? 
+                `<img src="${trail.preview_photo}" alt="${trail.name}" class="w-full h-24 object-cover rounded mb-2">` : '';
+
             return `
                 <div class="max-w-sm">
+                    ${imageHtml}
                     <h5 class="font-bold text-lg mb-2">${trail.name}</h5>
                     <div class="grid grid-cols-2 gap-2 text-xs mb-2">
                         <span><strong>Distance:</strong> ${trail.distance} km</span>
@@ -398,7 +529,7 @@
             // Zoom to route bounds with padding
             this.map.fitBounds(this.highlightedRoute.getBounds(), { 
                 padding: [20, 20],
-                maxZoom: 14
+                maxZoom: 18
             });
 
             // Add route popup
@@ -492,6 +623,51 @@
             panel.classList.remove('hidden');
         }
 
+        focusOnTrail(trail) {
+            // Show trail info panel
+            this.showTrailInfo(trail);
+            
+            // If trail has route, display it highlighted and fit to bounds
+            if (trail.route_coordinates && trail.route_coordinates.length > 0) {
+                // Clear existing highlighted route
+                if (this.highlightedRoute) {
+                    this.map.removeLayer(this.highlightedRoute);
+                }
+                
+                // Create highlighted route
+                this.highlightedRoute = L.polyline(trail.route_coordinates, {
+                    color: '#FF0000',
+                    weight: 6,
+                    opacity: 0.9,
+                    dashArray: '10, 5'
+                }).addTo(this.map);
+                
+                // Fit map to route with maximum zoom
+                this.map.fitBounds(this.highlightedRoute.getBounds(), { 
+                    padding: [50, 50],
+                    maxZoom: 18  // Maximum zoom level
+                });
+            } else {
+                // If no route, just zoom to trail start coordinates at max zoom
+                if (trail.coordinates) {
+                    this.map.setView(trail.coordinates, 18, {  // Use zoom level 18 (max zoom)
+                        animate: true,
+                        duration: 1
+                    });
+                }
+            }
+            
+            // Show highlights if available
+            if (trail.highlights && trail.highlights.length > 0 && !this.activeFilters.includes('highlights')) {
+                // Temporarily enable highlights filter
+                const highlightsCheckbox = document.querySelector('.activity-filter[data-activity="highlights"]');
+                if (highlightsCheckbox && !highlightsCheckbox.checked) {
+                    highlightsCheckbox.checked = true;
+                    this.updateFilters();
+                }
+            }
+        }
+
         async loadTrails() {
             try {
                 const params = new URLSearchParams({
@@ -502,15 +678,28 @@
                 const response = await fetch(`/api/trails?${params}`);
                 this.allTrails = await response.json();
                 this.applyFilters();
+                
+                // Check if there's a trail parameter in URL and focus on it
+                const urlParams = new URLSearchParams(window.location.search);
+                const trailId = urlParams.get('trail');
+                
+                if (trailId) {
+                    setTimeout(() => {
+                        const trail = this.allTrails.find(t => t.id == trailId);
+                        if (trail) {
+                            this.focusOnTrail(trail);
+                        }
+                    }, 500);
+                }
             } catch (error) {
                 console.error('Error loading trails:', error);
             }
         }
 
         clearFilters() {
-            // Reset checkboxes
+            // Reset checkboxes - keep hiking and highlights checked
             document.querySelectorAll('.activity-filter').forEach(cb => {
-                cb.checked = cb.dataset.activity === 'hiking'; // Keep hiking checked
+                cb.checked = cb.dataset.activity === 'hiking' || cb.dataset.activity === 'highlights';
             });
 
             // Reset selects
@@ -518,14 +707,37 @@
             document.getElementById('distance-filter').value = '';
 
             // Update filters
-            this.activeFilters = ['hiking'];
+            this.activeFilters = ['hiking', 'highlights'];
             this.applyFilters();
+        }
+
+         updateHighlightsCount() {
+            const count = this.allTrails.reduce((total, trail) => {
+                return total + (trail.highlights ? trail.highlights.length : 0);
+            }, 0);
+            
+            // You can display this count somewhere in your UI
+            console.log(`Total highlights: ${count}`);
         }
     }
 
     // Initialize map when DOM is loaded
     document.addEventListener('DOMContentLoaded', function() {
-        new EnhancedTrailMap();
+        const trailMap = new EnhancedTrailMap();
+        
+        // Check if there's a trail parameter in the URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const trailId = urlParams.get('trail');
+        
+        if (trailId) {
+            // Wait for trails to load, then focus on the specified trail
+            setTimeout(() => {
+                const trail = trailMap.allTrails.find(t => t.id == trailId);
+                if (trail) {
+                    trailMap.focusOnTrail(trail);
+                }
+            }, 1500);
+        }
     });
 </script>
 @endpush

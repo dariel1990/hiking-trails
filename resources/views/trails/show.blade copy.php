@@ -2,46 +2,26 @@
 
 @section('title', $trail->name)
 
-@push('styles')
-<link href="https://cesium.com/downloads/cesiumjs/releases/1.95/Build/Cesium/Widgets/widgets.css" rel="stylesheet">
-<style>
-    #trail-3d-viewer canvas {
-        width: 100% !important;
-        height: 100% !important;
-    }
-
-    #trail-3d-viewer .cesium-viewer {
-        width: 100% !important;
-        height: 100% !important;
-    }
-
-    #trail-3d-viewer .cesium-widget {
-        width: 100% !important;
-        height: 100% !important;
-    }
-
-    #trail-3d-viewer .cesium-widget canvas {
-        width: 100% !important;
-        height: 100% !important;
-    }
-
-</style>
-@endpush
-
 @section('content')
 <div class="bg-gray-50 min-h-screen">
     <!-- Hero Section with Trail Image -->
     <div class="relative h-64 bg-gradient-to-r from-green-600 to-blue-600">
-        @if($trail->featuredPhoto)
-            <img src="{{ $trail->featuredPhoto->url }}" alt="{{ $trail->name }}" 
-                class="absolute inset-0 w-full h-full object-cover">
-            <div class="absolute inset-0 bg-black bg-opacity-40"></div>
-        @else
-            <div class="absolute inset-0 bg-black bg-opacity-30"></div>
-        @endif
-        
+        <div class="absolute inset-0 bg-black bg-opacity-30"></div>
         <div class="relative max-w-7xl mx-auto px-4 h-full flex items-end pb-8">
-            <!-- Rest of your hero content -->
+            <div class="text-white">
+                <nav class="mb-4">
+                    <a href="{{ route('trails.index') }}" class="inline-flex items-center text-white/80 hover:text-white text-sm">
+                        <svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clip-rule="evenodd" />
+                        </svg>
+                        Back to Trails
+                    </a>
+                </nav>
+                <h1 class="text-4xl font-bold mb-2">{{ $trail->name }}</h1>
+                @if($trail->location)
+                    <p class="text-xl text-white/90">{{ $trail->location }}</p>
+                @endif
+            </div>
         </div>
     </div>
 
@@ -69,44 +49,22 @@
         <div class="grid lg:grid-cols-3 gap-8">
             <!-- Main Content -->
             <div class="lg:col-span-2 space-y-8">
-                <!-- Enhanced Interactive Map with 3D Toggle -->
+                <!-- Interactive Map -->
                 <div class="bg-white rounded-xl shadow-lg overflow-hidden">
-                    <div class="bg-gradient-to-r from-green-500 to-blue-500 px-6 py-4 flex justify-between items-center">
+                    <div class="bg-gradient-to-r from-green-500 to-blue-500 px-6 py-4">
                         <h2 class="text-xl font-bold text-white">Trail Route</h2>
-                        <div class="flex space-x-2">
-                            <button id="view-2d-btn" class="bg-white text-green-600 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-100 transition-colors">
-                                2D Map
-                            </button>
-                            <button id="view-3d-btn" class="bg-white/20 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-white/30 transition-colors">
-                                3D Terrain
-                            </button>
-                        </div>
                     </div>
                     <div class="p-6">
-                        <!-- 2D Map -->
-                        <div id="trail-detail-map" class="w-full rounded-lg border" style="height: 384px !important;"></div>
-                        
-                        <!-- 3D Viewer -->
-                        <div id="trail-3d-viewer" class="w-full h-96 rounded-lg border bg-black hidden"></div>
-                        
+                        <div id="trail-detail-map" class="w-full h-96 rounded-lg border"></div>
                         <div class="mt-4 flex justify-between items-center">
-                            <div class="flex space-x-2">
-                                <button id="fit-route-btn" class="bg-primary-600 text-white px-6 py-2 rounded-lg hover:bg-primary-700 transition-colors font-medium">
-                                    <span id="fit-btn-text">Center Route</span>
-                                </button>
-                                <div id="3d-loading" class="hidden flex items-center text-gray-600">
-                                    <svg class="animate-spin h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24">
-                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                    </svg>
-                                    Loading 3D terrain...
-                                </div>
-                            </div>
+                            <button id="fit-route-btn" class="bg-primary-600 text-white px-6 py-2 rounded-lg hover:bg-primary-700 transition-colors font-medium">
+                                Center Route
+                            </button>
                             <div class="text-sm text-gray-500">
                                 @if($trail->route_coordinates)
-                                    <span class="text-green-600">✓ 3D terrain available</span>
+                                    <span class="text-green-600">✓ Route available</span>
                                 @else
-                                    <span class="text-orange-600">⚠ Route data needed for 3D</span>
+                                    <span class="text-orange-600">⚠ Route pending</span>
                                 @endif
                             </div>
                         </div>
@@ -217,32 +175,6 @@
                     </div>
                 </div>
 
-                <!-- Highlights Section -->
-                @if($trail->highlights->count() > 0)
-                <div class="bg-white rounded-xl shadow-lg p-6">
-                    <h3 class="text-xl font-bold text-gray-900 mb-4">Points of Interest</h3>
-                    
-                    <div class="space-y-3">
-                        @foreach($trail->highlights as $highlight)
-                            <div class="flex items-start space-x-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer" 
-                                onclick="focusHighlight({{ json_encode($highlight->coordinates) }}, '{{ $highlight->name }}')">
-                                <div class="flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center text-white text-xl" 
-                                    style="background-color: {{ $highlight->color }}">
-                                    {{ $highlight->display_icon }}
-                                </div>
-                                <div class="flex-1 min-w-0">
-                                    <h4 class="font-semibold text-gray-900 text-sm">{{ $highlight->name }}</h4>
-                                    <p class="text-xs text-gray-500 capitalize">{{ str_replace('_', ' ', $highlight->type) }}</p>
-                                    @if($highlight->description)
-                                        <p class="text-xs text-gray-600 mt-1">{{ Str::limit($highlight->description, 80) }}</p>
-                                    @endif
-                                </div>
-                            </div>
-                        @endforeach
-                    </div>
-                </div>
-                @endif
-
                 <!-- Action Buttons -->
                 <div class="bg-white rounded-xl shadow-lg p-6">
                     <h3 class="text-xl font-bold text-gray-900 mb-6">Quick Actions</h3>
@@ -270,21 +202,18 @@
 </div>
 
 @push('scripts')
-@vite(['resources/js/app.js'])
-<script src="{{ asset('js/cesium-loader.js') }}"></script>
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         const trail = @json($trail);
-        let trail3DViewer = null;
-        let currentView = '2d';
-        let trailRoute = null;
         
-        // Initialize 2D map (your existing code)
+        // Initialize map
         const map = L.map('trail-detail-map').setView(trail.start_coordinates, 13);
         
         L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
             attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
         }).addTo(map);
+        
+        let trailRoute = null;
         
         // Add trail route
         if (trail.route_coordinates && trail.route_coordinates.length > 0) {
@@ -297,31 +226,6 @@
             }).addTo(map);
             
             map.fitBounds(trailRoute.getBounds(), { padding: [30, 30] });
-        }
-
-        // Add highlights/viewpoints
-        if (trail.highlights && trail.highlights.length > 0) {
-            trail.highlights.forEach(highlight => {
-                const highlightIcon = L.divIcon({
-                    html: `<div style="background-color: ${highlight.color};" class="text-white rounded-full w-10 h-10 flex items-center justify-center font-bold border-2 border-white shadow-lg">${highlight.icon}</div>`,
-                    className: 'custom-marker',
-                    iconSize: [40, 40],
-                    iconAnchor: [20, 20]
-                });
-                
-                const marker = L.marker(highlight.coordinates, { icon: highlightIcon })
-                    .addTo(map)
-                    .bindPopup(`
-                        <div class="p-2">
-                            <div class="flex items-center mb-2">
-                                <span class="text-xl mr-2">${highlight.icon}</span>
-                                <strong>${highlight.name}</strong>
-                            </div>
-                            ${highlight.description ? `<p class="text-sm text-gray-600">${highlight.description}</p>` : ''}
-                            <div class="text-xs text-gray-500 mt-1">${highlight.type.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}</div>
-                        </div>
-                    `);
-            });
         }
         
         // Custom markers
@@ -351,96 +255,20 @@
                 .addTo(map)
                 .bindPopup('<div class="text-center"><b>Trail End</b></div>');
         }
-
-        // View toggle handlers
-        document.getElementById('view-2d-btn').addEventListener('click', function() {
-            if (currentView === '2d') return;
-            
-            currentView = '2d';
-            document.getElementById('trail-detail-map').classList.remove('hidden');
-            document.getElementById('trail-3d-viewer').classList.add('hidden');
-            document.getElementById('3d-loading').classList.add('hidden');
-            
-            // Update button states
-            this.classList.add('bg-white', 'text-green-600');
-            this.classList.remove('bg-white/20', 'text-white');
-            document.getElementById('view-3d-btn').classList.remove('bg-white', 'text-green-600');
-            document.getElementById('view-3d-btn').classList.add('bg-white/20', 'text-white');
-            
-            document.getElementById('fit-btn-text').textContent = 'Center Route';
-            
-            // Clean up 3D viewer
-            if (trail3DViewer) {
-                trail3DViewer.destroy();
-                trail3DViewer = null;
-            }
-        });
-
-        document.getElementById('view-3d-btn').addEventListener('click', function() {
-            if (currentView === '3d') return;
-            
-            currentView = '3d';
-            document.getElementById('trail-detail-map').classList.add('hidden');
-            document.getElementById('trail-3d-viewer').classList.remove('hidden');
-            document.getElementById('3d-loading').classList.remove('hidden');
-            
-            // Update button states
-            this.classList.add('bg-white', 'text-green-600');
-            this.classList.remove('bg-white/20', 'text-white');
-            document.getElementById('view-2d-btn').classList.remove('bg-white', 'text-green-600');
-            document.getElementById('view-2d-btn').classList.add('bg-white/20', 'text-white');
-            
-            document.getElementById('fit-btn-text').textContent = 'Fly to Trail';
-            
-            // Initialize 3D viewer
-            setTimeout(() => {
-                try {
-                    trail3DViewer = new Trail3DViewer('trail-3d-viewer', trail);
-                    document.getElementById('3d-loading').classList.add('hidden');
-                } catch (error) {
-                    console.error('Failed to load 3D viewer:', error);
-                    document.getElementById('3d-loading').innerHTML = '<span class="text-red-600">3D loading failed: ' + error.message + '</span>';
-                }
-            }, 100);
-        });
-
-        // Fit route button
+        
+        // Event listeners
         document.getElementById('fit-route-btn').addEventListener('click', function() {
-            if (currentView === '2d') {
-                // Your existing 2D logic
-                if (trailRoute) {
-                    map.fitBounds(trailRoute.getBounds(), { padding: [30, 30] });
-                } else {
-                    map.setView(trail.start_coordinates, 13);
-                }
-            } else if (currentView === '3d' && trail3DViewer) {
-                trail3DViewer.flyToTrail();
+            if (trailRoute) {
+                map.fitBounds(trailRoute.getBounds(), { padding: [30, 30] });
+            } else {
+                map.setView(trail.start_coordinates, 13);
             }
         });
-
-        // Show on main map button
+        
         document.getElementById('show-on-map-btn').addEventListener('click', function() {
             window.open(`{{ route('map') }}?trail=${trail.id}`, '_blank');
         });
     });
-
-    // Function to focus on a specific highlight
-    function focusHighlight(coordinates, name) {
-        map.setView(coordinates, 16, {
-            animate: true,
-            duration: 1
-        });
-        
-        // Find and open the popup for this highlight
-        map.eachLayer(function(layer) {
-            if (layer instanceof L.Marker) {
-                const popup = layer.getPopup();
-                if (popup && popup.getContent().includes(name)) {
-                    layer.openPopup();
-                }
-            }
-        });
-    }
 </script>
 @endpush
 @endsection

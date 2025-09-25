@@ -13,7 +13,9 @@ class TrailController extends Controller
     public function home()
     {
         $featuredTrails = Trail::where('is_featured', true)
-            ->with('photos')
+            ->with(['photos' => function($query) {
+                $query->where('is_featured', true)->orWhere('sort_order', 0);
+            }])
             ->take(6)
             ->get();
 
@@ -83,7 +85,7 @@ class TrailController extends Controller
      */
     public function show($id)
     {
-        $trail = Trail::with(['photos', 'features'])->findOrFail($id);
+        $trail = Trail::with(['photos', 'features', 'highlights'])->findOrFail($id);
         
         // Increment view count
         $trail->increment('view_count');
@@ -104,7 +106,8 @@ class TrailController extends Controller
      */
     public function apiIndex(Request $request)
     {
-        $query = Trail::where('status', 'active');
+        $query = Trail::with(['featuredPhoto', 'highlights']); // Add eager loading
+        $query->where('status', 'active');
 
         // Apply difficulty filter
         if ($request->difficulty) {
@@ -129,7 +132,7 @@ class TrailController extends Controller
             }
         }
 
-        $trails = $query->get()->map(function($trail) {
+        $trails = $query->with('highlights')->get()->map(function($trail) {
             return [
                 'id' => $trail->id,
                 'name' => $trail->name,
@@ -143,6 +146,18 @@ class TrailController extends Controller
                 'trail_type' => $trail->trail_type,
                 'status' => $trail->status,
                 'route_coordinates' => $trail->route_coordinates,
+                'preview_photo' => $trail->featuredPhoto ? $trail->featuredPhoto->url : null,
+                'highlights' => $trail->highlights->map(function($h) {
+                    return [
+                        'id' => $h->id,
+                        'name' => $h->name,
+                        'description' => $h->description,
+                        'type' => $h->type,
+                        'coordinates' => $h->coordinates,
+                        'icon' => $h->display_icon,
+                        'color' => $h->color,
+                    ];
+                }),
                 'activities' => [
                     [
                         'type' => 'hiking',
@@ -155,7 +170,6 @@ class TrailController extends Controller
                     'recommended' => true,
                     'notes' => null
                 ],
-                'preview_photo' => null, // Will be populated when photos are added
             ];
         });
 
@@ -189,6 +203,17 @@ class TrailController extends Controller
             'safety_notes' => $trail->safety_notes,
             'features' => [], // Will be populated when features are added
             'photos' => [], // Will be populated when photos are added
+            'highlights' => $trail->highlights->map(function($h) {
+                return [
+                    'id' => $h->id,
+                    'name' => $h->name,
+                    'description' => $h->description,
+                    'type' => $h->type,
+                    'coordinates' => $h->coordinates,
+                    'icon' => $h->display_icon,
+                    'color' => $h->color,
+                ];
+            }),
         ]);
     }
 }

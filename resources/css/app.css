@@ -2,7 +2,7 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Custom styles for the hiking app */
+/* Original styles - keep these */
 .btn-primary {
     @apply bg-primary-500 hover:bg-primary-600 text-white font-medium py-2 px-4 rounded-lg transition-colors;
 }
@@ -31,5 +31,115 @@
 }
 
 .leaflet-container {
-    height: 100vh !important;
+    height: 50vh !important;
+}
+
+/* Add only the admin-specific shadcn/ui styles */
+@layer components {
+    /* Admin Navigation */
+    .nav-item {
+        @apply flex items-center space-x-4 px-3 py-2 text-sm font-medium rounded-md transition-colors;
+        @apply text-gray-600 hover:text-gray-900 hover:bg-gray-100;
+    }
+    
+    .nav-item-active {
+        @apply bg-gray-900 text-white;
+    }
+
+    /* Admin Cards - different from public cards */
+    .admin-card {
+        @apply bg-white rounded-lg border border-gray-200 shadow-sm;
+    }
+
+    .card-header {
+        @apply p-6 pb-4;
+    }
+
+    .card-title {
+        @apply text-base font-semibold text-gray-900;
+    }
+
+    .card-description {
+        @apply text-sm text-gray-600 mt-1;
+    }
+
+    .card-content {
+        @apply px-6 pb-6;
+    }
+
+    /* Admin Buttons */
+    .admin-button-primary {
+        @apply inline-flex items-center justify-center rounded-md text-sm font-medium;
+        @apply bg-gray-900 text-white hover:bg-gray-800;
+        @apply h-10 px-4 py-2 transition-colors;
+    }
+
+    .admin-button-secondary {
+        @apply inline-flex items-center justify-center rounded-md text-sm font-medium;
+        @apply bg-gray-100 text-gray-900 hover:bg-gray-200;
+        @apply h-10 px-4 py-2 transition-colors;
+    }
+
+    .admin-button-danger {
+        @apply inline-flex items-center justify-center rounded-md text-sm font-medium;
+        @apply bg-red-600 text-white hover:bg-red-700;
+        @apply h-10 px-4 py-2 transition-colors;
+    }
+
+    .btn-ghost {
+        @apply inline-flex items-center justify-center rounded-md text-sm font-medium;
+        @apply hover:bg-gray-100 text-gray-700;
+        @apply h-10 px-4 py-2 transition-colors;
+    }
+
+    .btn-outline {
+        @apply inline-flex items-center justify-center rounded-md text-sm font-medium;
+        @apply border border-gray-300 bg-white hover:bg-gray-50;
+        @apply h-10 px-4 py-2 transition-colors;
+    }
+
+    .btn-sm {
+        @apply h-9 px-3 text-sm;
+    }
+
+    /* Input styles */
+    .input {
+        @apply w-full px-3 py-2 border border-gray-300 rounded-md text-sm;
+        @apply focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500;
+        @apply placeholder:text-gray-400;
+    }
+
+    /* Badge styles */
+    .badge {
+        @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+    }
+
+    .badge-default {
+        @apply bg-gray-900 text-white;
+    }
+
+    .badge-secondary {
+        @apply bg-gray-100 text-gray-800;
+    }
+
+    /* Utility classes */
+    .justify-start {
+        justify-content: flex-start;
+    }
+
+    .text-muted-foreground {
+        @apply text-gray-600;
+    }
+
+    .text-foreground {
+        @apply text-gray-900;
+    }
+
+    .bg-muted {
+        @apply bg-gray-100;
+    }
+
+    .border-border {
+        @apply border-gray-200;
+    }
 }

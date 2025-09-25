@@ -33,4 +33,10 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::post('/trails/{trail}/photos', [AdminTrailController::class, 'uploadPhotos'])->name('trails.photos.store');
         Route::delete('/photos/{photo}', [AdminTrailController::class, 'deletePhoto'])->name('photos.delete');
     });
+
+    // Trail Highlights Management
+    Route::get('/trails/{trail}/highlights', [AdminTrailController::class, 'highlights'])->name('admin.trails.highlights');
+    Route::post('/trails/{trail}/highlights', [AdminTrailController::class, 'storeHighlight'])->name('admin.trails.highlights.store');
+    Route::put('/trails/{trail}/highlights/{highlight}', [AdminTrailController::class, 'updateHighlight'])->name('admin.trails.highlights.update');
+    Route::delete('/trails/{trail}/highlights/{highlight}', [AdminTrailController::class, 'deleteHighlight'])->name('admin.trails.highlights.delete');
 });

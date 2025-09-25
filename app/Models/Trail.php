@@ -157,4 +157,53 @@ class Trail extends Model
         $seasonalData = $this->getSeasonalData($season);
         return $seasonalData ? $seasonalData->recommended : true;
     }
+
+    public function getRouteCoordinatesAttribute($value)
+    {
+        if (empty($value)) {
+            return null;
+        }
+        
+        // If it's already an array, return it
+        if (is_array($value)) {
+            return $value;
+        }
+        
+        // If it's a JSON string (wrapped in quotes), decode it
+        if (is_string($value)) {
+            $decoded = json_decode($value, true);
+            
+            // If decoding successful and not empty, return the array
+            if (json_last_error() === JSON_ERROR_NONE && !empty($decoded)) {
+                return $decoded;
+            }
+        }
+        
+        return null;
+    }
+
+    public function setRouteCoordinatesAttribute($value)
+    {
+        if (empty($value) || $value === null) {
+            $this->attributes['route_coordinates'] = null;
+            return;
+        }
+        
+        // If it's already a string, store it directly
+        if (is_string($value)) {
+            $this->attributes['route_coordinates'] = $value;
+            return;
+        }
+        
+        // If it's an array, encode it to JSON
+        $this->attributes['route_coordinates'] = json_encode($value);
+    }
+
+    /**
+     * Get trail highlights (viewpoints, etc.)
+     */
+    public function highlights()
+    {
+        return $this->hasMany(TrailHighlight::class)->where('is_active', true)->orderBy('sort_order');
+    }
 }
