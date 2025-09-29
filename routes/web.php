@@ -24,7 +24,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
     });
     
     // Protected admin routes
-    Route::middleware(['auth', 'admin'])->group(function () {
+    Route::middleware('admin')->group(function () {
         Route::post('/logout', [AdminController::class, 'logout'])->name('logout');
         Route::get('/dashboard', [AdminController::class, 'dashboard'])->name('dashboard');
         
@@ -32,11 +32,13 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::resource('trails', AdminTrailController::class);
         Route::post('/trails/{trail}/photos', [AdminTrailController::class, 'uploadPhotos'])->name('trails.photos.store');
         Route::delete('/photos/{photo}', [AdminTrailController::class, 'deletePhoto'])->name('photos.delete');
+
+         // Trail Highlights Management
+        Route::get('/trails/{trail}/highlights', [AdminTrailController::class, 'highlights'])->name('admin.trails.highlights');
+        Route::post('/trails/{trail}/highlights', [AdminTrailController::class, 'storeHighlight'])->name('admin.trails.highlights.store');
+        Route::put('/trails/{trail}/highlights/{highlight}', [AdminTrailController::class, 'updateHighlight'])->name('admin.trails.highlights.update');
+        Route::delete('/trails/{trail}/highlights/{highlight}', [AdminTrailController::class, 'deleteHighlight'])->name('admin.trails.highlights.delete');
     });
 
-    // Trail Highlights Management
-    Route::get('/trails/{trail}/highlights', [AdminTrailController::class, 'highlights'])->name('admin.trails.highlights');
-    Route::post('/trails/{trail}/highlights', [AdminTrailController::class, 'storeHighlight'])->name('admin.trails.highlights.store');
-    Route::put('/trails/{trail}/highlights/{highlight}', [AdminTrailController::class, 'updateHighlight'])->name('admin.trails.highlights.update');
-    Route::delete('/trails/{trail}/highlights/{highlight}', [AdminTrailController::class, 'deleteHighlight'])->name('admin.trails.highlights.delete');
+   
 });

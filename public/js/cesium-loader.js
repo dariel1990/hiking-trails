@@ -2,8 +2,10 @@
 class Trail3DViewer {
     constructor(containerId, trail) {
         this.containerId = containerId;
+        this.container = document.getElementById(containerId);
         this.trail = trail;
         this.viewer = null;
+        this.fullscreenBtn = null;
         this.loadCesium().then(() => {
             this.init();
         });
@@ -39,7 +41,7 @@ class Trail3DViewer {
                 navigationHelpButton: false,
                 animation: false,
                 timeline: false,
-                fullscreenButton: true,
+                fullscreenButton: false,
                 geocoder: false,
                 infoBox: false,
                 selectionIndicator: false
@@ -60,6 +62,7 @@ class Trail3DViewer {
             this.addTrailRoute();
             this.addTrailMarkers();
             this.flyToTrail();
+            this.addCustomFullscreenButton();
             
         } catch (error) {
             console.error('Error initializing Cesium viewer:', error);
@@ -92,10 +95,80 @@ class Trail3DViewer {
             this.addTrailRoute();
             this.addTrailMarkers();
             this.flyToTrail();
+            this.addCustomFullscreenButton();
             
         } catch (error) {
             console.error('Failed to initialize even basic Cesium viewer:', error);
             throw error;
+        }
+    }
+
+    addCustomFullscreenButton() {
+        // Wait for viewer to be fully initialized
+        setTimeout(() => {
+            // Find the Cesium toolbar container
+            const cesiumToolbar = this.container.querySelector('.cesium-viewer-toolbar');
+            
+            if (!cesiumToolbar) {
+                console.warn('Cesium toolbar not found');
+                return;
+            }
+            
+            this.fullscreenBtn = document.createElement('button');
+            this.fullscreenBtn.className = 'cesium-button cesium-toolbar-button';
+            this.fullscreenBtn.innerHTML = `
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                    <path d="M1.5 1a.5.5 0 0 0-.5.5v4a.5.5 0 0 1-1 0v-4A1.5 1.5 0 0 1 1.5 0h4a.5.5 0 0 1 0 1h-4zM10 .5a.5.5 0 0 1 .5-.5h4A1.5 1.5 0 0 1 16 1.5v4a.5.5 0 0 1-1 0v-4a.5.5 0 0 0-.5-.5h-4a.5.5 0 0 1-.5-.5zM.5 10a.5.5 0 0 1 .5.5v4a.5.5 0 0 0 .5.5h4a.5.5 0 0 1 0 1h-4A1.5 1.5 0 0 1 0 14.5v-4a.5.5 0 0 1 .5-.5zm15 0a.5.5 0 0 1 .5.5v4a1.5 1.5 0 0 1-1.5 1.5h-4a.5.5 0 0 1 0-1h4a.5.5 0 0 0 .5-.5v-4a.5.5 0 0 1 .5-.5z"/>
+                </svg>
+            `;
+            this.fullscreenBtn.title = 'Toggle Fullscreen';
+            
+            this.fullscreenBtn.addEventListener('click', () => this.toggleFullscreen());
+            
+            // Add to toolbar
+            cesiumToolbar.appendChild(this.fullscreenBtn);
+            
+            // Listen for fullscreen changes
+            document.addEventListener('fullscreenchange', () => this.updateFullscreenButton());
+            document.addEventListener('webkitfullscreenchange', () => this.updateFullscreenButton());
+        }, 500);
+    }
+
+    toggleFullscreen() {
+        if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+            if (this.container.requestFullscreen) {
+                this.container.requestFullscreen();
+            } else if (this.container.webkitRequestFullscreen) {
+                this.container.webkitRequestFullscreen();
+            }
+        } else {
+            if (document.exitFullscreen) {
+                document.exitFullscreen();
+            } else if (document.webkitExitFullscreen) {
+                document.webkitExitFullscreen();
+            }
+        }
+    }
+
+    updateFullscreenButton() {
+        if (!this.fullscreenBtn) return;
+        
+        const isFullscreen = !!(document.fullscreenElement || document.webkitFullscreenElement);
+        
+        if (isFullscreen) {
+            this.fullscreenBtn.innerHTML = `
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                    <path d="M5.5 0a.5.5 0 0 1 .5.5v4A1.5 1.5 0 0 1 4.5 6h-4a.5.5 0 0 1 0-1h4a.5.5 0 0 0 .5-.5v-4a.5.5 0 0 1 .5-.5zm5 0a.5.5 0 0 1 .5.5v4a.5.5 0 0 0 .5.5h4a.5.5 0 0 1 0 1h-4A1.5 1.5 0 0 1 10 4.5v-4a.5.5 0 0 1 .5-.5zM0 10.5a.5.5 0 0 1 .5-.5h4A1.5 1.5 0 0 1 6 11.5v4a.5.5 0 0 1-1 0v-4a.5.5 0 0 0-.5-.5h-4a.5.5 0 0 1-.5-.5zm10 1a1.5 1.5 0 0 1 1.5-1.5h4a.5.5 0 0 1 0 1h-4a.5.5 0 0 0-.5.5v4a.5.5 0 0 1-1 0v-4z"/>
+                </svg>
+            `;
+            this.fullscreenBtn.title = 'Exit Fullscreen';
+        } else {
+            this.fullscreenBtn.innerHTML = `
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                    <path d="M1.5 1a.5.5 0 0 0-.5.5v4a.5.5 0 0 1-1 0v-4A1.5 1.5 0 0 1 1.5 0h4a.5.5 0 0 1 0 1h-4zM10 .5a.5.5 0 0 1 .5-.5h4A1.5 1.5 0 0 1 16 1.5v4a.5.5 0 0 1-1 0v-4a.5.5 0 0 0-.5-.5h-4a.5.5 0 0 1-.5-.5zM.5 10a.5.5 0 0 1 .5.5v4a.5.5 0 0 0 .5.5h4a.5.5 0 0 1 0 1h-4A1.5 1.5 0 0 1 0 14.5v-4a.5.5 0 0 1 .5-.5zm15 0a.5.5 0 0 1 .5.5v4a1.5 1.5 0 0 1-1.5 1.5h-4a.5.5 0 0 1 0-1h4a.5.5 0 0 0 .5-.5v-4a.5.5 0 0 1 .5-.5z"/>
+                </svg>
+            `;
+            this.fullscreenBtn.title = 'Toggle Fullscreen';
         }
     }
 

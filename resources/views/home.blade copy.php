@@ -25,9 +25,9 @@
         
         <!-- Main Headline -->
         <div class="slide-in-up mb-8">
-            <h1 class="text-4xl md:text-6xl lg:text-7xl font-bold leading-tight">
+            <h1 class="text-5xl md:text-7xl lg:text-8xl font-bold leading-tight">
                 <span class="text-white text-shadow-lg">Be The Story.</span><br>
-                <span class="bg-gradient-to-r from-emerald-300 via-sand-200 to-accent-300 bg-clip-text text-transparent">
+                <span class="bg-gradient-to-r from-emerald-300 via-green-300 to-amber-300 bg-clip-text text-transparent">
                     Explore Responsibly.
                 </span>
             </h1>
@@ -35,7 +35,7 @@
         
         <!-- Subtitle with better visibility -->
         <div class="slide-in-up mb-12" style="animation-delay: 0.2s;">
-            <p class="text-large md:text-xl lg:text-2xl text-white leading-relaxed max-w-4xl mx-auto text-shadow-md">
+            <p class="text-xl md:text-2xl lg:text-3xl text-white leading-relaxed max-w-4xl mx-auto text-shadow-md">
                 Discover amazing hiking trails while promoting respectful, sustainable tourism that supports 
                 local communities and the natural environment.
             </p>
@@ -50,6 +50,27 @@
                 📍 View Interactive Map
             </a>
         </div>
+        
+        <!-- Search Bar - Enhanced and repositioned -->
+        <div class="w-full max-w-4xl mx-auto">
+            <div class="bg-white/25 backdrop-blur-md rounded-2xl p-6 shadow-2xl border border-white/40">
+                <form action="{{ route('trails.index') }}" method="GET" class="space-y-4">
+                    <!-- Search and filters row -->
+                    <div class="grid grid-cols-1 md:grid-cols-12 gap-4">
+                        <div class="md:col-span-8">
+                            <input type="text" name="search" placeholder="Search trails by name or location..." 
+                                   class="w-full px-4 py-3 bg-white/90 border border-white/50 rounded-lg text-gray-900 placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:border-transparent font-medium" 
+                                   value="{{ request('search') }}">
+                        </div>
+                        <div class="md:col-span-4">
+                            <button type="submit" class="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-12 py-3 rounded-xl transition-all duration-300 transform hover:scale-105 shadow-lg text-lg w-full">
+                                Search Trails
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
     </div>
 </section>
 
@@ -57,7 +78,7 @@
 <section class="section bg-white">
     <div class="max-w-7xl mx-auto px-4">
         <div class="text-center mb-16">
-            <h2 class="section-title text-forest-700">Values Before Business</h2>
+            <h2 class="section-title">Values Before Business</h2>
             <p class="section-subtitle">
                 Discover the best trails while supporting ethical tourism practices and local communities
             </p>
@@ -65,13 +86,13 @@
         
         <div class="feature-grid">
             <!-- Sustainable Tourism -->
-            <div class="feature-card group hover-lift p-4">
+            <div class="feature-card group hover-lift">
                 <div class="feature-icon group-hover:scale-110">
                     <svg class="w-8 h-8 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/>
                     </svg>
                 </div>
-                <h3 class="feature-title text-forest-700">Sustainable Tourism</h3>
+                <h3 class="feature-title">Sustainable Tourism</h3>
                 <p class="feature-description">
                     Every trail recommendation supports conservation efforts and local communities. 
                     We believe in tourism that gives back to the places we explore.
@@ -79,13 +100,13 @@
             </div>
             
             <!-- Community Connection -->
-            <div class="feature-card group hover-lift p-4">
+            <div class="feature-card group hover-lift">
                 <div class="feature-icon group-hover:scale-110">
                     <svg class="w-8 h-8 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
                     </svg>
                 </div>
-                <h3 class="feature-title text-forest-700">Community Connection</h3>
+                <h3 class="feature-title">Community Connection</h3>
                 <p class="feature-description">
                     Connect with local culture and traditions. Our platform highlights indigenous knowledge 
                     and supports community-led conservation initiatives.
@@ -93,13 +114,13 @@
             </div>
             
             <!-- Responsible Adventure -->
-            <div class="feature-card group hover-lift p-4">
+            <div class="feature-card group hover-lift">
                 <div class="feature-icon group-hover:scale-110">
                     <svg class="w-8 h-8 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
                     </svg>
                 </div>
-                <h3 class="feature-title text-forest-700">Responsible Adventure</h3>
+                <h3 class="feature-title">Responsible Adventure</h3>
                 <p class="feature-description">
                     Leave No Trace principles guide every recommendation. We provide safety information 
                     and environmental guidelines for every trail experience.
@@ -113,7 +134,7 @@
 <section id="trails" class="section bg-gray-50">
     <div class="max-w-7xl mx-auto px-4">
         <div class="text-center mb-16">
-            <h2 class="section-title text-forest-700">Featured Trail Adventures</h2>
+            <h2 class="section-title">Featured Trail Adventures</h2>
             <p class="section-subtitle">
                 Start your ethical adventure with these carefully curated hiking destinations
             </p>
@@ -129,9 +150,9 @@
                              class="w-full h-full object-cover">
                     @else
                         <div class="absolute inset-0 flex items-center justify-center">
-                            <img src="{{ asset('images/no-image.png') }}" 
-                            alt="Trail Finder Logo" 
-                            class="w-24 h-24 object-contain transition-all duration-300 group-hover:scale-105">
+                            <svg class="w-16 h-16 text-white opacity-75" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"/>
+                            </svg>
                         </div>
                     @endif
                     
@@ -149,13 +170,22 @@
                             {{ $trail->difficulty_level }}/5
                         </span>
                     </div>
+                    
+                    <!-- Hover Overlay -->
+                    <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all duration-300 flex items-center justify-center">
+                        <div class="transform scale-0 group-hover:scale-100 transition-transform duration-300">
+                            <span class="bg-white text-gray-900 px-4 py-2 rounded-lg font-semibold">
+                                View Details
+                            </span>
+                        </div>
+                    </div>
                 </div>
                 
                 <!-- Trail Info -->
                 <div class="trail-card-body">
                     <div class="mb-3">
-                        <h3 class="text-xl font-bold text-gray-900 mb-2 group-hover:text-accent-600 transition-colors">
-                            <a href="{{ route('trails.show', $trail->id) }}">{{ $trail->name }}</a>
+                        <h3 class="text-xl font-bold text-gray-900 mb-2 group-hover:text-emerald-600 transition-colors">
+                            {{ $trail->name }}
                         </h3>
                         @if($trail->location)
                             <p class="text-sm text-gray-500 flex items-center">
@@ -264,7 +294,7 @@
 <section class="section bg-white">
     <div class="max-w-7xl mx-auto px-4">
         <div class="text-center mb-16">
-            <h2 class="section-title text-forest-700">Join Our Community</h2>
+            <h2 class="section-title">Join Our Community</h2>
             <p class="section-subtitle">
                 Be part of the movement that's putting ethical trail discovery on the map
             </p>
@@ -272,7 +302,7 @@
         
         <div class="grid lg:grid-cols-2 gap-12 items-center">
             <div>
-                <h3 class="text-3xl font-bold text-gray-900 mb-6 text-forest-700">Adventure with Purpose</h3>
+                <h3 class="text-3xl font-bold text-gray-900 mb-6">Adventure with Purpose</h3>
                 <div class="space-y-6">
                     <div class="flex items-start space-x-4">
                         <div class="flex-shrink-0 w-12 h-12 bg-emerald-100 rounded-lg flex items-center justify-center">

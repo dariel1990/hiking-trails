@@ -3,7 +3,7 @@
 @section('title', 'Interactive Trail Map')
 
 @section('content')
-<div class="relative h-screen">
+<div class="relative" style="height: calc(100vh - 100px);">
     <!-- Main Map Container -->
     <div id="main-map" class="absolute inset-0 z-10"></div>
     

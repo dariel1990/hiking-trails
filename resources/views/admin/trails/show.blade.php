@@ -45,7 +45,7 @@
             <div class="rounded-lg border bg-card text-card-foreground shadow-sm">
                 <div class="p-6">
                     <h3 class="text-lg font-semibold mb-4">Trail Route</h3>
-                    <div id="trail-map" class="w-full h-24 rounded-md border border-input bg-muted z-10"></div>
+                    <div id="trail-map" class="w-full h-96 rounded-md border border-input bg-muted z-10"></div>
                     <div class="mt-4 flex justify-between items-center">
                         <button id="fit-route-btn" 
                                 class="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-9 px-3">
