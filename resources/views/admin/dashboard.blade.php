@@ -166,6 +166,39 @@
         </div>
     </div>
 
+    <!-- GPX Statistics Card -->
+    <div class="admin-card">
+        <div class="card-header">
+            <h3 class="card-title">Data Sources</h3>
+            <p class="card-description">Trail data origin breakdown</p>
+        </div>
+        <div class="card-content">
+            <div class="space-y-3">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                        <div class="w-3 h-3 bg-green-500 rounded-full"></div>
+                        <span class="text-sm text-gray-700">GPX Imported</span>
+                    </div>
+                    <span class="text-sm font-semibold">{{ $stats['gpx_trails'] }}</span>
+                </div>
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                        <div class="w-3 h-3 bg-blue-500 rounded-full"></div>
+                        <span class="text-sm text-gray-700">Manually Created</span>
+                    </div>
+                    <span class="text-sm font-semibold">{{ $stats['manual_trails'] }}</span>
+                </div>
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                        <div class="w-3 h-3 bg-purple-500 rounded-full"></div>
+                        <span class="text-sm text-gray-700">Mixed Sources</span>
+                    </div>
+                    <span class="text-sm font-semibold">{{ $stats['mixed_trails'] }}</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Recent Activity -->
     <div class="admin-card">
         <div class="card-header">

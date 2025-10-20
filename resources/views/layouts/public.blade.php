@@ -25,10 +25,10 @@
 <body class="font-sans antialiased bg-gray-50">
     <!-- Navigation - Enhanced with XploreSmithers styling -->
     <nav class="fixed top-0 w-full bg-white/95 backdrop-blur-md shadow-lg z-50 transition-all duration-300">
-        <div class="max-w-7xl mx-auto px-4 lg:px-8">
+        <div class="{{ request()->routeIs('map') ? 'w-full' : 'max-w-7xl mx-auto' }} px-4">
             <div class="flex justify-between items-center h-20">
                 <!-- Logo - Enhanced with brand elements -->
-                <a href="{{ route('home') }}" class="flex items-center space-x-3 group">
+                <a href="{{ route('home') }}" class="flex items-center space-x-2 {{ request()->routeIs('map') ? 'hidden md:flex' : 'flex' }}">
                     <div class="relative">
                         <img src="{{ asset('images/logo.png') }}" 
                             alt="Trail Finder Logo" 
@@ -39,6 +39,27 @@
                         <span class="text-xs text-accent-600 font-medium tracking-wider uppercase">Ethical Adventures</span>
                     </div>
                 </a>
+
+                 @if(request()->routeIs('map'))
+                <div class="flex-1 {{ request()->routeIs('map') ? 'max-w-full md:max-w-5xl md:mx-8' : 'max-w-2xl mx-8' }}">
+                    <div class="relative">
+                        <input 
+                            type="text" 
+                            id="global-trail-search"
+                            placeholder="Search trails..."
+                            class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                            autocomplete="off"
+                        >
+                        <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                        </svg>
+                        <div id="search-suggestions" class="hidden absolute top-full left-0 right-0 mt-1 bg-white rounded-lg shadow-xl border border-gray-200 max-h-96 overflow-y-auto z-50">
+                            <!-- Suggestions will be inserted here -->
+                        </div>
+                    </div>
+                </div>
+                @endif
+                
 
                 <!-- Desktop Navigation - Enhanced with better spacing and hover effects -->
                 <div class="hidden lg:flex items-center space-x-8">
@@ -57,7 +78,7 @@
                         <span>Interactive Map</span>
                         <div class="absolute bottom-0 left-0 w-0 h-0.5 bg-accent-600 group-hover:w-full transition-all duration-300 {{ request()->routeIs('map') ? 'w-full' : '' }}"></div>
                     </a>
-                    
+
                     <!-- New navigation items inspired by XploreSmithers -->
                     {{-- <div class="relative group">
                         <button class="text-gray-700 hover:text-emerald-600 font-medium transition-colors duration-300 flex items-center space-x-1">
@@ -79,45 +100,29 @@
                 </div>
 
                 <!-- CTA Button - Enhanced design -->
-                <div class="hidden md:flex items-center space-x-4">
-                    <button class="bg-gradient-to-r from-forest-600 to-emerald-600 hover:from-emerald-700 hover:to-forest-700 hover:text-accent-300 text-accent-200 px-6 py-3 rounded-xl font-semibold transition-all duration-300 transform hover:scale-105 hover:shadow-lg">
-                        Get Started
-                    </button>
-                </div>
-
+                
                 <!-- Mobile menu button - Enhanced -->
-                <div class="md:hidden">
+                <div class="lg:hidden" x-data="{ mobileOpen: false }">
                     <button type="button" 
-                            class="text-gray-700 hover:text-emerald-600 p-2 rounded-lg hover:bg-emerald-50 transition-all duration-300" 
-                            x-data="{ open: false }" 
-                            @click="open = !open">
+                            @click="mobileOpen = !mobileOpen"
+                            class="text-gray-700 hover:text-emerald-600 p-2 rounded-lg hover:bg-emerald-50 transition-all duration-300">
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
                         </svg>
                     </button>
-                </div>
-            </div>
-            
-            <!-- Mobile Navigation Menu -->
-            <div class="md:hidden" x-data="{ mobileOpen: false }">
                 <div x-show="mobileOpen" 
-                     x-transition:enter="transition ease-out duration-200"
-                     x-transition:enter-start="opacity-0 transform scale-95"
-                     x-transition:enter-end="opacity-100 transform scale-100"
-                     x-transition:leave="transition ease-in duration-150"
-                     x-transition:leave-start="opacity-100 transform scale-100"
-                     x-transition:leave-end="opacity-0 transform scale-95"
-                     class="absolute top-full left-0 right-0 bg-white shadow-xl border-t border-gray-100">
+                    @click.away="mobileOpen = false"
+                    x-transition:enter="transition ease-out duration-200"
+                    x-transition:enter-start="opacity-0 transform scale-95"
+                    x-transition:enter-end="opacity-100 transform scale-100"
+                    x-transition:leave="transition ease-in duration-150"
+                    x-transition:leave-start="opacity-100 transform scale-100"
+                    x-transition:leave-end="opacity-0 transform scale-95"
+                    class="absolute top-full left-0 right-0 bg-white shadow-xl border-t border-gray-100">
                     <div class="py-4 space-y-2">
                         <a href="{{ route('home') }}" class="block px-6 py-3 text-gray-700 hover:bg-emerald-50 hover:text-emerald-600 font-medium transition-colors">Home</a>
                         <a href="{{ route('trails.index') }}" class="block px-6 py-3 text-gray-700 hover:bg-emerald-50 hover:text-emerald-600 font-medium transition-colors">Browse Trails</a>
                         <a href="{{ route('map') }}" class="block px-6 py-3 text-gray-700 hover:bg-emerald-50 hover:text-emerald-600 font-medium transition-colors">Interactive Map</a>
-                        <a href="#" class="block px-6 py-3 text-gray-700 hover:bg-emerald-50 hover:text-emerald-600 font-medium transition-colors">Community</a>
-                        <div class="px-6 pt-4">
-                            <button class="w-full bg-gradient-to-r from-emerald-600 to-green-600 text-white py-3 rounded-xl font-semibold">
-                                Get Started
-                            </button>
-                        </div>
                     </div>
                 </div>
             </div>

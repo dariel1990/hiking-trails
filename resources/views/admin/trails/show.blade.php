@@ -21,14 +21,15 @@
             </div>
             <div class="flex items-center gap-2">
                 <a href="{{ route('admin.trails.edit', $trail) }}" 
-                   class="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2">
+                class="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2">
                     <svg class="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
                     </svg>
                     Edit Trail
                 </a>
+                
                 <a href="{{ route('trails.show', $trail) }}" target="_blank"
-                   class="inline-flex items-center justify-center rounded-md bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2 text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50">
+                class="inline-flex items-center justify-center rounded-md bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2 text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50">
                     <svg class="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
                     </svg>
@@ -119,25 +120,25 @@
             @endif
 
             <!-- Photos Section -->
-            @if($trail->photos->count() > 0)
+            @if($trail->media && $trail->media->count() > 0)
             <div class="rounded-lg border bg-card text-card-foreground shadow-sm">
                 <div class="p-6">
-                    <h3 class="text-lg font-semibold mb-4">Photos ({{ $trail->photos->count() }})</h3>
+                    <h3 class="text-lg font-semibold mb-4">Photos ({{ $trail->media->count() }})</h3>
                     <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
-                        @foreach($trail->photos as $photo)
+                        @foreach($trail->media as $media)
                             <div class="relative group overflow-hidden rounded-lg border border-input">
-                                <img src="{{ $photo->url }}" alt="{{ $photo->caption ?? $trail->name }}" 
+                                <img src="{{ $media->url }}" alt="{{ $media->caption ?? $trail->name }}" 
                                      class="w-full h-32 object-cover transition-transform group-hover:scale-105">
-                                @if($photo->is_featured)
+                                @if($media->is_featured)
                                     <div class="absolute top-2 left-2">
                                         <span class="bg-yellow-400 text-yellow-900 px-2 py-1 rounded text-xs font-medium">
                                             Featured
                                         </span>
                                     </div>
                                 @endif
-                                @if($photo->caption)
+                                @if($media->caption)
                                     <div class="absolute bottom-0 inset-x-0 bg-black bg-opacity-50 text-white p-2">
-                                        <p class="text-xs">{{ $photo->caption }}</p>
+                                        <p class="text-xs">{{ $media->caption }}</p>
                                     </div>
                                 @endif
                             </div>

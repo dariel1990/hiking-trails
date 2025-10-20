@@ -22,6 +22,12 @@ class Trail extends Model
         'end_coordinates',
         'route_coordinates',
         'gpx_file_path',
+        'gpx_raw_data',                // NEW
+        'gpx_calculated_distance',     // NEW
+        'gpx_calculated_elevation',    // NEW
+        'gpx_calculated_time',         // NEW
+        'data_source',                 // NEW
+        'gpx_uploaded_at',             // NEW
         'status',
         'best_seasons',
         'directions',
@@ -35,26 +41,58 @@ class Trail extends Model
         'end_coordinates' => 'array',
         'route_coordinates' => 'array',
         'best_seasons' => 'array',
+        'gpx_raw_data' => 'array',              // NEW
         'is_featured' => 'boolean',
         'difficulty_level' => 'decimal:1',
         'distance_km' => 'decimal:2',
+        'elevation_gain_m' => 'integer',
         'estimated_time_hours' => 'decimal:2',
+        'gpx_calculated_distance' => 'decimal:2',   // NEW
+        'gpx_calculated_elevation' => 'integer',    // NEW
+        'gpx_calculated_time' => 'decimal:2',       // NEW
+        'gpx_uploaded_at' => 'datetime',            // NEW
     ];
 
     /**
-     * Get trail photos
+     * Get all trail media (photos and videos) - NEW
      */
-    public function photos()
+    public function media()
     {
-        return $this->hasMany(TrailPhoto::class)->orderBy('sort_order');
+        return $this->hasMany(TrailMedia::class)->ordered();
     }
 
     /**
-     * Get featured photo
+     * Get only photos - NEW
      */
-    public function featuredPhoto()
+    public function photoMedia()
     {
-        return $this->hasOne(TrailPhoto::class)->where('is_featured', true);
+        return $this->hasMany(TrailMedia::class)->photos()->ordered();
+    }
+
+    /**
+     * Get only videos - NEW
+     */
+    public function videoMedia()
+    {
+        return $this->hasMany(TrailMedia::class)->videos()->ordered();
+    }
+
+    /**
+     * Get featured media (can be photo or video) - NEW
+     */
+    public function featuredMedia()
+    {
+        return $this->hasOne(TrailMedia::class)->where('is_featured', true)->orderBy('sort_order');
+    }
+
+    /**
+     * Get general trail media (not linked to any feature)
+     */
+    public function generalMedia()
+    {
+        return $this->hasMany(TrailMedia::class)
+                    ->doesntHave('features')
+                    ->ordered();
     }
 
     /**
@@ -63,6 +101,24 @@ class Trail extends Model
     public function features()
     {
         return $this->hasMany(TrailFeature::class);
+    }
+
+    /**
+     * Get activity types for this trail
+     */
+    public function activities()
+    {
+        return $this->belongsToMany(ActivityType::class, 'trail_activities')
+                    ->withPivot(['activity_notes', 'activity_specific_data'])
+                    ->withTimestamps();
+    }
+
+    /**
+     * Get seasonal data for this trail
+     */
+    public function seasonalData()
+    {
+        return $this->hasMany(SeasonalTrailData::class);
     }
 
     /**
@@ -90,11 +146,81 @@ class Trail extends Model
     }
 
     /**
+     * Check if data is from GPX - NEW
+     */
+    public function isGpxSourced(): bool
+    {
+        return in_array($this->data_source, ['gpx', 'mixed']);
+    }
+
+    /**
+     * Check if data has manual overrides - NEW
+     */
+    public function hasManualOverrides(): bool
+    {
+        return $this->data_source === 'mixed';
+    }
+
+    /**
+     * Check if distance is locked (from GPX) - NEW
+     */
+    public function isDistanceLocked(): bool
+    {
+        return $this->data_source === 'gpx' && $this->gpx_calculated_distance !== null;
+    }
+
+    /**
+     * Check if elevation is locked (from GPX) - NEW
+     */
+    public function isElevationLocked(): bool
+    {
+        return $this->data_source === 'gpx' && $this->gpx_calculated_elevation !== null;
+    }
+
+    /**
+     * Check if time is locked (from GPX) - NEW
+     */
+    public function isTimeLocked(): bool
+    {
+        return $this->data_source === 'gpx' && $this->gpx_calculated_time !== null;
+    }
+
+    /**
+     * Get the source of data (for display) - NEW
+     */
+    public function getDataSourceTextAttribute(): string
+    {
+        return match($this->data_source) {
+            'gpx' => 'GPX File',
+            'mixed' => 'GPX + Manual',
+            'manual' => 'Manual Entry',
+            default => 'Unknown'
+        };
+    }
+
+    /**
      * Increment view count
      */
     public function incrementViews(): void
     {
         $this->increment('view_count');
+    }
+
+    /**
+     * Get seasonal data for a specific season - NEW
+     */
+    public function getSeasonalData(string $season)
+    {
+        return $this->seasonalData()->where('season', $season)->first();
+    }
+
+    /**
+     * Check if trail is recommended for a season - NEW
+     */
+    public function isRecommendedForSeason(string $season): bool
+    {
+        $seasonalData = $this->getSeasonalData($season);
+        return $seasonalData ? $seasonalData->recommended : true;
     }
 
     /**
@@ -133,77 +259,16 @@ class Trail extends Model
         return $query->where('difficulty_level', $level);
     }
 
-    // app/Models/Trail.php - Add these methods
-
-    public function activities()
-    {
-        return $this->belongsToMany(ActivityType::class, 'trail_activities')
-                    ->withPivot(['activity_notes', 'activity_specific_data'])
-                    ->withTimestamps();
-    }
-
-    public function seasonalData()
-    {
-        return $this->hasMany(SeasonalTrailData::class);
-    }
-
-    public function getSeasonalData($season)
-    {
-        return $this->seasonalData()->where('season', $season)->first();
-    }
-
-    public function isRecommendedForSeason($season): bool
-    {
-        $seasonalData = $this->getSeasonalData($season);
-        return $seasonalData ? $seasonalData->recommended : true;
-    }
-
-    public function getRouteCoordinatesAttribute($value)
-    {
-        if (empty($value)) {
-            return null;
-        }
-        
-        // If it's already an array, return it
-        if (is_array($value)) {
-            return $value;
-        }
-        
-        // If it's a JSON string (wrapped in quotes), decode it
-        if (is_string($value)) {
-            $decoded = json_decode($value, true);
-            
-            // If decoding successful and not empty, return the array
-            if (json_last_error() === JSON_ERROR_NONE && !empty($decoded)) {
-                return $decoded;
-            }
-        }
-        
-        return null;
-    }
-
-    public function setRouteCoordinatesAttribute($value)
-    {
-        if (empty($value) || $value === null) {
-            $this->attributes['route_coordinates'] = null;
-            return;
-        }
-        
-        // If it's already a string, store it directly
-        if (is_string($value)) {
-            $this->attributes['route_coordinates'] = $value;
-            return;
-        }
-        
-        // If it's an array, encode it to JSON
-        $this->attributes['route_coordinates'] = json_encode($value);
-    }
-
     /**
-     * Get trail highlights (viewpoints, etc.)
+     * Scope for GPX-sourced trails - NEW
      */
+    public function scopeGpxSourced($query)
+    {
+        return $query->whereIn('data_source', ['gpx', 'mixed']);
+    }
+
     public function highlights()
     {
-        return $this->hasMany(TrailHighlight::class)->where('is_active', true)->orderBy('sort_order');
+        return $this->features();
     }
 }

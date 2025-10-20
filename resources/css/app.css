@@ -1,6 +1,7 @@
 /* Import fonts */
 @import url('https://fonts.bunny.net/css?family=Inter:300,400,500,600,700,800');
 @import url('https://fonts.bunny.net/css?family=Playfair+Display:400,500,600,700');
+@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Montserrat:ital,wght@0,100..900;1,100..900&family=Oswald:wght@200..700&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -23,9 +24,14 @@
   }
 
   /* Typography */
-  h1, h2, h3, h4, h5, h6 {
+  h1, h2 {
     @apply font-bold tracking-tight text-gray-900;
     font-family: 'Playfair Display', Georgia, serif;
+  }
+
+  h3, h4, h5, h6 {
+    @apply font-bold tracking-tight text-gray-900;
+    font-family: 'Oswald', Georgia, serif;
   }
 
   h1 {

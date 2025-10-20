@@ -3,11 +3,15 @@
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Services\RouteService;
+use App\Http\Controllers\TrailController;
 
 Route::get('/user', function (Request $request) {
     return $request->user();
 })->middleware('auth:sanctum');
 
+// API Routes for map data
+Route::get('/trails', [TrailController::class, 'apiIndex']);
+Route::get('/trails/{trail}', [TrailController::class, 'apiShow']);
 
 Route::post('/calculate-route', function (Request $request) {
     $request->validate([

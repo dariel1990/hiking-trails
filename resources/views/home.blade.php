@@ -123,7 +123,7 @@
             @foreach($featuredTrails as $trail)
             <div class="trail-card group hover-lift">
                 <!-- Trail Image -->
-                <div class="trail-card-image group-hover:scale-105 transition-transform duration-500">
+                <div class="trail-card-image group-hover:scale-105 transition-transform duration-500" onclick="window.location.href='{{ route('trails.show', $trail->id) }}'">
                     @if($trail->featuredPhoto)
                         <img src="{{ $trail->featuredPhoto->url }}" alt="{{ $trail->name }}" 
                              class="w-full h-full object-cover">

@@ -101,7 +101,6 @@
         right: 0;
         bottom: 0;
         background: rgba(0, 0, 0, 0.95);
-        z-index: 9999;
         padding: 2rem;
     }
     
@@ -137,7 +136,6 @@
         justify-content: center;
         background: rgba(0, 0, 0, 0.5);
         border-radius: 50%;
-        z-index: 10000;
         transition: all 0.2s ease;
     }
 
@@ -200,8 +198,8 @@
 @section('content')
 <!-- Hero Section -->
 <div class="relative h-[60vh] bg-gray-900 overflow-hidden">
-    @if($trail->photos && $trail->photos->count() > 0)
-        <img src="{{ $trail->photos->first()->url }}" 
+    @if($trail->media && $trail->media->count() > 0)
+        <img src="{{ $trail->media->first()->url }}" 
              alt="{{ $trail->name }}" 
              class="w-full h-full object-cover">
     @else
@@ -219,7 +217,7 @@
     <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent"></div>
     
     <!-- Hero Content -->
-    <div class="absolute inset-0 flex items-end z-50">
+    <div class="absolute inset-0 flex items-end z-40">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-12 w-full">
             <!-- Breadcrumb -->
             <nav class="mb-6">
@@ -450,10 +448,10 @@
                 
                 <!-- Photos Tab -->
                 <div id="photos-tab" class="tab-content">
-                    @if($trail->photos && $trail->photos->count() > 0)
+                    @if($trail->media && $trail->media->count() > 0)
                         <h2 class="text-3xl font-bold text-gray-900 mb-6">Trail Photos</h2>
                         <div class="photo-grid">
-                            @foreach($trail->photos as $photo)
+                            @foreach($trail->media as $photo)
                             <div class="photo-grid-item" onclick="openLightbox({{ $loop->index }})">
                                 <img src="{{ $photo->url }}" alt="{{ $photo->caption ?: $trail->name }}" loading="lazy">
                                 @if($photo->caption)
@@ -657,7 +655,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     
     // Photo Lightbox
-    const trailPhotos = @json($trail->photos->map(function($photo) {
+    const trailPhotos = @json($trail->media->map(function($photo) {
         return ['url' => $photo->url, 'caption' => $photo->caption];
     }) ?? []);
 

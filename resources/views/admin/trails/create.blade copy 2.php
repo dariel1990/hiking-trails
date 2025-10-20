@@ -1,7 +1,7 @@
 @extends('layouts.admin')
 
-@section('title', 'Edit Trail - ' . $trail->name)
-@section('page-title', 'Edit Trail')
+@section('title', 'Add New Trail')
+@section('page-title', 'Add New Trail')
 
 @section('content')
 <div class="max-w-6xl mx-auto space-y-8">
@@ -12,44 +12,16 @@
             <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
             </svg>
-            <a href="{{ route('admin.trails.show', $trail) }}" class="hover:text-foreground transition-colors">{{ $trail->name }}</a>
-            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
-            </svg>
-            <span>Edit</span>
+            <span>Create Trail</span>
         </div>
         <div class="space-y-1">
-            <h1 class="text-3xl font-bold tracking-tight">Edit Trail</h1>
-            <p class="text-muted-foreground">Update trail information and route details.</p>
+            <h1 class="text-3xl font-bold tracking-tight">Create New Trail</h1>
+            <p class="text-muted-foreground">Add a new hiking trail to your collection with detailed information and coordinates.</p>
         </div>
     </div>
 
-    <form action="{{ route('admin.trails.update', $trail) }}" method="POST" enctype="multipart/form-data" class="space-y-8" onsubmit="return window.trailBuilder.validateBeforeSubmit()">
+    <form action="{{ route('admin.trails.store') }}" method="POST" enctype="multipart/form-data" class="space-y-8" onsubmit="return window.trailBuilder.validateBeforeSubmit()">
         @csrf
-        @method('PUT')
-
-        <!-- Hidden inputs for tracking deletions -->
-        <input type="hidden" name="deleted_photos" id="deleted-photos-input" value="">
-        <input type="hidden" name="deleted_features" id="deleted-features-input" value="">
-
-        <!-- Validation Errors Display -->
-        @if ($errors->any())
-            <div class="rounded-lg border-2 border-red-300 bg-red-50 p-6">
-                <div class="flex items-start gap-3">
-                    <svg class="h-6 w-6 text-red-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                    </svg>
-                    <div class="flex-1">
-                        <h3 class="text-lg font-semibold text-red-900 mb-2">Please fix the following errors:</h3>
-                        <ul class="list-disc list-inside space-y-1 text-sm text-red-800">
-                            @foreach ($errors->all() as $error)
-                                <li>{{ $error }}</li>
-                            @endforeach
-                        </ul>
-                    </div>
-                </div>
-            </div>
-        @endif
         
         <!-- Basic Information -->
         <div class="rounded-lg border bg-card text-card-foreground shadow-sm">
@@ -64,7 +36,7 @@
                         <label class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
                             Trail Name <span class="text-red-500">*</span>
                         </label>
-                        <input type="text" name="name" required value="{{ old('name', $trail->name) }}"
+                        <input type="text" name="name" required value="{{ old('name') }}"
                                placeholder="Enter trail name"
                                class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 @error('name') border-red-300 @enderror">
                         @error('name')
@@ -76,7 +48,7 @@
                         <label class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
                             Location
                         </label>
-                        <input type="text" name="location" value="{{ old('location', $trail->location) }}"
+                        <input type="text" name="location" value="{{ old('location') }}"
                                placeholder="e.g., North Vancouver, BC"
                                class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 @error('location') border-red-300 @enderror">
                         @error('location')
@@ -90,7 +62,7 @@
                         </label>
                         <textarea name="description" rows="4" required
                                   placeholder="Describe the trail, its features, and what hikers can expect..."
-                                  class="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 @error('description') border-red-300 @enderror">{{ old('description', $trail->description) }}</textarea>
+                                  class="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 @error('description') border-red-300 @enderror">{{ old('description') }}</textarea>
                         @error('description')
                             <p class="text-sm text-red-500">{{ $message }}</p>
                         @enderror
@@ -108,14 +80,9 @@
                 </div>
                 
                 <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    @php 
-                        $trailActivities = $trail->activities->pluck('slug')->toArray();
-                    @endphp
-                    
                     <label class="flex items-start gap-3 p-4 rounded-lg border border-input bg-background hover:bg-accent hover:text-accent-foreground cursor-pointer transition-colors">
                         <input type="checkbox" name="activities[]" value="hiking" 
-                            {{ in_array('hiking', old('activities', $trailActivities)) ? 'checked' : '' }}
-                            class="mt-1 h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary">
+                               class="mt-1 h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary" checked>
                         <div class="space-y-1">
                             <div class="text-sm font-medium">Hiking</div>
                             <div class="text-xs text-muted-foreground">Walking trails</div>
@@ -124,8 +91,7 @@
 
                     <label class="flex items-start gap-3 p-4 rounded-lg border border-input bg-background hover:bg-accent hover:text-accent-foreground cursor-pointer transition-colors">
                         <input type="checkbox" name="activities[]" value="fishing" 
-                            {{ in_array('fishing', old('activities', $trailActivities)) ? 'checked' : '' }}
-                            class="mt-1 h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary">
+                               class="mt-1 h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary">
                         <div class="space-y-1">
                             <div class="text-sm font-medium">Fishing</div>
                             <div class="text-xs text-muted-foreground">Fishing spots</div>
@@ -134,8 +100,7 @@
 
                     <label class="flex items-start gap-3 p-4 rounded-lg border border-input bg-background hover:bg-accent hover:text-accent-foreground cursor-pointer transition-colors">
                         <input type="checkbox" name="activities[]" value="camping" 
-                            {{ in_array('camping', old('activities', $trailActivities)) ? 'checked' : '' }}
-                            class="mt-1 h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary">
+                               class="mt-1 h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary">
                         <div class="space-y-1">
                             <div class="text-sm font-medium">Camping</div>
                             <div class="text-xs text-muted-foreground">Camping areas</div>
@@ -144,8 +109,7 @@
 
                     <label class="flex items-start gap-3 p-4 rounded-lg border border-input bg-background hover:bg-accent hover:text-accent-foreground cursor-pointer transition-colors">
                         <input type="checkbox" name="activities[]" value="viewpoint" 
-                            {{ in_array('viewpoint', old('activities', $trailActivities)) ? 'checked' : '' }}
-                            class="mt-1 h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary">
+                               class="mt-1 h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary">
                         <div class="space-y-1">
                             <div class="text-sm font-medium">Viewpoints</div>
                             <div class="text-xs text-muted-foreground">Scenic overlooks</div>
@@ -158,111 +122,26 @@
                         Activity Notes
                     </label>
                     <textarea name="activity_notes" rows="2" 
-                            placeholder="Additional notes about activities available on this trail..."
-                            class="flex min-h-[60px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50">{{ old('activity_notes', $trail->activities->first()->pivot->activity_notes ?? '') }}</textarea>
+                              placeholder="Additional notes about activities available on this trail..."
+                              class="flex min-h-[60px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50">{{ old('activity_notes') }}</textarea>
                 </div>
             </div>
         </div>
 
-        <!-- Interactive Trail Builder with Tabs -->
+        <!-- Trail Route Import -->
         <div class="rounded-lg border bg-card text-card-foreground shadow-sm">
-            <!-- Header -->
-            <div class="p-6 space-y-2 border-b">
-                <h3 class="text-lg font-semibold">Interactive Trail Builder</h3>
-                <p class="text-sm text-muted-foreground">Click on the map to create waypoints. Routes will automatically snap to walking paths and trails.</p>
-            </div>
-            
-            <!-- Two Column Layout: Fixed Map (Left) + Tabbed Controls (Right) -->
-            <div class="flex" style="height: 700px;">
-                
-                <!-- LEFT PANEL: Fixed Map -->
-                <div class="w-1/2 border-r">
-                    <div class="h-full flex flex-col">
-                        <!-- Map Container -->
-                        <div class="flex-1 p-6">
-                            <div id="trail-map" class="w-full h-full rounded-md border border-input bg-muted"></div>
-                            <div id="map-status" class="text-xs text-muted-foreground mt-2">
-                                <div class="flex items-center gap-2">
-                                    <span class="inline-block w-2 h-2 bg-gray-400 rounded-full animate-pulse"></span>
-                                    <span>Ready to create trail route</span>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <!-- Elevation Profile (if you have it) -->
-                        <div class="border-t p-6 hidden" id="elevation-profile-container">
-                            <h5 class="text-sm font-medium mb-3">Elevation Profile</h5>
-                            <canvas id="elevation-chart" class="w-full" style="height: 120px;"></canvas>
-                            <div class="grid grid-cols-4 gap-2 mt-3 text-xs">
-                                <div>
-                                    <span class="text-muted-foreground">Max:</span>
-                                    <span id="max-elevation" class="font-medium">0m</span>
-                                </div>
-                                <div>
-                                    <span class="text-muted-foreground">Min:</span>
-                                    <span id="min-elevation" class="font-medium">0m</span>
-                                </div>
-                                <div>
-                                    <span class="text-muted-foreground">Gain:</span>
-                                    <span id="elevation-gain" class="font-medium text-green-600">0m</span>
-                                </div>
-                                <div>
-                                    <span class="text-muted-foreground">Loss:</span>
-                                    <span id="elevation-loss" class="font-medium text-red-600">0m</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+            <div class="p-6 space-y-6">
+                <div class="space-y-2">
+                    <h3 class="text-lg font-semibold">Interactive Trail Builder</h3>
+                    <p class="text-sm text-muted-foreground">Click on the map to create waypoints. Routes will automatically snap to walking paths and trails.</p>
                 </div>
                 
-                <!-- RIGHT PANEL: Tabbed Controls -->
-                <div class="w-1/2 flex">
-                    <!-- Tab Navigation (Vertical Icons) -->
-                    <div class="w-16 border-r bg-muted/30 flex flex-col items-center py-4 space-y-2">
-                        <button type="button" class="trail-tab active" data-tab="controls" title="Trail Controls">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"/>
-                            </svg>
-                        </button>
-                        
-                        <button type="button" class="trail-tab" data-tab="specifications" title="Trail Specifications">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-                            </svg>
-                        </button>
-                        
-                        <button type="button" class="trail-tab" data-tab="gpx" title="Import GPX">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
-                            </svg>
-                        </button>
-                        
-                        <button type="button" class="trail-tab" data-tab="highlights" title="Points of Interest">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
-                            </svg>
-                        </button>
-                    </div>
-                    
-                    <!-- Tab Content Area (Scrollable) -->
-                    <div class="flex-1 overflow-y-auto">
-                        
-                        <!-- TAB 1: Trail Controls -->
-                        <div class="tab-content active" id="tab-controls">
-                            <div class="p-6 space-y-4">
-                                <h4 class="font-medium">Trail Creation Controls</h4>
-
-                                <!-- Waypoint Toggle Button -->
-                                <button type="button" id="toggle-waypoint-mode" 
-                                        class="w-full inline-flex items-center justify-center rounded-md border-2 border-gray-300 bg-gray-50 text-gray-600 hover:bg-gray-100 h-12 px-4 py-2 text-sm font-semibold transition-all">
-                                    <svg class="mr-2 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122"/>
-                                    </svg>
-                                    <span id="waypoint-mode-text">Start Adding Waypoints</span>
-                                </button>
-                                
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <!-- Controls Panel -->
+                    <div class="space-y-6">
+                        <div class="rounded-lg border border-input p-4 space-y-4">
+                            <h4 class="font-medium">Trail Creation Controls</h4>
+                            <div class="space-y-3">
                                 <button type="button" id="toggle-routing" 
                                         class="w-full inline-flex items-center justify-center rounded-md bg-blue-600 text-white hover:bg-blue-700 h-10 px-4 py-2 text-sm font-medium">
                                     <svg class="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -270,7 +149,6 @@
                                     </svg>
                                     Smart Routing: ON
                                 </button>
-                                
                                 <button type="button" id="undo-waypoint" 
                                         class="w-full inline-flex items-center justify-center rounded-md border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2 text-sm font-medium">
                                     <svg class="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -278,257 +156,282 @@
                                     </svg>
                                     Undo Last Point
                                 </button>
-                                
-                                <!-- Route Statistics Section -->
-                                <div class="border-t pt-6 mt-6 space-y-4">
-                                    <h4 class="font-medium">Route Statistics</h4>
-                                    
-                                    <div class="grid grid-cols-2 gap-3">
-                                        <div class="rounded-lg bg-blue-50 border border-blue-200 p-3 space-y-1">
-                                            <span class="text-xs text-blue-600 font-medium">Distance</span>
-                                            <div id="route-distance" class="text-lg font-semibold text-blue-700">0.00 km</div>
-                                        </div>
-                                        <div class="rounded-lg bg-green-50 border border-green-200 p-3 space-y-1">
-                                            <span class="text-xs text-green-600 font-medium">Elevation Gain</span>
-                                            <div id="route-elevation" class="text-lg font-semibold text-green-700">0 m</div>
-                                        </div>
-                                        <div class="rounded-lg bg-purple-50 border border-purple-200 p-3 space-y-1">
-                                            <span class="text-xs text-purple-600 font-medium">Est. Time</span>
-                                            <div id="route-time" class="text-lg font-semibold text-purple-700">0.0 hrs</div>
-                                        </div>
-                                        <div class="rounded-lg bg-gray-50 border border-gray-200 p-3 space-y-1">
-                                            <span class="text-xs text-gray-600 font-medium">Waypoints</span>
-                                            <div id="waypoint-count-display" class="text-lg font-semibold text-gray-700">0</div>
-                                        </div>
-                                    </div>
-                                    <div class="border-t pt-6 mt-6 space-y-4">
-                                        <h5 class="text-sm font-medium text-muted-foreground">Manual Adjustments</h5>
-                                        <!-- Editable Fields -->
-                                        <div class="grid grid-cols-3 gap-3">
-                                            <div class="space-y-1">
-                                                <label class="text-xs font-medium">Distance (km)</label>
-                                                <input type="number" name="distance_km" step="0.01" value="{{ old('distance_km', $trail->distance_km) }}"
-                                                    class="flex h-9 w-full text-sm rounded-md border border-input bg-background px-3 py-2 ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-                                            </div>
-                                            <div class="space-y-1">
-                                                <label class="text-xs font-medium">Est. Time (hours)</label>
-                                                <input type="number" name="estimated_time_hours" step="0.1" value="{{ old('estimated_time_hours', $trail->estimated_time_hours) }}"
-                                                    class="flex h-9 w-full text-sm rounded-md border border-input bg-background px-3 py-2 ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-                                            </div>
-                                            <div class="space-y-2">
-                                                <label class="text-xs font-medium">Elevation Gain (m)</label>
-                                                <input type="number" name="elevation_gain_m" step="1" value="{{ old('elevation_gain_m', $trail->elevation_gain_m) }}"
-                                                    class="flex h-9 w-full text-sm rounded-md border border-input bg-background px-3 py-2 ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <!-- TAB 2: Trail Specifications -->
-                        <div class="tab-content" id="tab-specifications">
-                            <div class="p-6 space-y-4">
-                                <h4 class="font-medium">Trail Specifications</h4>
-                                
-                                <div class="space-y-4">
-                                    <div class="space-y-2">
-                                        <label class="text-xs font-medium">Difficulty (1-5) *</label>
-                                        <select name="difficulty_level" required 
-                                                class="flex h-9 w-full text-sm rounded-md border border-input bg-background px-3 py-2 ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-                                            <option value="" {{ old('difficulty_level', $trail->difficulty_level) == '' ? 'selected' : '' }}>Auto-detect</option>
-                                            <option value="1" {{ old('difficulty_level', $trail->difficulty_level) == '1' ? 'selected' : '' }}>1 - Very Easy</option>
-                                            <option value="2" {{ old('difficulty_level', $trail->difficulty_level) == '2' ? 'selected' : '' }}>2 - Easy</option>
-                                            <option value="3" {{ old('difficulty_level', $trail->difficulty_level) == '3' ? 'selected' : '' }}>3 - Moderate</option>
-                                            <option value="4" {{ old('difficulty_level', $trail->difficulty_level) == '4' ? 'selected' : '' }}>4 - Hard</option>
-                                            <option value="5" {{ old('difficulty_level', $trail->difficulty_level) == '5' ? 'selected' : '' }}>5 - Very Hard</option>
-                                        </select>
-                                    </div>
-                                    
-                                    <div class="space-y-2">
-                                        <label class="text-xs font-medium">Trail Type *</label>
-                                        <select name="trail_type" required 
-                                                class="flex h-9 w-full text-sm rounded-md border border-input bg-background px-3 py-2 ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-                                            <option value="">Select type</option>
-                                            <option value="loop" {{ old('trail_type', $trail->trail_type) == 'loop' ? 'selected' : '' }}>Loop</option>
-                                            <option value="out-and-back" {{ old('trail_type', $trail->trail_type) == 'out-and-back' ? 'selected' : '' }}>Out and Back</option>
-                                            <option value="point-to-point" {{ old('trail_type', $trail->trail_type) == 'point-to-point' ? 'selected' : '' }}>Point to Point</option>
-                                        </select>
-                                    </div>
-                                    
-                                    <div class="space-y-2">
-                                        <label class="text-xs font-medium">Best Season</label>
-                                        <select name="best_season" 
-                                                class="flex h-9 w-full text-sm rounded-md border border-input bg-background px-3 py-2 ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-                                            <option value="">Any season</option>
-                                            <option value="spring">Spring</option>
-                                            <option value="summer">Summer</option>
-                                            <option value="fall">Fall</option>
-                                            <option value="winter">Winter</option>
-                                        </select>
-                                    </div>
-
-                                    <div class="space-y-2">
-                                        <label class="text-sm font-medium">Trail Status *</label>
-                                        <select name="status" required class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
-                                            <option value="active" selected>Active - Open to public</option>
-                                            <option value="closed">Closed - Temporarily unavailable</option>
-                                            <option value="seasonal">Seasonal - Check conditions</option>
-                                        </select>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <!-- TAB 3: GPX Import -->
-                        <div class="tab-content" id="tab-gpx">
-                            <div class="p-6 space-y-4">
-                                <h4 class="font-medium">Import from GPX</h4>
-                                <p class="text-xs text-muted-foreground">Upload a GPX file to automatically create the trail route</p>
-                                
-                                <input type="file" id="gpx-import" accept=".gpx"
-                                    class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-                                
-                                <input type="hidden" id="use_gpx_calculations" name="use_gpx_calculations" value="false">
-                                
-                                <div class="rounded-lg border border-blue-200 bg-blue-50 p-4 space-y-2 mt-4">
-                                    <h5 class="font-medium text-blue-800 text-sm">📍 GPX File Info</h5>
-                                    <ul class="text-xs text-blue-700 space-y-1">
-                                        <li>• Replaces any manually created route</li>
-                                        <li>• Automatically calculates distance & elevation</li>
-                                        <li>• Preserves elevation data if available</li>
-                                    </ul>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <!-- TAB 4: Points of Interest -->
-                        <div class="tab-content" id="tab-highlights">
-                            <div class="p-6 space-y-6">
-                                
-                                <!-- Mode Toggle -->
-                                <div class="space-y-3">
-                                    <h4 class="font-medium">Highlight Mode</h4>
-                                    <button type="button" id="toggle-highlight-mode" 
-                                            class="w-full inline-flex items-center justify-center rounded-md border-2 border-gray-300 bg-gray-50 text-gray-600 hover:bg-gray-100 h-12 px-4 py-2 text-sm font-semibold transition-all">
-                                        <svg class="mr-2 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
-                                        </svg>
-                                        <span id="highlight-mode-text">Start Adding Highlights</span>
-                                    </button>
-                                </div>
-                                
-                                <!-- Add Highlight Form -->
-                                <div id="highlight-form-section" class="space-y-4 border-t pt-4">
-                                    <h5 class="font-medium text-sm">New Highlight Details</h5>
-                                    
-                                    <div class="space-y-3">
-                                        <div class="space-y-2">
-                                            <label class="text-xs font-medium">Highlight Type *</label>
-                                            <select id="highlight-type-select" class="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-                                                <option value="">Select type...</option>
-                                                <option value="viewpoint" data-icon="👁️" data-color="#8B5CF6">👁️ Viewpoint</option>
-                                                <option value="waterfall" data-icon="💧" data-color="#3B82F6">💧 Waterfall</option>
-                                                <option value="summit" data-icon="⛰️" data-color="#10B981">⛰️ Summit</option>
-                                                <option value="bridge" data-icon="🌉" data-color="#F59E0B">🌉 Bridge</option>
-                                                <option value="lake" data-icon="🏞️" data-color="#06B6D4">🏞️ Lake</option>
-                                                <option value="wildlife" data-icon="🦌" data-color="#84CC16">🦌 Wildlife Spot</option>
-                                                <option value="camping" data-icon="⛺" data-color="#EF4444">⛺ Camping Area</option>
-                                                <option value="shelter" data-icon="🏠" data-color="#6B7280">🏠 Shelter</option>
-                                                <option value="forest" data-icon="🌲" data-color="#059669">🌲 Forest</option>
-                                                <option value="parking" data-icon="🅿️" data-color="#8B5CF6">🅿️ Parking</option>
-                                                <option value="restroom" data-icon="🚻" data-color="#EC4899">🚻 Restroom</option>
-                                                <option value="picnic" data-icon="🍽️" data-color="#F97316">🍽️ Picnic Area</option>
-                                                <option value="other" data-icon="📍" data-color="#6B7280">📍 Other</option>
-                                            </select>
-                                        </div>
-                                        
-                                        <div class="space-y-2">
-                                            <label class="text-xs font-medium">Name *</label>
-                                            <input type="text" id="highlight-name-input" placeholder="e.g., Eagle's Nest Viewpoint"
-                                                class="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-                                        </div>
-                                        
-                                        <div class="space-y-2">
-                                            <label class="text-xs font-medium">Description (Optional)</label>
-                                            <textarea id="highlight-description-input" rows="2" placeholder="Brief description..."
-                                                    class="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"></textarea>
-                                        </div>
-
-                                        <div class="space-y-2">
-                                            <label class="text-xs font-medium">Photo or Video (Optional)</label>
-                                            <input type="file" 
-                                                id="highlight-media-input" 
-                                                accept="image/*,video/*" 
-                                                class="flex h-9 w-full text-sm rounded-md border border-input bg-background px-3 py-1 file:mr-4 file:py-1 file:px-3 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-primary file:text-primary-foreground hover:file:bg-primary/90">
-                                            <p class="text-xs text-muted-foreground">Upload 1 photo or 1 video for this feature</p>
-                                            
-                                            <!-- Preview container -->
-                                            <div id="highlight-media-preview" class="hidden mt-2">
-                                                <div class="relative w-full h-20 rounded-md border-2 border-dashed border-gray-300 bg-gray-50 flex items-center justify-center">
-                                                    <span class="text-xs text-gray-500">Preview will appear here</span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        
-                                        <div class="grid grid-cols-2 gap-3">
-                                            <div class="space-y-2">
-                                                <label class="text-xs font-medium">Icon</label>
-                                                <input type="text" id="highlight-icon-input" placeholder="📍" maxlength="10"
-                                                    class="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm text-center text-xl">
-                                            </div>
-                                            <div class="space-y-2">
-                                                <label class="text-xs font-medium">Color</label>
-                                                <input type="color" id="highlight-color-input" value="#10B981"
-                                                    class="flex h-9 w-full rounded-md border border-input bg-background px-2 py-1">
-                                            </div>
-                                        </div>
-
-                                        <button type="button" id="add-highlight-btn" 
-                                                class="w-full inline-flex items-center justify-center rounded-md bg-primary text-primary-foreground hover:bg-primary/90 h-9 px-4 py-2 text-sm font-medium">
-                                            <svg class="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
-                                            </svg>
-                                            Add Highlight
-                                        </button>
-                                    </div>
-                                </div>
-
-                                <!-- Instructions -->
-                                <div class="rounded-lg border border-blue-200 bg-blue-50 p-4 space-y-2">
-                                    <h5 class="font-medium text-blue-800 text-sm">How to Add Highlights</h5>
-                                    <ul class="text-xs text-blue-700 space-y-1">
-                                        <li>• Click "Start Adding Highlights" to enable highlight mode</li>
-                                        <li>• Select a highlight type from the dropdown</li>
-                                        <li>• Click on the map to place the marker</li>
-                                        <li>• Fill in the name and optional description</li>
-                                        <li>• Click "Add Highlight" to save it</li>
-                                    </ul>
-                                </div>
-
-                                <!-- Highlights List -->
-                                <div class="border-t pt-4 space-y-3">
-                                    <h5 class="font-medium text-sm">Added Highlights (<span id="highlights-count">0</span>)</h5>
-                                    <div id="highlights-list" class="space-y-2 max-h-64 overflow-y-auto">
-                                        <p class="text-sm text-muted-foreground text-center py-8">No highlights added yet</p>
-                                    </div>
-                                </div>
-
+                                 <button type="button" id="optimize-route" 
+                                        class="w-full inline-flex items-center justify-center rounded-md border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2 text-sm font-medium">
+                                    <svg class="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                                    </svg>
+                                    Optimize Route
+                                </button>
                             </div>
                         </div>
 
-                        <!-- Hidden input for highlights data -->
-                        <input type="hidden" name="highlights_data" id="highlights-data-input" value="[]">
-                        <input type="hidden" name="route_coordinates" id="route-coordinates-input" value="">
-                        <input type="hidden" name="start_lat" id="start-lat-input" value="">
-                        <input type="hidden" name="start_lng" id="start-lng-input" value="">
-                        <input type="hidden" name="end_lat" id="end-lat-input" value="">
-                        <input type="hidden" name="end_lng" id="end-lng-input" value="">
-                        
+                        <!-- Backend GPX Upload for Auto-Calculations -->
+                        <div class="rounded-lg border border-green-200 bg-green-50 p-4 space-y-3">
+                            <h4 class="font-medium text-green-900">Import from GPX (Optional)</h4>
+                            <p class="text-xs text-green-700">Upload GPX to automatically calculate distance, elevation & time</p>
+                            
+                            <input type="file" id="gpx-file-backend" name="gpx_file" accept=".gpx"
+                                class="flex h-10 w-full rounded-md border border-input bg-white px-3 py-2 text-sm">
+                            
+                            <!-- Preview Results -->
+                            <div id="gpx-preview-results" class="hidden space-y-2">
+                                <div class="text-sm font-medium text-green-900">Calculated Values:</div>
+                                <div class="grid grid-cols-3 gap-2 text-xs">
+                                    <div>
+                                        <span class="text-green-700">Distance:</span>
+                                        <div id="gpx-calc-distance" class="font-bold text-green-900"></div>
+                                    </div>
+                                    <div>
+                                        <span class="text-green-700">Elevation:</span>
+                                        <div id="gpx-calc-elevation" class="font-bold text-green-900"></div>
+                                    </div>
+                                    <div>
+                                        <span class="text-green-700">Time:</span>
+                                        <div id="gpx-calc-time" class="font-bold text-green-900"></div>
+                                    </div>
+                                </div>
+                                <button type="button" id="apply-gpx-values" 
+                                    class="w-full bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded-md text-sm font-medium">
+                                    ✓ Apply These Values
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="rounded-lg border border-input p-4 space-y-4 hidden">
+                            <h4 class="font-medium">Import from GPX (Optional)</h4>
+                            <input type="file" id="gpx-import" accept=".gpx"
+                                class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
+                            <input type="hidden" id="use_gpx_calculations" name="use_gpx_calculations" value="false">
+                            <p class="text-xs text-muted-foreground">Or import an existing GPX file to override manual route creation</p>
+                        </div>
+
+                        <!-- Route Statistics -->
+                        <div class="rounded-lg border border-input p-4 space-y-3">
+                            <h4 class="font-medium">Route Statistics</h4>
+                            <div class="grid grid-cols-2 gap-3 text-sm">
+                                <div class="space-y-1">
+                                    <span class="text-muted-foreground">Distance</span>
+                                    <div id="route-distance" class="font-medium text-blue-600">Click map to start</div>
+                                </div>
+                                <div class="space-y-1">
+                                    <span class="text-muted-foreground">Est. Time</span>
+                                    <div id="route-time" class="font-medium text-green-600">-</div>
+                                </div>
+                                <div class="space-y-1">
+                                    <span class="text-muted-foreground">Waypoints</span>
+                                    <div id="waypoint-count" class="font-medium text-purple-600">0</div>
+                                </div>
+                                <div class="space-y-1">
+                                    <span class="text-muted-foreground">Routing</span>
+                                    <div id="routing-status" class="font-medium text-blue-600">Smart</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Elevation Profile -->
+                        <div class="rounded-lg border border-input p-4 space-y-3">
+                            <div class="flex items-center justify-between">
+                                <h4 class="font-medium">Elevation Profile</h4>
+                                <button type="button" id="load-elevation" class="text-xs text-blue-600 hover:text-blue-800">
+                                    Refresh Profile
+                                </button>
+                            </div>
+                            <div id="elevation-chart" class="w-full h-32 bg-gray-50 rounded border hidden">
+                                <canvas id="elevation-canvas" class="w-full h-full"></canvas>
+                            </div>
+                            <div id="elevation-stats" class="hidden text-xs text-muted-foreground grid grid-cols-2 gap-2">
+                                <div>Max: <span id="max-elevation" class="font-medium">-</span>m</div>
+                                <div>Min: <span id="min-elevation" class="font-medium">-</span>m</div>
+                                <div>Gain: <span id="elevation-gain" class="font-medium">-</span>m</div>
+                                <div>Loss: <span id="elevation-loss" class="font-medium">-</span>m</div>
+                            </div>
+                        </div>
+
+                        <!-- Instructions -->
+                        <div class="rounded-lg border border-amber-200 bg-amber-50 p-4 space-y-2">
+                            <h4 class="font-medium text-amber-800">How to Use</h4>
+                            <ul class="text-xs text-amber-700 space-y-1">
+                                <li>• Click anywhere on the map to add waypoints</li>
+                                <li>• Routes automatically snap to walking paths</li>
+                                <li>• Drag waypoint markers to adjust the route</li>
+                                <li>• Use "Undo" to remove the last waypoint</li>
+                                <li>• Toggle smart routing off for straight lines</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <!-- Map Display -->
+                    <div class="space-y-4">
+                        <div id="trail-map" class="w-full h-96 rounded-md border border-input bg-muted"></div>
+                        <div id="map-status" class="text-xs text-muted-foreground">
+                            <div class="flex items-center gap-2">
+                                <span class="inline-block w-2 h-2 bg-gray-400 rounded-full animate-pulse"></span>
+                                <span>Ready to create trail route</span>
+                            </div>
+                        </div>
+                        <!-- Trail Specifications -->
+                        <div class="border-t pt-4 space-y-4">
+                            <h5 class="font-medium">Trail Specifications</h5>
+                            <div class="grid grid-cols-2 gap-3">
+                                <div class="space-y-2">
+                                    <label class="text-xs font-medium">Difficulty (1-5) *</label>
+                                    <select name="difficulty_level" required class="flex h-8 w-full text-xs rounded border border-input bg-background px-2 py-1">
+                                        <option value="">Auto-detect</option>
+                                        <option value="1">1 - Very Easy</option>
+                                        <option value="2">2 - Easy</option>
+                                        <option value="3">3 - Moderate</option>
+                                        <option value="4">4 - Hard</option>
+                                        <option value="5">5 - Very Hard</option>
+                                    </select>
+                                </div>
+                                
+                                <div class="space-y-2">
+                                    <label class="text-xs font-medium">Trail Type *</label>
+                                    <select name="trail_type" required class="flex h-8 w-full text-xs rounded border border-input bg-background px-2 py-1">
+                                        <option value="">Auto-detect</option>
+                                        <option value="loop">Loop</option>
+                                        <option value="out-and-back">Out and Back</option>
+                                        <option value="point-to-point">Point to Point</option>
+                                    </select>
+                                </div>
+                                
+                                <div class="space-y-2">
+                                    <label class="text-xs font-medium">Distance (km) *</label>
+                                    <input type="number" name="distance_km" step="0.01" required 
+                                        class="flex h-8 w-full text-xs rounded border border-input bg-gray-50 px-2 py-1">
+                                </div>
+                                
+                                <div class="space-y-2">
+                                    <label class="text-xs font-medium">Time (hours) *</label>
+                                    <input type="number" name="estimated_time_hours" step="0.01" required 
+                                        class="flex h-8 w-full text-xs rounded border border-input bg-gray-50 px-2 py-1">
+                                </div>
+                                
+                                <div class="space-y-2">
+                                    <label class="text-xs font-medium">Elevation Gain (m) *</label>
+                                    <input type="number" name="elevation_gain_m" required 
+                                        class="flex h-8 w-full text-xs rounded border border-input bg-gray-50 px-2 py-1">
+                                </div>
+                                
+                                <div class="space-y-2">
+                                    <label class="text-xs font-medium">Status *</label>
+                                    <select name="status" required class="flex h-8 w-full text-xs rounded border border-input bg-background px-2 py-1">
+                                        <option value="active">Active</option>
+                                        <option value="closed">Closed</option>
+                                        <option value="seasonal">Seasonal</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
+
+                <!-- Hidden Form Inputs -->
+                <input type="hidden" name="route_coordinates" id="route-coordinates-input">
+                <input type="hidden" name="start_lat" id="start-lat-input">
+                <input type="hidden" name="start_lng" id="start-lng-input">
+                <input type="hidden" name="end_lat" id="end-lat-input">
+                <input type="hidden" name="end_lng" id="end-lng-input">
+            </div>
+        </div>
+
+        <!-- Highlights & Points of Interest -->
+        <div class="rounded-lg border bg-card text-card-foreground shadow-sm">
+            <div class="p-6 space-y-6">
+                <div class="space-y-2">
+                    <h3 class="text-lg font-semibold">Highlights & Points of Interest</h3>
+                    <p class="text-sm text-muted-foreground">Add viewpoints, waterfalls, and other notable features along the trail</p>
+                </div>
                 
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <!-- Add Highlight Form -->
+                    <div class="space-y-4">
+                        <div class="rounded-lg border border-input p-4 space-y-4">
+                            <h4 class="font-medium">Add Highlight</h4>
+                            <p class="text-xs text-muted-foreground">Click on the map to place a highlight marker</p>
+                            
+                            <div id="highlight-form-section" class="space-y-3">
+                                <div class="space-y-2">
+                                    <label class="text-sm font-medium">Highlight Type</label>
+                                    <select id="highlight-type-select" class="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm">
+                                        <option value="">Select type...</option>
+                                        <option value="viewpoint" data-icon="👁️" data-color="#8B5CF6">👁️ Viewpoint</option>
+                                        <option value="waterfall" data-icon="💧" data-color="#3B82F6">💧 Waterfall</option>
+                                        <option value="summit" data-icon="⛰️" data-color="#EF4444">⛰️ Summit</option>
+                                        <option value="lake" data-icon="🏞️" data-color="#06B6D4">🏞️ Lake</option>
+                                        <option value="bridge" data-icon="🌉" data-color="#F59E0B">🌉 Bridge</option>
+                                        <option value="wildlife" data-icon="🦌" data-color="#10B981">🦌 Wildlife Spot</option>
+                                        <option value="camping" data-icon="⛺" data-color="#F97316">⛺ Camping Area</option>
+                                        <option value="parking" data-icon="🅿️" data-color="#6B7280">🅿️ Parking</option>
+                                        <option value="picnic" data-icon="🍽️" data-color="#84CC16">🍽️ Picnic Area</option>
+                                        <option value="restroom" data-icon="🚻" data-color="#14B8A6">🚻 Restroom</option>
+                                        <option value="danger" data-icon="⚠️" data-color="#DC2626">⚠️ Hazard/Warning</option>
+                                        <option value="photo_spot" data-icon="📷" data-color="#EC4899">📷 Photo Spot</option>
+                                    </select>
+                                </div>
+
+                                <div class="space-y-2">
+                                    <label class="text-sm font-medium">Name</label>
+                                    <input type="text" id="highlight-name-input" placeholder="e.g., Eagle's Nest Viewpoint"
+                                        class="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm">
+                                </div>
+
+                                <div class="space-y-2">
+                                    <label class="text-sm font-medium">Description (optional)</label>
+                                    <textarea id="highlight-description-input" rows="2" placeholder="Brief description..."
+                                            class="flex min-h-[60px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm"></textarea>
+                                </div>
+
+                                <div class="grid grid-cols-2 gap-2">
+                                    <div class="space-y-2">
+                                        <label class="text-sm font-medium">Icon (emoji)</label>
+                                        <input type="text" id="highlight-icon-input" placeholder="🏔️" maxlength="10"
+                                            class="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm">
+                                    </div>
+                                    <div class="space-y-2">
+                                        <label class="text-sm font-medium">Color</label>
+                                        <input type="color" id="highlight-color-input" value="#10B981"
+                                            class="flex h-9 w-full rounded-md border border-input bg-background px-2 py-1">
+                                    </div>
+                                </div>
+
+                                <button type="button" id="add-highlight-btn" 
+                                        class="w-full inline-flex items-center justify-center rounded-md bg-primary text-primary-foreground hover:bg-primary/90 h-9 px-4 py-2 text-sm font-medium">
+                                    <svg class="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
+                                    </svg>
+                                    Add Highlight
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Instructions -->
+                        <div class="rounded-lg border border-blue-200 bg-blue-50 p-4 space-y-2">
+                            <h4 class="font-medium text-blue-800">How to Add Highlights</h4>
+                            <ul class="text-xs text-blue-700 space-y-1">
+                                <li>• Select a highlight type from the dropdown</li>
+                                <li>• Click on the trail map to place the marker</li>
+                                <li>• Fill in the name and optional description</li>
+                                <li>• Click "Add Highlight" to save</li>
+                                <li>• Highlights will be saved when you create the trail</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <!-- Highlights List -->
+                    <div class="space-y-4">
+                        <div class="rounded-lg border border-input p-4">
+                            <h4 class="font-medium mb-3">Added Highlights (<span id="highlights-count">0</span>)</h4>
+                            <div id="highlights-list" class="space-y-2 max-h-96 overflow-y-auto">
+                                <p class="text-sm text-muted-foreground text-center py-8">No highlights added yet</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Hidden inputs for highlights data -->
+                <input type="hidden" name="highlights_data" id="highlights-data-input" value="[]">
             </div>
         </div>
 
@@ -551,26 +454,23 @@
                             <div class="space-y-2">
                                 <label class="text-sm font-medium">Trail Conditions</label>
                                 <input type="text" name="seasonal[spring][conditions]" 
-                                    placeholder="e.g., Muddy, Snow patches"
-                                    value="{{ old('seasonal.spring.conditions', $springData->conditions ?? '') }}"
-                                    class="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm">
+                                       placeholder="e.g., Muddy, Snow patches"
+                                       value="{{ old('seasonal.spring.conditions') }}"
+                                       class="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">
                             </div>
                             
                             <div class="flex items-center space-x-2">
-                                @php
-                                    $springData = $trail->seasonalData->firstWhere('season', 'spring');
-                                @endphp
                                 <input type="checkbox" name="seasonal[spring][recommended]" value="1" 
-                                    {{ old('seasonal.spring.recommended', $springData->recommended ?? true) ? 'checked' : '' }}
-                                    class="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary">
+                                       {{ old('seasonal.spring.recommended', true) ? 'checked' : '' }}
+                                       class="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary">
                                 <label class="text-sm font-medium">Recommended in Spring</label>
                             </div>
                             
                             <div class="space-y-2">
                                 <label class="text-sm font-medium">Notes</label>
                                 <textarea name="seasonal[spring][notes]" rows="2" 
-                                    placeholder="Special spring considerations..."
-                                    class="flex min-h-[60px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm">{{ old('seasonal.spring.notes', $springData->notes ?? '') }}</textarea>
+                                          placeholder="Special spring considerations..."
+                                          class="flex min-h-[60px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">{{ old('seasonal.spring.notes') }}</textarea>
                             </div>
                         </div>
                     </div>
@@ -591,12 +491,9 @@
                             </div>
                             
                             <div class="flex items-center space-x-2">
-                                @php
-                                    $summerData = $trail->seasonalData->firstWhere('season', 'summer');
-                                @endphp
                                 <input type="checkbox" name="seasonal[summer][recommended]" value="1" 
-                                    {{ old('seasonal.summer.recommended', $summerData->recommended ?? true) ? 'checked' : '' }}
-                                    class="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary">
+                                       {{ old('seasonal.summer.recommended', true) ? 'checked' : '' }}
+                                       class="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary">
                                 <label class="text-sm font-medium">Recommended in Summer</label>
                             </div>
                             
@@ -625,12 +522,9 @@
                             </div>
                             
                             <div class="flex items-center space-x-2">
-                                @php
-                                    $fallData = $trail->seasonalData->firstWhere('season', 'fall');
-                                @endphp
                                 <input type="checkbox" name="seasonal[fall][recommended]" value="1" 
-                                    {{ old('seasonal.fall.recommended', $fallData->recommended ?? true) ? 'checked' : '' }}
-                                    class="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary">
+                                       {{ old('seasonal.fall.recommended', true) ? 'checked' : '' }}
+                                       class="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary">
                                 <label class="text-sm font-medium">Recommended in Fall</label>
                             </div>
                             
@@ -659,12 +553,9 @@
                             </div>
                             
                             <div class="flex items-center space-x-2">
-                                @php
-                                    $winterData = $trail->seasonalData->firstWhere('season', 'winter');
-                                @endphp
                                 <input type="checkbox" name="seasonal[winter][recommended]" value="1" 
-                                    {{ old('seasonal.winter.recommended', $winterData->recommended ?? false) ? 'checked' : '' }}
-                                    class="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary">
+                                       {{ old('seasonal.winter.recommended', false) ? 'checked' : '' }}
+                                       class="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary">
                                 <label class="text-sm font-medium">Recommended in Winter</label>
                             </div>
                             
@@ -694,18 +585,12 @@
                             Best Seasons
                         </label>
                         <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
-                            @php 
-                                $seasons = ['Spring', 'Summer', 'Fall', 'Winter'];
-                                $trailBestSeasons = is_array($trail->best_seasons) ? $trail->best_seasons : [];
-                                // Normalize case for comparison
-                                $trailBestSeasons = array_map('strtolower', $trailBestSeasons);
-                            @endphp
-                            
+                            @php $seasons = ['Spring', 'Summer', 'Fall', 'Winter']; @endphp
                             @foreach($seasons as $season)
                                 <label class="flex items-center space-x-2 cursor-pointer">
                                     <input type="checkbox" name="best_seasons[]" value="{{ $season }}" 
-                                        {{ in_array(strtolower($season), old('best_seasons', $trailBestSeasons)) ? 'checked' : '' }}
-                                        class="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary">
+                                           {{ in_array($season, old('best_seasons', ['Spring', 'Summer', 'Fall'])) ? 'checked' : '' }}
+                                           class="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary">
                                     <span class="text-sm font-medium">{{ $season }}</span>
                                 </label>
                             @endforeach
@@ -718,7 +603,7 @@
                         </label>
                         <textarea name="directions" rows="3" 
                                   placeholder="Detailed directions on how to reach the trailhead..."
-                                  class="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50">{{ old('directions', $trail->directions) }}</textarea>
+                                  class="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50">{{ old('directions') }}</textarea>
                     </div>
 
                     <div class="space-y-2">
@@ -727,7 +612,7 @@
                         </label>
                         <textarea name="parking_info" rows="3" 
                                   placeholder="Parking availability, fees, restrictions, and tips..."
-                                  class="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50">{{ old('parking_info', $trail->parking_info) }}</textarea>
+                                  class="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50">{{ old('parking_info') }}</textarea>
                     </div>
 
                     <div class="space-y-2">
@@ -736,12 +621,12 @@
                         </label>
                         <textarea name="safety_notes" rows="3" 
                                   placeholder="Important safety information, hazards, equipment recommendations..."
-                                  class="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50">{{ old('safety_notes', $trail->safety_notes) }}</textarea>
+                                  class="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50">{{ old('safety_notes') }}</textarea>
                     </div>
 
                     <div class="flex items-center space-x-2">
                         <input type="checkbox" name="is_featured" value="1" 
-                               {{ old('is_featured', $trail->is_featured) ? 'checked' : '' }}
+                               {{ old('is_featured') ? 'checked' : '' }}
                                class="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary">
                         <label class="text-sm font-medium cursor-pointer">Feature this trail on homepage</label>
                     </div>
@@ -757,126 +642,33 @@
                     <p class="text-sm text-muted-foreground">Upload up to 5 images. Drag to reorder, click star to set featured image.</p>
                 </div>
                 
-                <!-- Existing Photos Display -->
-                @if($trail->media && $trail->media->count() > 0)
-                <div class="space-y-4">
-                    <div class="flex items-center justify-between">
-                        <h4 class="font-medium text-sm">Current Photos ({{ $trail->media->count() }})</h4>
-                        <p class="text-xs text-muted-foreground">Hover to manage photos</p>
-                    </div>
-                    
-                    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-                        @foreach($trail->media as $photo)
-                        <div class="relative group rounded-lg overflow-hidden border-2 {{ $photo->is_featured ? 'border-yellow-400' : 'border-gray-200' }}" data-photo-id="{{ $photo->id }}">
-                            <!-- Photo -->
-                            <div class="aspect-square bg-gray-100">
-                                @if($photo->storage_path)
-                                    <img src="{{ Storage::url($photo->storage_path) }}" 
-                                        alt="{{ $photo->original_name }}" 
-                                        class="w-full h-full object-cover">
-                                @else
-                                    <div class="w-full h-full flex items-center justify-center text-gray-400">
-                                        <svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
-                                        </svg>
-                                    </div>
-                                @endif
-                            </div>
-                            
-                            <!-- Featured Badge -->
-                            @if($photo->is_featured)
-                            <div class="absolute top-2 left-2 bg-yellow-400 text-yellow-900 text-xs font-semibold px-2 py-1 rounded shadow-md">
-                                ⭐ Featured
-                            </div>
-                            @endif
-                            
-                            <!-- Photo Info Overlay -->
-                            <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
-                                <div class="absolute bottom-0 left-0 right-0 p-3">
-                                    <p class="text-white text-xs font-medium truncate">{{ $photo->original_name }}</p>
-                                    <p class="text-white/70 text-xs">{{ number_format($photo->file_size / 1024, 1) }} KB</p>
-                                </div>
-                            </div>
-                            
-                            <!-- Action Buttons -->
-                            <div class="absolute top-2 right-2 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <!-- Delete Button -->
-                                <button type="button" 
-                                        onclick="removeExistingPhoto({{ $photo->id }})"
-                                        class="bg-red-500 hover:bg-red-600 text-white rounded-full p-1.5 shadow-lg transition-colors"
-                                        title="Delete photo">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                                    </svg>
-                                </button>
-                            </div>
-                            
-                            <!-- Set as Featured Button -->
-                            @if(!$photo->is_featured)
-                            <button type="button" 
-                                    onclick="setFeaturedPhoto({{ $photo->id }})"
-                                    class="absolute bottom-2 left-2 right-2 bg-yellow-400 hover:bg-yellow-500 text-yellow-900 text-xs font-semibold px-3 py-1.5 rounded shadow-lg opacity-0 group-hover:opacity-100 transition-all"
-                                    title="Set as featured photo">
-                                ⭐ Set as Featured
-                            </button>
-                            @endif
-                        </div>
-                        @endforeach
-                    </div>
-                    
-                    <div class="border-t pt-4 mt-4">
-                        <p class="text-sm text-muted-foreground">
-                            <span class="font-medium">Tip:</span> The featured photo appears as the main image on the trail page.
+                <!-- Drag & Drop Zone -->
+                <div id="photo-upload-zone" class="border-2 border-dashed border-input rounded-lg p-8 text-center hover:border-primary transition-colors cursor-pointer">
+                    <input type="file" id="photo-input" name="photos[]" multiple accept="image/*" class="hidden" max="5">
+                    <div id="upload-prompt">
+                        <svg class="mx-auto h-12 w-12 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+                        </svg>
+                        <p class="mt-2 text-sm text-muted-foreground">
+                            <span class="font-semibold text-primary">Click to upload</span> or drag and drop
                         </p>
+                        <p class="text-xs text-muted-foreground mt-1">PNG, JPG, GIF up to 10MB (max 5 photos)</p>
                     </div>
                 </div>
-                @endif
 
-                <!-- Upload New Photos Section -->
-                @if(!$trail->media || $trail->media->count() < 5)
-                <div class="space-y-4 {{ $trail->media && $trail->media->count() > 0 ? 'border-t pt-6' : '' }}">
-                    @if($trail->media && $trail->media->count() > 0)
-                    <h4 class="font-medium text-sm">Upload Additional Photos ({{ 5 - $trail->media->count() }} remaining)</h4>
-                    @endif
-                    
-                    <!-- Drag & Drop Zone -->
-                    <div id="photo-upload-zone" class="border-2 border-dashed border-input rounded-lg p-8 text-center hover:border-primary transition-colors cursor-pointer">
-                        <input type="file" id="photo-input" name="photos[]" multiple accept="image/*" class="hidden" max="5">
-                        <div id="upload-prompt">
-                            <svg class="mx-auto h-12 w-12 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
-                            </svg>
-                            <p class="mt-2 text-sm text-muted-foreground">
-                                <span class="font-semibold text-primary">Click to upload</span> or drag and drop
-                            </p>
-                            <p class="text-xs text-muted-foreground mt-1">PNG, JPG, GIF up to 10MB (max 5 photos)</p>
-                        </div>
+                <!-- Photo Preview Grid -->
+                <div id="photo-preview-grid" class="hidden">
+                    <div class="flex items-center justify-between mb-3">
+                        <p class="text-sm font-medium">Uploaded Photos (<span id="photo-count">0</span>/5)</p>
+                        <button type="button" id="clear-photos" class="text-sm text-red-600 hover:text-red-800">Clear All</button>
                     </div>
-                    
-                    <!-- Photo Preview Grid -->
-                    <div id="photo-preview-grid" class="hidden">
-                        <div class="flex items-center justify-between mb-3">
-                            <p class="text-sm font-medium">Uploaded Photos (<span id="photo-count">0</span>/5)</p>
-                            <button type="button" id="clear-photos" class="text-sm text-red-600 hover:text-red-800">Clear All</button>
-                        </div>
-                        <div id="photo-previews" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-                            <!-- Photo previews will be inserted here -->
-                        </div>
+                    <div id="photo-previews" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+                        <!-- Photo previews will be inserted here -->
                     </div>
                 </div>
-                @else
-                <div class="border-t pt-6">
-                    <div class="rounded-lg bg-yellow-50 border border-yellow-200 p-4 text-center">
-                        <p class="text-sm text-yellow-800">
-                            <span class="font-semibold">Maximum photos reached.</span> Delete existing photos to upload new ones.
-                        </p>
-                    </div>
-                </div>
-                @endif
 
                 <!-- Hidden inputs for photo data -->
                 <input type="hidden" name="featured_photo_index" id="featured-photo-index" value="0">
-                <input type="hidden" name="featured_photo_id" id="featured-photo-id" value="">
             </div>
         </div>
 
@@ -894,7 +686,7 @@
                 <svg class="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
                 </svg>
-                Update Trail
+                Create Trail
             </button>
         </div>
     </form>
@@ -1236,54 +1028,9 @@
             this.totalTime = 0;
             this.smartRouting = true;
             this.highlights = []; 
-            this.existingHighlights = @json($trail->features ?? []);
-            this.deletedFeatures = [];
             this.highlightsLayer = null; 
             this.pendingHighlight = null; 
-            this.waypointModeEnabled = false;
-            this.highlightModeEnabled = false; 
-            this.setupMediaPreview(); 
-            this.prePopulateCoordinates();
             this.init();
-        }
-
-        // NEW: Add file preview when user selects a file
-        setupMediaPreview() {
-            const mediaInput = document.getElementById('highlight-media-input');
-            const previewContainer = document.getElementById('highlight-media-preview');
-            
-            if (mediaInput) {
-                mediaInput.addEventListener('change', function() {
-                    if (this.files && this.files[0]) {
-                        const file = this.files[0];
-                        const reader = new FileReader();
-                        
-                        reader.onload = function(e) {
-                            if (file.type.startsWith('image/')) {
-                                previewContainer.innerHTML = `
-                                    <div class="relative w-full h-20 rounded-md overflow-hidden border">
-                                        <img src="${e.target.result}" alt="Preview" class="w-full h-full object-cover">
-                                    </div>
-                                `;
-                            } else if (file.type.startsWith('video/')) {
-                                previewContainer.innerHTML = `
-                                    <div class="relative w-full h-20 rounded-md overflow-hidden border bg-gray-900 flex items-center justify-center">
-                                        <svg class="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 20 20">
-                                            <path d="M2 6a2 2 0 012-2h6a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V6zM14.553 7.106A1 1 0 0014 8v4a1 1 0 00.553.894l2 1A1 1 0 0018 13V7a1 1 0 00-1.447-.894l-2 1z"/>
-                                        </svg>
-                                        <span class="ml-2 text-xs text-white">${file.name}</span>
-                                    </div>
-                                `;
-                            }
-                            previewContainer.classList.remove('hidden');
-                        };
-                        
-                        reader.readAsDataURL(file);
-                    } else {
-                        previewContainer.classList.add('hidden');
-                    }
-                });
-            }
         }
 
         // Decode Google's polyline algorithm
@@ -1335,182 +1082,21 @@
         }
 
         init() {
-            const mapElement = document.getElementById('trail-map');
+            this.map = L.map('trail-map', {
+                maxZoom: 20,  // Allow zooming to very detailed level
+                minZoom: 5    // Prevent zooming out too far
+            }).setView([49.2827, -122.7927], 13);
             
-            if (!mapElement) {
-                console.error('Map container #trail-map not found');
-                return;
-            }
-            
-            try {
-                this.map = L.map('trail-map', {
-                    maxZoom: 20,
-                    minZoom: 5
-                }).setView([8.4542, 124.6319], 13); // Cagayan de Oro coordinates
-                
-                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                    attribution: '© OpenStreetMap contributors',
-                    maxZoom: 20
-                }).addTo(this.map);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors',
+                maxZoom: 20  // Support higher zoom levels
+            }).addTo(this.map);
 
-                this.routeLayer = L.layerGroup().addTo(this.map);
-                this.highlightsLayer = L.layerGroup().addTo(this.map); 
-                
-                this.setupEventListeners();
-                this.setupMapClicks();
-                this.setupHighlightHandlers();
-                this.loadExistingFeatures();
-                
-                console.log('Trail builder initialized successfully');
-            } catch (error) {
-                console.error('Error initializing map:', error);
-            }
-        }
-
-        loadExistingFeatures() {
-            if (!this.existingHighlights || this.existingHighlights.length === 0) {
-                this.updateHighlightsList();
-                return;
-            }
-            
-            this.existingHighlights.forEach(feature => {
-                // Handle coordinates properly
-                let coords;
-                if (Array.isArray(feature.coordinates)) {
-                    coords = feature.coordinates;
-                } else if (feature.coordinates && feature.coordinates.lat) {
-                    coords = [feature.coordinates.lat, feature.coordinates.lng];
-                } else {
-                    console.warn('Invalid coordinates for feature:', feature);
-                    return;
-                }
-                
-                const marker = L.marker(coords, {
-                    icon: L.divIcon({
-                        html: `<div class="w-8 h-8 rounded-full bg-primary border-2 border-white shadow-lg flex items-center justify-center text-white text-lg">${feature.icon || '📍'}</div>`,
-                        className: 'custom-marker',
-                        iconSize: [32, 32],
-                        iconAnchor: [16, 16]
-                    })
-                }).addTo(this.highlightsLayer);
-                
-                marker.bindPopup(`
-                    <div class="p-2">
-                        <b>${feature.name}</b><br>
-                        <small class="text-gray-600">${feature.feature_type}</small><br>
-                        ${feature.description ? `<p class="text-sm mt-1">${feature.description}</p>` : ''}
-                        <button onclick="window.trailBuilder.deleteExistingFeature(${feature.id})" class="text-red-600 text-sm mt-2 hover:underline">Delete</button>
-                    </div>
-                `);
-                marker.highlightId = feature.id;
-                marker.isExisting = true;
-            });
-            
-            this.updateHighlightsList();
-        }
-
-        deleteExistingFeature(featureId) {
-            if (!confirm('Delete this feature?')) return;
-            
-            this.deletedFeatures.push(featureId);
-            document.getElementById('deleted-features-input').value = JSON.stringify(this.deletedFeatures);
-            
-            // Remove from list
-            this.existingHighlights = this.existingHighlights.filter(f => f.id !== featureId);
-            
-            // Reload map
-            this.highlightsLayer.clearLayers();
-            this.loadExistingFeatures();
-            this.updateHighlightsList();
-        }
-
-        // NEW: Pre-populate coordinates from existing trail data
-        prePopulateCoordinates() {
-            const existingTrail = @json($trail);
-            
-            if (existingTrail && existingTrail.start_coordinates) {
-                const startLatInput = document.getElementById('start-lat-input');
-                const startLngInput = document.getElementById('start-lng-input');
-                
-                // Only set if elements exist
-                if (startLatInput && startLngInput) {
-                    const startCoords = existingTrail.start_coordinates;
-                    startLatInput.value = startCoords[0] || startCoords.lat || '';
-                    startLngInput.value = startCoords[1] || startCoords.lng || '';
-                    console.log('Pre-populated start coords:', startCoords);
-                }
-            }
-            
-            if (existingTrail && existingTrail.end_coordinates) {
-                const endLatInput = document.getElementById('end-lat-input');
-                const endLngInput = document.getElementById('end-lng-input');
-                
-                // Only set if elements exist
-                if (endLatInput && endLngInput) {
-                    const endCoords = existingTrail.end_coordinates;
-                    endLatInput.value = endCoords[0] || endCoords.lat || '';
-                    endLngInput.value = endCoords[1] || endCoords.lng || '';
-                    console.log('Pre-populated end coords:', endCoords);
-                }
-            }
-            
-            // Populate route coordinates if they exist
-            if (existingTrail && existingTrail.route_coordinates) {
-                const routeInput = document.getElementById('route-coordinates-input');
-                
-                if (routeInput) {
-                    const routeCoords = typeof existingTrail.route_coordinates === 'string' 
-                        ? JSON.parse(existingTrail.route_coordinates) 
-                        : existingTrail.route_coordinates;
-                    
-                    if (Array.isArray(routeCoords) && routeCoords.length > 0) {
-                        routeInput.value = JSON.stringify(routeCoords);
-                        console.log('Pre-populated route with', routeCoords.length, 'points');
-                    }
-                }
-            }
-        }
-
-        updateHighlightsList() {
-            const listContainer = document.getElementById('highlights-list');
-            const countSpan = document.getElementById('highlights-count');
-            
-            if (!listContainer) return;
-
-            const totalCount = this.existingHighlights.length + this.highlights.length;
-            countSpan.textContent = totalCount;
-
-            // Render existing features
-            let html = this.existingHighlights.map(f => `
-                <div class="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
-                    <div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-white shrink-0">
-                        ${f.icon || '📍'}
-                    </div>
-                    <div class="flex-1 min-w-0">
-                        <h5 class="font-medium text-sm">${f.name}</h5>
-                        <p class="text-xs text-muted-foreground capitalize">${f.feature_type}</p>
-                    </div>
-                    <button type="button" onclick="window.highlightManager.deleteExistingFeature(${f.id})" 
-                            class="text-red-600 hover:text-red-800 text-sm">Delete</button>
-                </div>
-            `).join('');
-            
-            // Render new features
-            html += this.highlights.map((h, i) => `
-                <div class="flex items-start gap-3 p-3 bg-blue-50 rounded-lg">
-                    <div style="background-color: ${h.color};" class="w-8 h-8 rounded-full flex items-center justify-center text-white shrink-0">
-                        ${h.icon}
-                    </div>
-                    <div class="flex-1 min-w-0">
-                        <h5 class="font-medium text-sm">${h.name} <span class="text-xs text-blue-600">(New)</span></h5>
-                        <p class="text-xs text-muted-foreground capitalize">${h.type}</p>
-                    </div>
-                    <button type="button" onclick="window.highlightManager.deleteHighlight(${i})" 
-                            class="text-red-600 hover:text-red-800 text-sm">Delete</button>
-                </div>
-            `).join('');
-
-            listContainer.innerHTML = html || '<p class="text-sm text-muted-foreground text-center py-4">No highlights added yet</p>';
+            this.routeLayer = L.layerGroup().addTo(this.map);
+            this.highlightsLayer = L.layerGroup().addTo(this.map); 
+            this.setupEventListeners();
+            this.setupMapClicks();
+            this.setupHighlightHandlers(); 
         }
 
         setupEventListeners() {
@@ -1545,41 +1131,8 @@
 
         setupMapClicks() {
             this.map.on('click', (e) => {
-                // Check which mode is active
-                if (this.highlightModeEnabled) {
-                    // Highlight mode - place highlight marker
-                    const highlightType = document.getElementById('highlight-type-select')?.value;
-                    if (!highlightType) {
-                        showToast('Please select a highlight type first', 'warning');
-                        return;
-                    }
-                    this.placeHighlightMarker(e.latlng.lat, e.latlng.lng);
-                } else if (this.waypointModeEnabled) {
-                    // Waypoint mode - add waypoint
-                    this.addWaypoint(e.latlng.lat, e.latlng.lng);
-                } else {
-                    // No mode enabled
-                    showToast('Please enable waypoint or highlight mode first', 'warning');
-                }
+                this.addWaypoint(e.latlng.lat, e.latlng.lng);
             });
-        }
-
-        enableWaypointMode() {
-            this.waypointModeEnabled = true;
-            const mapElement = document.getElementById('trail-map');
-            if (mapElement) {
-                mapElement.classList.add('waypoint-mode');
-                mapElement.classList.remove('waypoint-disabled');
-            }
-        }
-
-        disableWaypointMode() {
-            this.waypointModeEnabled = false;
-            const mapElement = document.getElementById('trail-map');
-            if (mapElement) {
-                mapElement.classList.remove('waypoint-mode');
-                mapElement.classList.add('waypoint-disabled');
-            }
         }
 
         addClearButton() {
@@ -1793,13 +1346,8 @@
 
             // Add this at the end of displayElevationProfile method:
             const elevationGainInput = document.querySelector('input[name="elevation_gain_m"]');
-            const elevationDisplay = document.getElementById('route-elevation');
-
             if (elevationGainInput) {
                 elevationGainInput.value = Math.round(totalGain);
-            }
-            if (elevationDisplay) {
-                elevationDisplay.textContent = `${Math.round(totalGain)} m`;
             }
 
             // Auto-update trail specifications
@@ -1972,16 +1520,13 @@
             this.totalDistance = this.routeSegments.reduce((sum, segment) => sum + (segment.distance / 1000), 0);
             this.totalTime = (this.totalDistance / 4) * 60; // Assume 4 km/h walking speed
 
-            // Update display cards
             const distanceEl = document.getElementById('route-distance');
             const timeEl = document.getElementById('route-time');
-            const waypointCountEl = document.getElementById('waypoint-count-display');
             
             if (distanceEl) distanceEl.textContent = `${this.totalDistance.toFixed(2)} km`;
-            if (timeEl) timeEl.textContent = `${(this.totalTime / 60).toFixed(1)} hrs`;
-            if (waypointCountEl) waypointCountEl.textContent = this.waypoints.length;
+            if (timeEl) timeEl.textContent = `${Math.round(this.totalTime)} min`;
 
-            // Update input fields (these should match the display cards)
+            // Auto-populate form fields
             const distanceInput = document.querySelector('input[name="distance_km"]');
             const timeInput = document.querySelector('input[name="estimated_time_hours"]');
             
@@ -2128,50 +1673,8 @@
             }
         }
 
-        // NEW: Prepare media files for submission
-        prepareMediaFilesForSubmission() {
-            const form = document.querySelector('form');
-            
-            // Add file inputs for each highlight that has media
-            this.highlights.forEach((highlight, index) => {
-                if (highlight.mediaFile) {
-                    // Create a DataTransfer object to hold the file
-                    const dataTransfer = new DataTransfer();
-                    dataTransfer.items.add(highlight.mediaFile);
-                    
-                    // Create a file input
-                    const fileInput = document.createElement('input');
-                    fileInput.type = 'file';
-                    fileInput.name = `highlight_media_${index}`;
-                    fileInput.style.display = 'none';
-                    fileInput.files = dataTransfer.files;
-                    
-                    form.appendChild(fileInput);
-                    
-                    // Add index reference to highlight data
-                    highlight.mediaIndex = index;
-                }
-            });
-            
-            // Update the highlights data input with media indices
-            this.updateHighlightsInput();
-        }
-
         validateBeforeSubmit() {
-            this.prepareMediaFilesForSubmission();
             const issues = this.validateRoute();
-
-            const startLatInput = document.getElementById('start-lat-input');
-            const startLngInput = document.getElementById('start-lng-input');
-
-            if (!startLatInput.value || !startLngInput.value) {
-                const existingTrail = @json($trail);
-                if (existingTrail && existingTrail.start_coordinates) {
-                    const startCoords = existingTrail.start_coordinates;
-                    startLatInput.value = startCoords[0] || startCoords.lat || '';
-                    startLngInput.value = startCoords[1] || startCoords.lng || '';
-                }
-            }
             
             if (issues.length > 0) {
                 const message = 'Route validation issues:\n' + issues.map(issue => '• ' + issue).join('\n') + 
@@ -2347,32 +1850,6 @@
             this.updateStats();
         }
 
-        loadExistingRoute(coordinates) {
-            if (!coordinates || coordinates.length < 2) {
-                console.warn('No valid route coordinates to load');
-                return;
-            }
-            
-            console.log('Loading existing route:', coordinates.length, 'points');
-            
-            // Clear any existing route first
-            this.clearRoute();
-            
-            // Display the route
-            this.displayGPXRoute(coordinates);
-            
-            // Create waypoints from the route
-            this.createWaypointsFromGPX(coordinates);
-            
-            // Fit map to route bounds
-            const bounds = L.latLngBounds(coordinates);
-            this.map.fitBounds(bounds, { padding: [50, 50] });
-            
-            // Update the UI
-            this.updateFormInputs();
-            this.updateStats();
-        }
-
         displayGPXFromBackend(coordinates) {
             // Method specifically for backend GPX data
             // Coordinates come from backend in [lat, lng] format
@@ -2518,7 +1995,6 @@
             const description = document.getElementById('highlight-description-input').value;
             const icon = document.getElementById('highlight-icon-input').value;
             const color = document.getElementById('highlight-color-input').value;
-            const mediaInput = document.getElementById('highlight-media-input');
 
             if (!type || !name || !this.pendingHighlight) {
                 alert('Please select a type, enter a name, and click on the map to place the highlight');
@@ -2532,8 +2008,7 @@
                 description: description,
                 icon: icon,
                 color: color,
-                coordinates: this.pendingHighlight.coordinates,
-                mediaFile: mediaInput.files[0] || null
+                coordinates: this.pendingHighlight.coordinates
             };
 
             this.highlights.push(highlight);
@@ -2545,14 +2020,25 @@
             document.getElementById('highlight-name-input').value = '';
             document.getElementById('highlight-description-input').value = '';
             document.getElementById('highlight-icon-input').value = '';
-            document.getElementById('highlight-media-input').value = '';
-            document.getElementById('highlight-media-preview').classList.add('hidden');
             
             // Remove pending marker and add permanent one
             if (this.pendingHighlight) {
                 this.highlightsLayer.removeLayer(this.pendingHighlight);
                 this.pendingHighlight = null;
             }
+
+            // Add permanent marker
+            const marker = L.marker(highlight.coordinates, {
+                icon: L.divIcon({
+                    html: `<div style="background-color: ${highlight.color};" class="w-8 h-8 rounded-full border-2 border-white shadow-lg flex items-center justify-center text-white text-lg">${highlight.icon}</div>`,
+                    className: 'custom-marker',
+                    iconSize: [32, 32],
+                    iconAnchor: [16, 16]
+                })
+            }).addTo(this.highlightsLayer);
+
+            marker.bindPopup(`<b>${highlight.name}</b><br>${highlight.description || ''}`);
+            marker.highlightId = highlight.id;
         }
 
         updateHighlightsList() {
@@ -2561,47 +2047,15 @@
             
             if (!listContainer) return;
 
-            countSpan.textContent = this.existingHighlights.length + this.highlights.length;
+            countSpan.textContent = this.highlights.length;
 
-            // Get existing highlights (features) with media display
-            const existingHTML = this.existingHighlights.map(h => `
+            if (this.highlights.length === 0) {
+                listContainer.innerHTML = '<p class="text-sm text-muted-foreground text-center py-8">No highlights added yet</p>';
+                return;
+            }
+
+            listContainer.innerHTML = this.highlights.map(h => `
                 <div class="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
-                    <div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-white shrink-0">
-                        ${h.icon || '📍'}
-                    </div>
-                    <div class="flex-1 min-w-0">
-                        <h5 class="font-medium text-sm">${h.name}</h5>
-                        <p class="text-xs text-muted-foreground capitalize">${(h.feature_type || '').replace('_', ' ')}</p>
-                        ${h.description ? `<p class="text-xs text-gray-600 mt-1">${h.description}</p>` : ''}
-                        ${h.media && h.media.length > 0 ? `
-                            <div class="mt-2 space-y-1">
-                                ${h.media.map(media => `
-                                    <div class="flex items-center gap-2 text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded">
-                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            ${media.media_type === 'photo' ? `
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
-                                            ` : `
-                                                <path d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/>
-                                            `}
-                                        </svg>
-                                        <span class="truncate">${media.original_name || media.filename}</span>
-                                        ${media.pivot && media.pivot.is_primary ? '<span class="text-xs bg-blue-600 text-white px-1 rounded">Primary</span>' : ''}
-                                    </div>
-                                `).join('')}
-                            </div>
-                        ` : ''}
-                    </div>
-                    <button type="button" onclick="window.trailBuilder.removeExistingHighlight(${h.id})" class="text-red-500 hover:text-red-700 shrink-0">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-                        </svg>
-                    </button>
-                </div>
-            `).join('');
-
-            // Get new highlights with media support
-            const newHighlightsHTML = this.highlights.map(h => `
-                <div class="flex items-start gap-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
                     <div style="background-color: ${h.color};" class="w-8 h-8 rounded-full flex items-center justify-center text-white shrink-0">
                         ${h.icon}
                     </div>
@@ -2609,28 +2063,14 @@
                         <h5 class="font-medium text-sm">${h.name}</h5>
                         <p class="text-xs text-muted-foreground capitalize">${h.type.replace('_', ' ')}</p>
                         ${h.description ? `<p class="text-xs text-gray-600 mt-1">${h.description}</p>` : ''}
-                        ${h.mediaFile ? `
-                            <div class="mt-2 flex items-center gap-2 text-xs text-green-600 bg-green-50 px-2 py-1 rounded">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
-                                </svg>
-                                <span class="truncate">${h.mediaFile.name}</span>
-                            </div>
-                        ` : ''}
                     </div>
-                    <button type="button" onclick="window.trailBuilder.removeHighlight(${h.id})" class="text-red-500 hover:text-red-700 shrink-0">
+                    <button onclick="window.trailBuilder.removeHighlight(${h.id})" class="text-red-500 hover:text-red-700">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
                         </svg>
                     </button>
                 </div>
             `).join('');
-
-            if (existingHTML === '' && newHighlightsHTML === '') {
-                listContainer.innerHTML = '<p class="text-sm text-muted-foreground text-center py-8">No highlights added yet</p>';
-            } else {
-                listContainer.innerHTML = existingHTML + newHighlightsHTML;
-            }
         }
 
         removeHighlight(id) {
@@ -2658,90 +2098,52 @@
     // Photo Upload Handler
     class PhotoUploadManager {
         constructor() {
-            this.uploadZone = document.getElementById('photo-upload-zone');
-            this.fileInput = document.getElementById('photo-input');
-            this.previewGrid = document.getElementById('photo-preview-grid');
-            this.previewsContainer = document.getElementById('photo-previews');
-            this.uploadPrompt = document.getElementById('upload-prompt');
-            this.photoCount = document.getElementById('photo-count');
             this.photos = [];
-            
-            // Initialize missing properties
-            this.existingPhotos = @json($trail->media ?? []); // Load existing photos from backend
-            this.deletedPhotos = [];
             this.maxPhotos = 5;
-            
-            // NEW: Check if there's already a featured photo in existing photos
-            const hasFeaturedPhoto = this.existingPhotos.some(photo => photo.is_featured);
-            this.featuredIndex = hasFeaturedPhoto ? -1 : 0; // -1 means no new photo is featured
-            
-            // Only initialize if all required elements exist
-            if (this.uploadZone && this.fileInput) {
-                this.init();
-            } else {
-                console.warn('Photo upload manager: Required elements not found');
-            }
-        }
-
-        hasFeaturedPhoto() {
-            // Check if any existing photo is featured
-            const existingFeatured = this.existingPhotos.some(photo => photo.is_featured);
-            // Check if any new photo is featured
-            const newFeatured = this.featuredIndex !== -1;
-            
-            return existingFeatured || newFeatured;
+            this.featuredIndex = 0;
+            this.init();
         }
 
         init() {
-            // Check if elements exist before adding listeners
-            if (!this.uploadZone || !this.fileInput) {
-                console.warn('Photo upload elements not found. Photo upload disabled.');
-                return;
-            }
-            
+            const uploadZone = document.getElementById('photo-upload-zone');
+            const photoInput = document.getElementById('photo-input');
+
             // Click to upload
-            this.uploadZone.addEventListener('click', (e) => {
-                if (e.target.closest('#clear-photos')) return;
-                if (this.fileInput) {
-                    this.fileInput.click();
-                }
-            });
-            
+            uploadZone.addEventListener('click', () => photoInput.click());
+
             // File input change
-            if (this.fileInput) {
-                this.fileInput.addEventListener('change', (e) => this.handleFiles(e.target.files));
-            }
-            
+            photoInput.addEventListener('change', (e) => {
+                this.handleFiles(e.target.files);
+            });
+
             // Drag and drop
-            this.uploadZone.addEventListener('dragover', (e) => {
+            uploadZone.addEventListener('dragover', (e) => {
                 e.preventDefault();
-                this.uploadZone.classList.add('border-primary', 'bg-primary/5');
+                uploadZone.classList.add('border-primary', 'bg-primary/5');
             });
-            
-            this.uploadZone.addEventListener('dragleave', (e) => {
+
+            uploadZone.addEventListener('dragleave', (e) => {
                 e.preventDefault();
-                this.uploadZone.classList.remove('border-primary', 'bg-primary/5');
+                uploadZone.classList.remove('border-primary', 'bg-primary/5');
             });
-            
-            this.uploadZone.addEventListener('drop', (e) => {
+
+            uploadZone.addEventListener('drop', (e) => {
                 e.preventDefault();
-                this.uploadZone.classList.remove('border-primary', 'bg-primary/5');
+                uploadZone.classList.remove('border-primary', 'bg-primary/5');
                 this.handleFiles(e.dataTransfer.files);
             });
-            
-            // Clear all button
-            const clearBtn = document.getElementById('clear-photos');
-            if (clearBtn) {
-                clearBtn.addEventListener('click', () => this.clearAll());
-            }
+
+            // Clear all photos
+            document.getElementById('clear-photos')?.addEventListener('click', () => {
+                this.clearAll();
+            });
         }
 
         handleFiles(files) {
-            const totalPhotos = this.existingPhotos.length + this.photos.length;
-            const remainingSlots = this.maxPhotos - totalPhotos;
+            const remainingSlots = this.maxPhotos - this.photos.length;
             
             if (files.length > remainingSlots) {
-                alert(`You can only upload ${remainingSlots} more photo(s). Maximum is ${this.maxPhotos} photos total.`);
+                alert(`You can only upload ${remainingSlots} more photo(s). Maximum is ${this.maxPhotos} photos.`);
                 return;
             }
 
@@ -2758,66 +2160,6 @@
 
                 this.addPhoto(file);
             });
-        }
-
-       renderExistingPhotos() {
-            if (!this.existingPhotos || this.existingPhotos.length === 0) return;
-            
-            const previewGrid = document.getElementById('photo-preview-grid');
-            const previewsContainer = document.getElementById('photo-previews');
-            
-            if (!previewsContainer) return;
-            
-            previewGrid.classList.remove('hidden');
-            
-            const existingHTML = this.existingPhotos.map(media => {
-                // Fix photo URL - TrailMedia uses storage_path instead of path
-                const photoUrl = media.url || `/storage/${media.storage_path}`;
-                
-                return `
-                    <div class="relative group photo-preview-item" data-photo-id="${media.id}">
-                        <img src="${photoUrl}" alt="${media.caption || 'Trail photo'}" 
-                            onerror="this.src='/images/placeholder.jpg'" 
-                            class="w-full h-32 object-cover rounded-lg border-2 ${media.is_featured ? 'border-yellow-400' : 'border-gray-200'}">
-                        
-                        ${media.is_featured ? `
-                            <div class="absolute top-2 left-2">
-                                <span class="inline-flex items-center rounded-full bg-yellow-400 px-2 py-1 text-xs font-medium text-yellow-900">
-                                    ⭐ Featured
-                                </span>
-                            </div>
-                        ` : ''}
-                        
-                        <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-50 transition-all duration-200 rounded-lg flex items-center justify-center gap-2">
-                            <button type="button" onclick="window.photoManager.deleteExistingPhoto(${media.id})" 
-                                    class="opacity-0 group-hover:opacity-100 transition-opacity bg-red-600 text-white rounded-full p-2 hover:bg-red-700"
-                                    title="Delete photo">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-                                </svg>
-                            </button>
-                        </div>
-                    </div>
-                `;
-            }).join('');
-            
-            previewsContainer.innerHTML = existingHTML;
-        }
-
-        deleteExistingPhoto(photoId) {
-            if (!confirm('Delete this photo? This cannot be undone.')) return;
-            
-            this.deletedPhotos.push(photoId);
-            document.getElementById('deleted-photos-input').value = JSON.stringify(this.deletedPhotos);
-            
-            this.existingPhotos = this.existingPhotos.filter(p => p.id !== photoId);
-            this.renderExistingPhotos();
-            this.render();
-        }
-
-        canAddMore() {
-            const totalPhotos = this.existingPhotos.length + this.photos.length;
-            return totalPhotos < this.maxPhotos;
         }
 
         addPhoto(file) {
@@ -2837,30 +2179,21 @@
             reader.readAsDataURL(file);
         }
 
-        removePhoto(index) {
-            if (index < 0 || index >= this.photos.length) return;
+        removePhoto(id) {
+            const index = this.photos.findIndex(p => p.id === id);
+            if (index === -1) return;
 
             this.photos.splice(index, 1);
             
             // Adjust featured index if needed
-            if (this.featuredIndex === index) {
-                // If we're deleting the featured photo, reset to -1 (no featured)
-                this.featuredIndex = -1;
-            } else if (this.featuredIndex > index) {
-                // If featured photo is after the deleted one, adjust the index
-                this.featuredIndex--;
+            if (this.featuredIndex >= this.photos.length) {
+                this.featuredIndex = Math.max(0, this.photos.length - 1);
             }
 
             this.render();
         }
 
         setFeatured(index) {
-            // Don't allow setting featured if there's already a featured photo (unless it's already this one)
-            if (this.hasFeaturedPhoto() && this.featuredIndex !== index) {
-                showToast('Remove the current featured photo first', 'warning');
-                return;
-            }
-            
             this.featuredIndex = index;
             this.render();
         }
@@ -2888,6 +2221,7 @@
             // Show/hide sections
             if (this.photos.length > 0) {
                 previewGrid.classList.remove('hidden');
+                uploadPrompt.classList.add('hidden');
                 uploadZone.classList.add('border-solid');
             } else {
                 previewGrid.classList.add('hidden');
@@ -2899,31 +2233,30 @@
             previewsContainer.innerHTML = this.photos.map((photo, index) => `
                 <div class="relative group photo-preview-item" data-photo-id="${photo.id}" draggable="true">
                     <img src="${photo.dataUrl}" alt="Preview ${index + 1}" 
-                        class="w-full h-32 object-cover rounded-lg border-2 ${this.featuredIndex !== -1 && index === this.featuredIndex ? 'border-yellow-400' : 'border-gray-200'}">
+                        class="w-full h-32 object-cover rounded-lg border-2 ${index === this.featuredIndex ? 'border-yellow-400' : 'border-gray-200'}">
                     
-                        ${this.featuredIndex !== -1 && index === this.featuredIndex ? `
-                            <div class="absolute top-2 left-2">
-                                <span class="inline-flex items-center rounded-full bg-yellow-400 px-2 py-1 text-xs font-medium text-yellow-900">
-                                    <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                                        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
-                                    </svg>
-                                    Featured
-                                </span>
-                            </div>
-                        ` : ''}
+                    <!-- Featured Badge -->
+                    ${index === this.featuredIndex ? `
+                        <div class="absolute top-2 left-2">
+                            <span class="inline-flex items-center rounded-full bg-yellow-400 px-2 py-1 text-xs font-medium text-yellow-900">
+                                <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
+                                </svg>
+                                Featured
+                            </span>
+                        </div>
+                    ` : ''}
                     
+                    <!-- Controls overlay -->
                     <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-50 transition-all duration-200 rounded-lg flex items-center justify-center gap-2">
-                        <button type="button" 
-                                onclick="window.photoManager.setFeatured(${index})" 
-                                ${this.hasFeaturedPhoto() && this.featuredIndex !== index ? 'disabled' : ''}
-                                class="opacity-0 group-hover:opacity-100 transition-opacity bg-white rounded-full p-2 hover:bg-yellow-100 disabled:opacity-0 disabled:cursor-not-allowed disabled:hover:bg-white"
-                                title="${this.hasFeaturedPhoto() && this.featuredIndex !== index ? 'A photo is already featured' : 'Set as featured'}">
-                            <svg class="w-4 h-4 ${this.featuredIndex !== -1 && index === this.featuredIndex ? 'text-yellow-500' : 'text-gray-600'}" fill="currentColor" viewBox="0 0 20 20">
+                        <button type="button" onclick="window.photoManager.setFeatured(${index})" 
+                                class="opacity-0 group-hover:opacity-100 transition-opacity bg-white rounded-full p-2 hover:bg-yellow-100"
+                                title="Set as featured">
+                            <svg class="w-4 h-4 ${index === this.featuredIndex ? 'text-yellow-500' : 'text-gray-600'}" fill="currentColor" viewBox="0 0 20 20">
                                 <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
                             </svg>
                         </button>
-                        <button type="button" 
-                                onclick="window.photoManager.removePhoto(${index})" 
+                        <button type="button" onclick="window.photoManager.removePhoto('${photo.id}')" 
                                 class="opacity-0 group-hover:opacity-100 transition-opacity bg-white rounded-full p-2 hover:bg-red-100"
                                 title="Remove photo">
                             <svg class="w-4 h-4 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -2932,6 +2265,7 @@
                         </button>
                     </div>
 
+                    <!-- Drag handle -->
                     <div class="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity cursor-move">
                         <svg class="w-5 h-5 text-white drop-shadow-lg" fill="currentColor" viewBox="0 0 20 20">
                             <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z"/>
@@ -3031,135 +2365,13 @@
     // Initialize trail builder when DOM is ready
     document.addEventListener('DOMContentLoaded', function() {
         window.trailBuilder = new TrailBuilder();
-
-        // Load existing trail route if available
-        @if($trail->route_coordinates && count($trail->route_coordinates) > 0)
-            const existingRoute = @json($trail->route_coordinates);
-            console.log('Loading existing route with', existingRoute.length, 'points');
-            
-            if (existingRoute && existingRoute.length > 1) {
-                // Display the route on the map
-                window.trailBuilder.displayGPXRoute(existingRoute);
-                
-                // Create waypoints from the route
-                window.trailBuilder.createWaypointsFromGPX(existingRoute);
-                
-                // Fit map to route bounds
-                const bounds = L.latLngBounds(existingRoute);
-                window.trailBuilder.map.fitBounds(bounds, { padding: [50, 50] });
-            }
-        @endif
-
-        @if($trail->start_coordinates)
-            // Set start coordinates
-            document.getElementById('start-lat').value = {{ $trail->start_coordinates[0] ?? 0 }};
-            document.getElementById('start-lng').value = {{ $trail->start_coordinates[1] ?? 0 }};
-        @endif
-
-        @if($trail->end_coordinates)
-            // Set end coordinates
-            document.getElementById('end-lat').value = {{ $trail->end_coordinates[0] ?? 0 }};
-            document.getElementById('end-lng').value = {{ $trail->end_coordinates[1] ?? 0 }};
-        @endif
-
-        // ADD THIS: Two-way sync between input fields and display cards
-        const distanceInput = document.querySelector('input[name="distance_km"]');
-        const timeInput = document.querySelector('input[name="estimated_time_hours"]');
-        const elevationInput = document.querySelector('input[name="elevation_gain_m"]');
-        
-        // When user manually edits distance input, update display card
-        if (distanceInput) {
-            distanceInput.addEventListener('input', function() {
-                const distanceDisplay = document.getElementById('route-distance');
-                if (distanceDisplay) {
-                    distanceDisplay.textContent = `${parseFloat(this.value || 0).toFixed(2)} km`;
-                }
-            });
-        }
-        
-        // When user manually edits time input, update display card
-        if (timeInput) {
-            timeInput.addEventListener('input', function() {
-                const timeDisplay = document.getElementById('route-time');
-                if (timeDisplay) {
-                    timeDisplay.textContent = `${parseFloat(this.value || 0).toFixed(1)} hrs`;
-                }
-            });
-        }
-        
-        // When user manually edits elevation input, update display card
-        if (elevationInput) {
-            elevationInput.addEventListener('input', function() {
-                const elevationDisplay = document.getElementById('route-elevation');
-                if (elevationDisplay) {
-                    elevationDisplay.textContent = `${parseInt(this.value || 0)} m`;
-                }
-            });
-        }
     });
-
-    // Waypoint Mode Toggle
-    let waypointModeEnabled = false;
-    const toggleWaypointBtn = document.getElementById('toggle-waypoint-mode');
-    const waypointModeText = document.getElementById('waypoint-mode-text');
-    const trailMap = document.getElementById('trail-map');
-
-    if (toggleWaypointBtn) {
-        toggleWaypointBtn.addEventListener('click', function() {
-            if (!window.trailBuilder) {
-                showToast('Trail builder not initialized', 'error');
-                return;
-            }
-            
-            // Toggle the mode
-            window.trailBuilder.waypointModeEnabled = !window.trailBuilder.waypointModeEnabled;
-            
-            if (window.trailBuilder.waypointModeEnabled) {
-                // Enable waypoint mode
-                this.classList.add('active');
-                waypointModeText.textContent = 'Stop Adding Waypoints';
-                window.trailBuilder.enableWaypointMode();
-                showToast('Click on the map to add waypoints', 'success');
-                
-            } else {
-                // Disable waypoint mode
-                this.classList.remove('active');
-                waypointModeText.textContent = 'Start Adding Waypoints';
-                window.trailBuilder.disableWaypointMode();
-                showToast('Waypoint mode disabled', 'info');
-            }
-        });
-    }
-
-    // Simple toast notification function
-    function showToast(message, type = 'info') {
-        const colors = {
-            success: 'bg-green-500',
-            info: 'bg-blue-500',
-            warning: 'bg-amber-500',
-            error: 'bg-red-500'
-        };
-        
-        const toast = document.createElement('div');
-        toast.className = `fixed bottom-4 right-4 ${colors[type]} text-white px-6 py-3 rounded-lg shadow-lg text-sm font-medium z-50 animate-slide-up`;
-        toast.textContent = message;
-        
-        document.body.appendChild(toast);
-        
-        setTimeout(() => {
-            toast.style.opacity = '0';
-            toast.style.transform = 'translateY(20px)';
-            setTimeout(() => toast.remove(), 300);
-        }, 3000);
-    }
 
     // Enhanced form validation before submit
     document.querySelector('form').addEventListener('submit', function(e) {
         const distanceInput = document.querySelector('input[name="distance_km"]');
         const elevationInput = document.querySelector('input[name="elevation_gain_m"]');
         const timeInput = document.querySelector('input[name="estimated_time_hours"]');
-        const difficultySelect = document.querySelector('select[name="difficulty_level"]');
-        const trailTypeSelect = document.querySelector('select[name="trail_type"]');
         
         // Check if required route data exists
         if (!distanceInput.value || parseFloat(distanceInput.value) === 0) {
@@ -3176,56 +2388,6 @@
                         action: 'confirm',
                         handler: () => {
                             document.getElementById('trail-map').scrollIntoView({ behavior: 'smooth', block: 'center' });
-                        }
-                    }
-                ]
-            });
-            
-            return false;
-        }
-
-        // Check if difficulty is selected
-        if (!difficultySelect.value) {
-            e.preventDefault();
-            
-            validationModal.show({
-                type: 'warning',
-                title: 'Trail Difficulty Required',
-                message: 'Please select a difficulty level for the trail (1-5).',
-                buttons: [
-                    {
-                        label: 'Got it',
-                        variant: 'primary',
-                        action: 'confirm',
-                        handler: () => {
-                            // Switch to specifications tab
-                            document.querySelector('[data-tab="specifications"]').click();
-                            difficultySelect.focus();
-                        }
-                    }
-                ]
-            });
-            
-            return false;
-        }
-
-        // Check if trail type is selected
-        if (!trailTypeSelect.value) {
-            e.preventDefault();
-            
-            validationModal.show({
-                type: 'warning',
-                title: 'Trail Type Required',
-                message: 'Please select a trail type (Loop, Out and Back, or Point to Point).',
-                buttons: [
-                    {
-                        label: 'Got it',
-                        variant: 'primary',
-                        action: 'confirm',
-                        handler: () => {
-                            // Switch to specifications tab
-                            document.querySelector('[data-tab="specifications"]').click();
-                            trailTypeSelect.focus();
                         }
                     }
                 ]
@@ -3258,9 +2420,12 @@
                         handler: () => {
                             // Bypass validation and submit
                             const form = document.querySelector('form');
-                            // Remove the event listener temporarily
+                            const submitBtn = form.querySelector('button[type="submit"]');
+                            
+                            // Temporarily remove the submit handler
                             const newForm = form.cloneNode(true);
                             form.parentNode.replaceChild(newForm, form);
+                            
                             // Submit the form
                             newForm.submit();
                         }
@@ -3271,195 +2436,6 @@
             return false;
         }
     });
-
-    // Tab Switching Logic
-    document.addEventListener('DOMContentLoaded', function() {
-        const tabButtons = document.querySelectorAll('.trail-tab');
-        const tabContents = document.querySelectorAll('.tab-content');
-        
-        tabButtons.forEach(button => {
-            button.addEventListener('click', function() {
-                const tabId = this.getAttribute('data-tab');
-                
-                // Remove active class from all tabs and contents
-                tabButtons.forEach(btn => btn.classList.remove('active'));
-                tabContents.forEach(content => content.classList.remove('active'));
-                
-                // Add active class to clicked tab and corresponding content
-                this.classList.add('active');
-                document.getElementById('tab-' + tabId).classList.add('active');
-            });
-        });
-    });
-
-    // Highlight Mode Toggle
-    const toggleHighlightBtn = document.getElementById('toggle-highlight-mode');
-    const highlightModeText = document.getElementById('highlight-mode-text');
-    let highlightModeEnabled = false;
-
-    if (toggleHighlightBtn) {
-        toggleHighlightBtn.addEventListener('click', function() {
-            if (!window.trailBuilder) {
-                showToast('Trail builder not initialized', 'error');
-                return;
-            }
-            
-            highlightModeEnabled = !highlightModeEnabled;
-            
-            if (highlightModeEnabled) {
-                // Enable highlight mode
-                this.classList.add('active');
-                highlightModeText.textContent = 'Stop Adding Highlights';
-                
-                // Disable waypoint mode if active
-                if (window.trailBuilder.waypointModeEnabled) {
-                    document.getElementById('toggle-waypoint-mode')?.click();
-                }
-                
-                window.trailBuilder.highlightModeEnabled = true;
-                const mapElement = document.getElementById('trail-map');
-                if (mapElement) {
-                    mapElement.classList.add('highlight-mode');
-                    mapElement.classList.remove('waypoint-mode', 'waypoint-disabled');
-                }
-                
-                showToast('Click on the map to place highlight markers', 'success');
-                
-            } else {
-                // Disable highlight mode
-                this.classList.remove('active');
-                highlightModeText.textContent = 'Start Adding Highlights';
-                
-                window.trailBuilder.highlightModeEnabled = false;
-                const mapElement = document.getElementById('trail-map');
-                if (mapElement) {
-                    mapElement.classList.remove('highlight-mode');
-                }
-                
-                // Clear pending highlight if exists
-                if (window.trailBuilder.pendingHighlight) {
-                    window.trailBuilder.highlightsLayer.removeLayer(window.trailBuilder.pendingHighlight);
-                    window.trailBuilder.pendingHighlight = null;
-                }
-                
-                showToast('Highlight mode disabled', 'info');
-            }
-        });
-    }
-
-    // Type selector updates icon and color
-    const highlightTypeSelect = document.getElementById('highlight-type-select');
-    if (highlightTypeSelect) {
-        highlightTypeSelect.addEventListener('change', (e) => {
-            const selectedOption = e.target.options[e.target.selectedIndex];
-            const icon = selectedOption.dataset.icon;
-            const color = selectedOption.dataset.color;
-            
-            if (icon) document.getElementById('highlight-icon-input').value = icon;
-            if (color) document.getElementById('highlight-color-input').value = color;
-        });
-    }
-
-    // Track photos to delete
-    let photosToDelete = [];
-
-    // Remove existing photo
-    function removeExistingPhoto(photoId) {
-        if (confirm('Are you sure you want to remove this photo? This action will be permanent when you save.')) {
-            // Add to deletion list
-            if (!photosToDelete.includes(photoId)) {
-                photosToDelete.push(photoId);
-            }
-            
-            // Update hidden input
-            const deletedPhotosInput = document.getElementById('deleted-photos-input');
-            if (deletedPhotosInput) {
-                deletedPhotosInput.value = JSON.stringify(photosToDelete);
-            }
-            
-            // Hide the photo element with animation
-            const photoElement = document.querySelector(`[data-photo-id="${photoId}"]`);
-            if (photoElement) {
-                photoElement.style.transition = 'opacity 0.3s, transform 0.3s';
-                photoElement.style.opacity = '0';
-                photoElement.style.transform = 'scale(0.8)';
-                
-                setTimeout(() => {
-                    photoElement.style.display = 'none';
-                }, 300);
-            }
-            
-            // Show success message
-            showToast('Photo marked for deletion. Save changes to confirm.', 'warning');
-        }
-    }
-
-    // Set featured photo
-    function setFeaturedPhoto(photoId) {
-        // Update hidden input for featured photo
-        const featuredInput = document.getElementById('featured-photo-id');
-        if (featuredInput) {
-            featuredInput.value = photoId;
-        }
-        
-        // Visual feedback - remove all featured styling
-        document.querySelectorAll('[data-photo-id]').forEach(el => {
-            el.classList.remove('border-yellow-400');
-            el.classList.add('border-gray-200');
-            
-            // Remove featured badges
-            const badge = el.querySelector('.bg-yellow-400');
-            if (badge && badge.textContent.includes('Featured')) {
-                badge.remove();
-            }
-            
-            // Show "Set Featured" button on other photos
-            const setButton = el.querySelector('button[onclick*="setFeaturedPhoto"]');
-            if (setButton) {
-                setButton.style.display = 'block';
-            }
-        });
-        
-        // Add featured styling to selected photo
-        const selectedPhoto = document.querySelector(`[data-photo-id="${photoId}"]`);
-        if (selectedPhoto) {
-            selectedPhoto.classList.remove('border-gray-200');
-            selectedPhoto.classList.add('border-yellow-400');
-            
-            // Add featured badge
-            const badge = document.createElement('div');
-            badge.className = 'absolute top-2 left-2 bg-yellow-400 text-yellow-900 text-xs font-semibold px-2 py-1 rounded shadow-md';
-            badge.innerHTML = '⭐ Featured';
-            selectedPhoto.querySelector('.aspect-square').appendChild(badge);
-            
-            // Hide the "Set Featured" button on this photo
-            const setButton = selectedPhoto.querySelector('button[onclick*="setFeaturedPhoto"]');
-            if (setButton) {
-                setButton.style.display = 'none';
-            }
-        }
-        
-        showToast('Photo set as featured! Save changes to confirm.', 'success');
-    }
-
-    // Show toast notification
-    function showToast(message, type = 'success') {
-        const toast = document.createElement('div');
-        toast.className = `fixed bottom-4 right-4 px-6 py-3 rounded-lg shadow-lg text-white text-sm font-medium z-50 animate-slide-up ${
-            type === 'success' ? 'bg-green-500' : 
-            type === 'warning' ? 'bg-yellow-500' : 
-            'bg-red-500'
-        }`;
-        toast.textContent = message;
-        document.body.appendChild(toast);
-        
-        setTimeout(() => {
-            toast.style.transition = 'opacity 0.3s, transform 0.3s';
-            toast.style.opacity = '0';
-            toast.style.transform = 'translateY(10px)';
-            setTimeout(() => toast.remove(), 300);
-        }, 3000);
-    }
 </script>
 
 <style>
@@ -3566,150 +2542,6 @@
 /* Modal backdrop blur effect */
 .backdrop-blur-sm {
     backdrop-filter: blur(4px);
-}
-
-/* Tab Navigation Styling */
-.trail-tab {
-    position: relative;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 48px;
-    height: 48px;
-    border-radius: 0.5rem;
-    color: hsl(var(--muted-foreground));
-    transition: all 0.2s ease;
-    cursor: pointer;
-    border: none;
-    background: transparent;
-}
-
-.trail-tab:hover {
-    background-color: hsl(var(--accent));
-    color: hsl(var(--accent-foreground));
-}
-
-.trail-tab.active {
-    background-color: hsl(var(--primary));
-    color: hsl(var(--primary-foreground));
-    box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1);
-}
-
-/* Tooltip on hover */
-.trail-tab::after {
-    content: attr(title);
-    position: absolute;
-    left: 100%;
-    margin-left: 12px;
-    padding: 6px 12px;
-    background-color: hsl(var(--popover));
-    color: hsl(var(--popover-foreground));
-    border: 1px solid hsl(var(--border));
-    border-radius: 0.375rem;
-    font-size: 0.75rem;
-    white-space: nowrap;
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.2s ease;
-    z-index: 50;
-    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
-}
-
-.trail-tab:hover::after {
-    opacity: 1;
-}
-
-/* Tab Content */
-.tab-content {
-    display: none;
-}
-
-.tab-content.active {
-    display: block;
-}
-
-/* Waypoint Toggle Button States */
-#toggle-waypoint-mode {
-    position: relative;
-}
-
-#toggle-waypoint-mode.active {
-    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-    border-color: #059669;
-    color: white;
-    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
-}
-
-#toggle-waypoint-mode.active:hover {
-    background: linear-gradient(135deg, #059669 0%, #047857 100%);
-}
-
-/* Map cursor states */
-#trail-map.waypoint-mode {
-    cursor: crosshair !important;
-}
-
-#trail-map.waypoint-disabled {
-    cursor: not-allowed !important;
-}
-
-/* Pulse animation for active button */
-#toggle-waypoint-mode.active::before {
-    content: '';
-    position: absolute;
-    top: -2px;
-    left: -2px;
-    right: -2px;
-    bottom: -2px;
-    background: inherit;
-    border-radius: inherit;
-    opacity: 0;
-    animation: pulse-ring 2s infinite;
-}
-
-@keyframes pulse-ring {
-    0% {
-        opacity: 0.6;
-        transform: scale(1);
-    }
-    100% {
-        opacity: 0;
-        transform: scale(1.05);
-    }
-}
-
-/* Toast animation */
-@keyframes slide-up {
-    from {
-        opacity: 0;
-        transform: translateY(20px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-.animate-slide-up {
-    animation: slide-up 0.3s ease-out;
-    transition: all 0.3s ease;
-}
-
-/* Highlight Mode Button */
-#toggle-highlight-mode.active {
-    background: linear-gradient(135deg, #8B5CF6 0%, #7C3AED 100%);
-    border-color: #7C3AED;
-    color: white;
-    box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);
-}
-
-#toggle-highlight-mode.active:hover {
-    background: linear-gradient(135deg, #7C3AED 0%, #6D28D9 100%);
-}
-
-/* Highlight mode cursor */
-#trail-map.highlight-mode {
-    cursor: pointer !important;
 }
 </style>
 @endpush

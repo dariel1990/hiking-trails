@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use App\Models\Trail;
+use App\Models\TrailMedia;
 use App\Models\TrailPhoto;
 
 class AdminController extends Controller
@@ -64,8 +65,13 @@ class AdminController extends Controller
             'total_trails' => Trail::count(),
             'featured_trails' => Trail::featured()->count(),
             'active_trails' => Trail::active()->count(),
-            'total_photos' => TrailPhoto::count(),
+            'total_photos' => TrailMedia::count(),
             'recent_trails' => Trail::latest()->take(5)->get(),
+            
+            // Add GPX stats
+            'gpx_trails' => Trail::where('data_source', 'gpx')->count(),
+            'manual_trails' => Trail::where('data_source', 'manual')->count(),
+            'mixed_trails' => Trail::where('data_source', 'mixed')->count(),
         ];
 
         return view('admin.dashboard', compact('stats'));

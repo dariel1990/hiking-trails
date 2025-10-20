@@ -11,10 +11,6 @@ Route::get('/trails', [TrailController::class, 'index'])->name('trails.index');
 Route::get('/trails/{trail}', [TrailController::class, 'show'])->name('trails.show');
 Route::get('/map', [TrailController::class, 'map'])->name('map');
 
-// API Routes for map data
-Route::get('/api/trails', [TrailController::class, 'apiIndex']);
-Route::get('/api/trails/{trail}', [TrailController::class, 'apiShow']);
-
 // ADMIN ROUTES
 Route::prefix('admin')->name('admin.')->group(function () {
     // Guest routes (login)
@@ -24,7 +20,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
     });
     
     // Protected admin routes
-    Route::middleware('admin')->group(function () {
+    Route::middleware(['auth', 'admin', 'throttle:10,1'])->group(function () {
         Route::post('/logout', [AdminController::class, 'logout'])->name('logout');
         Route::get('/dashboard', [AdminController::class, 'dashboard'])->name('dashboard');
         
@@ -33,11 +29,19 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::post('/trails/{trail}/photos', [AdminTrailController::class, 'uploadPhotos'])->name('trails.photos.store');
         Route::delete('/photos/{photo}', [AdminTrailController::class, 'deletePhoto'])->name('photos.delete');
 
-         // Trail Highlights Management
-        Route::get('/trails/{trail}/highlights', [AdminTrailController::class, 'highlights'])->name('admin.trails.highlights');
-        Route::post('/trails/{trail}/highlights', [AdminTrailController::class, 'storeHighlight'])->name('admin.trails.highlights.store');
-        Route::put('/trails/{trail}/highlights/{highlight}', [AdminTrailController::class, 'updateHighlight'])->name('admin.trails.highlights.update');
-        Route::delete('/trails/{trail}/highlights/{highlight}', [AdminTrailController::class, 'deleteHighlight'])->name('admin.trails.highlights.delete');
+        // Media Management Routes
+        // Route::get('/trails/{trail}/media', [AdminTrailController::class, 'mediaManagement'])->name('trails.media');
+        // Route::post('/trails/{trail}/media/upload', [AdminTrailController::class, 'uploadMedia'])->name('trails.media.upload');
+        // Route::post('/trails/{trail}/media/{media}/link/{feature}', [AdminTrailController::class, 'linkMediaToFeature'])->name('admin.trails.media.link');
+        // Route::delete('/trails/{trail}/media/{media}/link/{feature}', [AdminTrailController::class, 'unlinkMediaFromFeature'])->name('admin.trails.media.unlink');
+        // Route::put('/trails/{trail}/media/{media}', [AdminTrailController::class, 'updateMedia'])->name('trails.media.update');
+        // Route::delete('/trails/{trail}/media/{media}', [AdminTrailController::class, 'deleteMedia'])->name('trails.media.delete');
+
+        // GPX API endpoints (add these)
+        Route::post('/trails/gpx/preview', [AdminTrailController::class, 'previewGpx'])
+            ->name('trails.gpx.preview');
+        Route::post('/trails/{trail}/gpx/compare', [AdminTrailController::class, 'compareGpx'])
+            ->name('trails.gpx.compare');
     });
 
    
