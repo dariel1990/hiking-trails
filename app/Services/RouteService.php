@@ -96,32 +96,68 @@ class RouteService
      */
     public function getElevationProfile($coordinates)
     {
+        if (empty($coordinates) || count($coordinates) < 2) {
+            Log::error('Invalid coordinates for elevation profile');
+            return null;
+        }
+
         try {
-            // Convert coordinates to the format ORS expects
-            $locations = array_map(function($coord) {
-                return [$coord[1], $coord[0]]; // Convert [lat, lng] to [lng, lat]
-            }, $coordinates);
-
-            $response = Http::withHeaders([
-                'Authorization' => $this->apiKey,
-                'Content-Type' => 'application/json',
-            ])->post($this->baseUrl . '/elevation/line', [
-                'format_in' => 'geojson',
-                'format_out' => 'geojson',
-                'geometry' => [
-                    'coordinates' => $locations,
-                    'type' => 'LineString'
-                ]
-            ]);
-
-            if ($response->successful()) {
-                return $response->json();
+            // Limit to 100 points to avoid API rate limits
+            if (count($coordinates) > 100) {
+                $step = max(1, floor(count($coordinates) / 100));
+                $sampledCoordinates = [];
+                for ($i = 0; $i < count($coordinates); $i += $step) {
+                    $sampledCoordinates[] = $coordinates[$i];
+                }
+                // Always include the last point
+                if (end($sampledCoordinates) !== end($coordinates)) {
+                    $sampledCoordinates[] = end($coordinates);
+                }
+                $coordinates = $sampledCoordinates;
             }
 
+            // Format locations for OpenTopoData API (lat,lng format)
+            $locations = implode('|', array_map(function($coord) {
+                return $coord[0] . ',' . $coord[1];
+            }, $coordinates));
+
+            Log::info('Fetching elevation data for ' . count($coordinates) . ' points');
+
+            // Call OpenTopoData API (free, no API key required)
+            $response = Http::timeout(30)->get('https://api.opentopodata.org/v1/aster30m', [
+                'locations' => $locations
+            ]);
+
+            if ($response->successful() && isset($response->json()['results'])) {
+                $results = $response->json()['results'];
+                
+                Log::info('Elevation data received: ' . count($results) . ' results');
+
+                // Add elevation to coordinates
+                $coordinatesWithElevation = array_map(function($coord, $result) {
+                    return [
+                        (float) $coord[0], // latitude
+                        (float) $coord[1], // longitude
+                        (float) ($result['elevation'] ?? 0) // elevation in meters
+                    ];
+                }, $coordinates, $results);
+
+                return [
+                    'geometry' => [
+                        'type' => 'LineString',
+                        'coordinates' => $coordinatesWithElevation
+                    ],
+                    'properties' => [
+                        'samples' => count($coordinatesWithElevation)
+                    ]
+                ];
+            }
+
+            Log::error('Failed to fetch elevation data from API');
             return null;
 
         } catch (\Exception $e) {
-            Log::error('Elevation profile failed', ['error' => $e->getMessage()]);
+            Log::error('Elevation API error: ' . $e->getMessage());
             return null;
         }
     }

@@ -440,17 +440,33 @@
                                         </div>
                                         
                                         <div class="space-y-2">
-                                            <label class="text-xs font-medium">Photo or Video (Optional)</label>
+                                            <label class="text-xs font-medium">Photo (Optional)</label>
                                             <input type="file" 
                                                 id="highlight-media-input" 
-                                                accept="image/*,video/*" 
+                                                accept="image/*" 
                                                 class="flex h-9 w-full text-sm rounded-md border border-input bg-background px-3 py-1 file:mr-4 file:py-1 file:px-3 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-primary file:text-primary-foreground hover:file:bg-primary/90">
-                                            <p class="text-xs text-muted-foreground">Upload 1 photo or 1 video for this feature</p>
+                                            <p class="text-xs text-muted-foreground">Upload 1 photo for this feature</p>
                                             
                                             <!-- Preview container -->
                                             <div id="highlight-media-preview" class="hidden mt-2">
                                                 <div class="relative w-full h-20 rounded-md border-2 border-dashed border-gray-300 bg-gray-50 flex items-center justify-center">
                                                     <span class="text-xs text-gray-500">Preview will appear here</span>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div class="space-y-2">
+                                            <label class="text-xs font-medium">Video URL (Optional)</label>
+                                            <input type="url" 
+                                                id="highlight-video-url-input" 
+                                                placeholder="https://www.youtube.com/watch?v=..." 
+                                                class="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm">
+                                            <p class="text-xs text-muted-foreground">Add YouTube or Vimeo video link</p>
+                                            
+                                            <!-- Video Preview container -->
+                                            <div id="highlight-video-preview" class="hidden mt-2">
+                                                <div class="relative w-full rounded-md overflow-hidden border" style="padding-bottom: 56.25%;">
+                                                    <iframe id="highlight-video-iframe" class="absolute top-0 left-0 w-full h-full" frameborder="0" allowfullscreen></iframe>
                                                 </div>
                                             </div>
                                         </div>
@@ -719,15 +735,15 @@
             <div class="p-6 space-y-6">
                 <div class="space-y-2">
                     <h3 class="text-lg font-semibold">Trail Media</h3>
-                    <p class="text-sm text-muted-foreground">Upload general trail photos (not feature-specific). You can add feature-specific media later in Media Management.</p>
+                    <p class="text-sm text-muted-foreground">Upload up to 10 photos and add video links. First item will be featured.</p>
                 </div>
-                
-                <!-- Drag & Drop Zone -->
+
+                <!-- Drag & Drop Zone for Photos -->
                 <div id="photo-upload-zone" class="border-2 border-dashed border-input rounded-lg p-8 text-center hover:border-primary transition-colors cursor-pointer">
                     <input type="file" id="photo-input" name="photos[]" multiple accept="image/*" class="hidden" max="10">
                     <div id="upload-prompt">
                         <svg class="mx-auto h-12 w-12 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 1 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
                         </svg>
                         <p class="mt-2 text-sm text-muted-foreground">
                             <span class="font-semibold text-primary">Click to upload</span> or drag and drop
@@ -736,10 +752,29 @@
                     </div>
                 </div>
 
+                <!-- Video URL Input Section -->
+                <div class="space-y-3 mt-4 p-4 bg-gray-50 rounded-lg border">
+                    <label class="text-sm font-medium">Add Video URL (Optional)</label>
+                    <div class="flex gap-2">
+                        <input type="url" 
+                            id="trail-video-url-input" 
+                            placeholder="https://www.youtube.com/watch?v=..." 
+                            class="flex-1 h-10 rounded-md border border-input bg-background px-3 py-2 text-sm">
+                        <button type="button" 
+                            id="add-video-url-btn"
+                            class="px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:bg-primary/90">
+                            Add Video
+                        </button>
+                    </div>
+                    <p class="text-xs text-muted-foreground">Add YouTube or Vimeo video links</p>
+                </div>
+
+                <input type="hidden" name="trail_video_urls_json" id="trail-video-urls-json" value="[]">
+
                 <!-- Photo Preview Grid -->
                 <div id="photo-preview-grid" class="hidden">
                     <div class="flex items-center justify-between mb-3">
-                        <p class="text-sm font-medium">Uploaded Photos (<span id="photo-count">0</span>/10)</p>
+                        <p class="text-sm font-medium">New Media (<span id="photo-count">0</span>/10)</p>
                         <button type="button" id="clear-photos" class="text-sm text-red-600 hover:text-red-800">Clear All</button>
                     </div>
                     <div id="photo-previews" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
@@ -1120,7 +1155,11 @@
         setupMediaPreview() {
             const mediaInput = document.getElementById('highlight-media-input');
             const previewContainer = document.getElementById('highlight-media-preview');
+            const videoUrlInput = document.getElementById('highlight-video-url-input');
+            const videoPreview = document.getElementById('highlight-video-preview');
+            const videoIframe = document.getElementById('highlight-video-iframe');
             
+            // Photo preview
             if (mediaInput) {
                 mediaInput.addEventListener('change', function() {
                     if (this.files && this.files[0]) {
@@ -1134,18 +1173,9 @@
                                         <img src="${e.target.result}" alt="Preview" class="w-full h-full object-cover">
                                     </div>
                                 `;
-                            } else if (file.type.startsWith('video/')) {
-                                previewContainer.innerHTML = `
-                                    <div class="relative w-full h-20 rounded-md overflow-hidden border bg-gray-900 flex items-center justify-center">
-                                        <svg class="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 20 20">
-                                            <path d="M2 6a2 2 0 012-2h6a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V6zM14.553 7.106A1 1 0 0014 8v4a1 1 0 00.553.894l2 1A1 1 0 0018 13V7a1 1 0 00-1.447-.894l-2 1z"/>
-                                        </svg>
-                                        <span class="ml-2 text-xs text-white">${file.name}</span>
-                                    </div>
-                                `;
+                                previewContainer.classList.remove('hidden');
                             }
-                            previewContainer.classList.remove('hidden');
-                        };
+                        }
                         
                         reader.readAsDataURL(file);
                     } else {
@@ -1153,6 +1183,40 @@
                     }
                 });
             }
+            
+            // Video URL preview
+            if (videoUrlInput) {
+                videoUrlInput.addEventListener('input', function() {
+                    const url = this.value.trim();
+                    if (url) {
+                        const embedUrl = window.trailBuilder.getVideoEmbedUrl(url);
+                        if (embedUrl) {
+                            videoIframe.src = embedUrl;
+                            videoPreview.classList.remove('hidden');
+                        } else {
+                            videoPreview.classList.add('hidden');
+                        }
+                    } else {
+                        videoPreview.classList.add('hidden');
+                    }
+                });
+            }
+        }
+
+        getVideoEmbedUrl(url) {
+            // YouTube
+            let match = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\s]+)/);
+            if (match) {
+                return `https://www.youtube.com/embed/${match[1]}`;
+            }
+            
+            // Vimeo
+            match = url.match(/vimeo\.com\/(\d+)/);
+            if (match) {
+                return `https://player.vimeo.com/video/${match[1]}`;
+            }
+            
+            return null;
         }
 
         // Decode Google's polyline algorithm
@@ -1873,6 +1937,18 @@
                     // Add index reference to highlight data
                     highlight.mediaIndex = index;
                 }
+                
+                // Add video URL as hidden input if exists
+                if (highlight.videoUrl) {
+                    const videoInput = document.createElement('input');
+                    videoInput.type = 'hidden';
+                    videoInput.name = `highlight_video_url_${index}`;
+                    videoInput.value = highlight.videoUrl;
+                    form.appendChild(videoInput);
+                    
+                    // Add video index reference to highlight data
+                    highlight.videoIndex = index;
+                }
             });
             
             // Update the highlights data input with media indices
@@ -1880,15 +1956,42 @@
         }
 
         validateBeforeSubmit() {
+            console.log('🚀 validateBeforeSubmit called');
+            
             this.prepareMediaFilesForSubmission();
+            
+            // IMPORTANT: Update video URLs right before validation
+            if (window.photoManager) {
+                console.log('🔄 Calling updateVideoUrlInputs from validateBeforeSubmit');
+                window.photoManager.updateVideoUrlInputs();
+                
+                // Double-check the inputs are there
+                const form = document.querySelector('form');
+                const videoInputs = form.querySelectorAll('input[name="trail_video_urls[]"]');
+                console.log('🎬 Video inputs found in form:', videoInputs.length);
+                videoInputs.forEach((input, index) => {
+                    console.log(`   Video input [${index}]:`, input.value);
+                });
+                
+                // Check if inputs are inside the form
+                videoInputs.forEach((input, index) => {
+                    console.log(`   Input [${index}] parent:`, input.parentElement.tagName);
+                    console.log(`   Input [${index}] is in form:`, form.contains(input));
+                });
+            }
+            
             const issues = this.validateRoute();
             
             if (issues.length > 0) {
                 const message = 'Route validation issues:\n' + issues.map(issue => '• ' + issue).join('\n') + 
                             '\n\nDo you want to submit anyway?';
-                return confirm(message);
+                
+                if (!confirm(message)) {
+                    return false;
+                }
             }
             
+            console.log('✅ Validation passed, form will submit');
             return true;
         }
 
@@ -2209,6 +2312,9 @@
                 return;
             }
 
+            const videoUrlInput = document.getElementById('highlight-video-url-input');
+            const videoUrl = videoUrlInput ? videoUrlInput.value.trim() : '';
+
             const highlight = {
                 id: Date.now(),
                 type: type,
@@ -2217,13 +2323,14 @@
                 icon: icon,
                 color: color,
                 coordinates: this.pendingHighlight.coordinates,
-                mediaFile: mediaInput.files[0] || null 
+                mediaFile: mediaInput.files[0] || null,
+                videoUrl: videoUrl || null
             };
 
             this.highlights.push(highlight);
             this.updateHighlightsList();
             this.updateHighlightsInput();
-            
+
             // Clear form
             document.getElementById('highlight-type-select').value = '';
             document.getElementById('highlight-name-input').value = '';
@@ -2231,6 +2338,10 @@
             document.getElementById('highlight-icon-input').value = '';
             document.getElementById('highlight-media-input').value = '';
             document.getElementById('highlight-media-preview').classList.add('hidden');
+            if (videoUrlInput) {
+                videoUrlInput.value = '';
+                document.getElementById('highlight-video-preview').classList.add('hidden');
+            }
             
             // Remove pending marker and add permanent one
             if (this.pendingHighlight) {
@@ -2318,7 +2429,9 @@
     class PhotoUploadManager {
         constructor() {
             this.photos = [];
+            this.videos = [];
             this.maxPhotos = 10;
+            this.maxTotal = 10;
             this.featuredIndex = 0;
             this.init();
         }
@@ -2326,6 +2439,8 @@
         init() {
             const uploadZone = document.getElementById('photo-upload-zone');
             const photoInput = document.getElementById('photo-input');
+            const addVideoBtn = document.getElementById('add-video-url-btn');
+            const videoUrlInput = document.getElementById('trail-video-url-input');
 
             // Click to upload
             uploadZone.addEventListener('click', () => photoInput.click());
@@ -2356,6 +2471,146 @@
             document.getElementById('clear-photos')?.addEventListener('click', () => {
                 this.clearAll();
             });
+            
+            // Add video URL button - THIS WAS MISSING!
+            if (addVideoBtn && videoUrlInput) {
+                addVideoBtn.addEventListener('click', () => {
+                    const url = videoUrlInput.value.trim();
+                    if (url) {
+                        this.addVideoUrl(url);
+                        videoUrlInput.value = '';
+                    } else {
+                        alert('Please enter a valid video URL');
+                    }
+                });
+                
+                // Allow Enter key to add video
+                videoUrlInput.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        addVideoBtn.click();
+                    }
+                });
+            }
+        }
+
+        addVideoUrl(url) {
+            console.log('🎬 addVideoUrl called with:', url);
+            
+            const totalMedia = this.photos.length + this.videos.length;
+            console.log('📊 Current media count:', { photos: this.photos.length, videos: this.videos.length, total: totalMedia });
+            
+            if (totalMedia >= this.maxTotal) {
+                alert(`Maximum of ${this.maxTotal} media items (photos + videos) reached`);
+                return;
+            }
+            
+            // Validate URL format
+            const embedUrl = this.getVideoEmbedUrl(url);
+            console.log('🔗 Embed URL:', embedUrl);
+            
+            if (!embedUrl) {
+                alert('Please enter a valid YouTube or Vimeo URL');
+                return;
+            }
+            
+            const video = {
+                url: url,
+                embedUrl: embedUrl,
+                id: Date.now() + Math.random(),
+                type: 'video'
+            };
+            
+            this.videos.push(video);
+            console.log('✅ Video added to array. Total videos:', this.videos.length);
+            console.log('📹 Videos array:', this.videos);
+            
+            this.render();
+        }
+
+        getVideoEmbedUrl(url) {
+            // YouTube
+            let match = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\s]+)/);
+            if (match) {
+                return `https://www.youtube.com/embed/${match[1]}`;
+            }
+            
+            // Vimeo
+            match = url.match(/vimeo\.com\/(\d+)/);
+            if (match) {
+                return `https://player.vimeo.com/video/${match[1]}`;
+            }
+            
+            return null;
+        }
+
+        removeVideo(videoId) {
+            const index = this.videos.findIndex(v => v.id == videoId);
+            if (index === -1) {
+                console.error('Video not found:', videoId);
+                return;
+            }
+            
+            const globalIndex = this.photos.length + index;
+            
+            this.videos.splice(index, 1);
+            
+            // Adjust featured index if needed
+            const totalPhotos = this.photos.length;
+            const totalVideos = this.videos.length;
+            const totalMedia = totalPhotos + totalVideos;
+            
+            if (this.featuredIndex === globalIndex) {
+                // If we're deleting the featured item, reset to first item
+                this.featuredIndex = totalMedia > 0 ? 0 : -1;
+            } else if (this.featuredIndex > globalIndex) {
+                // If featured is after deleted item, adjust index
+                this.featuredIndex--;
+            }
+            
+            this.render();
+        }
+
+        playVideo(embedUrl) {
+            // Create modal
+            const modal = document.createElement('div');
+            modal.className = 'fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50';
+            modal.innerHTML = `
+                <div class="relative w-full max-w-4xl mx-4">
+                    <button onclick="this.closest('.fixed').remove()" 
+                        class="absolute -top-10 right-0 text-white hover:text-gray-300">
+                        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                    </button>
+                    <div class="relative" style="padding-bottom: 56.25%;">
+                        <iframe src="${embedUrl}" 
+                            class="absolute top-0 left-0 w-full h-full rounded-lg" 
+                            frameborder="0" 
+                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                            allowfullscreen>
+                        </iframe>
+                    </div>
+                </div>
+            `;
+            
+            // Close on click outside
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) {
+                    modal.remove();
+                }
+            });
+            
+            // Close on Escape key
+            const escHandler = (e) => {
+                if (e.key === 'Escape') {
+                    modal.remove();
+                    document.removeEventListener('keydown', escHandler);
+                }
+            };
+            document.addEventListener('keydown', escHandler);
+            
+            document.body.appendChild(modal);
         }
 
         handleFiles(files) {
@@ -2398,15 +2653,25 @@
             reader.readAsDataURL(file);
         }
 
-        removePhoto(id) {
-            const index = this.photos.findIndex(p => p.id === id);
-            if (index === -1) return;
+        removePhoto(index) {
+            if (index < 0 || index >= this.photos.length) {
+                console.error('Invalid photo index:', index);
+                return;
+            }
 
             this.photos.splice(index, 1);
             
             // Adjust featured index if needed
-            if (this.featuredIndex >= this.photos.length) {
-                this.featuredIndex = Math.max(0, this.photos.length - 1);
+            const totalPhotos = this.photos.length;
+            const totalVideos = this.videos.length;
+            const totalMedia = totalPhotos + totalVideos;
+            
+            if (this.featuredIndex === index) {
+                // If we're deleting the featured item, reset to first item
+                this.featuredIndex = totalMedia > 0 ? 0 : -1;
+            } else if (this.featuredIndex > index) {
+                // If featured is after deleted item, adjust index
+                this.featuredIndex--;
             }
 
             this.render();
@@ -2418,10 +2683,13 @@
         }
 
         clearAll() {
-            if (this.photos.length === 0) return;
+            const totalMedia = this.photos.length + this.videos.length;
             
-            if (confirm('Remove all photos?')) {
+            if (totalMedia === 0) return;
+            
+            if (confirm('Remove all media (photos and videos)?')) {
                 this.photos = [];
+                this.videos = [];
                 this.featuredIndex = 0;
                 this.render();
             }
@@ -2434,70 +2702,218 @@
             const uploadPrompt = document.getElementById('upload-prompt');
             const uploadZone = document.getElementById('photo-upload-zone');
 
+            // Safety check - if essential elements don't exist, don't render
+            if (!previewsContainer) {
+                console.warn('Preview container not found, skipping render');
+                return;
+            }
+
+            const totalMedia = this.photos.length + this.videos.length;
+
             // Update count
-            photoCount.textContent = this.photos.length;
+            if (photoCount) {
+                photoCount.textContent = totalMedia;
+            }
 
             // Show/hide sections
-            if (this.photos.length > 0) {
-                previewGrid.classList.remove('hidden');
-                uploadPrompt.classList.add('hidden');
-                uploadZone.classList.add('border-solid');
+            if (totalMedia > 0) {
+                if (previewGrid) previewGrid.classList.remove('hidden');
+                if (uploadPrompt) uploadPrompt.classList.add('hidden');
+                if (uploadZone) uploadZone.classList.add('border-solid');
             } else {
-                previewGrid.classList.add('hidden');
-                uploadPrompt.classList.remove('hidden');
-                uploadZone.classList.remove('border-solid');
+                if (previewGrid) previewGrid.classList.add('hidden');
+                if (uploadPrompt) uploadPrompt.classList.remove('hidden');
+                if (uploadZone) uploadZone.classList.remove('border-solid');
+            }
+
+            // Combine photos and videos for rendering
+            const allMedia = [];
+            
+            // Add photos
+            this.photos.forEach((photo, index) => {
+                allMedia.push({
+                    type: 'photo',
+                    data: photo,
+                    index: index,
+                    globalIndex: index
+                });
+            });
+            
+            // Add videos
+            this.videos.forEach((video, index) => {
+                allMedia.push({
+                    type: 'video',
+                    data: video,
+                    index: index,
+                    globalIndex: this.photos.length + index
+                });
+            });
+
+            // Render previews
+            if (!previewsContainer) {
+                console.warn('Preview container not found');
+                return;
             }
 
             // Render previews
-            previewsContainer.innerHTML = this.photos.map((photo, index) => `
-                <div class="relative group photo-preview-item" data-photo-id="${photo.id}" draggable="true">
-                    <img src="${photo.dataUrl}" alt="Preview ${index + 1}" 
-                        class="w-full h-32 object-cover rounded-lg border-2 ${index === this.featuredIndex ? 'border-yellow-400' : 'border-gray-200'}">
+            previewsContainer.innerHTML = allMedia.map((item) => {
+                if (item.type === 'photo') {
+                    const photo = item.data;
+                    const index = item.index;
+                    const globalIndex = item.globalIndex;
                     
-                    <!-- Featured Badge -->
-                    ${index === this.featuredIndex ? `
-                        <div class="absolute top-2 left-2">
-                            <span class="inline-flex items-center rounded-full bg-yellow-400 px-2 py-1 text-xs font-medium text-yellow-900">
-                                <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
-                                </svg>
-                                Featured
-                            </span>
+                    return `
+                        <div class="space-y-2">
+                            <div class="relative group photo-preview-item" data-photo-id="${photo.id}">
+                                <img src="${photo.dataUrl}" alt="Preview ${index + 1}" 
+                                    class="w-full h-32 object-cover rounded-lg border-2 ${globalIndex === this.featuredIndex ? 'border-yellow-400' : 'border-gray-200'}">
+                                
+                                ${globalIndex === this.featuredIndex ? `
+                                    <div class="absolute top-2 left-2">
+                                        <span class="inline-flex items-center rounded-full bg-yellow-400 px-2 py-1 text-xs font-medium text-yellow-900">
+                                            ⭐ Featured
+                                        </span>
+                                    </div>
+                                ` : ''}
+                            </div>
+                            
+                            <!-- Buttons Below -->
+                            <div class="flex gap-2">
+                                <button type="button" 
+                                        onclick="window.photoManager.setFeatured(${globalIndex})" 
+                                        class="flex-1 px-3 py-1.5 text-xs font-medium rounded ${globalIndex === this.featuredIndex ? 'bg-yellow-400 text-yellow-900' : 'bg-gray-100 hover:bg-gray-200 text-gray-700'}">
+                                    ${globalIndex === this.featuredIndex ? '⭐ Featured' : 'Set Featured'}
+                                </button>
+                                <button type="button" 
+                                        onclick="window.photoManager.removePhoto(${index})" 
+                                        class="px-3 py-1.5 text-xs font-medium rounded bg-red-100 hover:bg-red-200 text-red-700">
+                                    Delete
+                                </button>
+                            </div>
                         </div>
-                    ` : ''}
+                    `;
+                } else {
+                    // Video
+                    const video = item.data;
+                    const globalIndex = item.globalIndex;
                     
-                    <!-- Controls overlay -->
-                    <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-50 transition-all duration-200 rounded-lg flex items-center justify-center gap-2">
-                        <button type="button" onclick="window.photoManager.setFeatured(${index})" 
-                                class="opacity-0 group-hover:opacity-100 transition-opacity bg-white rounded-full p-2 hover:bg-yellow-100"
-                                title="Set as featured">
-                            <svg class="w-4 h-4 ${index === this.featuredIndex ? 'text-yellow-500' : 'text-gray-600'}" fill="currentColor" viewBox="0 0 20 20">
-                                <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
-                            </svg>
-                        </button>
-                        <button type="button" onclick="window.photoManager.removePhoto('${photo.id}')" 
-                                class="opacity-0 group-hover:opacity-100 transition-opacity bg-white rounded-full p-2 hover:bg-red-100"
-                                title="Remove photo">
-                            <svg class="w-4 h-4 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-                            </svg>
-                        </button>
-                    </div>
+                    return `
+                        <div class="space-y-2">
+                            <div class="relative group photo-preview-item cursor-pointer" data-video-id="${video.id}"
+                                onclick="window.photoManager.playVideo('${video.embedUrl.replace(/'/g, "\\'")}')">
+                                <div class="w-full h-32 bg-gray-900 rounded-lg border-2 ${globalIndex === this.featuredIndex ? 'border-yellow-400' : 'border-gray-200'} flex items-center justify-center">
+                                    <svg class="w-12 h-12 text-white opacity-75" fill="currentColor" viewBox="0 0 20 20">
+                                        <path d="M2 6a2 2 0 012-2h6a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V6zM14.553 7.106A1 1 0 0014 8v4a1 1 0 00.553.894l2 1A1 1 0 0018 13V7a1 1 0 00-1.447-.894l-2 1z"/>
+                                    </svg>
+                                </div>
+                                
+                                ${globalIndex === this.featuredIndex ? `
+                                    <div class="absolute top-2 left-2">
+                                        <span class="inline-flex items-center rounded-full bg-yellow-400 px-2 py-1 text-xs font-medium text-yellow-900">
+                                            ⭐ Featured
+                                        </span>
+                                    </div>
+                                ` : ''}
+                                
+                                <div class="absolute bottom-2 left-2">
+                                    <span class="inline-flex items-center rounded bg-black bg-opacity-75 px-2 py-1 text-xs font-medium text-white">
+                                        🎥 Video
+                                    </span>
+                                </div>
+                                
+                                <!-- Play Button Overlay -->
+                                <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                    <div class="bg-white bg-opacity-90 rounded-full p-3 shadow-lg group-hover:scale-110 transition-transform">
+                                        <svg class="w-8 h-8 text-gray-900" fill="currentColor" viewBox="0 0 20 20">
+                                            <path d="M6.3 2.841A1.5 1.5 0 004 4.11V15.89a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z"/>
+                                        </svg>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Buttons Below -->
+                            <div class="flex gap-2">
+                                <button type="button" 
+                                        onclick="event.stopPropagation(); window.photoManager.setFeatured(${globalIndex})" 
+                                        class="flex-1 px-3 py-1.5 text-xs font-medium rounded ${globalIndex === this.featuredIndex ? 'bg-yellow-400 text-yellow-900' : 'bg-gray-100 hover:bg-gray-200 text-gray-700'}">
+                                    ${globalIndex === this.featuredIndex ? '⭐ Featured' : 'Set Featured'}
+                                </button>
+                                <button type="button" 
+                                        onclick="event.stopPropagation(); window.photoManager.removeVideo('${video.id}')" 
+                                        class="px-3 py-1.5 text-xs font-medium rounded bg-red-100 hover:bg-red-200 text-red-700">
+                                    Delete
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                }
+            }).join('');
 
-                    <!-- Drag handle -->
-                    <div class="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity cursor-move">
-                        <svg class="w-5 h-5 text-white drop-shadow-lg" fill="currentColor" viewBox="0 0 20 20">
-                            <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z"/>
-                        </svg>
-                    </div>
-                </div>
-            `).join('');
+            // Update DataTransfer for photos
+            const dataTransfer = new DataTransfer();
+            this.photos.forEach(photo => {
+                dataTransfer.items.add(photo.file);
+            });
 
-            // Setup drag and drop reordering
-            this.setupDragAndDrop();
+            const photoInput = document.getElementById('photo-input');
+            if (photoInput) {
+                photoInput.files = dataTransfer.files;
+            }
 
-            // Update form data
-            this.updateFormData();
+            // Update featured index
+            const featuredInput = document.getElementById('featured-photo-index');
+            if (featuredInput) {
+                featuredInput.value = this.featuredIndex;
+            }
+            
+            // Create hidden inputs for video URLs
+            this.updateVideoUrlInputs();
+        }
+
+        updateVideoUrlInputs() {
+            console.log('🔄 updateVideoUrlInputs called');
+            console.log('📹 Videos to add:', this.videos);
+            
+            const form = document.querySelector('form');
+            
+            if (!form) {
+                console.error('❌ Form not found');
+                return;
+            }
+            
+            console.log('✅ Form found');
+            
+            // METHOD 1: Update the permanent hidden input (JSON format)
+            const jsonInput = document.getElementById('trail-video-urls-json');
+            if (jsonInput) {
+                const videoUrls = this.videos.map(v => v.url);
+                jsonInput.value = JSON.stringify(videoUrls);
+                console.log('✅ Updated trail-video-urls-json:', jsonInput.value);
+            }
+            
+            // METHOD 2: Also create individual hidden inputs as backup
+            // Remove old video URL inputs
+            const oldInputs = form.querySelectorAll('input[name="trail_video_urls[]"]');
+            console.log('🗑️ Removing old inputs:', oldInputs.length);
+            oldInputs.forEach(input => input.remove());
+            
+            console.log('➕ Adding new video URL inputs. Total videos:', this.videos.length);
+            
+            // Add new video URL inputs
+            this.videos.forEach((video, index) => {
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = `trail_video_urls[]`;
+                input.value = video.url;
+                input.className = 'video-url-input';
+                form.appendChild(input);
+                
+                console.log(`✅ Added video URL input [${index}]:`, video.url);
+            });
+            
+            // Verify inputs were added
+            const addedInputs = form.querySelectorAll('input[name="trail_video_urls[]"]');
+            console.log('✅ Total video URL inputs in form:', addedInputs.length);
         }
 
         setupDragAndDrop() {
@@ -2578,11 +2994,11 @@
         }
     }
 
-    // Initialize photo manager
-    window.photoManager = new PhotoUploadManager();
-
     // Initialize trail builder when DOM is ready
     document.addEventListener('DOMContentLoaded', function() {
+        // Initialize photo manager
+        window.photoManager = new PhotoUploadManager();
+
         window.trailBuilder = new TrailBuilder();
 
         // ADD THIS: Two-way sync between input fields and display cards
@@ -2779,13 +3195,23 @@
                         variant: 'primary',
                         action: 'continue',
                         handler: () => {
-                            // Bypass validation and submit
+                            console.log('🔄 Continue Anyway clicked - updating video URLs before submission');
+        
+                            // Make sure video URLs are updated BEFORE cloning
+                            if (window.photoManager) {
+                                window.photoManager.updateVideoUrlInputs();
+                            }
+                            
+                            // Bypass validation and submit directly
                             const form = document.querySelector('form');
-                            // Remove the event listener temporarily
-                            const newForm = form.cloneNode(true);
-                            form.parentNode.replaceChild(newForm, form);
-                            // Submit the form
-                            newForm.submit();
+                            if (form) {
+                                // Remove onsubmit validation temporarily
+                                const originalOnSubmit = form.onsubmit;
+                                form.onsubmit = null;
+                                
+                                // Submit the form directly (no cloning!)
+                                form.submit();
+                            }
                         }
                     }
                 ]
@@ -2882,6 +3308,26 @@
             if (color) document.getElementById('highlight-color-input').value = color;
         });
     }
+
+    // Ensure video URLs are added right before ANY form submission
+    document.addEventListener('DOMContentLoaded', function() {
+        const form = document.querySelector('form');
+        if (form) {
+            form.addEventListener('submit', function(e) {
+                console.log('📤 Form submit event triggered');
+                
+                // Always update video URLs on every submit attempt
+                if (window.photoManager) {
+                    console.log('🔄 Updating video URLs on submit event');
+                    window.photoManager.updateVideoUrlInputs();
+                    
+                    // Log to confirm
+                    const videoInputs = this.querySelectorAll('input[name="trail_video_urls[]"]');
+                    console.log('✅ Video inputs at submission:', videoInputs.length);
+                }
+            }, true); // Use capture phase
+        }
+    });
 </script>
 
 <style>

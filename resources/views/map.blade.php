@@ -1715,67 +1715,120 @@
             const panel = document.getElementById('trail-info-panel');
             const content = document.getElementById('trail-info-content');
             
+            if (!trail) return;
+            
+            // Format photos gallery - NOW USING trail.photos from trail_media
+            let photosHTML = '';
+           
+            // Format highlights with media - NOW USING features with their own media
+            let highlightsHTML = '';
+            if (trail.highlights && trail.highlights.length > 0) {
+                highlightsHTML = `
+                    <div class="mt-4 pt-4 border-t">
+                        <h4 class="font-semibold text-sm mb-3 flex items-center">
+                            <svg class="w-4 h-4 mr-2 text-purple-600" fill="currentColor" viewBox="0 0 20 20">
+                                <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
+                            </svg>
+                            Trail Highlights
+                        </h4>
+                        <div class="space-y-2">
+                            ${trail.highlights.map(highlight => `
+                                <div class="bg-purple-50 rounded p-3 cursor-pointer hover:bg-purple-100 transition"
+                                    onclick="window.trailMap.focusOnHighlight(${highlight.coordinates[0]}, ${highlight.coordinates[1]})">
+                                    <div class="flex items-start gap-3">
+                                        ${highlight.photo_url ? `
+                                            <img src="${highlight.photo_url}" 
+                                                alt="${highlight.name}" 
+                                                class="w-16 h-16 object-cover rounded flex-shrink-0">
+                                        ` : ''}
+                                        <div class="flex-1 min-w-0">
+                                            <div class="font-medium text-sm">${highlight.name}</div>
+                                            ${highlight.description ? `
+                                                <div class="text-xs text-gray-600 mt-1 line-clamp-2">${highlight.description}</div>
+                                            ` : ''}
+                                            ${highlight.media_count > 1 ? `
+                                                <div class="text-xs text-purple-600 mt-1">+${highlight.media_count - 1} more</div>
+                                            ` : ''}
+                                        </div>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+            }
+            
+            // Seasonal info
+            let seasonalHTML = '';
+            if (trail.seasonal_info && trail.seasonal_info.notes) {
+                seasonalHTML = `
+                    <div class="mt-4 bg-blue-50 border border-blue-200 rounded p-3">
+                        <div class="flex items-start">
+                            <svg class="w-5 h-5 text-blue-600 mr-2 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
+                            </svg>
+                            <div>
+                                <div class="font-medium text-sm text-blue-900">${trail.seasonal_info.season} Conditions</div>
+                                <div class="text-xs text-blue-800 mt-1">${trail.seasonal_info.notes}</div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+            
             content.innerHTML = `
-                <div class="flex justify-between items-start mb-4">
-                    <h3 class="text-lg font-bold text-gray-900">${trail.name}</h3>
+                <div class="flex items-start justify-between mb-4">
+                    <h3 class="text-xl font-bold pr-8">${trail.name}</h3>
                     <button onclick="closeTrailInfoPanel()" 
-                            class="text-gray-400 hover:text-gray-600 flex-shrink-0 ml-2">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            class="text-gray-400 hover:text-gray-600 transition flex-shrink-0">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                         </svg>
                     </button>
                 </div>
                 
-                ${trail.preview_photo ? `
-                    <img src="${trail.preview_photo}" alt="${trail.name}" 
-                        class="w-full h-40 object-cover rounded-lg mb-4">
-                ` : `
-                    <div class="w-full h-40 bg-gradient-to-br from-green-400 to-blue-600 rounded-lg mb-4 flex items-center justify-center">
-                        <svg class="w-12 h-12 text-white opacity-75" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"/>
-                        </svg>
-                    </div>
-                `}
+                ${photosHTML}
                 
-                <div class="grid grid-cols-2 gap-3 mb-4 text-sm">
-                    <div class="bg-blue-50 p-2 rounded text-center">
-                        <div class="font-bold text-blue-600">${trail.distance}</div>
-                        <div class="text-gray-600">km</div>
+                <div class="grid grid-cols-2 gap-3 mb-4">
+                    <div class="bg-blue-50 p-3 rounded text-center">
+                        <div class="text-2xl font-bold text-blue-600">${trail.distance}</div>
+                        <div class="text-xs text-gray-600">km</div>
                     </div>
-                    <div class="bg-green-50 p-2 rounded text-center">
-                        <div class="font-bold text-green-600">${trail.elevation_gain || 0}</div>
-                        <div class="text-gray-600">meters</div>
+                    <div class="bg-green-50 p-3 rounded text-center">
+                        <div class="text-2xl font-bold text-green-600">${trail.elevation_gain || 0}</div>
+                        <div class="text-xs text-gray-600">meters</div>
                     </div>
-                    <div class="bg-yellow-50 p-2 rounded text-center">
-                        <div class="font-bold text-yellow-600">${trail.estimated_time || 'N/A'}</div>
-                        <div class="text-gray-600">hours</div>
+                    <div class="bg-yellow-50 p-3 rounded text-center">
+                        <div class="text-2xl font-bold text-yellow-600">${trail.estimated_time || 'N/A'}</div>
+                        <div class="text-xs text-gray-600">hours</div>
                     </div>
-                    <div class="bg-purple-50 p-2 rounded text-center">
-                        <div class="font-bold text-purple-600">${trail.difficulty}</div>
-                        <div class="text-gray-600">difficulty</div>
-                    </div>
-                </div>
-
-                ${trail.seasonal_info?.notes ? `
-                    <div class="bg-blue-50 border-l-4 border-blue-400 p-3 mb-4">
-                        <p class="text-sm text-blue-700">
-                            <strong>Seasonal Note:</strong> ${trail.seasonal_info.notes}
-                        </p>
-                    </div>
-                ` : ''}
-
-                <div class="space-y-2 mb-4">
-                    <div class="flex flex-wrap gap-1">
-                        ${trail.activities.map(activity => 
-                            `<span class="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded">${activity.icon} ${activity.name}</span>`
-                        ).join('')}
+                    <div class="bg-purple-50 p-3 rounded text-center">
+                        <div class="text-2xl font-bold text-purple-600">${trail.difficulty}</div>
+                        <div class="text-xs text-gray-600">difficulty</div>
                     </div>
                 </div>
-
-                <a href="/trails/${trail.id}" 
-                class="block w-full bg-primary-600 hover:bg-primary-700 text-white text-center py-2 px-4 rounded-md font-medium transition-colors">
-                    View Full Details
-                </a>
+                
+                ${seasonalHTML}
+                
+                <div class="mt-4">
+                    <p class="text-sm text-gray-600 leading-relaxed">${trail.description}</p>
+                </div>
+                
+                ${highlightsHTML}
+                
+                <div class="mt-6 pt-4 border-t space-y-2">
+                    <button onclick="window.trailMap.viewRoute(${trail.id})" 
+                            class="w-full bg-primary-500 hover:bg-primary-600 text-white font-medium py-2.5 px-4 rounded transition flex items-center justify-center">
+                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-1.447-.894L15 9m0 8V9m0 0V7"/>
+                        </svg>
+                        View Full Route
+                    </button>
+                    <a href="/trails/${trail.id}" target="_blank"
+                    class="block w-full bg-white border-2 border-gray-300 hover:bg-gray-50 text-gray-700 font-medium py-2.5 px-4 rounded transition text-center">
+                        View Trail Details
+                    </a>
+                </div>
             `;
             
             panel.classList.remove('hidden');
@@ -1855,6 +1908,27 @@
             }
         }
 
+        focusOnHighlight(lat, lng) {
+            this.map.setView([lat, lng], 16, {
+                animate: true,
+                duration: 1
+            });
+            
+            // Add a temporary highlight marker
+            const highlightMarker = L.circleMarker([lat, lng], {
+                radius: 15,
+                color: '#8B5CF6',
+                fillColor: '#8B5CF6',
+                fillOpacity: 0.3,
+                weight: 3
+            }).addTo(this.map);
+            
+            // Remove after animation
+            setTimeout(() => {
+                this.map.removeLayer(highlightMarker);
+            }, 3000);
+        }
+
         async loadTrails() {
             try {
                 const params = new URLSearchParams({
@@ -1922,41 +1996,57 @@
                 return;
             }
             
-            container.innerHTML = trails.map(trail => `
-                <div class="trail-list-card" onclick="window.trailMap.focusOnTrailById(${trail.id})">
-                    ${trail.preview_photo ? 
-                        `<img src="${trail.preview_photo}" alt="${trail.name}" class="trail-list-image">` :
-                        `<div class="trail-list-image-placeholder">
-                            <svg class="w-12 h-12 text-white opacity-75" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"/>
-                            </svg>
-                        </div>`
-                    }
-                    <div class="flex-1 min-w-0">
-                        <h3 class="font-semibold text-gray-900 text-sm mb-1 truncate">${trail.name}</h3>
-                        <p class="text-xs text-gray-600 mb-2">${trail.location || 'Location not specified'}</p>
-                        
-                        <div class="flex items-center gap-2 text-xs text-gray-600 mb-2">
-                            <span class="flex items-center">
-                                <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
+            container.innerHTML = trails.map(trail => {
+                // Use preview_photo or first photo from photos array
+                const imageUrl = trail.preview_photo || (trail.photos && trail.photos.length > 0 ? trail.photos[0].url : null);
+                
+                return `
+                    <div class="trail-list-card" onclick="window.trailMap.focusOnTrailById(${trail.id})">
+                        ${imageUrl ? 
+                            `<img src="${imageUrl}" alt="${trail.name}" class="trail-list-image">` :
+                            `<div class="trail-list-image-placeholder">
+                                <svg class="w-12 h-12 text-white opacity-75" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"/>
                                 </svg>
-                                ${trail.difficulty}
-                            </span>
-                            <span>•</span>
-                            <span>${trail.distance} km</span>
-                            <span>•</span>
-                            <span>${trail.estimated_time || 'N/A'}h</span>
-                        </div>
-                        
-                        <div class="flex items-center gap-1">
-                            ${trail.activities.slice(0, 3).map(activity => 
-                                `<span class="px-2 py-0.5 bg-gray-100 text-gray-700 text-xs rounded">${activity.icon}</span>`
-                            ).join('')}
+                            </div>`
+                        }
+                        <div class="flex-1 min-w-0">
+                            <h3 class="font-semibold text-gray-900 text-sm mb-1 truncate">${trail.name}</h3>
+                            <p class="text-xs text-gray-600 mb-2">${trail.location || 'Location not specified'}</p>
+                            
+                            <div class="flex items-center gap-2 text-xs text-gray-600 mb-2">
+                                <span class="flex items-center">
+                                    <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
+                                    </svg>
+                                    ${trail.distance} km
+                                </span>
+                                <span class="flex items-center">
+                                    <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                                    </svg>
+                                    Level ${trail.difficulty}
+                                </span>
+                            </div>
+                            
+                            <div class="flex gap-1.5 flex-wrap">
+                                ${trail.highlights && trail.highlights.length > 0 ? `
+                                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800">
+                                        ${trail.highlights.length} highlights
+                                    </span>
+                                ` : ''}
+                                ${trail.activities && trail.activities.length > 0 ? 
+                                    trail.activities.slice(0, 2).map(activity => `
+                                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium" style="background-color: ${activity.color}20; color: ${activity.color};">
+                                            ${activity.icon} ${activity.name}
+                                        </span>
+                                    `).join('')
+                                : ''}
+                            </div>
                         </div>
                     </div>
-                </div>
-            `).join('');
+                `;
+            }).join('');
         }
 
         clearFilters() {

@@ -119,29 +119,100 @@
             </div>
             @endif
 
-            <!-- Photos Section -->
+            <!-- Photos & Videos Section -->
             @if($trail->media && $trail->media->count() > 0)
             <div class="rounded-lg border bg-card text-card-foreground shadow-sm">
                 <div class="p-6">
-                    <h3 class="text-lg font-semibold mb-4">Photos ({{ $trail->media->count() }})</h3>
+                    <h3 class="text-lg font-semibold mb-4">Media ({{ $trail->media->count() }})</h3>
                     <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
                         @foreach($trail->media as $media)
-                            <div class="relative group overflow-hidden rounded-lg border border-input">
-                                <img src="{{ $media->url }}" alt="{{ $media->caption ?? $trail->name }}" 
-                                     class="w-full h-32 object-cover transition-transform group-hover:scale-105">
-                                @if($media->is_featured)
+                            @if($media->media_type === 'photo')
+                                {{-- Photo Display --}}
+                                <div class="relative group overflow-hidden rounded-lg border border-input cursor-pointer"
+                                    onclick="openMediaModal('{{ asset('storage/' . $media->storage_path) }}', 'photo', '{{ $media->caption ?? $trail->name }}')">
+                                    <img src="{{ asset('storage/' . $media->storage_path) }}" 
+                                        alt="{{ $media->caption ?? $trail->name }}" 
+                                        class="w-full h-32 object-cover transition-transform group-hover:scale-105">
+                                    @if($media->is_featured)
+                                        <div class="absolute top-2 left-2">
+                                            <span class="bg-yellow-400 text-yellow-900 px-2 py-1 rounded text-xs font-medium">
+                                                ⭐ Featured
+                                            </span>
+                                        </div>
+                                    @endif
+                                    @if($media->caption)
+                                        <div class="absolute bottom-0 inset-x-0 bg-black bg-opacity-50 text-white p-2">
+                                            <p class="text-xs">{{ $media->caption }}</p>
+                                        </div>
+                                    @endif
+                                </div>
+                            @elseif($media->media_type === 'video_url')
+                                {{-- Video URL Display --}}
+                                <div class="relative group overflow-hidden rounded-lg border border-input cursor-pointer"
+                                    onclick="openMediaModal('{{ $media->video_url }}', 'video', '{{ $media->caption ?? $trail->name }}')">
+                                    <div class="w-full h-32 bg-gray-900 flex items-center justify-center relative">
+                                        {{-- Video Thumbnail from provider --}}
+                                        @if($media->video_provider === 'youtube')
+                                            @php
+                                                preg_match('/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\s]+)/', $media->video_url, $matches);
+                                                $videoId = $matches[1] ?? null;
+                                            @endphp
+                                            @if($videoId)
+                                                <img src="https://img.youtube.com/vi/{{ $videoId }}/mqdefault.jpg" 
+                                                    alt="Video thumbnail"
+                                                    class="w-full h-full object-cover">
+                                            @endif
+                                        @elseif($media->video_provider === 'vimeo')
+                                            @php
+                                                preg_match('/vimeo\.com\/(\d+)/', $media->video_url, $matches);
+                                                $videoId = $matches[1] ?? null;
+                                            @endphp
+                                            {{-- Vimeo thumbnails require API, so we'll show a placeholder --}}
+                                            <svg class="w-12 h-12 text-white opacity-75" fill="currentColor" viewBox="0 0 20 20">
+                                                <path d="M2 6a2 2 0 012-2h6a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V6zM14.553 7.106A1 1 0 0014 8v4a1 1 0 00.553.894l2 1A1 1 0 0018 13V7a1 1 0 00-1.447-.894l-2 1z"/>
+                                            </svg>
+                                        @else
+                                            {{-- Generic video icon --}}
+                                            <svg class="w-12 h-12 text-white opacity-75" fill="currentColor" viewBox="0 0 20 20">
+                                                <path d="M2 6a2 2 0 012-2h6a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V6zM14.553 7.106A1 1 0 0014 8v4a1 1 0 00.553.894l2 1A1 1 0 0018 13V7a1 1 0 00-1.447-.894l-2 1z"/>
+                                            </svg>
+                                        @endif
+                                        
+                                        {{-- Play button overlay --}}
+                                        <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                            <div class="bg-white bg-opacity-90 rounded-full p-3 shadow-lg">
+                                                <svg class="w-8 h-8 text-gray-900" fill="currentColor" viewBox="0 0 20 20">
+                                                    <path d="M6.3 2.841A1.5 1.5 0 004 4.11V15.89a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z"/>
+                                                </svg>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    {{-- Video badge --}}
                                     <div class="absolute top-2 left-2">
-                                        <span class="bg-yellow-400 text-yellow-900 px-2 py-1 rounded text-xs font-medium">
-                                            Featured
+                                        <span class="bg-red-600 text-white px-2 py-1 rounded text-xs font-medium flex items-center gap-1">
+                                            <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                                <path d="M2 6a2 2 0 012-2h6a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V6zM14.553 7.106A1 1 0 0014 8v4a1 1 0 00.553.894l2 1A1 1 0 0018 13V7a1 1 0 00-1.447-.894l-2 1z"/>
+                                            </svg>
+                                            Video
                                         </span>
                                     </div>
-                                @endif
-                                @if($media->caption)
-                                    <div class="absolute bottom-0 inset-x-0 bg-black bg-opacity-50 text-white p-2">
-                                        <p class="text-xs">{{ $media->caption }}</p>
-                                    </div>
-                                @endif
-                            </div>
+                                    
+                                    @if($media->is_featured)
+                                        <div class="absolute top-2 right-2">
+                                            <span class="bg-yellow-400 text-yellow-900 px-2 py-1 rounded text-xs font-medium">
+                                                ⭐ Featured
+                                            </span>
+                                        </div>
+                                    @endif
+                                    
+                                    @if($media->caption)
+                                        <div class="absolute bottom-0 inset-x-0 bg-black bg-opacity-50 text-white p-2">
+                                            <p class="text-xs">{{ $media->caption }}</p>
+                                        </div>
+                                    @endif
+                                </div>
+                            @endif
                         @endforeach
                     </div>
                 </div>
@@ -275,7 +346,27 @@
         </div>
     </div>
 </div>
-
+<div id="media-modal" class="hidden fixed inset-0 bg-black bg-opacity-75 z-50 flex items-center justify-center p-4">
+    <div class="relative max-w-5xl w-full bg-white rounded-lg shadow-xl">
+        <!-- Close button -->
+        <button onclick="closeMediaModal()" 
+                class="absolute top-4 right-4 z-10 bg-gray-900 bg-opacity-75 hover:bg-opacity-100 text-white rounded-full p-2 transition-all">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+            </svg>
+        </button>
+        
+        <!-- Content container -->
+        <div id="modal-content" class="p-4">
+            <!-- Content will be dynamically inserted here -->
+        </div>
+        
+        <!-- Caption -->
+        <div id="modal-caption" class="px-6 pb-6 text-center text-gray-700">
+            <!-- Caption will be dynamically inserted here -->
+        </div>
+    </div>
+</div>
 @push('scripts')
 <script>
     document.addEventListener('DOMContentLoaded', function() {
@@ -342,6 +433,71 @@
             }
         });
     });
+</script>
+
+<script>
+function openMediaModal(url, type, caption) {
+    const modal = document.getElementById('media-modal');
+    const content = document.getElementById('modal-content');
+    const captionEl = document.getElementById('modal-caption');
+    
+    if (type === 'photo') {
+        content.innerHTML = `<img src="${url}" alt="${caption}" class="w-full h-auto max-h-[70vh] object-contain rounded-lg">`;
+    } else if (type === 'video') {
+        // Convert video URL to embed URL
+        let embedUrl = '';
+        
+        // YouTube
+        const youtubeMatch = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\s]+)/);
+        if (youtubeMatch) {
+            embedUrl = `https://www.youtube.com/embed/${youtubeMatch[1]}`;
+        }
+        
+        // Vimeo
+        const vimeoMatch = url.match(/vimeo\.com\/(\d+)/);
+        if (vimeoMatch) {
+            embedUrl = `https://player.vimeo.com/video/${vimeoMatch[1]}`;
+        }
+        
+        if (embedUrl) {
+            content.innerHTML = `
+                <div class="relative" style="padding-bottom: 56.25%; height: 0;">
+                    <iframe src="${embedUrl}" 
+                            frameborder="0" 
+                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                            allowfullscreen
+                            class="absolute top-0 left-0 w-full h-full rounded-lg">
+                    </iframe>
+                </div>
+            `;
+        }
+    }
+    
+    captionEl.textContent = caption;
+    modal.classList.remove('hidden');
+}
+
+function closeMediaModal() {
+    const modal = document.getElementById('media-modal');
+    const content = document.getElementById('modal-content');
+    
+    modal.classList.add('hidden');
+    content.innerHTML = ''; // Clear content to stop video playback
+}
+
+// Close modal when clicking outside
+document.getElementById('media-modal')?.addEventListener('click', function(e) {
+    if (e.target === this) {
+        closeMediaModal();
+    }
+});
+
+// Close modal with Escape key
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        closeMediaModal();
+    }
+});
 </script>
 
 <style>

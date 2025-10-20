@@ -77,9 +77,12 @@ class AdminTrailController extends Controller
             'is_featured' => 'boolean',
             'route_coordinates' => 'nullable|string',
             'waypoints' => 'nullable|string',
-            'photos' => 'nullable|array|max:5',
+            'photos' => 'nullable|array|max:10',
             'photos.*' => 'image|mimes:jpeg,png,jpg,gif|max:10240',
-            'highlight_media_*' => 'nullable|file|mimes:jpeg,png,jpg,gif,mp4,mov,avi|max:51200',
+            'trail_video_urls' => 'nullable|array',
+            'trail_video_urls.*' => 'nullable|url|max:500',
+            'highlight_media_*' => 'nullable|file|mimes:jpeg,png,jpg,gif|max:10240',
+            'highlight_video_url_*' => 'nullable|url|max:500',
             'gpx_file' => 'nullable|file|mimes:gpx,xml|max:10240',
             'activities' => 'nullable|array',
             'activities.*' => 'string',
@@ -200,12 +203,55 @@ class AdminTrailController extends Controller
             }
         }
 
+        // Handle new video URLs - support both JSON and array format
+        $videoUrls = null;
+
+        // Try JSON format first (from permanent hidden input)
+        if ($request->has('trail_video_urls_json') && !empty($request->input('trail_video_urls_json'))) {
+            $videoUrls = json_decode($request->input('trail_video_urls_json'), true);
+            \Log::info('Video URLs from JSON:', ['urls' => $videoUrls]);
+        }
+
+        // Fallback to array format
+        if (empty($videoUrls) && $request->has('trail_video_urls')) {
+            $videoUrls = $request->input('trail_video_urls');
+            \Log::info('Video URLs from array:', ['urls' => $videoUrls]);
+        }
+
+        // Save video URLs to TrailMedia table
+        if (!empty($videoUrls) && is_array($videoUrls)) {
+            $photoCount = $request->hasFile('photos') ? count($request->file('photos')) : 0;
+            $featuredPhotoIndex = (int) $request->input('featured_photo_index', 0);
+            
+            foreach ($videoUrls as $index => $videoUrl) {
+                if (!empty($videoUrl)) {
+                    $sortOrder = $photoCount + $index;
+                    
+                    TrailMedia::create([
+                        'trail_id' => $trail->id,
+                        'media_type' => 'video_url',
+                        'video_url' => $videoUrl,
+                        'video_provider' => $this->detectVideoProvider($videoUrl),
+                        'sort_order' => $sortOrder,
+                        'is_featured' => $sortOrder === $featuredPhotoIndex,
+                        'uploaded_by' => auth()->id(),
+                    ]);
+                    
+                    \Log::info('Video URL saved:', [
+                        'trail_id' => $trail->id,
+                        'url' => $videoUrl,
+                        'sort_order' => $sortOrder
+                    ]);
+                }
+            }
+        }
+
         // Handle features/highlights with optional media
         if ($request->has('highlights_data')) {
             $highlightsData = json_decode($request->highlights_data, true);
             
             if (is_array($highlightsData)) {
-                foreach ($highlightsData as $highlightData) {
+                foreach ($highlightsData as $index => $highlightData) {
                     // Create the feature
                     $feature = $trail->features()->create([
                         'feature_type' => $highlightData['type'],
@@ -214,28 +260,23 @@ class AdminTrailController extends Controller
                         'coordinates' => $highlightData['coordinates'],
                     ]);
                     
-                    // Handle media file if exists for this highlight
+                    // Handle photo file if exists for this highlight
                     if (isset($highlightData['mediaIndex']) && $request->hasFile("highlight_media_{$highlightData['mediaIndex']}")) {
                         $mediaFile = $request->file("highlight_media_{$highlightData['mediaIndex']}");
                         
-                        // Determine media type
-                        $mimeType = $mediaFile->getMimeType();
-                        $mediaType = str_starts_with($mimeType, 'image/') ? 'photo' : 'video';
-                        
-                        // Generate filename and store
+                        // Generate filename and store (photos only)
                         $filename = Str::random(40) . '.' . $mediaFile->getClientOriginalExtension();
-                        $folder = $mediaType === 'photo' ? 'trail-photos' : 'trail-videos';
-                        $path = $mediaFile->storeAs($folder, $filename, 'public');
+                        $path = $mediaFile->storeAs('trail-photos', $filename, 'public');
                         
                         // Create media record
                         $media = TrailMedia::create([
                             'trail_id' => $trail->id,
-                            'media_type' => $mediaType,
+                            'media_type' => 'photo',
                             'filename' => $filename,
                             'original_name' => $mediaFile->getClientOriginalName(),
                             'storage_path' => $path,
                             'file_size' => $mediaFile->getSize(),
-                            'mime_type' => $mimeType,
+                            'mime_type' => $mediaFile->getMimeType(),
                             'sort_order' => 0,
                             'is_featured' => false,
                             'uploaded_by' => auth()->id(),
@@ -249,6 +290,33 @@ class AdminTrailController extends Controller
                         
                         // Update cached count
                         $feature->updateMediaCount();
+                    }
+                    
+                    // Handle video URL if exists for this highlight
+                    if (isset($highlightData['videoIndex']) && $request->has("highlight_video_url_{$highlightData['videoIndex']}")) {
+                        $videoUrl = $request->input("highlight_video_url_{$highlightData['videoIndex']}");
+                        
+                        if (!empty($videoUrl)) {
+                            // Create media record for video URL
+                            $media = TrailMedia::create([
+                                'trail_id' => $trail->id,
+                                'media_type' => 'video_url', // Changed
+                                'video_url' => $videoUrl,
+                                'video_provider' => $this->detectVideoProvider($videoUrl),
+                                'sort_order' => 0,
+                                'is_featured' => false,
+                                'uploaded_by' => auth()->id(),
+                            ]);
+                            
+                            // Link media to feature
+                            $feature->media()->attach($media->id, [
+                                'is_primary' => true,
+                                'sort_order' => 0,
+                            ]);
+                            
+                            // Update cached count
+                            $feature->updateMediaCount();
+                        }
                     }
                 }
             }
@@ -327,9 +395,12 @@ class AdminTrailController extends Controller
             'parking_info' => 'nullable|string',
             'safety_notes' => 'nullable|string',
             'is_featured' => 'boolean',
-            'photos' => 'nullable|array|max:5',
+            'photos' => 'nullable|array|max:10',
             'photos.*' => 'image|mimes:jpeg,png,jpg,gif|max:10240',
-            'highlight_media_*' => 'nullable|file|mimes:jpeg,png,jpg,gif,mp4,mov,avi|max:51200',
+            'trail_video_urls' => 'nullable|array',
+            'trail_video_urls.*' => 'nullable|url|max:500',
+            'highlight_media_*' => 'nullable|file|mimes:jpeg,png,jpg,gif|max:10240',
+            'highlight_video_url_*' => 'nullable|url|max:500',
             'deleted_photos' => 'nullable|string',
             'deleted_features' => 'nullable|string',
             'featured_photo_id' => 'nullable|integer',
@@ -447,7 +518,7 @@ class AdminTrailController extends Controller
             $newHighlights = json_decode($request->highlights_data, true);
             
             if (is_array($newHighlights)) {
-                foreach ($newHighlights as $highlightData) {
+                foreach ($newHighlights as $index => $highlightData) {
                     // Create the feature
                     $feature = $trail->features()->create([
                         'feature_type' => $highlightData['type'],
@@ -456,28 +527,23 @@ class AdminTrailController extends Controller
                         'coordinates' => $highlightData['coordinates'],
                     ]);
                     
-                    // Handle media file if exists for this highlight
+                    // Handle photo file if exists for this highlight
                     if (isset($highlightData['mediaIndex']) && $request->hasFile("highlight_media_{$highlightData['mediaIndex']}")) {
                         $mediaFile = $request->file("highlight_media_{$highlightData['mediaIndex']}");
                         
-                        // Determine media type
-                        $mimeType = $mediaFile->getMimeType();
-                        $mediaType = str_starts_with($mimeType, 'image/') ? 'photo' : 'video';
-                        
-                        // Generate filename and store
+                        // Generate filename and store (photos only)
                         $filename = Str::random(40) . '.' . $mediaFile->getClientOriginalExtension();
-                        $folder = $mediaType === 'photo' ? 'trail-photos' : 'trail-videos';
-                        $path = $mediaFile->storeAs($folder, $filename, 'public');
+                        $path = $mediaFile->storeAs('trail-photos', $filename, 'public');
                         
                         // Create media record
                         $media = TrailMedia::create([
                             'trail_id' => $trail->id,
-                            'media_type' => $mediaType,
+                            'media_type' => 'photo',
                             'filename' => $filename,
                             'original_name' => $mediaFile->getClientOriginalName(),
                             'storage_path' => $path,
                             'file_size' => $mediaFile->getSize(),
-                            'mime_type' => $mimeType,
+                            'mime_type' => $mediaFile->getMimeType(),
                             'sort_order' => 0,
                             'is_featured' => false,
                             'uploaded_by' => auth()->id(),
@@ -491,6 +557,33 @@ class AdminTrailController extends Controller
                         
                         // Update cached count
                         $feature->updateMediaCount();
+                    }
+                    
+                    // Handle video URL if exists for this highlight
+                    if (isset($highlightData['videoIndex']) && $request->has("highlight_video_url_{$highlightData['videoIndex']}")) {
+                         $videoUrl = $request->input("highlight_video_url_{$highlightData['videoIndex']}");
+                        
+                        if (!empty($videoUrl)) {
+                            // Create media record for video URL
+                            $media = TrailMedia::create([
+                                'trail_id' => $trail->id,
+                                'media_type' => 'video_url', // Changed
+                                'video_url' => $videoUrl,
+                                'video_provider' => $this->detectVideoProvider($videoUrl),
+                                'sort_order' => 0,
+                                'is_featured' => false,
+                                'uploaded_by' => auth()->id(),
+                            ]);
+                            
+                            // Link media to feature
+                            $feature->media()->attach($media->id, [
+                                'is_primary' => true,
+                                'sort_order' => 0,
+                            ]);
+                            
+                            // Update cached count
+                            $feature->updateMediaCount();
+                        }
                     }
                 }
             }
@@ -544,6 +637,56 @@ class AdminTrailController extends Controller
                     'uploaded_by' => auth()->id(),
                 ]);
             }
+        }
+
+        // Handle new video URLs - support both JSON and array format
+        $videoUrls = null;
+
+        // Try JSON format first (from permanent hidden input)
+        if ($request->has('trail_video_urls_json') && !empty($request->input('trail_video_urls_json'))) {
+            $videoUrls = json_decode($request->input('trail_video_urls_json'), true);
+            \Log::info('Video URLs from JSON (update):', ['urls' => $videoUrls]);
+        }
+
+        // Fallback to array format
+        if (empty($videoUrls) && $request->has('trail_video_urls')) {
+            $videoUrls = $request->input('trail_video_urls');
+            \Log::info('Video URLs from array (update):', ['urls' => $videoUrls]);
+        }
+
+        // Save new video URLs to TrailMedia table
+        if (!empty($videoUrls) && is_array($videoUrls)) {
+            $maxSortOrder = $trail->media()->max('sort_order') ?? -1;
+            $photoCount = $request->hasFile('photos') ? count($request->file('photos')) : 0;
+            
+            foreach ($videoUrls as $index => $videoUrl) {
+                if (!empty($videoUrl)) {
+                    TrailMedia::create([
+                        'trail_id' => $trail->id,
+                        'media_type' => 'video_url',
+                        'video_url' => $videoUrl,
+                        'video_provider' => $this->detectVideoProvider($videoUrl),
+                        'sort_order' => $maxSortOrder + $photoCount + $index + 1,
+                        'is_featured' => false,
+                        'uploaded_by' => auth()->id(),
+                    ]);
+                    
+                    \Log::info('Video URL saved (update):', [
+                        'trail_id' => $trail->id,
+                        'url' => $videoUrl,
+                        'sort_order' => $maxSortOrder + $photoCount + $index + 1
+                    ]);
+                }
+            }
+        }
+
+        // Update featured photo if specified
+        if ($request->has('featured_photo_id') && $request->featured_photo_id) {
+            // Remove featured status from all photos
+            $trail->media()->update(['is_featured' => false]);
+            
+            // Set new featured photo
+            $trail->media()->where('id', $request->featured_photo_id)->update(['is_featured' => true]);
         }
 
         // Update featured photo if specified
@@ -925,17 +1068,17 @@ class AdminTrailController extends Controller
     //     ]);
     // }
 
-    // /**
-    //  * Detect video provider from URL
-    //  */
-    // private function detectVideoProvider(string $url): string
-    // {
-    //     if (str_contains($url, 'youtube.com') || str_contains($url, 'youtu.be')) {
-    //         return 'youtube';
-    //     }
-    //     if (str_contains($url, 'vimeo.com')) {
-    //         return 'vimeo';
-    //     }
-    //     return 'other';
-    // }
+    /**
+     * Detect video provider from URL
+     */
+    private function detectVideoProvider(string $url): string
+    {
+        if (str_contains($url, 'youtube.com') || str_contains($url, 'youtu.be')) {
+            return 'youtube';
+        }
+        if (str_contains($url, 'vimeo.com')) {
+            return 'vimeo';
+        }
+        return 'other';
+    }
 }

@@ -320,10 +320,10 @@
             <div class="lg:col-span-8">
                 
                 <!-- Tab Navigation -->
-                <div class="tab-nav flex space-x-1 overflow-x-auto">
+                <div class="tab-nav overflow-x-auto flex space-x-1">
                     <button class="tab-button active" data-tab="overview">Overview</button>
-                    <button class="tab-button" data-tab="route">Route & Map</button>
-                    <button class="tab-button" data-tab="photos">Photos</button>
+                    <button class="tab-button whitespace-nowrap" data-tab="route">Route & Map</button>
+                    <button class="tab-button whitespace-nowrap" data-tab="photos">Videos & Photos</button>
                     <button class="tab-button" data-tab="planning">Planning</button>
                 </div>
                 
@@ -373,7 +373,7 @@
                 <div id="route-tab" class="tab-content">
                     <div class="mb-8">
                         <div class="flex justify-between items-center mb-4">
-                            <h2 class="text-3xl font-bold text-forest-700">Interactive Trail Map</h2>
+                            <h2 class="text-2xl sm:text-3xl font-bold text-forest-700">Interactive Trail Map</h2>
                             <div class="flex space-x-2">
                                 <button id="view-2d-btn" class="px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700 transition-colors">
                                     2D Map
@@ -448,20 +448,104 @@
                 
                 <!-- Photos Tab -->
                 <div id="photos-tab" class="tab-content">
+                    <!-- Photos & Videos Section -->
                     @if($trail->media && $trail->media->count() > 0)
-                        <h2 class="text-3xl font-bold text-gray-900 mb-6">Trail Photos</h2>
-                        <div class="photo-grid">
-                            @foreach($trail->media as $photo)
-                            <div class="photo-grid-item" onclick="openLightbox({{ $loop->index }})">
-                                <img src="{{ $photo->url }}" alt="{{ $photo->caption ?: $trail->name }}" loading="lazy">
-                                @if($photo->caption)
-                                    <div class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-3">
-                                        <p class="text-white text-sm">{{ $photo->caption }}</p>
-                                    </div>
-                                @endif
+                    <div class="rounded-lg border bg-card text-card-foreground shadow-sm">
+                        <div class="p-6">
+                            <h3 class="text-lg font-semibold mb-4">Media ({{ $trail->media->count() }})</h3>
+                            <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
+                                @foreach($trail->media as $media)
+                                    @if($media->media_type === 'photo')
+                                        {{-- Photo Display --}}
+                                        <div class="relative group overflow-hidden rounded-lg border border-input cursor-pointer"
+                                            onclick="openMediaModal('{{ asset('storage/' . $media->storage_path) }}', 'photo', '{{ $media->caption ?? $trail->name }}')">
+                                            <img src="{{ asset('storage/' . $media->storage_path) }}" 
+                                                alt="{{ $media->caption ?? $trail->name }}" 
+                                                class="w-full h-32 object-cover transition-transform group-hover:scale-105">
+                                            @if($media->is_featured)
+                                                <div class="absolute top-2 left-2">
+                                                    <span class="bg-yellow-400 text-yellow-900 px-2 py-1 rounded text-xs font-medium">
+                                                        ⭐ Featured
+                                                    </span>
+                                                </div>
+                                            @endif
+                                            @if($media->caption)
+                                                <div class="absolute bottom-0 inset-x-0 bg-black bg-opacity-50 text-white p-2">
+                                                    <p class="text-xs">{{ $media->caption }}</p>
+                                                </div>
+                                            @endif
+                                        </div>
+                                    @elseif($media->media_type === 'video_url')
+                                        {{-- Video URL Display --}}
+                                        <div class="relative group overflow-hidden rounded-lg border border-input cursor-pointer"
+                                            onclick="openMediaModal('{{ $media->video_url }}', 'video', '{{ $media->caption ?? $trail->name }}')">
+                                            <div class="w-full h-32 bg-gray-900 flex items-center justify-center relative">
+                                                {{-- Video Thumbnail from provider --}}
+                                                @if($media->video_provider === 'youtube')
+                                                    @php
+                                                        preg_match('/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\s]+)/', $media->video_url, $matches);
+                                                        $videoId = $matches[1] ?? null;
+                                                    @endphp
+                                                    @if($videoId)
+                                                        <img src="https://img.youtube.com/vi/{{ $videoId }}/mqdefault.jpg" 
+                                                            alt="Video thumbnail"
+                                                            class="w-full h-full object-cover">
+                                                    @endif
+                                                @elseif($media->video_provider === 'vimeo')
+                                                    @php
+                                                        preg_match('/vimeo\.com\/(\d+)/', $media->video_url, $matches);
+                                                        $videoId = $matches[1] ?? null;
+                                                    @endphp
+                                                    {{-- Vimeo thumbnails require API, so we'll show a placeholder --}}
+                                                    <svg class="w-12 h-12 text-white opacity-75" fill="currentColor" viewBox="0 0 20 20">
+                                                        <path d="M2 6a2 2 0 012-2h6a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V6zM14.553 7.106A1 1 0 0014 8v4a1 1 0 00.553.894l2 1A1 1 0 0018 13V7a1 1 0 00-1.447-.894l-2 1z"/>
+                                                    </svg>
+                                                @else
+                                                    {{-- Generic video icon --}}
+                                                    <svg class="w-12 h-12 text-white opacity-75" fill="currentColor" viewBox="0 0 20 20">
+                                                        <path d="M2 6a2 2 0 012-2h6a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V6zM14.553 7.106A1 1 0 0014 8v4a1 1 0 00.553.894l2 1A1 1 0 0018 13V7a1 1 0 00-1.447-.894l-2 1z"/>
+                                                    </svg>
+                                                @endif
+                                                
+                                                {{-- Play button overlay --}}
+                                                <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                                    <div class="bg-white bg-opacity-90 rounded-full p-3 shadow-lg">
+                                                        <svg class="w-8 h-8 text-gray-900" fill="currentColor" viewBox="0 0 20 20">
+                                                            <path d="M6.3 2.841A1.5 1.5 0 004 4.11V15.89a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z"/>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            
+                                            {{-- Video badge --}}
+                                            <div class="absolute top-2 left-2">
+                                                <span class="bg-red-600 text-white px-2 py-1 rounded text-xs font-medium flex items-center gap-1">
+                                                    <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                                        <path d="M2 6a2 2 0 012-2h6a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V6zM14.553 7.106A1 1 0 0014 8v4a1 1 0 00.553.894l2 1A1 1 0 0018 13V7a1 1 0 00-1.447-.894l-2 1z"/>
+                                                    </svg>
+                                                    Video
+                                                </span>
+                                            </div>
+                                            
+                                            @if($media->is_featured)
+                                                <div class="absolute top-2 right-2">
+                                                    <span class="bg-yellow-400 text-yellow-900 px-2 py-1 rounded text-xs font-medium">
+                                                        ⭐ Featured
+                                                    </span>
+                                                </div>
+                                            @endif
+                                            
+                                            @if($media->caption)
+                                                <div class="absolute bottom-0 inset-x-0 bg-black bg-opacity-50 text-white p-2">
+                                                    <p class="text-xs">{{ $media->caption }}</p>
+                                                </div>
+                                            @endif
+                                        </div>
+                                    @endif
+                                @endforeach
                             </div>
-                            @endforeach
                         </div>
+                    </div>
                     @else
                         <div class="text-center py-12">
                             <svg class="w-16 h-16 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -614,11 +698,25 @@
     </div>
 </div>
 
-<!-- Lightbox for Photos -->
-<div id="lightbox" class="lightbox">
-    <div class="lightbox-content">
-        <button class="lightbox-close" onclick="closeLightbox()">&times;</button>
-        <img id="lightbox-img" src="" alt="">
+<div id="media-modal" class="hidden fixed inset-0 bg-black bg-opacity-75 z-50 flex items-center justify-center p-4">
+    <div class="relative max-w-5xl w-full bg-white rounded-lg shadow-xl">
+        <!-- Close button -->
+        <button onclick="closeMediaModal()" 
+                class="absolute top-4 right-4 z-10 bg-gray-900 bg-opacity-75 hover:bg-opacity-100 text-white rounded-full p-2 transition-all">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+            </svg>
+        </button>
+        
+        <!-- Content container -->
+        <div id="modal-content" class="p-4">
+            <!-- Content will be dynamically inserted here -->
+        </div>
+        
+        <!-- Caption -->
+        <div id="modal-caption" class="px-6 pb-6 text-center text-gray-700">
+            <!-- Caption will be dynamically inserted here -->
+        </div>
     </div>
 </div>
 
@@ -627,6 +725,70 @@
 @push('scripts')
 @vite(['resources/js/app.js'])
 <script src="{{ asset('js/cesium-loader.js') }}"></script>
+<script>
+function openMediaModal(url, type, caption) {
+    const modal = document.getElementById('media-modal');
+    const content = document.getElementById('modal-content');
+    const captionEl = document.getElementById('modal-caption');
+    
+    if (type === 'photo') {
+        content.innerHTML = `<img src="${url}" alt="${caption}" class="w-full h-auto max-h-[70vh] object-contain rounded-lg">`;
+    } else if (type === 'video') {
+        // Convert video URL to embed URL
+        let embedUrl = '';
+        
+        // YouTube
+        const youtubeMatch = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\s]+)/);
+        if (youtubeMatch) {
+            embedUrl = `https://www.youtube.com/embed/${youtubeMatch[1]}`;
+        }
+        
+        // Vimeo
+        const vimeoMatch = url.match(/vimeo\.com\/(\d+)/);
+        if (vimeoMatch) {
+            embedUrl = `https://player.vimeo.com/video/${vimeoMatch[1]}`;
+        }
+        
+        if (embedUrl) {
+            content.innerHTML = `
+                <div class="relative" style="padding-bottom: 56.25%; height: 0;">
+                    <iframe src="${embedUrl}" 
+                            frameborder="0" 
+                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                            allowfullscreen
+                            class="absolute top-0 left-0 w-full h-full rounded-lg">
+                    </iframe>
+                </div>
+            `;
+        }
+    }
+    
+    captionEl.textContent = caption;
+    modal.classList.remove('hidden');
+}
+
+function closeMediaModal() {
+    const modal = document.getElementById('media-modal');
+    const content = document.getElementById('modal-content');
+    
+    modal.classList.add('hidden');
+    content.innerHTML = ''; // Clear content to stop video playback
+}
+
+// Close modal when clicking outside
+document.getElementById('media-modal')?.addEventListener('click', function(e) {
+    if (e.target === this) {
+        closeMediaModal();
+    }
+});
+
+// Close modal with Escape key
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        closeMediaModal();
+    }
+});
+</script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     // Tab Navigation
@@ -662,7 +824,9 @@ document.addEventListener('DOMContentLoaded', function() {
     window.openLightbox = function(index) {
         if (trailPhotos[index]) {
             document.getElementById('lightbox-img').src = trailPhotos[index].url;
-            document.getElementById('lightbox').classList.add('active');
+            const lightbox = document.getElementById('lightbox');
+            lightbox.classList.add('active');
+            lightbox.style.zIndex = '9999';
             document.body.style.overflow = 'hidden';
         }
     };
@@ -675,11 +839,6 @@ document.addEventListener('DOMContentLoaded', function() {
     // Close lightbox on escape key
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') closeLightbox();
-    });
-    
-    // Close lightbox on background click
-    document.getElementById('lightbox').addEventListener('click', (e) => {
-        if (e.target.id === 'lightbox') closeLightbox();
     });
     
     // Trail Map and 3D Functionality
@@ -851,36 +1010,61 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Elevation Profile Functions
     async function loadElevationProfile() {
+        console.log('loadElevationProfile called');
+        
         if (!trail.route_coordinates || trail.route_coordinates.length < 2) {
-            alert('No route data available for elevation profile');
+            console.log('No route data available for elevation profile');
+            document.getElementById('elevation-chart').classList.add('hidden');
+            document.getElementById('elevation-stats').classList.add('hidden');
             return;
         }
 
-        document.getElementById('load-elevation').textContent = 'Loading...';
+        // Check if coordinates have elevation data (3rd coordinate)
+        const hasElevation = trail.route_coordinates[0].length >= 3;
+        
+        if (!hasElevation) {
+            console.log('Route coordinates do not have elevation data. Fetching from API...');
+            
+            document.getElementById('load-elevation').textContent = 'Loading elevation data...';
 
-        try {
-            const response = await fetch('/api/elevation-profile', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-                },
-                body: JSON.stringify({
-                    coordinates: trail.route_coordinates
-                })
-            });
+            try {
+                const response = await fetch('/api/elevation-profile', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                    },
+                    body: JSON.stringify({
+                        coordinates: trail.route_coordinates
+                    })
+                });
 
-            if (response.ok) {
-                const data = await response.json();
-                displayElevationProfile(data);
-                document.getElementById('load-elevation').textContent = 'Refresh Profile';
-            } else {
-                console.warn('Failed to load elevation profile');
-                document.getElementById('load-elevation').textContent = 'Load Profile (Failed)';
+                if (response.ok) {
+                    const data = await response.json();
+                    console.log('Elevation data received:', data);
+                    displayElevationProfile(data);
+                    document.getElementById('load-elevation').textContent = 'Refresh Profile';
+                } else {
+                    console.warn('Failed to load elevation profile from API');
+                    document.getElementById('load-elevation').textContent = 'Elevation data unavailable';
+                    document.getElementById('elevation-chart').classList.add('hidden');
+                    document.getElementById('elevation-stats').classList.add('hidden');
+                }
+            } catch (error) {
+                console.error('Error loading elevation profile:', error);
+                document.getElementById('load-elevation').textContent = 'Failed to load elevation';
+                document.getElementById('elevation-chart').classList.add('hidden');
+                document.getElementById('elevation-stats').classList.add('hidden');
             }
-        } catch (error) {
-            console.error('Error loading elevation profile:', error);
-            document.getElementById('load-elevation').textContent = 'Load Profile (Error)';
+        } else {
+            // Use existing elevation data from route coordinates
+            console.log('Using existing elevation data');
+            displayElevationProfile({
+                geometry: {
+                    coordinates: trail.route_coordinates
+                }
+            });
+            document.getElementById('load-elevation').textContent = 'Refresh Profile';
         }
     }
 
@@ -889,14 +1073,24 @@ document.addEventListener('DOMContentLoaded', function() {
         const stats = document.getElementById('elevation-stats');
         const canvas = document.getElementById('elevation-canvas');
         
-        if (!canvas || !elevationData.geometry) {
+        if (!canvas || !elevationData.geometry || !elevationData.geometry.coordinates) {
+            console.log('Invalid elevation data');
+            return;
+        }
+
+        const coordinates = elevationData.geometry.coordinates;
+        
+        // Check if coordinates have elevation data (z-coordinate)
+        if (coordinates[0].length < 3) {
+            console.log('No elevation data in coordinates');
+            chart.classList.add('hidden');
+            stats.classList.add('hidden');
             return;
         }
 
         chart.classList.remove('hidden');
         stats.classList.remove('hidden');
 
-        const coordinates = elevationData.geometry.coordinates;
         const elevations = coordinates.map(coord => coord[2]);
         const maxElev = Math.max(...elevations);
         const minElev = Math.min(...elevations);
@@ -905,10 +1099,12 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // Update stats display
         const statDivs = stats.querySelectorAll('.font-bold');
-        statDivs[0].textContent = Math.round(maxElev) + 'm';
-        statDivs[1].textContent = Math.round(minElev) + 'm';
-        statDivs[2].textContent = Math.round(totalGain) + 'm';
-        statDivs[3].textContent = Math.round(totalLoss) + 'm';
+        if (statDivs.length >= 4) {
+            statDivs[0].textContent = Math.round(maxElev) + 'm';
+            statDivs[1].textContent = Math.round(minElev) + 'm';
+            statDivs[2].textContent = Math.round(totalGain) + 'm';
+            statDivs[3].textContent = Math.round(totalLoss) + 'm';
+        }
 
         drawElevationChart(canvas, coordinates);
     }
@@ -973,12 +1169,34 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Add button handler
     document.getElementById('load-elevation')?.addEventListener('click', loadElevationProfile);
+    
+    // Load elevation profile when Route tab is activated
+    let elevationProfileLoaded = false;
 
-    // Auto-load elevation profile on page load
-    if (trail.route_coordinates && trail.route_coordinates.length > 0) {
-        loadElevationProfile();
+    function loadElevationIfNeeded() {
+        if (!elevationProfileLoaded && trail.route_coordinates && trail.route_coordinates.length > 0) {
+            elevationProfileLoaded = true;
+            console.log('Loading elevation profile...');
+            // Wait for tab transition to complete
+            setTimeout(() => {
+                loadElevationProfile();
+            }, 300);
+        }
     }
 
+    // Add event listener to Route tab button
+    const routeTabButton = document.querySelector('[data-tab="route"]');
+    if (routeTabButton) {
+        routeTabButton.addEventListener('click', function() {
+            // Load elevation when route tab is clicked
+            loadElevationIfNeeded();
+        });
+    }
+
+    // If user loads page with hash #route or route tab is already active
+    if (window.location.hash === '#route' || document.getElementById('route-tab')?.classList.contains('active')) {
+        setTimeout(loadElevationIfNeeded, 500);
+    }
     // Download GPX functionality
     document.getElementById('download-gpx-btn')?.addEventListener('click', function() {
         if (!trail.route_coordinates || trail.route_coordinates.length < 2) {
