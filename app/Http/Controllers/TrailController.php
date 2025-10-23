@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\Trail;
+use Illuminate\Support\Facades\Storage;
 
 class TrailController extends Controller
 {
@@ -13,8 +14,12 @@ class TrailController extends Controller
     public function home()
     {
         $featuredTrails = Trail::where('is_featured', true)
-            ->with(['media' => function($query) {
-                $query->where('is_featured', true)->orWhere('sort_order', 0);
+            ->with(['trailMedia' => function($q) {
+                // Only include photos for featured image display
+                $q->where('media_type', 'photo')
+                    ->where(function($q2) {
+                        $q2->where('is_featured', true)->orWhere('sort_order', 0);
+                    });
             }])
             ->take(6)
             ->get();
@@ -73,7 +78,14 @@ class TrailController extends Controller
             }
         }
 
-        $trails = $query->orderBy('is_featured', 'desc')
+        $trails = $query->with(['trailMedia' => function($q) {
+                            // Only include photos for featured image display
+                            $q->where('media_type', 'photo')
+                              ->where(function($q2) {
+                                  $q2->where('is_featured', true)->orWhere('sort_order', 0);
+                              });
+                        }])
+                       ->orderBy('is_featured', 'desc')
                        ->orderBy('name')
                        ->paginate(12);
 
@@ -184,17 +196,17 @@ class TrailController extends Controller
                 $routeCoords = array_values($routeCoords); // Re-index array
             }
 
-            // Get featured photo or first photo from trail_media
-            $featuredMedia = $trail->media->where('is_featured', true)->first();
+            // Get featured photo (only photos) or fallback to first photo
+            $featuredMedia = $trail->media->where('is_featured', true)->where('media_type', 'photo')->first();
             if (!$featuredMedia) {
-                $featuredMedia = $trail->media->first();
+                $featuredMedia = $trail->media->where('media_type', 'photo')->first();
             }
 
             // Get all photos from trail_media
-            $photos = $trail->media->map(function($media) {
+                $photos = $trail->media->map(function($media) {
                 return [
                     'id' => $media->id,
-                    'url' => \Storage::url($media->storage_path),
+                    'url' => Storage::url($media->storage_path),
                     'caption' => $media->caption,
                     'is_featured' => $media->is_featured,
                 ];
@@ -238,7 +250,7 @@ class TrailController extends Controller
                     'type' => $feature->feature_type, // Make sure this is 'type' not 'feature_type'
                     'feature_type' => $feature->feature_type, // Keep both for compatibility
                     'coordinates' => $featureCoords,
-                    'photo_url' => $primaryMedia ? \Storage::url($primaryMedia->storage_path) : null,
+                    'photo_url' => $primaryMedia ? Storage::url($primaryMedia->storage_path) : null,
                     'media_count' => $feature->media_count ?? 0,
                     'icon' => $this->getFeatureIcon($feature->feature_type),
                     'color' => $this->getFeatureColor($feature->feature_type),
@@ -258,7 +270,7 @@ class TrailController extends Controller
                 'trail_type' => $trail->trail_type,
                 'status' => $trail->status,
                 'route_coordinates' => $routeCoords,
-                'preview_photo' => $featuredMedia ? \Storage::url($featuredMedia->storage_path) : null,
+                'preview_photo' => $featuredMedia ? Storage::url($featuredMedia->storage_path) : null,
                 'photos' => $photos,
                 'highlights' => $highlights,
                 'activities' => $activities,

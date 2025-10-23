@@ -62,6 +62,14 @@ class Trail extends Model
     }
 
     /**
+     * Backwards-compatible alias for older views that used `trailMedia` relationship
+     */
+    public function trailMedia()
+    {
+        return $this->media();
+    }
+
+    /**
      * Get only photos - NEW
      */
     public function photoMedia()
@@ -82,7 +90,39 @@ class Trail extends Model
      */
     public function featuredMedia()
     {
-        return $this->hasOne(TrailMedia::class)->where('is_featured', true)->orderBy('sort_order');
+        // Only consider photos as featured media
+        return $this->hasOne(TrailMedia::class)
+                    ->where('is_featured', true)
+                    ->where('media_type', 'photo')
+                    ->orderBy('sort_order');
+    }
+
+    /**
+     * Accessor to get a safe featured media URL (thumbnail for videos, url for photos)
+     */
+    public function getFeaturedMediaUrlAttribute()
+    {
+        // Prefer a featured photo
+        $media = $this->trailMedia()
+                      ->where('is_featured', true)
+                      ->where('media_type', 'photo')
+                      ->first();
+
+        // Fallback to first photo only (do not return videos)
+        if (!$media) {
+            $media = $this->trailMedia()->where('media_type', 'photo')->first();
+        }
+
+        if (!$media) {
+            return null;
+        }
+
+        // Prefer thumbnail (for videos or generated thumbnails), otherwise full url
+        if (method_exists($media, 'getThumbnailUrlAttribute')) {
+            return $media->thumbnail_url ?? $media->url ?? null;
+        }
+
+        return $media->url ?? null;
     }
 
     /**

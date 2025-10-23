@@ -16,6 +16,10 @@ class AdminController extends Controller
      */
     public function loginForm()
     {
+        if (Auth::check() && Auth::user()->isAdmin()) {
+            return redirect()->route('admin.dashboard');
+        }
+
         return view('admin.login');
     }
 
@@ -24,6 +28,10 @@ class AdminController extends Controller
      */
     public function login(Request $request)
     {
+        if (Auth::check() && Auth::user()->isAdmin()) {
+            return redirect()->route('admin.dashboard');
+        }
+        
         $request->validate([
             'email' => 'required|email',
             'password' => 'required',

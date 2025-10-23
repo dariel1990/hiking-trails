@@ -6,7 +6,7 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
     <title>@yield('title', 'Admin Panel') - Trail Finder</title>
-
+    <link rel="icon" type="image/png" href="{{ asset('images/logo.png') }}">
     <!-- Fonts -->
     <link href="https://fonts.bunny.net/css?family=Inter:400,500,600,700" rel="stylesheet">
 

@@ -606,8 +606,11 @@ class AdminTrailController extends Controller
                 foreach ($deletedIds as $photoId) {
                     $photo = TrailMedia::find($photoId);
                     if ($photo && $photo->trail_id === $trail->id) {
-                        // Delete from storage
-                        Storage::disk('public')->delete($photo->storage_path);
+                        // Delete from storage if a storage path exists (photos only)
+                        if (!empty($photo->storage_path)) {
+                            Storage::disk('public')->delete($photo->storage_path);
+                        }
+
                         // Delete record
                         $photo->delete();
                     }

@@ -128,8 +128,18 @@
                 
                 <!-- Enhanced Trail Image -->
                 <div class="trail-card-image group-hover:scale-105 transition-transform duration-500">
-                    @if($trail->featuredPhoto)
-                        <img src="{{ $trail->featuredPhoto->url }}" alt="{{ $trail->name }}" 
+                    @php
+                        // Prefer the model accessor which only returns photos
+                        $featuredUrl = $trail->featured_media_url;
+                        // If not present, try the first photo on the trailMedia collection
+                        if (!$featuredUrl) {
+                            $firstPhoto = $trail->trailMedia->where('media_type', 'photo')->first();
+                            $featuredUrl = $firstPhoto ? $firstPhoto->getThumbnail() ?? $firstPhoto->getUrl() : null;
+                        }
+                    @endphp
+                    @if($featuredUrl)
+                        <img src="{{ $featuredUrl }}" 
+                             alt="{{ $trail->name }}" 
                              class="w-full h-full object-cover">
                     @else
                         <div class="absolute inset-0 flex items-center justify-center">

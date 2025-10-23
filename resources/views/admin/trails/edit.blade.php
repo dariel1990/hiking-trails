@@ -840,17 +840,21 @@
                             
                             <!-- Buttons Below Media -->
                             <div class="flex gap-2">
-                                @if(!$media->is_featured)
-                                <button type="button" 
-                                        onclick="setFeaturedPhoto({{ $media->id }})"
-                                        class="flex-1 px-3 py-1.5 text-xs font-medium rounded bg-gray-100 hover:bg-gray-200 text-gray-700">
-                                    Set Featured
-                                </button>
+                                @if($media->media_type === 'photo')
+                                    @if(!$media->is_featured)
+                                    <button type="button" 
+                                            onclick="setFeaturedPhoto({{ $media->id }})"
+                                            class="flex-1 px-3 py-1.5 text-xs font-medium rounded bg-gray-100 hover:bg-gray-200 text-gray-700">
+                                        Set Featured
+                                    </button>
+                                    @else
+                                    <button type="button" 
+                                            class="flex-1 px-3 py-1.5 text-xs font-medium rounded bg-yellow-400 text-yellow-900 cursor-default">
+                                        ⭐ Featured
+                                    </button>
+                                    @endif
                                 @else
-                                <button type="button" 
-                                        class="flex-1 px-3 py-1.5 text-xs font-medium rounded bg-yellow-400 text-yellow-900 cursor-default">
-                                    ⭐ Featured
-                                </button>
+                                    <div class="flex-1"></div>
                                 @endif
                                 <button type="button" 
                                         onclick="deletePhoto({{ $media->id }})"
@@ -930,7 +934,7 @@
                 @endif
 
                 <!-- Hidden inputs for photo data -->
-                <input type="hidden" name="featured_photo_index" id="featured-photo-index" value="0">
+                <input type="hidden" name="featured_photo_index" id="featured-photo-index" value="-1">
                 <input type="hidden" name="featured_photo_id" id="featured-photo-id" value="">
             </div>
         </div>
@@ -2779,7 +2783,9 @@
             
             // NEW: Check if there's already a featured photo in existing photos
             const hasFeaturedPhoto = this.existingPhotos.some(photo => photo.is_featured);
-            this.featuredIndex = hasFeaturedPhoto ? -1 : 0; // -1 means no new photo is featured
+            // Default to -1 (no new photo selected). Existing featured photos (from DB) are tracked separately.
+            this.featuredIndex = -1; // -1 means no new photo is featured
+            this.existingHasFeatured = hasFeaturedPhoto;
             
             // Only initialize if all required elements exist
             if (this.uploadZone && this.fileInput) {
@@ -2913,13 +2919,6 @@
             if (index === -1) return;
             
             this.videos.splice(index, 1);
-            
-            // Adjust featured index if needed
-            const totalPhotos = this.existingPhotos.length + this.photos.length;
-            if (this.featuredIndex >= totalPhotos + this.videos.length) {
-                this.featuredIndex = Math.max(0, totalPhotos + this.videos.length - 1);
-            }
-            
             this.render();
         }
 
@@ -3071,6 +3070,13 @@
                 };
 
                 this.photos.push(photo);
+
+                // Auto-feature the first newly added photo only if there is no featured photo already
+                if (this.featuredIndex === -1 && !this.hasFeaturedPhoto()) {
+                    // featuredIndex is the index within this.photos
+                    this.featuredIndex = this.photos.length - 1;
+                }
+
                 this.render();
             };
 
@@ -3095,12 +3101,20 @@
         }
 
         setFeatured(index) {
-            // Don't allow setting featured if there's already a featured photo (unless it's already this one)
-            if (this.hasFeaturedPhoto() && this.featuredIndex !== index) {
+            // index refers to position inside this.photos (new uploads)
+            if (index < 0 || index >= this.photos.length) {
+                // Trying to feature a non-photo (video) - prevent this
+                alert('Videos cannot be set as featured. Please choose a photo.');
+                return;
+            }
+
+            // If there is already a featured photo persisted on the trail, require removal first
+            const existingFeatured = this.existingPhotos.some(p => p.is_featured);
+            if (existingFeatured) {
                 showToast('Remove the current featured photo first', 'warning');
                 return;
             }
-            
+
             this.featuredIndex = index;
             this.render();
         }
@@ -3249,8 +3263,9 @@
                             </div>
                             
                             <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-all duration-200 rounded-lg flex items-center justify-center gap-2">
-                                <button type="button" onclick="event.stopPropagation(); window.photoManager.setFeatured(${globalIndex})" 
-                                    class="opacity-0 group-hover:opacity-100 bg-yellow-400 hover:bg-yellow-500 text-yellow-900 p-2 rounded-full transition-all z-10">
+                                <!-- Videos cannot be featured. Show warning when attempted -->
+                                <button type="button" onclick="event.stopPropagation(); alert('Videos cannot be set as featured. Please select a photo instead.');" 
+                                    class="opacity-0 group-hover:opacity-100 bg-yellow-200 text-yellow-900 p-2 rounded-full transition-all z-10 cursor-not-allowed" title="Videos cannot be featured">
                                     <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
                                         <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
                                     </svg>
@@ -3914,13 +3929,7 @@
         document.body.appendChild(modal);
     }
 
-    function setFeaturedPhoto(photoId) {
-        // Implementation for setting featured photo
-        if (confirm('Set this as the featured photo?')) {
-            // Add logic here if needed, or just reload the page
-            alert('Featured photo functionality - to be implemented');
-        }
-    }
+    
 </script>
 
 <style>

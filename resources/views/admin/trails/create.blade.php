@@ -783,7 +783,7 @@
                 </div>
 
                 <!-- Hidden inputs for photo data -->
-                <input type="hidden" name="featured_photo_index" id="featured-photo-index" value="0">
+                <input type="hidden" name="featured_photo_index" id="featured-photo-index" value="-1">
             </div>
         </div>
 
@@ -2428,11 +2428,12 @@
     // Photo Upload Handler
     class PhotoUploadManager {
         constructor() {
-            this.photos = [];
-            this.videos = [];
-            this.maxPhotos = 10;
-            this.maxTotal = 10;
-            this.featuredIndex = 0;
+                this.photos = [];
+                this.videos = [];
+                this.maxPhotos = 10;
+                this.maxTotal = 10;
+                // -1 means no featured photo selected yet
+                this.featuredIndex = -1;
             this.init();
         }
 
@@ -2561,8 +2562,8 @@
             const totalMedia = totalPhotos + totalVideos;
             
             if (this.featuredIndex === globalIndex) {
-                // If we're deleting the featured item, reset to first item
-                this.featuredIndex = totalMedia > 0 ? 0 : -1;
+                // If we're deleting the featured item (shouldn't be a video), prefer first photo as featured
+                this.featuredIndex = this.photos.length > 0 ? 0 : -1;
             } else if (this.featuredIndex > globalIndex) {
                 // If featured is after deleted item, adjust index
                 this.featuredIndex--;
@@ -2647,6 +2648,10 @@
                 };
 
                 this.photos.push(photo);
+                // If this is the first photo and no featured selected, make it featured
+                if (this.photos.length === 1 && this.featuredIndex === -1) {
+                    this.featuredIndex = 0;
+                }
                 this.render();
             };
 
@@ -2667,8 +2672,8 @@
             const totalMedia = totalPhotos + totalVideos;
             
             if (this.featuredIndex === index) {
-                // If we're deleting the featured item, reset to first item
-                this.featuredIndex = totalMedia > 0 ? 0 : -1;
+                // If we're deleting the featured photo, set to first remaining photo or -1
+                this.featuredIndex = this.photos.length > 0 ? 0 : -1;
             } else if (this.featuredIndex > index) {
                 // If featured is after deleted item, adjust index
                 this.featuredIndex--;
@@ -2678,6 +2683,14 @@
         }
 
         setFeatured(index) {
+            // Only photos can be featured
+            if (index < 0 || index >= (this.photos.length + this.videos.length)) return;
+            if (index >= this.photos.length) {
+                // It's a video - do not allow
+                alert('Only photos can be featured. Please select a photo.');
+                return;
+            }
+
             this.featuredIndex = index;
             this.render();
         }
@@ -2690,7 +2703,7 @@
             if (confirm('Remove all media (photos and videos)?')) {
                 this.photos = [];
                 this.videos = [];
-                this.featuredIndex = 0;
+                this.featuredIndex = -1;
                 this.render();
             }
         }
@@ -2833,10 +2846,11 @@
                             
                             <!-- Buttons Below -->
                             <div class="flex gap-2">
+                                <!-- Videos cannot be featured -->
                                 <button type="button" 
-                                        onclick="event.stopPropagation(); window.photoManager.setFeatured(${globalIndex})" 
-                                        class="flex-1 px-3 py-1.5 text-xs font-medium rounded ${globalIndex === this.featuredIndex ? 'bg-yellow-400 text-yellow-900' : 'bg-gray-100 hover:bg-gray-200 text-gray-700'}">
-                                    ${globalIndex === this.featuredIndex ? '⭐ Featured' : 'Set Featured'}
+                                        onclick="event.stopPropagation(); alert('Only photos can be featured.');" 
+                                        class="flex-1 px-3 py-1.5 text-xs font-medium rounded bg-gray-100 text-gray-500 cursor-not-allowed" disabled>
+                                    🎥 Video
                                 </button>
                                 <button type="button" 
                                         onclick="event.stopPropagation(); window.photoManager.removeVideo('${video.id}')" 

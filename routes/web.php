@@ -13,11 +13,8 @@ Route::get('/map', [TrailController::class, 'map'])->name('map');
 
 // ADMIN ROUTES
 Route::prefix('admin')->name('admin.')->group(function () {
-    // Guest routes (login)
-    Route::middleware('guest')->group(function () {
-        Route::get('/login', [AdminController::class, 'loginForm'])->name('login');
-        Route::post('/login', [AdminController::class, 'login'])->name('login.post');
-    });
+    Route::get('/login', [AdminController::class, 'loginForm'])->name('login');
+    Route::post('/login', [AdminController::class, 'login'])->name('login.post');
     
     // Protected admin routes
     Route::middleware(['auth', 'admin', 'throttle:10,1'])->group(function () {
@@ -46,3 +43,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
 
    
 });
+
+Route::get('/login', function () {
+    return redirect()->route('admin.login');
+})->name('login');

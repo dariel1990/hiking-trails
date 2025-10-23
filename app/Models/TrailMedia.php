@@ -110,6 +110,14 @@ class TrailMedia extends Model
     }
 
     /**
+     * Backwards-compatible method wrapper for getUrl() used in some views
+     */
+    public function getUrl()
+    {
+        return $this->url;
+    }
+
+    /**
      * Get the thumbnail URL
      */
     public function getThumbnailUrlAttribute(): string
@@ -125,6 +133,14 @@ class TrailMedia extends Model
 
         // Default placeholder for videos without thumbnails
         return asset('images/video-placeholder.png');
+    }
+
+    /**
+     * Backwards-compatible method wrapper for getThumbnail() used by views
+     */
+    public function getThumbnail()
+    {
+        return $this->thumbnail_url;
     }
 
     /**
