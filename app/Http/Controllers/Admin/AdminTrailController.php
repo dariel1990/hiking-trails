@@ -10,6 +10,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use App\Models\TrailFeature;
+use Illuminate\Support\Facades\Log;
 
 use Exception;
 
@@ -209,13 +210,13 @@ class AdminTrailController extends Controller
         // Try JSON format first (from permanent hidden input)
         if ($request->has('trail_video_urls_json') && !empty($request->input('trail_video_urls_json'))) {
             $videoUrls = json_decode($request->input('trail_video_urls_json'), true);
-            \Log::info('Video URLs from JSON:', ['urls' => $videoUrls]);
+            // \Log::info('Video URLs from JSON:', ['urls' => $videoUrls]);
         }
 
         // Fallback to array format
         if (empty($videoUrls) && $request->has('trail_video_urls')) {
             $videoUrls = $request->input('trail_video_urls');
-            \Log::info('Video URLs from array:', ['urls' => $videoUrls]);
+            // \Log::info('Video URLs from array:', ['urls' => $videoUrls]);
         }
 
         // Save video URLs to TrailMedia table
@@ -237,11 +238,11 @@ class AdminTrailController extends Controller
                         'uploaded_by' => auth()->id(),
                     ]);
                     
-                    \Log::info('Video URL saved:', [
-                        'trail_id' => $trail->id,
-                        'url' => $videoUrl,
-                        'sort_order' => $sortOrder
-                    ]);
+                    // \Log::info('Video URL saved:', [
+                    //     'trail_id' => $trail->id,
+                    //     'url' => $videoUrl,
+                    //     'sort_order' => $sortOrder
+                    // ]);
                 }
             }
         }
@@ -258,6 +259,8 @@ class AdminTrailController extends Controller
                         'name' => $highlightData['name'],
                         'description' => $highlightData['description'] ?? null,
                         'coordinates' => $highlightData['coordinates'],
+                        'icon' => $highlightData['icon'] ?? null,      // NEW
+                        'color' => $highlightData['color'] ?? null,    // NEW
                     ]);
                     
                     // Handle photo file if exists for this highlight
@@ -293,8 +296,8 @@ class AdminTrailController extends Controller
                     }
                     
                     // Handle video URL if exists for this highlight
-                    if (isset($highlightData['videoIndex']) && $request->has("highlight_video_url_{$highlightData['videoIndex']}")) {
-                        $videoUrl = $request->input("highlight_video_url_{$highlightData['videoIndex']}");
+                    if (isset($highlightData['videoIndex']) && isset($highlightData['videoUrl'])) {
+                        $videoUrl = $highlightData['videoUrl'];
                         
                         if (!empty($videoUrl)) {
                             // Create media record for video URL
@@ -375,6 +378,7 @@ class AdminTrailController extends Controller
      */
     public function update(Request $request, Trail $trail)
     {
+        // dd($request->all());
         $request->validate([
             'name' => 'required|string|max:255',
             'description' => 'required|string',
@@ -513,6 +517,95 @@ class AdminTrailController extends Controller
             }
         }
 
+        if ($request->has('edited_highlights')) {
+            $editedHighlights = json_decode($request->edited_highlights, true);
+            
+            if (is_array($editedHighlights)) {
+                foreach ($editedHighlights as $highlightId => $highlightData) {
+                    $feature = TrailFeature::find($highlightId);
+                    
+                    if ($feature && $feature->trail_id === $trail->id) {
+                        $feature->update([
+                            'feature_type' => $highlightData['feature_type'],
+                            'name' => $highlightData['name'],
+                            'description' => $highlightData['description'] ?? null,
+                            'coordinates' => $highlightData['coordinates'],
+                            'icon' => $highlightData['icon'] ?? null,
+                            'color' => $highlightData['color'] ?? null,
+                        ]);
+                        
+                        // === Handle media for edited existing highlights ===
+                        // If the frontend sent a mediaIndex and a file was uploaded for it,
+                        // store the photo and attach it to the existing feature.
+                        try {
+                            if (isset($highlightData['mediaIndex']) && $request->hasFile("highlight_media_{$highlightData['mediaIndex']}")) {
+                                $mediaFile = $request->file("highlight_media_{$highlightData['mediaIndex']}");
+                                $filename = Str::random(40) . '.' . $mediaFile->getClientOriginalExtension();
+                                $path = $mediaFile->storeAs('trail-photos', $filename, 'public');
+
+                                $media = TrailMedia::create([
+                                    'trail_id' => $trail->id,
+                                    'media_type' => 'photo',
+                                    'filename' => $filename,
+                                    'original_name' => $mediaFile->getClientOriginalName(),
+                                    'storage_path' => $path,
+                                    'file_size' => $mediaFile->getSize(),
+                                    'mime_type' => $mediaFile->getMimeType(),
+                                    'sort_order' => 0,
+                                    'is_featured' => false,
+                                    'uploaded_by' => auth()->id(),
+                                ]);
+
+                                // Attach the new media to the feature (mark primary)
+                                $feature->media()->attach($media->id, [
+                                    'is_primary' => true,
+                                    'sort_order' => 0,
+                                ]);
+
+                                // Update cached count on feature
+                                $feature->updateMediaCount();
+                            }
+                        } catch (\Exception $e) {
+                            // Log and continue - do not block the whole update if media fails
+                            Log::warning('Failed to attach edited highlight media: ' . $e->getMessage());
+                        }
+
+                        // Handle video URL passed as part of edited highlights data (preferred)
+                        // or as an individual input highlight_video_url_X
+                        try {
+                            $videoUrl = null;
+                            if (isset($highlightData['videoUrl']) && !empty($highlightData['videoUrl'])) {
+                                $videoUrl = $highlightData['videoUrl'];
+                            } elseif (isset($highlightData['videoIndex']) && $request->has("highlight_video_url_{$highlightData['videoIndex']}")) {
+                                $videoUrl = $request->input("highlight_video_url_{$highlightData['videoIndex']}");
+                            }
+
+                            if (!empty($videoUrl)) {
+                                $media = TrailMedia::create([
+                                    'trail_id' => $trail->id,
+                                    'media_type' => 'video_url',
+                                    'video_url' => $videoUrl,
+                                    'video_provider' => $this->detectVideoProvider($videoUrl),
+                                    'sort_order' => 0,
+                                    'is_featured' => false,
+                                    'uploaded_by' => auth()->id(),
+                                ]);
+
+                                $feature->media()->attach($media->id, [
+                                    'is_primary' => true,
+                                    'sort_order' => 0,
+                                ]);
+
+                                $feature->updateMediaCount();
+                            }
+                        } catch (\Exception $e) {
+                            Log::warning('Failed to attach edited highlight video URL: ' . $e->getMessage());
+                        }
+                    }
+                }
+            }
+        }
+
         // Handle new highlights/features
         if ($request->has('highlights_data')) {
             $newHighlights = json_decode($request->highlights_data, true);
@@ -525,6 +618,8 @@ class AdminTrailController extends Controller
                         'name' => $highlightData['name'],
                         'description' => $highlightData['description'] ?? null,
                         'coordinates' => $highlightData['coordinates'],
+                        'icon' => $highlightData['icon'] ?? null,      // NEW
+                        'color' => $highlightData['color'] ?? null,    // NEW
                     ]);
                     
                     // Handle photo file if exists for this highlight
@@ -648,13 +743,13 @@ class AdminTrailController extends Controller
         // Try JSON format first (from permanent hidden input)
         if ($request->has('trail_video_urls_json') && !empty($request->input('trail_video_urls_json'))) {
             $videoUrls = json_decode($request->input('trail_video_urls_json'), true);
-            \Log::info('Video URLs from JSON (update):', ['urls' => $videoUrls]);
+            // \Log::info('Video URLs from JSON (update):', ['urls' => $videoUrls]);
         }
 
         // Fallback to array format
         if (empty($videoUrls) && $request->has('trail_video_urls')) {
             $videoUrls = $request->input('trail_video_urls');
-            \Log::info('Video URLs from array (update):', ['urls' => $videoUrls]);
+            // \Log::info('Video URLs from array (update):', ['urls' => $videoUrls]);
         }
 
         // Save new video URLs to TrailMedia table
@@ -674,11 +769,11 @@ class AdminTrailController extends Controller
                         'uploaded_by' => auth()->id(),
                     ]);
                     
-                    \Log::info('Video URL saved (update):', [
-                        'trail_id' => $trail->id,
-                        'url' => $videoUrl,
-                        'sort_order' => $maxSortOrder + $photoCount + $index + 1
-                    ]);
+                    // \Log::info('Video URL saved (update):', [
+                    //     'trail_id' => $trail->id,
+                    //     'url' => $videoUrl,
+                    //     'sort_order' => $maxSortOrder + $photoCount + $index + 1
+                    // ]);
                 }
             }
         }
@@ -755,7 +850,7 @@ class AdminTrailController extends Controller
             
             // Debug: Check if file exists
             if (!file_exists($fullPath)) {
-                \Log::error('GPX file not found at: ' . $fullPath);
+                // \Log::error('GPX file not found at: ' . $fullPath);
                 throw new Exception('Failed to save GPX file. Please check storage permissions.');
             }
 
@@ -780,7 +875,7 @@ class AdminTrailController extends Controller
                 ],
             ]);
         } catch (Exception $e) {
-            \Log::error('GPX Preview Error: ' . $e->getMessage());
+            // \Log::error('GPX Preview Error: ' . $e->getMessage());
             
             // Provide user-friendly error messages
             $userMessage = $e->getMessage();
@@ -872,204 +967,13 @@ class AdminTrailController extends Controller
                 'current_source' => $trail->data_source,
             ]);
         } catch (Exception $e) {
-            \Log::error('GPX Compare Error: ' . $e->getMessage());
+            // \Log::error('GPX Compare Error: ' . $e->getMessage());
             return response()->json([
                 'success' => false,
                 'message' => $e->getMessage(),
             ], 422);
         }
     }
-
-    // /**
-    //  * Show media management page
-    //  */
-    // public function mediaManagement(Trail $trail)
-    // {
-    //     $trail->load([
-    //         'media' => function($query) {
-    //             $query->orderBy('sort_order')->orderBy('created_at', 'desc');
-    //         },
-    //         'features.media'
-    //     ]);
-        
-    //     return view('admin.trails.media-management', compact('trail'));
-    // }
-
-    // /**
-    //  * Upload media (photos or videos)
-    //  */
-    // public function uploadMedia(Request $request, Trail $trail)
-    // {
-    //     try {
-    //         $request->validate([
-    //             'media_type' => 'required|in:photo,video,video_url',
-    //             'file' => 'required_if:media_type,photo,video|file|mimes:jpg,jpeg,png,gif,mp4,mov,avi|max:51200',
-    //             'video_url' => 'required_if:media_type,video_url|url',
-    //             'caption' => 'nullable|string|max:500',
-    //             'coordinates' => 'nullable|array',
-    //         ]);
-    //     } catch (\Illuminate\Validation\ValidationException $e) {
-    //         return response()->json([
-    //             'success' => false,
-    //             'message' => 'Validation failed',
-    //             'errors' => $e->errors()
-    //         ], 422);
-    //     }
-
-    //     try {
-    //         $data = [
-    //             'trail_id' => $trail->id,
-    //             'media_type' => $request->media_type,
-    //             'caption' => $request->caption,
-    //             'coordinates' => $request->coordinates,
-    //             'sort_order' => $trail->media()->max('sort_order') + 1,
-    //             'uploaded_by' => auth()->id(),
-    //         ];
-
-    //         // Handle file upload
-    //         if ($request->hasFile('file')) {
-    //             $file = $request->file('file');
-    //             $filename = Str::random(40) . '.' . $file->getClientOriginalExtension();
-                
-    //             $folder = $request->media_type === 'photo' ? 'trail-photos' : 'trail-videos';
-    //             $path = $file->storeAs($folder, $filename, 'public');
-
-    //             $data['filename'] = $filename;
-    //             $data['original_name'] = $file->getClientOriginalName();
-    //             $data['storage_path'] = $path;
-    //             $data['file_size'] = $file->getSize();
-    //             $data['mime_type'] = $file->getMimeType();
-    //         }
-
-    //         // Handle external video URL
-    //         if ($request->media_type === 'video_url') {
-    //             $data['video_url'] = $request->video_url;
-    //             $data['video_provider'] = $this->detectVideoProvider($request->video_url);
-    //         }
-
-    //         $media = TrailMedia::create($data);
-
-    //         return response()->json([
-    //             'success' => true,
-    //             'message' => 'Media uploaded successfully!',
-    //             'media' => $media->load('features'),
-    //         ]);
-            
-    //     } catch (\Exception $e) {
-    //         \Log::error('Media upload error: ' . $e->getMessage());
-            
-    //         return response()->json([
-    //             'success' => false,
-    //             'message' => 'Upload failed: ' . $e->getMessage()
-    //         ], 500);
-    //     }
-    // }
-
-    // /**
-    //  * Link media to a feature
-    //  */
-    // public function linkMediaToFeature(Trail $trail, TrailMedia $media, TrailFeature $feature)
-    // {
-    //     // Check if already linked
-    //     if ($media->features->contains($feature->id)) {
-    //         return response()->json([
-    //             'success' => false,
-    //             'message' => 'Media is already linked to this feature.'
-    //         ], 400);
-    //     }
-
-    //     // Check limits
-    //     if ($media->isPhoto() && $feature->hasReachedPhotoLimit()) {
-    //         return response()->json([
-    //             'success' => false,
-    //             'message' => 'This feature has reached the maximum of 10 photos.'
-    //         ], 400);
-    //     }
-
-    //     if ($media->isVideo() && $feature->hasReachedVideoLimit()) {
-    //         return response()->json([
-    //             'success' => false,
-    //             'message' => 'This feature has reached the maximum of 1 video.'
-    //         ], 400);
-    //     }
-
-    //     // Link media to feature
-    //     $nextSortOrder = $feature->media()->max('trail_feature_media.sort_order') + 1;
-    //     $isPrimary = $feature->media()->count() === 0; // First media is primary
-
-    //     $feature->media()->attach($media->id, [
-    //         'is_primary' => $isPrimary,
-    //         'sort_order' => $nextSortOrder,
-    //     ]);
-
-    //     // Update cached count
-    //     $feature->updateMediaCount();
-
-    //     return response()->json([
-    //         'success' => true,
-    //         'message' => 'Media linked to feature successfully!',
-    //         'feature' => $feature->load('media'),
-    //     ]);
-    // }
-
-    // /**
-    //  * Unlink media from a feature
-    //  */
-    // public function unlinkMediaFromFeature(Trail $trail, TrailMedia $media, TrailFeature $feature)
-    // {
-    //     $feature->media()->detach($media->id);
-        
-    //     // Update cached count
-    //     $feature->updateMediaCount();
-
-    //     return response()->json([
-    //         'success' => true,
-    //         'message' => 'Media unlinked from feature successfully!',
-    //     ]);
-    // }
-
-    // /**
-    //  * Update media details
-    //  */
-    // public function updateMedia(Request $request, Trail $trail, TrailMedia $media)
-    // {
-    //     $request->validate([
-    //         'caption' => 'nullable|string|max:500',
-    //         'description' => 'nullable|string|max:1000',
-    //         'is_featured' => 'boolean',
-    //         'sort_order' => 'integer|min:0',
-    //     ]);
-
-    //     // If setting as featured, remove featured status from all other trail media
-    //     if ($request->has('is_featured') && $request->is_featured) {
-    //         $trail->media()->update(['is_featured' => false]);
-    //     }
-
-    //     $media->update($request->only(['caption', 'description', 'is_featured', 'sort_order']));
-
-    //     return response()->json([
-    //         'success' => true,
-    //         'message' => 'Media updated successfully!',
-    //         'media' => $media,
-    //     ]);
-    // }
-
-    // /**
-    //  * Delete media
-    //  */
-    // public function deleteMedia(Trail $trail, TrailMedia $media)
-    // {
-    //     // Detach from all features first
-    //     $media->features()->detach();
-        
-    //     // Delete the media record (this will trigger the model's boot method to delete files)
-    //     $media->delete();
-
-    //     return response()->json([
-    //         'success' => true,
-    //         'message' => 'Media deleted successfully!',
-    //     ]);
-    // }
 
     /**
      * Detect video provider from URL

@@ -347,24 +347,109 @@
                         </div>
                         
                         @if($trail->highlights && $trail->highlights->count() > 0)
-                        <h2 class="text-forest-700">Trail Highlights</h2>
-                        <div class="grid sm:grid-cols-2 gap-4 not-prose">
-                            @foreach($trail->highlights as $highlight)
-                            <div class="bg-gray-50 rounded-lg p-4 hover:bg-gray-100 transition-colors cursor-pointer"
-                                 onclick="focusFeature({{ json_encode($highlight->coordinates) }}, '{{ $highlight->name }}')">
-                                <div class="flex items-start">
-                                    <div class="text-3xl mr-3">{{ $highlight->icon }}</div>
-                                    <div>
-                                        <h4 class="font-semibold text-gray-900">{{ $highlight->name }}</h4>
-                                        <p class="text-sm text-gray-600 capitalize">{{ str_replace('_', ' ', $highlight->feature_type) }}</p>
+                            <h2 class="text-forest-700">Trail Highlights</h2>
+                            <div class="grid grid-cols-1 gap-4 not-prose">
+                                @foreach($trail->highlights as $highlight)
+                                <div class="bg-white rounded-xl border-2 border-gray-100 hover:border-emerald-300 hover:shadow-lg transition-all duration-300 cursor-pointer overflow-hidden"
+                                    onclick="focusFeature({{ json_encode($highlight->coordinates) }}, '{{ $highlight->name }}')">
+                                    
+                                    <div class="p-4">
+                                        <!-- Header with Icon and Info -->
+                                        <div class="flex items-start gap-3 mb-3">
+                                            <div style="background-color: {{ $highlight->color }};" 
+                                                class="w-10 h-10 rounded-lg flex items-center justify-center text-white shadow-md flex-shrink-0 text-xl">
+                                                {{ $highlight->icon }}
+                                            </div>
+                                            <div class="flex-1 min-w-0">
+                                                <h4 class="font-bold text-gray-900 text-base leading-tight mb-1.5">
+                                                    {{ $highlight->name }}
+                                                </h4>
+                                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-medium bg-emerald-100 text-emerald-700 capitalize">
+                                                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1.5"></span>
+                                                    {{ str_replace('_', ' ', $highlight->feature_type) }}
+                                                </span>
+                                            </div>
+                                        </div>
+                                        
+                                        <!-- Description -->
                                         @if($highlight->description)
-                                            <p class="text-sm text-gray-700 mt-1">{{ $highlight->description }}</p>
+                                            <p class="text-sm text-gray-600 leading-relaxed mb-3 line-clamp-2 border-t border-gray-100 pt-3">
+                                                {{ $highlight->description }}
+                                            </p>
+                                        @endif
+                                        
+                                        <!-- Media Grid -->
+                                        @if($highlight->media && $highlight->media->count() > 0)
+                                            <div class="border-t border-gray-100 pt-3">
+                                                <div class="grid grid-cols-3 gap-1.5">
+                                                    @foreach($highlight->media->take(3) as $media)
+                                                        @if($media->media_type === 'photo')
+                                                            <div class="relative aspect-square rounded overflow-hidden cursor-pointer hover:opacity-90 transition group"
+                                                                onclick="event.stopPropagation(); openMediaModal('{{ $media->url }}', 'photo', '{{ $media->caption ?? $highlight->name }}')">
+                                                                <img src="{{ $media->url }}" 
+                                                                    alt="{{ $media->caption ?? $highlight->name }}"
+                                                                    class="w-full h-full object-cover">
+                                                                <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-all flex items-center justify-center">
+                                                                    <svg class="w-6 h-6 text-white opacity-0 group-hover:opacity-100 transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7"/>
+                                                                    </svg>
+                                                                </div>
+                                                            </div>
+                                                        @elseif($media->media_type === 'video_url')
+                                                            <div class="relative aspect-square rounded overflow-hidden cursor-pointer hover:opacity-90 transition group bg-gray-900"
+                                                                onclick="event.stopPropagation(); openMediaModal('{{ $media->video_url }}', 'video', '{{ $media->caption ?? $highlight->name }}')">
+                                                                <div class="w-full h-full flex items-center justify-center">
+                                                                    <svg class="w-8 h-8 text-white opacity-75" fill="currentColor" viewBox="0 0 20 20">
+                                                                        <path d="M2 6a2 2 0 012-2h6a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V6zM14.553 7.106A1 1 0 0014 8v4a1 1 0 00.553.894l2 1A1 1 0 0018 13V7a1 1 0 00-1.447-.894l-2 1z"/>
+                                                                    </svg>
+                                                                </div>
+                                                                <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                                                    <div class="bg-white bg-opacity-90 rounded-full p-2">
+                                                                        <svg class="w-5 h-5 text-gray-900" fill="currentColor" viewBox="0 0 20 20">
+                                                                            <path d="M6.3 2.841A1.5 1.5 0 004 4.11V15.89a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z"/>
+                                                                        </svg>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        @elseif($media->media_type === 'video')
+                                                            <div class="relative aspect-square rounded overflow-hidden cursor-pointer hover:opacity-90 transition group bg-gray-900"
+                                                                onclick="event.stopPropagation(); openMediaModal('{{ $media->url }}', 'video', '{{ $media->caption ?? $highlight->name }}')">
+                                                                @if($media->thumbnail_url)
+                                                                    <img src="{{ $media->thumbnail_url }}" 
+                                                                        alt="Video thumbnail"
+                                                                        class="w-full h-full object-cover">
+                                                                @else
+                                                                    <div class="w-full h-full flex items-center justify-center">
+                                                                        <svg class="w-8 h-8 text-white opacity-75" fill="currentColor" viewBox="0 0 20 20">
+                                                                            <path d="M2 6a2 2 0 012-2h6a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V6zM14.553 7.106A1 1 0 0014 8v4a1 1 0 00.553.894l2 1A1 1 0 0018 13V7a1 1 0 00-1.447-.894l-2 1z"/>
+                                                                        </svg>
+                                                                    </div>
+                                                                @endif
+                                                                <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                                                    <div class="bg-white bg-opacity-90 rounded-full p-2">
+                                                                        <svg class="w-5 h-5 text-gray-900" fill="currentColor" viewBox="0 0 20 20">
+                                                                            <path d="M6.3 2.841A1.5 1.5 0 004 4.11V15.89a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z"/>
+                                                                        </svg>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        @endif
+                                                    @endforeach
+                                                </div>
+                                                
+                                                @if($highlight->media->count() > 3)
+                                                    <div class="text-center mt-2">
+                                                        <span class="text-xs text-emerald-600 font-semibold">
+                                                            +{{ $highlight->media->count() - 3 }} more
+                                                        </span>
+                                                    </div>
+                                                @endif
+                                            </div>
                                         @endif
                                     </div>
                                 </div>
+                                @endforeach
                             </div>
-                            @endforeach
-                        </div>
                         @endif
                     </div>
                 </div>
@@ -906,18 +991,89 @@ document.addEventListener('DOMContentLoaded', function() {
                 iconAnchor: [16, 16]
             });
             
+            // Build media HTML for popup
+            let mediaHTML = '';
+            if (feature.media && feature.media.length > 0) {
+                const displayMedia = feature.media.slice(0, 3); // Show max 3 media items
+                const hasMore = feature.media.length > 3;
+                const basePath = window.location.origin;
+                mediaHTML = `
+                    <div class="mt-3 pt-3 border-t border-gray-100">
+                        <div class="grid grid-cols-3 gap-1.5">
+                            ${displayMedia.map(media => {
+                                if (media.media_type === 'photo') {
+                                    return `
+                                        <div class="relative aspect-square rounded overflow-hidden cursor-pointer hover:opacity-90 transition group"
+                                            onclick="event.stopPropagation(); openMediaModal('${basePath}/storage/${media.storage_path}', 'photo', '${media.caption || feature.name}')">
+                                            <img src="${basePath}/storage/${media.storage_path}" 
+                                                alt="${media.caption || feature.name}"
+                                                class="w-full h-full object-cover">
+                                            <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all flex items-center justify-center">
+                                                <svg class="w-5 h-5 text-white opacity-0 group-hover:opacity-100 transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7"/>
+                                                </svg>
+                                            </div>
+                                        </div>
+                                    `;
+                                } else if (media.media_type === 'video_url') {
+                                    return `
+                                        <div class="relative aspect-square rounded overflow-hidden cursor-pointer hover:opacity-90 transition group bg-gray-900"
+                                            onclick="event.stopPropagation(); openMediaModal('${media.video_url || media.url}', 'video', '${media.caption || feature.name}')">
+                                            <div class="w-full h-full flex items-center justify-center">
+                                                <svg class="w-8 h-8 text-white opacity-75" fill="currentColor" viewBox="0 0 20 20">
+                                                    <path d="M2 6a2 2 0 012-2h6a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V6zM14.553 7.106A1 1 0 0014 8v4a1 1 0 00.553.894l2 1A1 1 0 0018 13V7a1 1 0 00-1.447-.894l-2 1z"/>
+                                                </svg>
+                                            </div>
+                                            <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                                <div class="bg-white bg-opacity-90 rounded-full p-1.5">
+                                                    <svg class="w-4 h-4 text-gray-900" fill="currentColor" viewBox="0 0 20 20">
+                                                        <path d="M6.3 2.841A1.5 1.5 0 004 4.11V15.89a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z"/>
+                                                    </svg>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    `;
+                                }
+                                return '';
+                            }).join('')}
+                        </div>
+                        ${hasMore ? `
+                            <div class="text-center mt-2">
+                                <span class="text-xs text-emerald-600 font-medium">+${feature.media.length - 3} more</span>
+                            </div>
+                        ` : ''}
+                    </div>
+                `;
+            }
+
             const marker = L.marker(feature.coordinates, { icon: highlightIcon })
                 .addTo(map)
                 .bindPopup(`
-                    <div class="p-2">
-                        <div class="flex items-center mb-2">
-                            <span class="text-xl mr-2">${feature.icon || '📍'}</span>
-                            <strong>${feature.name}</strong>
+                    <div class="min-w-[240px] max-w-[320px]">
+                        <div class="space-y-2">
+                            <div class="flex items-start gap-2">
+                                <div style="background-color: ${feature.color || '#6366f1'};" class="w-8 h-8 rounded-lg flex items-center justify-center text-white shadow-sm flex-shrink-0">
+                                    ${feature.icon || '📍'}
+                                </div>
+                                <div class="flex-1 min-w-0">
+                                    <h4 class="font-semibold text-sm text-gray-900 leading-tight mb-1">${feature.name}</h4>
+                                    <span class="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-emerald-100 text-emerald-700 capitalize">
+                                        ${(feature.feature_type || '').replace(/_/g, ' ')}
+                                    </span>
+                                </div>
+                            </div>
+                            ${feature.description ? `
+                                <p class="text-xs text-gray-600 leading-relaxed pt-2 border-t border-gray-100">
+                                    ${feature.description}
+                                </p>
+                            ` : ''}
+                            ${mediaHTML}
                         </div>
-                        ${feature.description ? `<p class="text-sm text-gray-600">${feature.description}</p>` : ''}
-                        ${feature.feature_type ? `<div class="text-xs text-gray-500 mt-1 capitalize">${feature.feature_type.replace('_', ' ')}</div>` : ''}
                     </div>
-                `);
+                `, {
+                    maxWidth: 320,
+                    className: 'custom-popup'
+                });
         });
     }
     

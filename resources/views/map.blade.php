@@ -2,7 +2,7 @@
 
 @section('title', 'Interactive Trail Map')
 @section('content')
-<div class="relative" style="height: calc(100vh - 100px);">
+<div class="relative h-[calc(100vh-100px)] md:h-[calc(100vh-100px)] max-md:h-[calc(100vh-160px)]">
     <!-- Main Map Container -->
     <div id="main-map" class="absolute inset-0 z-10"></div>
 
@@ -126,7 +126,7 @@
     </div>
 
     <!-- Map Type Selector - Top Right on Desktop, Bottom Left on Mobile -->
-    <div class="absolute top-4 right-4 md:top-4 md:right-4 max-md:top-auto max-md:right-auto max-md:bottom-4 max-md:left-4 z-30">
+    <div class="absolute top-4 right-4 md:top-4 md:right-4 max-md:top-auto max-md:right-auto max-md:bottom-8 max-md:left-4 z-30">
         <div class="relative">
             <!-- Toggle Button -->
             <button id="layers-toggle" class="bg-white rounded-lg shadow-lg p-3 hover:bg-gray-50 transition-colors">
@@ -440,6 +440,13 @@
 
 .layer-option-card.active .layer-checkmark {
     display: block;
+}
+
+@media (max-width: 768px) {
+    .leaflet-bottom.leaflet-right .leaflet-control-zoom {
+        bottom: 10px !important; /* Same as layers-toggle bottom-8 */
+        right: 10px !important;
+    }
 }
 
 #layers-dropdown {
@@ -1444,7 +1451,7 @@
             this.renderTrailList(visibleTrails);
 
             const allFilteredTrails = this.filterTrails(this.allTrails);
-            
+            console.log(allFilteredTrails);
             allFilteredTrails.forEach(trail => {
                 // Add trail route
                 const route = this.addTrailRoute(trail);
@@ -1513,8 +1520,8 @@
                 iconAnchor: [12, 12]
             });
 
-            const marker = L.marker(coords, { icon })
-                .bindPopup(this.createPopupContent(trail));
+            const marker = L.marker(coords, { icon });
+                //.bindPopup(this.createPopupContent(trail));
 
             marker.on('click', () => {
                 this.showTrailInfo(trail);
@@ -1528,14 +1535,14 @@
 
             trail.highlights.forEach(highlight => {
                 const icon = L.divIcon({
-                    html: `<div style="background-color: ${highlight.color};" class="w-8 h-8 rounded-full border-2 border-white shadow-lg flex items-center justify-center text-white text-lg font-bold">${highlight.icon}</div>`,
+                    html: `<div style="background-color: ${highlight.color || '#6366f1'};" class="w-8 h-8 rounded-full border-2 border-white shadow-lg flex items-center justify-center text-white text-lg">${highlight.icon || '📍'}</div>`,
                     className: 'custom-highlight-marker',
                     iconSize: [32, 32],
                     iconAnchor: [16, 16]
                 });
 
-                const marker = L.marker(highlight.coordinates, { icon })
-                    .bindPopup(this.createHighlightPopupContent(trail, highlight));
+                const marker = L.marker(highlight.coordinates, { icon });
+                    //.bindPopup(this.createHighlightPopupContent(trail, highlight));
 
                 // Add click event
                 marker.on('click', () => {
@@ -1597,20 +1604,20 @@
                 
                 ${highlight.description ? `
                     <div class="mb-4">
-                        <p class="text-gray-700">${highlight.description}</p>
+                        <p class="text-gray-700 text-xs">${highlight.description}</p>
                     </div>
                 ` : ''}
-                
-                <div class="border-t pt-4 mb-4">
-                    <h4 class="font-semibold text-gray-900 mb-2">Located on Trail:</h4>
-                    <div class="bg-gray-50 p-3 rounded">
-                        <h5 class="font-medium text-gray-900">${trail.name}</h5>
-                        <div class="grid grid-cols-2 gap-2 mt-2 text-sm">
-                            <span>Distance: ${trail.distance}km</span>
-                            <span>Difficulty: ${trail.difficulty}/5</span>
+
+                ${highlight.photo_url ? `
+                    <div class="mb-4 border-t pt-4">
+                        <div class="relative rounded-lg overflow-hidden bg-gray-100">
+                            <img src="${highlight.photo_url}" 
+                                alt="${highlight.name}"
+                                class="w-full h-64 object-cover cursor-pointer hover:opacity-90 transition-opacity"
+                                onclick="window.open('${highlight.photo_url}', '_blank')">
                         </div>
                     </div>
-                </div>
+                ` : ''}
                 
                 <div class="space-y-2">
                     <a href="/trails/${trail.id}" 

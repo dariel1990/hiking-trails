@@ -15,7 +15,9 @@ class TrailFeature extends Model
         'name',
         'description',
         'coordinates',
-        'media_count',  // NEW
+        'media_count', 
+        'icon',   
+        'color',  
     ];
 
     protected $casts = [
@@ -104,10 +106,16 @@ class TrailFeature extends Model
     }
 
     /**
-     * Get feature type as icon
+     * Get feature icon with fallback to feature_type mapping
      */
-    public function getIconAttribute(): string
+    public function getIconAttribute($value): string
     {
+        // If custom icon is set, return it
+        if (!empty($value)) {
+            return $value;
+        }
+
+        // Otherwise, fallback to feature_type mapping
         $icons = [
             'waterfall' => '💧',
             'viewpoint' => '👁️',
@@ -119,12 +127,56 @@ class TrailFeature extends Model
             'parking' => '🅿️',
             'restroom' => '🚻',
             'picnic' => '🍽️',
-            'camping' => '⛺',      // NEW
-            'shelter' => '🏠',     // NEW
-            'other' => '📍',       // NEW
+            'camping' => '⛺',
+            'shelter' => '🏠',
+            'other' => '📍',
         ];
 
         return $icons[$this->feature_type] ?? '📍';
+    }
+
+    /**
+     * Get feature color with fallback to feature_type mapping
+     */
+    public function getColorAttribute($value): string
+    {
+        // If custom color is set, return it
+        if (!empty($value)) {
+            return $value;
+        }
+
+        // Otherwise, fallback to feature_type mapping
+        $colors = [
+            'waterfall' => '#3B82F6',
+            'viewpoint' => '#8B5CF6',
+            'wildlife' => '#84CC16',
+            'bridge' => '#F59E0B',
+            'summit' => '#10B981',
+            'lake' => '#06B6D4',
+            'forest' => '#059669',
+            'parking' => '#8B5CF6',
+            'restroom' => '#EC4899',
+            'picnic' => '#F97316',
+            'camping' => '#EF4444',
+            'shelter' => '#6B7280',
+            'other' => '#6B7280',
+        ];
+
+        return $colors[$this->feature_type] ?? '#6B7280';
+    }
+
+    /**
+     * Get the primary photo URL for this feature
+     */
+    public function getPhotoUrlAttribute(): ?string
+    {
+        $primaryMedia = $this->primaryMedia();
+        
+        if ($primaryMedia) {
+            return $primaryMedia->url;
+        }
+        
+        return null;
     }
 
     /**

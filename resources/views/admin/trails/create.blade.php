@@ -298,7 +298,7 @@
                                                 <input type="number" name="estimated_time_hours" step="0.1" value="0"
                                                     class="flex h-9 w-full text-sm rounded-md border border-input bg-background px-3 py-2 ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
                                             </div>
-                                            <div class="space-y-2">
+                                            <div class="space-y-1">
                                                 <label class="text-xs font-medium">Elevation Gain (m)</label>
                                                 <input type="number" name="elevation_gain_m" step="1" value="0"
                                                     class="flex h-9 w-full text-sm rounded-md border border-input bg-background px-3 py-2 ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
@@ -503,6 +503,7 @@
                                         <li>• Click on the map to place the marker</li>
                                         <li>• Fill in the name and optional description</li>
                                         <li>• Click "Add Highlight" to save it</li>
+                                        <li><strong>• To edit: Click the edit button (✏️), modify fields, or drag the marker to reposition</strong></li>
                                     </ul>
                                 </div>
 
@@ -787,8 +788,11 @@
             </div>
         </div>
 
+        <!-- Spacer for bottom padding (prevents form actions from covering content) -->
+        <div class="h-16"></div>
+
         <!-- Form Actions -->
-        <div class="flex items-center justify-between pt-6 border-t">
+        <div class="fixed bottom-0 left-0 right-0 bg-white border-t shadow-lg z-[9999] flex items-center justify-between py-4 px-6">
             <a href="{{ route('admin.trails.index') }}" 
                class="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2">
                 <svg class="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -966,172 +970,6 @@
         }
     }
 
-    // Initialize modal
-    const validationModal = new ValidationModal();
-    // Backend GPX Preview Handler
-    document.getElementById('gpx-file-backend')?.addEventListener('change', async function(e) {
-        const file = e.target.files[0];
-        if (!file) return;
-        
-        // Check file size (warn if > 5MB)
-        if (file.size > 5 * 1024 * 1024) {
-            const fileSize = (file.size / 1024 / 1024).toFixed(2);
-            
-            validationModal.show({
-                type: 'warning',
-                title: 'Large GPX File',
-                message: `This GPX file is ${fileSize} MB.\n\nLarge files may take longer to process. Continue?`,
-                buttons: [
-                    {
-                        label: 'Cancel',
-                        variant: 'secondary',
-                        action: 'cancel',
-                        handler: () => {
-                            document.getElementById('gpx-file-backend').value = '';
-                        }
-                    },
-                    {
-                        label: 'Continue',
-                        variant: 'primary',
-                        action: 'continue',
-                        handler: () => {
-                            // Process the file (re-trigger the handler logic)
-                            processGPXFileManually(file);
-                        }
-                    }
-                ]
-            });
-            
-            return;
-        }
-        
-        // Process the file
-        await processGPXFileManually(file);
-    });
-
-    // Separate function for processing to avoid duplication
-    async function processGPXFileManually(file) {
-        const formData = new FormData();
-        formData.append('gpx_file', file);
-        formData.append('difficulty_level', document.querySelector('select[name="difficulty_level"]')?.value || 3);
-        formData.append('_token', '{{ csrf_token() }}');
-        
-        const resultsDiv = document.getElementById('gpx-preview-results');
-        resultsDiv.classList.remove('hidden');
-        resultsDiv.innerHTML = `
-            <div class="text-center py-4">
-                <svg class="animate-spin h-8 w-8 text-green-600 mx-auto mb-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                <div class="text-sm text-green-600 font-medium">Analyzing GPX file...</div>
-                <div class="text-xs text-gray-500 mt-1">This may take a few seconds</div>
-            </div>
-        `;
-        
-        try {
-            const response = await fetch('{{ route("admin.trails.gpx.preview") }}', {
-                method: 'POST',
-                body: formData
-            });
-            
-            const result = await response.json();
-            
-            if (result.success) {
-                const data = result.data;
-                
-                // Build the results HTML
-                resultsDiv.innerHTML = `
-                    <div class="bg-white rounded border border-green-300 p-3 space-y-3">
-                        <div class="text-sm font-medium text-green-900">Calculated Values:</div>
-                        <div class="grid grid-cols-3 gap-2 text-xs">
-                            <div>
-                                <span class="text-green-700">Distance:</span>
-                                <div class="font-bold text-green-900">${data.distance.toFixed(2)} km</div>
-                            </div>
-                            <div>
-                                <span class="text-green-700">Elevation:</span>
-                                <div class="font-bold text-green-900">${data.elevation} m</div>
-                            </div>
-                            <div>
-                                <span class="text-green-700">Time:</span>
-                                <div class="font-bold text-green-900">${data.time.toFixed(1)} hrs</div>
-                            </div>
-                        </div>
-                        <button type="button" id="apply-gpx-values" 
-                            class="w-full inline-flex items-center justify-center rounded-md bg-green-600 text-white hover:bg-green-700 h-10 px-4 py-2 text-sm font-medium">
-                            <svg class="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-                            </svg>
-                            Apply These Values
-                        </button>
-                    </div>
-                `;
-
-                // ✅ SINGLE button handler - attach AFTER HTML is created
-                document.getElementById('apply-gpx-values').addEventListener('click', function() {
-                    // Populate the editable input fields with CORRECT property names
-                    const distanceInput = document.querySelector('input[name="distance_km"]');
-                    const elevationInput = document.querySelector('input[name="elevation_gain_m"]');
-                    const timeInput = document.querySelector('input[name="estimated_time_hours"]');
-                    
-                    if (distanceInput) {
-                        distanceInput.value = data.distance.toFixed(2); // ✅ Use data.distance
-                        distanceInput.classList.add('bg-green-50', 'border-green-400');
-                    }
-                    
-                    if (elevationInput) {
-                        elevationInput.value = data.elevation; // ✅ Use data.elevation
-                        elevationInput.classList.add('bg-green-50', 'border-green-400');
-                    }
-                    
-                    if (timeInput) {
-                        timeInput.value = data.time.toFixed(2); // ✅ Use data.time
-                        timeInput.classList.add('bg-green-50', 'border-green-400');
-                    }
-                    
-                    // Show success notification
-                    showNotification('✓ Values Applied', 'GPX calculations have been applied to the form fields. You can still edit them manually if needed.', 'success');
-                    
-                    // Visual feedback - button changes
-                    this.textContent = '✓ Applied!';
-                    this.classList.remove('bg-green-600', 'hover:bg-green-700');
-                    this.classList.add('bg-green-800');
-                    this.disabled = true;
-                    
-                    // Remove highlight after 2 seconds
-                    setTimeout(() => {
-                        distanceInput?.classList.remove('bg-green-50', 'border-green-400');
-                        elevationInput?.classList.remove('bg-green-50', 'border-green-400');
-                        timeInput?.classList.remove('bg-green-50', 'border-green-400');
-                    }, 2000);
-                });
-                
-                // Store data for later use
-                window.gpxCalculatedData = data;
-
-                // Also display the route on the map
-                if (window.trailBuilder && data.coordinates) {
-                    window.trailBuilder.clearRoute();
-                    window.trailBuilder.displayGPXFromBackend(data.coordinates);
-                }
-                
-            } else {
-                resultsDiv.innerHTML = `
-                    <div class="text-red-600 text-sm p-3 bg-red-50 rounded border border-red-200">
-                        ${result.message || 'Error processing GPX file'}
-                    </div>
-                `;
-            }
-        } catch (error) {
-            console.error('GPX Preview Error:', error);
-            resultsDiv.innerHTML = `
-                <div class="text-red-600 text-sm p-3 bg-red-50 rounded border border-red-200">
-                    Error: ${error.message}
-                </div>
-            `;
-        }
-    }
     // Simplified TrailBuilder focused on import/display
     class TrailBuilder {
         constructor() {
@@ -1145,6 +983,9 @@
             this.highlights = []; 
             this.highlightsLayer = null; 
             this.pendingHighlight = null; 
+            this.editingHighlightId = null; 
+            this.highlightMarkers = {}; 
+            this.highlightFiles = [];
             this.waypointModeEnabled = false;
             this.highlightModeEnabled = false; 
             this.setupMediaPreview();
@@ -1271,14 +1112,13 @@
             const mapElement = document.getElementById('trail-map');
             
             if (!mapElement) {
-                console.error('Map container #trail-map not found');
                 return;
             }
             
             try {
                 this.map = L.map('trail-map', {
                     maxZoom: 20,
-                    minZoom: 5
+                    minZoom: 1
                 }).setView([8.4542, 124.6319], 13); // Cagayan de Oro coordinates
                 
                 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -1292,10 +1132,7 @@
                 this.setupEventListeners();
                 this.setupMapClicks();
                 this.setupHighlightHandlers();
-                
-                console.log('Trail builder initialized successfully');
             } catch (error) {
-                console.error('Error initializing map:', error);
             }
         }
 
@@ -1474,7 +1311,6 @@
                     }
                 } else {
                     const errorData = await response.json();
-                    console.warn('Route calculation failed:', errorData);
                     
                     if (mapStatus) {
                         mapStatus.textContent = 'Using direct line (routing failed)';
@@ -1484,9 +1320,7 @@
                     // Fallback to straight line
                     this.displayStraightLine(startWaypoint, endWaypoint);
                 }
-            } catch (error) {
-                console.error('Error calculating route:', error);
-                
+            } catch (error) {                
                 if (mapStatus) {
                     mapStatus.textContent = 'Network error - using direct line';
                     mapStatus.className = 'text-xs text-red-600';
@@ -1528,7 +1362,6 @@
                     const data = await response.json();
                     this.displayElevationProfile(data);
                 } else {
-                    console.warn('Failed to load elevation profile');
                     // Hide elevation section if it fails
                     const chart = document.getElementById('elevation-chart');
                     const stats = document.getElementById('elevation-stats');
@@ -1536,19 +1369,15 @@
                     if (stats) stats.classList.add('hidden');
                 }
             } catch (error) {
-                console.error('Error loading elevation profile:', error);
             }
         }
 
         displayElevationProfile(elevationData) {
-            console.log('Elevation data received');
-            
             const chart = document.getElementById('elevation-chart');
             const stats = document.getElementById('elevation-stats');
             const canvas = document.getElementById('elevation-canvas');
             
             if (!canvas || !elevationData.geometry) {
-                console.error('Missing canvas or geometry:', { canvas: !!canvas, geometry: !!elevationData.geometry });
                 return;
             }
 
@@ -1557,7 +1386,6 @@
             stats.classList.remove('hidden');
 
             const coordinates = elevationData.geometry.coordinates;
-            console.log('Processing', coordinates.length, 'elevation points');
 
             // Calculate elevation statistics
             const elevations = coordinates.map(coord => coord[2]); // Third element is elevation
@@ -1574,8 +1402,6 @@
 
             // Draw the elevation chart
             this.drawElevationChart(canvas, coordinates);
-            
-            console.log('Elevation profile displayed successfully');
 
             // Add this at the end of displayElevationProfile method:
             const elevationGainInput = document.querySelector('input[name="elevation_gain_m"]');
@@ -1607,8 +1433,6 @@
             const minElev = Math.min(...elevations);
             const maxElev = Math.max(...elevations);
             const elevRange = maxElev - minElev || 1;
-
-            console.log(`Drawing chart: ${elevations.length} points, elevation range: ${minElev}m to ${maxElev}m`);
 
             // Draw elevation line
             ctx.beginPath();
@@ -1668,10 +1492,7 @@
         }
 
         displayRouteSegment(routeData, startId, endId) {
-            console.log('Route data received:', routeData);
-            
             if (!routeData.features || !routeData.features[0]) {
-                console.error('Invalid route data format');
                 return;
             }
 
@@ -1681,18 +1502,14 @@
             // Handle encoded polyline (string) or coordinate array
             if (typeof geometry === 'string') {
                 // Decode polyline string
-                console.log('Decoding polyline string');
                 const decoded = this.decodePolyline(geometry);
                 coordinates = decoded; // Already in [lat, lng] format
             } else if (geometry && geometry.coordinates) {
                 // Handle GeoJSON LineString format
                 coordinates = geometry.coordinates.map(coord => [coord[1], coord[0]]);
             } else {
-                console.error('Unknown geometry format:', geometry);
                 return;
             }
-            
-            console.log('Processed coordinates:', coordinates.length, 'points');
             
             // Create the route line
             const routeLine = L.polyline(coordinates, {
@@ -1914,70 +1731,62 @@
             }
         }
 
-        // NEW: Prepare media files for submission
+        /**
+         * Transfer highlight file input to form immediately when added
+         */
+        transferHighlightFileToForm(mediaInput, index) {
+            const file = mediaInput.files[0];
+            if (!file) return;
+            
+            // Store file reference
+            this.highlightFiles[index] = file;
+            
+            // Create a new file input with the file
+            const form = mediaInput.closest('form');
+            
+            // Remove any existing input with this name
+            const existingInput = form.querySelector(`input[name="highlight_media_${index}"]`);
+            if (existingInput) {
+                existingInput.remove();
+            }
+            
+            // Create new file input
+            const fileInput = document.createElement('input');
+            fileInput.type = 'file';
+            fileInput.name = `highlight_media_${index}`;
+            fileInput.className = 'highlight-media-input';
+            fileInput.style.display = 'none'; // Hide it
+            
+            // Use DataTransfer to set the file
+            const dataTransfer = new DataTransfer();
+            dataTransfer.items.add(file);
+            fileInput.files = dataTransfer.files;
+            
+            // Append to form
+            form.appendChild(fileInput);
+        }
+
         prepareMediaFilesForSubmission() {
-            const form = document.querySelector('form');
-            
-            // Add file inputs for each highlight that has media
-            this.highlights.forEach((highlight, index) => {
-                if (highlight.mediaFile) {
-                    // Create a DataTransfer object to hold the file
-                    const dataTransfer = new DataTransfer();
-                    dataTransfer.items.add(highlight.mediaFile);
-                    
-                    // Create a file input
-                    const fileInput = document.createElement('input');
-                    fileInput.type = 'file';
-                    fileInput.name = `highlight_media_${index}`;
-                    fileInput.style.display = 'none';
-                    fileInput.files = dataTransfer.files;
-                    
-                    form.appendChild(fileInput);
-                    
-                    // Add index reference to highlight data
-                    highlight.mediaIndex = index;
-                }
-                
-                // Add video URL as hidden input if exists
-                if (highlight.videoUrl) {
-                    const videoInput = document.createElement('input');
-                    videoInput.type = 'hidden';
-                    videoInput.name = `highlight_video_url_${index}`;
-                    videoInput.value = highlight.videoUrl;
-                    form.appendChild(videoInput);
-                    
-                    // Add video index reference to highlight data
-                    highlight.videoIndex = index;
-                }
-            });
-            
-            // Update the highlights data input with media indices
+            // Files and videos are already transferred when highlights are added
+            // Just update the highlights data JSON to include the indices
             this.updateHighlightsInput();
+            
+            // Log for debugging
+            const form = document.querySelector('form[action*="trails"]');
+            const highlightMediaInputs = form.querySelectorAll('.highlight-media-input');
+            const highlightVideoInputs = form.querySelectorAll('.highlight-video-input');
         }
 
         validateBeforeSubmit() {
-            console.log('🚀 validateBeforeSubmit called');
-            
             this.prepareMediaFilesForSubmission();
             
             // IMPORTANT: Update video URLs right before validation
             if (window.photoManager) {
-                console.log('🔄 Calling updateVideoUrlInputs from validateBeforeSubmit');
                 window.photoManager.updateVideoUrlInputs();
                 
                 // Double-check the inputs are there
-                const form = document.querySelector('form');
+                const form = document.querySelector('form[action*="trails"]');
                 const videoInputs = form.querySelectorAll('input[name="trail_video_urls[]"]');
-                console.log('🎬 Video inputs found in form:', videoInputs.length);
-                videoInputs.forEach((input, index) => {
-                    console.log(`   Video input [${index}]:`, input.value);
-                });
-                
-                // Check if inputs are inside the form
-                videoInputs.forEach((input, index) => {
-                    console.log(`   Input [${index}] parent:`, input.parentElement.tagName);
-                    console.log(`   Input [${index}] is in form:`, form.contains(input));
-                });
             }
             
             const issues = this.validateRoute();
@@ -1990,8 +1799,6 @@
                     return false;
                 }
             }
-            
-            console.log('✅ Validation passed, form will submit');
             return true;
         }
 
@@ -2165,11 +1972,8 @@
             // Coordinates come from backend in [lat, lng] format
             
             if (!coordinates || coordinates.length < 2) {
-                console.error('Invalid coordinates from backend');
                 return;
             }
-            
-            console.log('Displaying backend GPX with', coordinates.length, 'points');
             
             // Create waypoints from coordinates (sample key points)
             this.createWaypointsFromGPX(coordinates);
@@ -2235,7 +2039,6 @@
                 this.updateFormInputs();
                 
             } catch (error) {
-                console.error('Error importing GPX:', error);
                 alert('Error importing GPX file. Please check the file format.');
             }
         }
@@ -2307,60 +2110,85 @@
             const color = document.getElementById('highlight-color-input').value;
             const mediaInput = document.getElementById('highlight-media-input');
 
-            if (!type || !name || !this.pendingHighlight) {
-                alert('Please select a type, enter a name, and click on the map to place the highlight');
+            // Validation
+            if (!type || !name) {
+                alert('Please select a type and enter a name');
                 return;
             }
 
-            const videoUrlInput = document.getElementById('highlight-video-url-input');
-            const videoUrl = videoUrlInput ? videoUrlInput.value.trim() : '';
+            // CHECK IF EDITING OR ADDING NEW
+            if (this.editingHighlightId !== null) {
+                // UPDATE EXISTING HIGHLIGHT
+                this.updateExistingHighlight();
+            } else {
+                // ADD NEW HIGHLIGHT
+                if (!this.pendingHighlight) {
+                    alert('Please click on the map to place the highlight');
+                    return;
+                }
 
-            const highlight = {
-                id: Date.now(),
-                type: type,
-                name: name,
-                description: description,
-                icon: icon,
-                color: color,
-                coordinates: this.pendingHighlight.coordinates,
-                mediaFile: mediaInput.files[0] || null,
-                videoUrl: videoUrl || null
-            };
+                const videoUrlInput = document.getElementById('highlight-video-url-input');
+                const videoUrl = videoUrlInput ? videoUrlInput.value.trim() : '';
 
-            this.highlights.push(highlight);
+                const highlightIndex = this.highlights.length; // Get index before adding
+
+                const highlight = {
+                    id: Date.now(),
+                    type: type,
+                    name: name,
+                    description: description,
+                    icon: icon,
+                    color: color,
+                    coordinates: this.pendingHighlight.coordinates,
+                    mediaFile: mediaInput.files[0] || null,
+                    videoUrl: videoUrl || null,
+                    mediaIndex: highlightIndex,  // Set index immediately
+                    videoIndex: highlightIndex   // Set index immediately
+                };
+
+                // IMPORTANT: Transfer the actual file input to the form
+                if (mediaInput.files[0]) {
+                    this.transferHighlightFileToForm(mediaInput, highlightIndex);
+                }
+
+                this.highlights.push(highlight);
+
+                // Remove pending marker
+                if (this.pendingHighlight) {
+                    this.highlightsLayer.removeLayer(this.pendingHighlight);
+                    this.pendingHighlight = null;
+                }
+
+                // Add permanent DRAGGABLE marker
+                const marker = L.marker(highlight.coordinates, {
+                    icon: L.divIcon({
+                        html: `<div style="background-color: ${highlight.color};" class="w-8 h-8 rounded-full border-2 border-white shadow-lg flex items-center justify-center text-white text-lg">${highlight.icon}</div>`,
+                        className: 'custom-marker',
+                        iconSize: [32, 32],
+                        iconAnchor: [16, 16]
+                    }),
+                    draggable: true  // Make marker draggable
+                }).addTo(this.highlightsLayer);
+
+                marker.bindPopup(`<b>${highlight.name}</b><br>${highlight.description || ''}`);
+                marker.highlightId = highlight.id;
+
+                // Store marker reference for easy access
+                this.highlightMarkers[highlight.id] = marker;
+
+                // Add drag event listener to update coordinates
+                marker.on('dragend', (e) => {
+                    const newLatLng = e.target.getLatLng();
+                    this.updateHighlightCoordinates(highlight.id, newLatLng);
+                });
+
+                showToast('Highlight added successfully!', 'success');
+            }
+
+            // Update UI
             this.updateHighlightsList();
             this.updateHighlightsInput();
-
-            // Clear form
-            document.getElementById('highlight-type-select').value = '';
-            document.getElementById('highlight-name-input').value = '';
-            document.getElementById('highlight-description-input').value = '';
-            document.getElementById('highlight-icon-input').value = '';
-            document.getElementById('highlight-media-input').value = '';
-            document.getElementById('highlight-media-preview').classList.add('hidden');
-            if (videoUrlInput) {
-                videoUrlInput.value = '';
-                document.getElementById('highlight-video-preview').classList.add('hidden');
-            }
-            
-            // Remove pending marker and add permanent one
-            if (this.pendingHighlight) {
-                this.highlightsLayer.removeLayer(this.pendingHighlight);
-                this.pendingHighlight = null;
-            }
-
-            // Add permanent marker
-            const marker = L.marker(highlight.coordinates, {
-                icon: L.divIcon({
-                    html: `<div style="background-color: ${highlight.color};" class="w-8 h-8 rounded-full border-2 border-white shadow-lg flex items-center justify-center text-white text-lg">${highlight.icon}</div>`,
-                    className: 'custom-marker',
-                    iconSize: [32, 32],
-                    iconAnchor: [16, 16]
-                })
-            }).addTo(this.highlightsLayer);
-
-            marker.bindPopup(`<b>${highlight.name}</b><br>${highlight.description || ''}`);
-            marker.highlightId = highlight.id;
+            this.resetHighlightForm();
         }
 
         updateHighlightsList() {
@@ -2394,27 +2222,212 @@
                             </div>
                         ` : ''}
                     </div>
-                    <button type="button" onclick="window.trailBuilder.removeHighlight(${h.id})" class="text-red-500 hover:text-red-700 shrink-0">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-                        </svg>
-                    </button>
+                    <div class="flex gap-2 shrink-0">
+                        <button type="button" onclick="window.trailBuilder.editHighlight(${h.id})" class="text-blue-600 hover:text-blue-800" title="Edit highlight">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                            </svg>
+                        </button>
+                        <button type="button" onclick="window.trailBuilder.removeHighlight(${h.id})" class="text-red-500 hover:text-red-700" title="Delete highlight">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                            </svg>
+                        </button>
+                    </div>
                 </div>
             `).join('');
         }
 
         removeHighlight(id) {
             this.highlights = this.highlights.filter(h => h.id !== id);
-            
-            // Remove marker from map
-            this.highlightsLayer.eachLayer(layer => {
-                if (layer.highlightId === id) {
-                    this.highlightsLayer.removeLayer(layer);
+
+            if (highlight) {
+                const form = document.querySelector('form[action*="trails"]');
+                
+                // Remove media file input if exists
+                if (highlight.mediaIndex !== undefined) {
+                    const mediaInput = form.querySelector(`input[name="highlight_media_${highlight.mediaIndex}"]`);
+                    if (mediaInput) mediaInput.remove();
                 }
-            });
+                
+                // Remove video URL input if exists
+                if (highlight.videoIndex !== undefined) {
+                    const videoInput = form.querySelector(`input[name="highlight_video_url_${highlight.videoIndex}"]`);
+                    if (videoInput) videoInput.remove();
+                }
+            }
+                    
+            // Remove marker from map using our marker map
+            const marker = this.highlightMarkers[id];
+            if (marker) {
+                this.highlightsLayer.removeLayer(marker);
+                delete this.highlightMarkers[id];
+            }
+            
+            // If we were editing this highlight, reset form
+            if (this.editingHighlightId === id) {
+                this.resetHighlightForm();
+            }
 
             this.updateHighlightsList();
             this.updateHighlightsInput();
+            showToast('Highlight removed', 'info');
+        }
+
+        updateHighlightCoordinates(id, latlng) {
+            // Find and update the highlight's coordinates
+            const highlight = this.highlights.find(h => h.id === id);
+            if (!highlight) return;
+            
+            // Update coordinates
+            highlight.coordinates = [latlng.lat, latlng.lng];
+            
+            // Update hidden input
+            this.updateHighlightsInput();
+            
+            // Show success message
+            showToast('Marker position updated', 'success');
+        }
+
+        editHighlight(id) {
+            // Find the highlight in the array
+            const highlight = this.highlights.find(h => h.id === id);
+            if (!highlight) return;
+            
+            // Set editing mode
+            this.editingHighlightId = id;
+            
+            // Populate the form with existing data
+            document.getElementById('highlight-type-select').value = highlight.type;
+            document.getElementById('highlight-name-input').value = highlight.name;
+            document.getElementById('highlight-description-input').value = highlight.description || '';
+            document.getElementById('highlight-icon-input').value = highlight.icon;
+            document.getElementById('highlight-color-input').value = highlight.color;
+            
+            // Change button text and style to "Update"
+            const addBtn = document.getElementById('add-highlight-btn');
+            addBtn.innerHTML = `
+                <svg class="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                </svg>
+                Update Highlight
+            `;
+            addBtn.classList.remove('bg-primary', 'hover:bg-primary/90');
+            addBtn.classList.add('bg-green-600', 'hover:bg-green-700');
+            
+            // Scroll to form
+            document.getElementById('highlight-form-section').scrollIntoView({ 
+                behavior: 'smooth', 
+                block: 'center' 
+            });
+            
+            // Highlight the marker on map (visual feedback)
+            const marker = this.highlightMarkers[id];
+            if (marker) {
+                marker.openPopup();
+                this.map.setView(marker.getLatLng(), this.map.getZoom());
+            }
+            
+            // Show toast notification
+            showToast('Editing highlight. You can drag the marker to reposition it.', 'info');
+        }
+
+        updateExistingHighlight() {
+            const id = this.editingHighlightId;
+            const highlight = this.highlights.find(h => h.id === id);
+            if (!highlight) return;
+            
+            // Update highlight data
+            highlight.type = document.getElementById('highlight-type-select').value;
+            highlight.name = document.getElementById('highlight-name-input').value;
+            highlight.description = document.getElementById('highlight-description-input').value;
+            highlight.icon = document.getElementById('highlight-icon-input').value;
+            highlight.color = document.getElementById('highlight-color-input').value;
+            
+            // Handle new media upload (if user changed it)
+            const mediaInput = document.getElementById('highlight-media-input');
+            if (mediaInput.files[0]) {
+                highlight.mediaFile = mediaInput.files[0];
+                
+                // Remove old media input for this highlight if exists
+                const form = document.querySelector('form[action*="trails"]');
+                const oldInput = form.querySelector(`input[name="highlight_media_${highlight.mediaIndex}"]`);
+                if (oldInput) {
+                    oldInput.remove();
+                }
+                
+                // Transfer new file
+                this.transferHighlightFileToForm(mediaInput, highlight.mediaIndex);
+            }
+
+            // Handle video URL
+            const videoUrlInput = document.getElementById('highlight-video-url-input');
+            if (videoUrlInput) {
+                const newVideoUrl = videoUrlInput.value.trim() || null;
+                if (newVideoUrl !== highlight.videoUrl) {
+                    highlight.videoUrl = newVideoUrl;
+                    
+                    // Remove old video input if exists
+                    const form = document.querySelector('form[action*="trails"]');
+                    const oldVideoInput = form.querySelector(`input[name="highlight_video_url_${highlight.videoIndex}"]`);
+                    if (oldVideoInput) {
+                        oldVideoInput.remove();
+                    }
+                }
+            }
+            
+            // Update marker appearance on map
+            const marker = this.highlightMarkers[id];
+            if (marker) {
+                marker.setIcon(L.divIcon({
+                    html: `<div style="background-color: ${highlight.color};" class="w-8 h-8 rounded-full border-2 border-white shadow-lg flex items-center justify-center text-white text-lg">${highlight.icon}</div>`,
+                    className: 'custom-marker',
+                    iconSize: [32, 32],
+                    iconAnchor: [16, 16]
+                }));
+                
+                // Update popup
+                marker.bindPopup(`<b>${highlight.name}</b><br>${highlight.description || ''}`);
+            }
+            
+            // Clear editing mode
+            this.editingHighlightId = null;
+            
+            showToast('Highlight updated successfully!', 'success');
+        }
+
+        resetHighlightForm() {
+            // Clear all form fields
+            document.getElementById('highlight-type-select').value = '';
+            document.getElementById('highlight-name-input').value = '';
+            document.getElementById('highlight-description-input').value = '';
+            document.getElementById('highlight-icon-input').value = '';
+            document.getElementById('highlight-color-input').value = '#10B981';
+            document.getElementById('highlight-media-input').value = '';
+            
+            const mediaPreview = document.getElementById('highlight-media-preview');
+            if (mediaPreview) mediaPreview.classList.add('hidden');
+            
+            const videoUrlInput = document.getElementById('highlight-video-url-input');
+            if (videoUrlInput) {
+                videoUrlInput.value = '';
+                const videoPreview = document.getElementById('highlight-video-preview');
+                if (videoPreview) videoPreview.classList.add('hidden');
+            }
+            
+            // Reset button to "Add" mode
+            const addBtn = document.getElementById('add-highlight-btn');
+            addBtn.innerHTML = `
+                <svg class="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
+                </svg>
+                Add Highlight
+            `;
+            addBtn.classList.remove('bg-green-600', 'hover:bg-green-700');
+            addBtn.classList.add('bg-primary', 'hover:bg-primary/90');
+            
+            // Clear editing mode
+            this.editingHighlightId = null;
         }
 
         updateHighlightsInput() {
@@ -2495,11 +2508,8 @@
             }
         }
 
-        addVideoUrl(url) {
-            console.log('🎬 addVideoUrl called with:', url);
-            
+        addVideoUrl(url) {            
             const totalMedia = this.photos.length + this.videos.length;
-            console.log('📊 Current media count:', { photos: this.photos.length, videos: this.videos.length, total: totalMedia });
             
             if (totalMedia >= this.maxTotal) {
                 alert(`Maximum of ${this.maxTotal} media items (photos + videos) reached`);
@@ -2508,7 +2518,6 @@
             
             // Validate URL format
             const embedUrl = this.getVideoEmbedUrl(url);
-            console.log('🔗 Embed URL:', embedUrl);
             
             if (!embedUrl) {
                 alert('Please enter a valid YouTube or Vimeo URL');
@@ -2523,9 +2532,6 @@
             };
             
             this.videos.push(video);
-            console.log('✅ Video added to array. Total videos:', this.videos.length);
-            console.log('📹 Videos array:', this.videos);
-            
             this.render();
         }
 
@@ -2548,7 +2554,6 @@
         removeVideo(videoId) {
             const index = this.videos.findIndex(v => v.id == videoId);
             if (index === -1) {
-                console.error('Video not found:', videoId);
                 return;
             }
             
@@ -2660,7 +2665,6 @@
 
         removePhoto(index) {
             if (index < 0 || index >= this.photos.length) {
-                console.error('Invalid photo index:', index);
                 return;
             }
 
@@ -2717,7 +2721,6 @@
 
             // Safety check - if essential elements don't exist, don't render
             if (!previewsContainer) {
-                console.warn('Preview container not found, skipping render');
                 return;
             }
 
@@ -2764,7 +2767,6 @@
 
             // Render previews
             if (!previewsContainer) {
-                console.warn('Preview container not found');
                 return;
             }
 
@@ -2885,33 +2887,23 @@
         }
 
         updateVideoUrlInputs() {
-            console.log('🔄 updateVideoUrlInputs called');
-            console.log('📹 Videos to add:', this.videos);
-            
-            const form = document.querySelector('form');
+            const form = document.querySelector('form[action*="trails"]');
             
             if (!form) {
-                console.error('❌ Form not found');
                 return;
             }
-            
-            console.log('✅ Form found');
             
             // METHOD 1: Update the permanent hidden input (JSON format)
             const jsonInput = document.getElementById('trail-video-urls-json');
             if (jsonInput) {
                 const videoUrls = this.videos.map(v => v.url);
                 jsonInput.value = JSON.stringify(videoUrls);
-                console.log('✅ Updated trail-video-urls-json:', jsonInput.value);
             }
             
             // METHOD 2: Also create individual hidden inputs as backup
             // Remove old video URL inputs
             const oldInputs = form.querySelectorAll('input[name="trail_video_urls[]"]');
-            console.log('🗑️ Removing old inputs:', oldInputs.length);
             oldInputs.forEach(input => input.remove());
-            
-            console.log('➕ Adding new video URL inputs. Total videos:', this.videos.length);
             
             // Add new video URL inputs
             this.videos.forEach((video, index) => {
@@ -2921,13 +2913,10 @@
                 input.value = video.url;
                 input.className = 'video-url-input';
                 form.appendChild(input);
-                
-                console.log(`✅ Added video URL input [${index}]:`, video.url);
             });
             
             // Verify inputs were added
             const addedInputs = form.querySelectorAll('input[name="trail_video_urls[]"]');
-            console.log('✅ Total video URL inputs in form:', addedInputs.length);
         }
 
         setupDragAndDrop() {
@@ -3209,7 +3198,6 @@
                         variant: 'primary',
                         action: 'continue',
                         handler: () => {
-                            console.log('🔄 Continue Anyway clicked - updating video URLs before submission');
         
                             // Make sure video URLs are updated BEFORE cloning
                             if (window.photoManager) {
@@ -3217,7 +3205,7 @@
                             }
                             
                             // Bypass validation and submit directly
-                            const form = document.querySelector('form');
+                            const form = document.querySelector('form[action*="trails"]');
                             if (form) {
                                 // Remove onsubmit validation temporarily
                                 const originalOnSubmit = form.onsubmit;
@@ -3325,19 +3313,15 @@
 
     // Ensure video URLs are added right before ANY form submission
     document.addEventListener('DOMContentLoaded', function() {
-        const form = document.querySelector('form');
+        const form = document.querySelector('form[action*="trails"]');
         if (form) {
-            form.addEventListener('submit', function(e) {
-                console.log('📤 Form submit event triggered');
-                
+            form.addEventListener('submit', function(e) {                
                 // Always update video URLs on every submit attempt
                 if (window.photoManager) {
-                    console.log('🔄 Updating video URLs on submit event');
                     window.photoManager.updateVideoUrlInputs();
                     
                     // Log to confirm
                     const videoInputs = this.querySelectorAll('input[name="trail_video_urls[]"]');
-                    console.log('✅ Video inputs at submission:', videoInputs.length);
                 }
             }, true); // Use capture phase
         }

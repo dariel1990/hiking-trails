@@ -423,6 +423,111 @@
                 .addTo(map)
                 .bindPopup('<div class="text-center"><b>Trail End</b></div>');
         }
+
+        // Load trail features/highlights
+        const features = @json($trail->features ?? []);
+
+        if (features && features.length > 0) {
+            features.forEach(feature => {
+                // Handle coordinates properly
+                let coords;
+                if (Array.isArray(feature.coordinates)) {
+                    coords = feature.coordinates;
+                } else if (feature.coordinates && feature.coordinates.lat) {
+                    coords = [feature.coordinates.lat, feature.coordinates.lng];
+                } else {
+                    return; // Skip invalid coordinates
+                }
+                
+                // Create custom icon for feature
+                const featureIcon = L.divIcon({
+                    html: `<div style="background-color: ${feature.color || '#6366f1'};" class="w-10 h-10 rounded-full border-2 border-white shadow-lg flex items-center justify-center text-white text-xl">${feature.icon || '📍'}</div>`,
+                    className: 'custom-marker',
+                    iconSize: [40, 40],
+                    iconAnchor: [20, 20]
+                });
+                
+                // Get feature media if available
+                let mediaHTML = '';
+                if (feature.media && feature.media.length > 0) {
+                    const primaryMedia = feature.media.find(m => m.pivot && m.pivot.is_primary) || feature.media[0];
+                    
+                    if (primaryMedia.media_type === 'photo' && primaryMedia.storage_path) {
+                        mediaHTML = `
+                            <div class="mt-2 mb-2">
+                                <img src="{{ asset('storage/') }}/${primaryMedia.storage_path}" 
+                                    alt="${feature.name}"
+                                    class="w-full h-32 object-cover rounded-md border border-gray-200"
+                                    onclick="openMediaModal('{{ asset('storage/') }}/${primaryMedia.storage_path}', 'photo', '${feature.name}')">
+                            </div>
+                        `;
+                    } else if (primaryMedia.media_type === 'video_url' && primaryMedia.video_url) {
+                        // Create video thumbnail
+                        let thumbnailHTML = '';
+                        if (primaryMedia.video_provider === 'youtube') {
+                            const youtubeMatch = primaryMedia.video_url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\s]+)/);
+                            if (youtubeMatch) {
+                                thumbnailHTML = `<img src="https://img.youtube.com/vi/${youtubeMatch[1]}/mqdefault.jpg" class="w-full h-32 object-cover rounded-md border border-gray-200">`;
+                            }
+                        } else {
+                            thumbnailHTML = `
+                                <div class="w-full h-32 bg-gray-900 flex items-center justify-center rounded-md border border-gray-200">
+                                    <svg class="w-12 h-12 text-white opacity-75" fill="currentColor" viewBox="0 0 20 20">
+                                        <path d="M2 6a2 2 0 012-2h6a2 2 0 012 6v8a2 2 0 01-2 2H4a2 2 0 01-2-2V6zM14.553 7.106A1 1 0 0014 8v4a1 1 0 00.553.894l2 1A1 1 0 0018 13V7a1 1 0 00-1.447-.894l-2 1z"/>
+                                    </svg>
+                                </div>
+                            `;
+                        }
+                        
+                        mediaHTML = `
+                            <div class="mt-2 mb-2 cursor-pointer relative" onclick="openMediaModal('${primaryMedia.video_url}', 'video', '${feature.name}')">
+                                ${thumbnailHTML}
+                                <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                    <div class="bg-white bg-opacity-90 rounded-full p-2 shadow-lg">
+                                        <svg class="w-6 h-6 text-gray-900" fill="currentColor" viewBox="0 0 20 20">
+                                            <path d="M6.3 2.841A1.5 1.5 0 004 4.11V15.89a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z"/>
+                                        </svg>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    }
+                }
+                
+                // Create popup content
+                const popupContent = `
+                    <div class="min-w-[220px] max-w-[280px]">
+                        ${mediaHTML}
+                        <div class="space-y-2">
+                            <div class="flex items-start gap-2">
+                                <div style="background-color: ${feature.color || '#6366f1'};" class="w-7 h-7 rounded-lg flex items-center justify-center text-white shadow-sm flex-shrink-0">
+                                    ${feature.icon || '📍'}
+                                </div>
+                                <div class="flex-1 min-w-0">
+                                    <h4 class="font-semibold text-sm text-gray-900 leading-tight mb-1">${feature.name}</h4>
+                                    <span class="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-gray-100 text-gray-700 capitalize">
+                                        ${(feature.feature_type || '').replace(/_/g, ' ')}
+                                    </span>
+                                </div>
+                            </div>
+                            ${feature.description ? `
+                                <p class="text-xs text-gray-600 leading-relaxed pt-2 border-t border-gray-100">
+                                    ${feature.description}
+                                </p>
+                            ` : ''}
+                        </div>
+                    </div>
+                `;
+                
+                // Add marker to map
+                L.marker(coords, { icon: featureIcon })
+                    .addTo(map)
+                    .bindPopup(popupContent, {
+                        maxWidth: 300,
+                        className: 'feature-popup'
+                    });
+            });
+        }
         
         // Fit route button
         document.getElementById('fit-route-btn').addEventListener('click', function() {

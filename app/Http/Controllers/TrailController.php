@@ -97,8 +97,11 @@ class TrailController extends Controller
      */
     public function show($id)
     {
-        $trail = Trail::with(['media', 'features', 'highlights'])->findOrFail($id);
-        
+        $trail = Trail::with([
+            'media', 
+            'features.media',
+            'highlights.media'
+        ])->findOrFail($id);
         // Increment view count
         $trail->increment('view_count');
 
@@ -292,21 +295,19 @@ class TrailController extends Controller
     private function getFeatureIcon($featureType)
     {
         $icons = [
-            'viewpoint' => '👁️',
             'waterfall' => '💧',
-            'campsite' => '⛺',
-            'peak' => '⛰️',
-            'lake' => '🏞️',
-            'cave' => '🕳️',
-            'bridge' => '🌉',
-            'shelter' => '🏠',
-            'parking' => '🅿️',
-            'trailhead' => '🚶',
-            'rest_area' => '🪑',
-            'scenic_view' => '📸',
+            'viewpoint' => '👁️',
             'wildlife' => '🦌',
-            'historical' => '🏛️',
-            'danger' => '⚠️',
+            'bridge' => '🌉',
+            'summit' => '⛰️',
+            'lake' => '🏞️',
+            'forest' => '🌲',
+            'parking' => '🅿️',
+            'restroom' => '🚻',
+            'picnic' => '🍽️',
+            'camping' => '⛺',
+            'shelter' => '🏠',
+            'other' => '📍',
         ];
 
         return $icons[$featureType] ?? '📍';
@@ -318,21 +319,19 @@ class TrailController extends Controller
     private function getFeatureColor($featureType)
     {
         $colors = [
-            'viewpoint' => '#3B82F6',
-            'waterfall' => '#06B6D4',
-            'campsite' => '#10B981',
-            'peak' => '#8B5CF6',
-            'lake' => '#0EA5E9',
-            'cave' => '#6B7280',
+            'waterfall' => '#3B82F6',
+            'viewpoint' => '#8B5CF6',
+            'wildlife' => '#84CC16',
             'bridge' => '#F59E0B',
-            'shelter' => '#EF4444',
-            'parking' => '#6366F1',
-            'trailhead' => '#14B8A6',
-            'rest_area' => '#84CC16',
-            'scenic_view' => '#EC4899',
-            'wildlife' => '#F97316',
-            'historical' => '#A855F7',
-            'danger' => '#DC2626',
+            'summit' => '#10B981',
+            'lake' => '#06B6D4',
+            'forest' => '#059669',
+            'parking' => '#8B5CF6',
+            'restroom' => '#EC4899',
+            'picnic' => '#F97316',
+            'camping' => '#EF4444',
+            'shelter' => '#6B7280',
+            'other' => '#6B7280',
         ];
 
         return $colors[$featureType] ?? '#6B7280';

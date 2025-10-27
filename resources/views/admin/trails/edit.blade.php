@@ -183,7 +183,7 @@
                     <div class="h-full flex flex-col">
                         <!-- Map Container -->
                         <div class="flex-1 p-6">
-                            <div id="trail-map" class="w-full h-full rounded-md border border-input bg-muted"></div>
+                            <div id="trail-map" class="w-full h-full rounded-md border border-input bg-muted relative z-10"></div>
                             <div id="map-status" class="text-xs text-muted-foreground mt-2">
                                 <div class="flex items-center gap-2">
                                     <span class="inline-block w-2 h-2 bg-gray-400 rounded-full animate-pulse"></span>
@@ -318,7 +318,7 @@
                                                 <input type="number" name="estimated_time_hours" step="0.1" value="{{ old('estimated_time_hours', $trail->estimated_time_hours) }}"
                                                     class="flex h-9 w-full text-sm rounded-md border border-input bg-background px-3 py-2 ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
                                             </div>
-                                            <div class="space-y-2">
+                                            <div class="space-y-1">
                                                 <label class="text-xs font-medium">Elevation Gain (m)</label>
                                                 <input type="number" name="elevation_gain_m" step="1" value="{{ old('elevation_gain_m', $trail->elevation_gain_m) }}"
                                                     class="flex h-9 w-full text-sm rounded-md border border-input bg-background px-3 py-2 ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
@@ -424,6 +424,7 @@
                                 
                                 <!-- Add Highlight Form -->
                                 <div id="highlight-form-section" class="space-y-4 border-t pt-4">
+                                    
                                     <h5 class="font-medium text-sm">New Highlight Details</h5>
                                     
                                     <div class="space-y-3">
@@ -523,10 +524,11 @@
                                         <li>• Click on the map to place the marker</li>
                                         <li>• Fill in the name and optional description</li>
                                         <li>• Click "Add Highlight" to save it</li>
+                                        <li><strong>• To edit: Click the edit button (✏️), modify fields, or drag the marker to reposition</strong></li>
                                     </ul>
                                 </div>
 
-                                <!-- Highlights List -->
+                                 <!-- Highlights List -->
                                 <div class="border-t pt-4 space-y-3">
                                     <h5 class="font-medium text-sm">Added Highlights (<span id="highlights-count">0</span>)</h5>
                                     <div id="highlights-list" class="space-y-2 max-h-64 overflow-y-auto">
@@ -539,6 +541,7 @@
 
                         <!-- Hidden input for highlights data -->
                         <input type="hidden" name="highlights_data" id="highlights-data-input" value="[]">
+                        <input type="hidden" name="edited_highlights" id="edited-highlights-input" value="{}">
                         <input type="hidden" name="route_coordinates" id="route-coordinates-input" value="">
                         <input type="hidden" name="start_lat" id="start-lat-input" value="">
                         <input type="hidden" name="start_lng" id="start-lng-input" value="">
@@ -939,8 +942,11 @@
             </div>
         </div>
 
+        <!-- Spacer for bottom padding (prevents form actions from covering content) -->
+        <div class="h-16"></div>
+
         <!-- Form Actions -->
-        <div class="flex items-center justify-between pt-6 border-t">
+        <div class="fixed bottom-0 left-0 right-0 bg-white border-t shadow-lg z-[9999] flex items-center justify-between py-4 px-6">
             <a href="{{ route('admin.trails.index') }}" 
                class="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2">
                 <svg class="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1295,12 +1301,17 @@
             this.totalTime = 0;
             this.smartRouting = true;
             this.highlights = []; 
+            this.highlightFiles = {};
             this.existingHighlights = @json($trail->features ?? []);
             this.deletedFeatures = [];
             this.highlightsLayer = null; 
             this.pendingHighlight = null; 
             this.waypointModeEnabled = false;
             this.highlightModeEnabled = false; 
+            this.editingHighlightId = null; 
+            this.highlightMarkers = {};  
+            this.editedExistingHighlights = {};
+            this.editingExistingHighlight = false;
             this.setupMediaPreview(); 
             this.prePopulateCoordinates();
             this.init();
@@ -1475,23 +1486,45 @@
                 
                 const marker = L.marker(coords, {
                     icon: L.divIcon({
-                        html: `<div class="w-8 h-8 rounded-full bg-primary border-2 border-white shadow-lg flex items-center justify-center text-white text-lg">${feature.icon || '📍'}</div>`,
+                        html: `<div style="background-color: ${feature.color || '#6366f1'};" class="w-8 h-8 rounded-full border-2 border-white shadow-lg flex items-center justify-center text-white text-lg">${feature.icon || '📍'}</div>`,
                         className: 'custom-marker',
                         iconSize: [32, 32],
                         iconAnchor: [16, 16]
-                    })
+                    }),
+                    draggable: false  // NEW: Start as NOT draggable (will enable when editing)
                 }).addTo(this.highlightsLayer);
                 
                 marker.bindPopup(`
-                    <div class="p-2">
-                        <b>${feature.name}</b><br>
-                        <small class="text-gray-600">${feature.feature_type}</small><br>
-                        ${feature.description ? `<p class="text-sm mt-1">${feature.description}</p>` : ''}
-                        <button onclick="window.trailBuilder.deleteExistingFeature(${feature.id})" class="text-red-600 text-sm mt-2 hover:underline">Delete</button>
+                    <div class="min-w-[200px] space-y-2">
+                        <div class="flex items-start gap-2">
+                            <div style="background-color: ${feature.color || '#6366f1'};" class="w-6 h-6 rounded-md flex items-center justify-center text-white text-sm flex-shrink-0 mt-0.5">
+                                ${feature.icon || '📍'}
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <h4 class="font-semibold text-sm text-gray-900 leading-tight">${feature.name}</h4>
+                                <span class="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-gray-100 text-gray-700 mt-1 capitalize">
+                                    ${feature.feature_type.replace(/_/g, ' ')}
+                                </span>
+                            </div>
+                        </div>
+                        ${feature.description ? `
+                            <p class="text-xs text-gray-600 leading-relaxed border-t border-gray-100 pt-2">
+                                ${feature.description}
+                            </p>
+                        ` : ''}
                     </div>
                 `);
                 marker.highlightId = feature.id;
                 marker.isExisting = true;
+                
+                // NEW: Store marker reference for easy access
+                this.highlightMarkers[`existing_${feature.id}`] = marker;
+                
+                // NEW: Add drag event listener (will only work when draggable is enabled)
+                marker.on('dragend', (e) => {
+                    const newLatLng = e.target.getLatLng();
+                    this.updateExistingHighlightCoordinates(feature.id, newLatLng);
+                });
             });
             
             this.updateHighlightsList();
@@ -1557,48 +1590,6 @@
                     }
                 }
             }
-        }
-
-        updateHighlightsList() {
-            const listContainer = document.getElementById('highlights-list');
-            const countSpan = document.getElementById('highlights-count');
-            
-            if (!listContainer) return;
-
-            const totalCount = this.existingHighlights.length + this.highlights.length;
-            countSpan.textContent = totalCount;
-
-            // Render existing features
-            let html = this.existingHighlights.map(f => `
-                <div class="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
-                    <div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-white shrink-0">
-                        ${f.icon || '📍'}
-                    </div>
-                    <div class="flex-1 min-w-0">
-                        <h5 class="font-medium text-sm">${f.name}</h5>
-                        <p class="text-xs text-muted-foreground capitalize">${f.feature_type}</p>
-                    </div>
-                    <button type="button" onclick="window.highlightManager.deleteExistingFeature(${f.id})" 
-                            class="text-red-600 hover:text-red-800 text-sm">Delete</button>
-                </div>
-            `).join('');
-            
-            // Render new features
-            html += this.highlights.map((h, i) => `
-                <div class="flex items-start gap-3 p-3 bg-blue-50 rounded-lg">
-                    <div style="background-color: ${h.color};" class="w-8 h-8 rounded-full flex items-center justify-center text-white shrink-0">
-                        ${h.icon}
-                    </div>
-                    <div class="flex-1 min-w-0">
-                        <h5 class="font-medium text-sm">${h.name} <span class="text-xs text-blue-600">(New)</span></h5>
-                        <p class="text-xs text-muted-foreground capitalize">${h.type}</p>
-                    </div>
-                    <button type="button" onclick="window.highlightManager.deleteHighlight(${i})" 
-                            class="text-red-600 hover:text-red-800 text-sm">Delete</button>
-                </div>
-            `).join('');
-
-            listContainer.innerHTML = html || '<p class="text-sm text-muted-foreground text-center py-4">No highlights added yet</p>';
         }
 
         setupEventListeners() {
@@ -2216,45 +2207,74 @@
             }
         }
 
+        transferHighlightFileToForm(mediaInput, index) {
+            if (!mediaInput.files || !mediaInput.files[0]) return;
+            
+            const file = mediaInput.files[0];
+            this.highlightFiles[index] = file;
+            
+            // Get the trail form (not the logout form!)
+            const form = mediaInput.closest('form');
+            
+            // Remove any existing input with this name
+            const existingInput = form.querySelector(`input[name="highlight_media_${index}"]`);
+            if (existingInput) {
+                existingInput.remove();
+            }
+            
+            // Get the parent container of the current input
+            const inputParent = mediaInput.parentElement;
+            
+            // Create a NEW input for the UI
+            const newInput = document.createElement('input');
+            newInput.type = 'file';
+            newInput.id = 'highlight-media-input';
+            newInput.accept = 'image/*';
+            newInput.className = mediaInput.className;
+            
+            // Replace the current input with the new one in the UI
+            inputParent.insertBefore(newInput, mediaInput);
+            
+            // Take the OLD input (which has the file) and move it to the form
+            mediaInput.removeAttribute('id');
+            mediaInput.name = `highlight_media_${index}`;
+            mediaInput.className = 'highlight-media-input';
+            mediaInput.style.display = 'none';
+            
+            // Append to the correct form
+            form.appendChild(mediaInput);
+        }
+
+        transferHighlightVideoToForm(videoUrl, index) {
+            if (!videoUrl) return;
+
+            const form = document.querySelector('form[action*="trails"]') || document.querySelector('form');
+            if (!form) return;
+
+            // Remove existing input for this index if present
+            const existing = form.querySelector(`input[name="highlight_video_url_${index}"]`);
+            if (existing) existing.remove();
+
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = `highlight_video_url_${index}`;
+            input.value = videoUrl;
+            input.className = 'highlight-video-input';
+            form.appendChild(input);
+        }
+
         // NEW: Prepare media files for submission
         prepareMediaFilesForSubmission() {
-            const form = document.querySelector('form');
-            
-            // Add file inputs for each highlight that has media
-            this.highlights.forEach((highlight, index) => {
-                if (highlight.mediaFile) {
-                    // Create a DataTransfer object to hold the file
-                    const dataTransfer = new DataTransfer();
-                    dataTransfer.items.add(highlight.mediaFile);
-                    
-                    // Create a file input
-                    const fileInput = document.createElement('input');
-                    fileInput.type = 'file';
-                    fileInput.name = `highlight_media_${index}`;
-                    fileInput.style.display = 'none';
-                    fileInput.files = dataTransfer.files;
-                    
-                    form.appendChild(fileInput);
-                    
-                    // Add index reference to highlight data
-                    highlight.mediaIndex = index;
-                }
-                
-                // Add video URL as hidden input if exists
-                if (highlight.videoUrl) {
-                    const videoInput = document.createElement('input');
-                    videoInput.type = 'hidden';
-                    videoInput.name = `highlight_video_url_${index}`;
-                    videoInput.value = highlight.videoUrl;
-                    form.appendChild(videoInput);
-                    
-                    // Add video index reference to highlight data
-                    highlight.videoIndex = index;
-                }
-            });
-            
-            // Update the highlights data input with media indices
+            // Files and videos are already transferred when highlights are added
+            // Just update the highlights data JSON to include the indices
             this.updateHighlightsInput();
+            
+            // Log for debugging
+            const form = document.querySelector('form[action*="trails"]');
+            const highlightMediaInputs = form.querySelectorAll('.highlight-media-input');
+            const highlightVideoInputs = form.querySelectorAll('.highlight-video-input');
+            
+            console.log('Media files prepared:', highlightMediaInputs.length, 'photos,', highlightVideoInputs.length, 'videos');
         }
 
         validateBeforeSubmit() {
@@ -2620,47 +2640,96 @@
             const color = document.getElementById('highlight-color-input').value;
             const mediaInput = document.getElementById('highlight-media-input');
 
-            if (!type || !name || !this.pendingHighlight) {
-                alert('Please select a type, enter a name, and click on the map to place the highlight');
+            // Validation
+            if (!type || !name) {
+                alert('Please select a type and enter a name');
                 return;
             }
 
-            const videoUrlInput = document.getElementById('highlight-video-url-input');
-            const videoUrl = videoUrlInput ? videoUrlInput.value.trim() : '';
+            // CHECK IF EDITING OR ADDING NEW
+            if (this.editingHighlightId !== null) {
+                // Check if editing existing (from database) or new (not yet saved)
+                if (this.editingExistingHighlight) {
+                    // UPDATE EXISTING DATABASE HIGHLIGHT
+                    this.updateExistingDatabaseHighlight();
+                } else {
+                    // UPDATE NEW HIGHLIGHT
+                    this.updateExistingHighlight();
+                }
+            } else {
+                // ADD NEW HIGHLIGHT
+                if (!this.pendingHighlight) {
+                    alert('Please click on the map to place the highlight');
+                    return;
+                }
 
-            const highlight = {
-                id: Date.now(),
-                type: type,
-                name: name,
-                description: description,
-                icon: icon,
-                color: color,
-                coordinates: this.pendingHighlight.coordinates,
-                mediaFile: mediaInput.files[0] || null,
-                videoUrl: videoUrl || null
-            };
+                const videoUrlInput = document.getElementById('highlight-video-url-input');
+                const videoUrl = videoUrlInput ? videoUrlInput.value.trim() : '';
 
-            this.highlights.push(highlight);
+                const highlightIndex = this.highlights.length; // Get index before adding
+
+                const highlight = {
+                    id: Date.now(),
+                    type: type,
+                    name: name,
+                    description: description,
+                    icon: icon,
+                    color: color,
+                    coordinates: this.pendingHighlight.coordinates,
+                    mediaFile: mediaInput.files[0] || null,
+                    videoUrl: videoUrl || null,
+                    mediaIndex: highlightIndex,
+                    videoIndex: highlightIndex
+                };
+
+                // Transfer file immediately if exists
+                if (mediaInput.files[0]) {
+                    this.transferHighlightFileToForm(mediaInput, highlightIndex);
+                }
+
+                // Transfer video URL immediately if exists
+                if (videoUrl) {
+                    this.transferHighlightVideoToForm(videoUrl, highlightIndex);
+                }
+
+                this.highlights.push(highlight);
+
+                // Remove pending marker
+                if (this.pendingHighlight) {
+                    this.highlightsLayer.removeLayer(this.pendingHighlight);
+                    this.pendingHighlight = null;
+                }
+
+                // Add permanent DRAGGABLE marker
+                const marker = L.marker(highlight.coordinates, {
+                    icon: L.divIcon({
+                        html: `<div style="background-color: ${highlight.color};" class="w-8 h-8 rounded-full border-2 border-white shadow-lg flex items-center justify-center text-white text-lg">${highlight.icon}</div>`,
+                        className: 'custom-marker',
+                        iconSize: [32, 32],
+                        iconAnchor: [16, 16]
+                    }),
+                    draggable: true  // Make marker draggable
+                }).addTo(this.highlightsLayer);
+
+                marker.bindPopup(`<b>${highlight.name}</b><br>${highlight.description || ''}`);
+                marker.highlightId = highlight.id;
+
+                // Store marker reference for easy access
+                this.highlightMarkers[highlight.id] = marker;
+
+                // Add drag event listener to update coordinates
+                marker.on('dragend', (e) => {
+                    const newLatLng = e.target.getLatLng();
+                    this.updateHighlightCoordinates(highlight.id, newLatLng);
+                });
+
+                showToast('Highlight added successfully!', 'success');
+            }
+
+            // Update UI
             this.updateHighlightsList();
             this.updateHighlightsInput();
-
-            // Clear form
-            document.getElementById('highlight-type-select').value = '';
-            document.getElementById('highlight-name-input').value = '';
-            document.getElementById('highlight-description-input').value = '';
-            document.getElementById('highlight-icon-input').value = '';
-            document.getElementById('highlight-media-input').value = '';
-            document.getElementById('highlight-media-preview').classList.add('hidden');
-            if (videoUrlInput) {
-                videoUrlInput.value = '';
-                document.getElementById('highlight-video-preview').classList.add('hidden');
-            }
-            
-            // Remove pending marker and add permanent one
-            if (this.pendingHighlight) {
-                this.highlightsLayer.removeLayer(this.pendingHighlight);
-                this.pendingHighlight = null;
-            }
+            this.resetHighlightForm();
         }
 
         updateHighlightsList() {
@@ -2699,11 +2768,18 @@
                             </div>
                         ` : ''}
                     </div>
-                    <button type="button" onclick="window.trailBuilder.removeExistingHighlight(${h.id})" class="text-red-500 hover:text-red-700 shrink-0">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-                        </svg>
-                    </button>
+                    <div class="flex gap-2 shrink-0">
+                        <button type="button" onclick="window.trailBuilder.editExistingHighlight(${h.id})" class="text-blue-600 hover:text-blue-800" title="Edit highlight">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                            </svg>
+                        </button>
+                        <button type="button" onclick="window.trailBuilder.removeExistingHighlight(${h.id})" class="text-red-500 hover:text-red-700" title="Delete highlight">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                            </svg>
+                        </button>
+                    </div>
                 </div>
             `).join('');
 
@@ -2726,7 +2802,12 @@
                             </div>
                         ` : ''}
                     </div>
-                    <button type="button" onclick="window.trailBuilder.removeHighlight(${h.id})" class="text-red-500 hover:text-red-700 shrink-0">
+                    <button type="button" onclick="window.trailBuilder.editHighlight(${h.id})" class="text-blue-600 hover:text-blue-800" title="Edit highlight">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                        </svg>
+                    </button>
+                    <button type="button" onclick="window.trailBuilder.removeHighlight(${h.id})" class="text-red-500 hover:text-red-700" title="Delete highlight">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
                         </svg>
@@ -2744,21 +2825,408 @@
         removeHighlight(id) {
             this.highlights = this.highlights.filter(h => h.id !== id);
             
-            // Remove marker from map
-            this.highlightsLayer.eachLayer(layer => {
-                if (layer.highlightId === id) {
-                    this.highlightsLayer.removeLayer(layer);
-                }
-            });
+            // Remove marker from map using our marker map
+            const marker = this.highlightMarkers[id];
+            if (marker) {
+                this.highlightsLayer.removeLayer(marker);
+                delete this.highlightMarkers[id];
+            }
+            
+            // If we were editing this highlight, reset form
+            if (this.editingHighlightId === id && !this.editingExistingHighlight) {
+                this.resetHighlightForm();
+            }
 
             this.updateHighlightsList();
             this.updateHighlightsInput();
+            showToast('Highlight removed', 'info');
+        }
+
+        removeExistingHighlight(id) {
+            if (!confirm('Are you sure you want to delete this highlight? This action cannot be undone.')) {
+                return;
+            }
+            
+            // Remove from existingHighlights array
+            this.existingHighlights = this.existingHighlights.filter(h => h.id !== id);
+            
+            // Remove marker from map
+            const marker = this.highlightMarkers[`existing_${id}`];
+            if (marker) {
+                this.highlightsLayer.removeLayer(marker);
+                delete this.highlightMarkers[`existing_${id}`];
+            }
+            
+            // Remove from edited list if it was being edited
+            if (this.editedExistingHighlights[id]) {
+                delete this.editedExistingHighlights[id];
+                this.updateEditedExistingHighlightsInput();
+            }
+            
+            // Add to deleted features list (for form submission)
+            const deletedInput = document.getElementById('deleted-features-input');
+            if (deletedInput) {
+                let deletedIds = [];
+                try {
+                    deletedIds = JSON.parse(deletedInput.value) || [];
+                } catch (e) {
+                    deletedIds = [];
+                }
+                
+                if (!deletedIds.includes(id)) {
+                    deletedIds.push(id);
+                }
+                
+                deletedInput.value = JSON.stringify(deletedIds);
+            }
+            
+            // If we were editing this highlight, reset form
+            if (this.editingHighlightId === id && this.editingExistingHighlight) {
+                this.resetHighlightForm();
+            }
+            
+            this.updateHighlightsList();
+            showToast('Existing highlight will be deleted when you save the form', 'info');
+        }
+
+        updateHighlightCoordinates(id, latlng) {
+            // Find and update the highlight's coordinates
+            const highlight = this.highlights.find(h => h.id === id);
+            if (!highlight) return;
+            
+            // Update coordinates
+            highlight.coordinates = [latlng.lat, latlng.lng];
+            
+            // Update hidden input
+            this.updateHighlightsInput();
+            
+            // Show success message
+            showToast('Marker position updated', 'success');
+        }
+
+        updateExistingHighlightCoordinates(id, latlng) {
+            // Find the existing highlight and update its coordinates
+            const highlight = this.existingHighlights.find(h => h.id === id);
+            if (!highlight) return;
+            
+            // Update coordinates in the existingHighlights array
+            highlight.coordinates = [latlng.lat, latlng.lng];
+            
+            // Track this as an edited existing highlight
+            if (!this.editedExistingHighlights) {
+                this.editedExistingHighlights = {};
+            }
+            
+            // Store the updated data
+            this.editedExistingHighlights[id] = {
+                id: id,
+                coordinates: [latlng.lat, latlng.lng],
+                // We'll add more fields when user clicks "Update"
+            };
+            
+            // Update hidden input
+            this.updateEditedExistingHighlightsInput();
+            
+            showToast('Existing highlight position updated', 'success');
+        }
+
+        editHighlight(id) {
+            // Find the highlight in the array
+            const highlight = this.highlights.find(h => h.id === id);
+            if (!highlight) return;
+            
+            // Set editing mode
+            this.editingHighlightId = id;
+            this.editingExistingHighlight = false; 
+            
+            // Populate the form with existing data
+            document.getElementById('highlight-type-select').value = highlight.type;
+            document.getElementById('highlight-name-input').value = highlight.name;
+            document.getElementById('highlight-description-input').value = highlight.description || '';
+            document.getElementById('highlight-icon-input').value = highlight.icon;
+            document.getElementById('highlight-color-input').value = highlight.color;
+            
+            // Change button text and style to "Update"
+            const addBtn = document.getElementById('add-highlight-btn');
+            addBtn.innerHTML = `
+                <svg class="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                </svg>
+                Update Highlight
+            `;
+            addBtn.classList.remove('bg-primary', 'hover:bg-primary/90');
+            addBtn.classList.add('bg-green-600', 'hover:bg-green-700');
+            
+            // Scroll to form
+            document.getElementById('highlight-form-section').scrollIntoView({ 
+                behavior: 'smooth', 
+                block: 'center' 
+            });
+            
+            // Highlight the marker on map (visual feedback)
+            const marker = this.highlightMarkers[id];
+            if (marker) {
+                marker.openPopup();
+                this.map.setView(marker.getLatLng(), this.map.getZoom());
+            }
+            
+            // Show toast notification
+            showToast('Editing highlight. You can drag the marker to reposition it.', 'info');
+        }
+
+        editExistingHighlight(id) {
+            // Find the existing highlight in the array
+            const highlight = this.existingHighlights.find(h => h.id === id);
+            if (!highlight) return;
+            
+            // Set editing mode for existing highlight
+            this.editingHighlightId = id;
+            this.editingExistingHighlight = true;  // Flag to know we're editing existing, not new
+            
+            // Populate the form with existing data
+            document.getElementById('highlight-type-select').value = highlight.feature_type || highlight.type;
+            document.getElementById('highlight-name-input').value = highlight.name;
+            document.getElementById('highlight-description-input').value = highlight.description || '';
+            document.getElementById('highlight-icon-input').value = highlight.icon || '📍';
+            document.getElementById('highlight-color-input').value = highlight.color || '#6366f1';
+            
+            // Change button text and style to "Update"
+            const addBtn = document.getElementById('add-highlight-btn');
+            addBtn.innerHTML = `
+                <svg class="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                </svg>
+                Update Existing Highlight
+            `;
+            addBtn.classList.remove('bg-primary', 'hover:bg-primary/90');
+            addBtn.classList.add('bg-green-600', 'hover:bg-green-700');
+            
+            // Make the marker draggable
+            const marker = this.highlightMarkers[`existing_${id}`];
+            if (marker) {
+                marker.dragging.enable();
+                marker.openPopup();
+                this.map.setView(marker.getLatLng(), this.map.getZoom());
+            }
+            
+            // Scroll to form
+            document.getElementById('highlight-form-section').scrollIntoView({ 
+                behavior: 'smooth', 
+                block: 'center' 
+            });
+            
+            showToast('Editing existing highlight. Drag the marker to reposition it.', 'info');
+        }
+
+        updateExistingHighlight() {
+            const id = this.editingHighlightId;
+            const highlight = this.highlights.find(h => h.id === id);
+            if (!highlight) return;
+            
+            // Update highlight data
+            highlight.type = document.getElementById('highlight-type-select').value;
+            highlight.name = document.getElementById('highlight-name-input').value;
+            highlight.description = document.getElementById('highlight-description-input').value;
+            highlight.icon = document.getElementById('highlight-icon-input').value;
+            highlight.color = document.getElementById('highlight-color-input').value;
+            
+            // Handle new media upload (if user changed it)
+            const mediaInput = document.getElementById('highlight-media-input');
+            if (mediaInput.files[0]) {
+                highlight.mediaFile = mediaInput.files[0];
+            }
+            // Transfer file input into form so the backend receives it on submit
+            if (mediaInput && mediaInput.files[0]) {
+                const highlightIndex = this.highlights.length;
+                this.transferHighlightFileToForm(mediaInput, highlightIndex);
+                // store index reference on the highlight for server-side mapping
+                highlight.mediaIndex = highlightIndex;
+            }
+            
+            // Handle video URL
+            const videoUrlInput = document.getElementById('highlight-video-url-input');
+            if (videoUrlInput) {
+                highlight.videoUrl = videoUrlInput.value.trim() || null;
+            }
+
+            // Transfer video URL into form as hidden input so backend can read it
+            if (videoUrlInput && videoUrlInput.value.trim()) {
+                const highlightIndex = this.highlights.length;
+                this.transferHighlightVideoToForm(videoUrlInput.value.trim(), highlightIndex);
+                highlight.videoIndex = highlightIndex;
+            }
+            
+            // Update marker appearance on map
+            const marker = this.highlightMarkers[id];
+            if (marker) {
+                marker.setIcon(L.divIcon({
+                    html: `<div style="background-color: ${highlight.color};" class="w-8 h-8 rounded-full border-2 border-white shadow-lg flex items-center justify-center text-white text-lg">${highlight.icon}</div>`,
+                    className: 'custom-marker',
+                    iconSize: [32, 32],
+                    iconAnchor: [16, 16]
+                }));
+                
+                // Update popup
+                marker.bindPopup(`<b>${highlight.name}</b><br>${highlight.description || ''}`);
+            }
+            
+            // Clear editing mode
+            this.editingHighlightId = null;
+            
+            showToast('Highlight updated successfully!', 'success');
+        }
+
+        updateExistingDatabaseHighlight() {
+            const id = this.editingHighlightId;
+            const highlight = this.existingHighlights.find(h => h.id === id);
+            if (!highlight) return;
+            
+            // Get form values
+            const type = document.getElementById('highlight-type-select').value;
+            const name = document.getElementById('highlight-name-input').value;
+            const description = document.getElementById('highlight-description-input').value;
+            const icon = document.getElementById('highlight-icon-input').value;
+            const color = document.getElementById('highlight-color-input').value;
+
+            // Handle new media upload (if user changed it)
+            const mediaInput = document.getElementById('highlight-media-input');
+            if (mediaInput.files[0]) {
+                highlight.mediaFile = mediaInput.files[0];
+            }
+            
+            // Handle video URL
+            const videoUrlInput = document.getElementById('highlight-video-url-input');
+            if (videoUrlInput) {
+                highlight.videoUrl = videoUrlInput.value.trim() || null;
+            }
+            
+            // Update the highlight in the existingHighlights array
+            highlight.feature_type = type;
+            highlight.name = name;
+            highlight.description = description;
+            highlight.icon = icon;
+            highlight.color = color;
+
+            const highlightIndex = this.highlights.length;
+            
+            // Store in editedExistingHighlights for form submission
+            this.editedExistingHighlights[id] = {
+                id: id,
+                feature_type: type,
+                name: name,
+                description: description,
+                icon: icon,
+                color: color,
+                coordinates: highlight.coordinates,
+                mediaIndex: highlightIndex,  // Set index immediately
+                videoIndex: highlightIndex   // Set index immediately
+            };
+
+            // IMPORTANT: Transfer the actual file input to the form
+            if (mediaInput.files[0]) {
+                this.transferHighlightFileToForm(mediaInput, highlightIndex);
+            }
+            
+            // Update marker appearance on map
+            const marker = this.highlightMarkers[`existing_${id}`];
+            if (marker) {
+                marker.setIcon(L.divIcon({
+                    html: `<div style="background-color: ${color};" class="w-8 h-8 rounded-full border-2 border-white shadow-lg flex items-center justify-center text-white text-lg">${icon}</div>`,
+                    className: 'custom-marker',
+                    iconSize: [32, 32],
+                    iconAnchor: [16, 16]
+                }));
+                
+                // Update popup
+                marker.bindPopup(`
+                    <div class="min-w-[200px] space-y-2">
+                        <div class="flex items-start gap-2">
+                            <div style="background-color: ${color || '#6366f1'};" class="w-6 h-6 rounded-md flex items-center justify-center text-white text-sm flex-shrink-0 mt-0.5">
+                                ${icon || '📍'}
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <h4 class="font-semibold text-sm text-gray-900 leading-tight">${name}</h4>
+                                <span class="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-gray-100 text-gray-700 mt-1 capitalize">
+                                    ${type.replace(/_/g, ' ')}
+                                </span>
+                            </div>
+                        </div>
+                        ${description ? `
+                            <p class="text-xs text-gray-600 leading-relaxed border-t border-gray-100 pt-2">
+                                ${description}
+                            </p>
+                        ` : ''}
+                    </div>
+                `);
+                
+                // Disable dragging again
+                marker.dragging.disable();
+            }
+            
+            // Update hidden input
+            this.updateEditedExistingHighlightsInput();
+            
+            // Clear editing mode
+            this.editingHighlightId = null;
+            this.editingExistingHighlight = false;
+            
+            showToast('Existing highlight updated! Save the form to apply changes.', 'success');
+        }
+
+        resetHighlightForm() {
+            // Clear all form fields
+            document.getElementById('highlight-type-select').value = '';
+            document.getElementById('highlight-name-input').value = '';
+            document.getElementById('highlight-description-input').value = '';
+            document.getElementById('highlight-icon-input').value = '';
+            document.getElementById('highlight-color-input').value = '#10B981';
+            document.getElementById('highlight-media-input').value = '';
+            
+            const mediaPreview = document.getElementById('highlight-media-preview');
+            if (mediaPreview) mediaPreview.classList.add('hidden');
+            
+            const videoUrlInput = document.getElementById('highlight-video-url-input');
+            if (videoUrlInput) {
+                videoUrlInput.value = '';
+                const videoPreview = document.getElementById('highlight-video-preview');
+                if (videoPreview) videoPreview.classList.add('hidden');
+            }
+            
+            // Reset button to "Add" mode
+            const addBtn = document.getElementById('add-highlight-btn');
+            addBtn.innerHTML = `
+                <svg class="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
+                </svg>
+                Add Highlight
+            `;
+            addBtn.classList.remove('bg-green-600', 'hover:bg-green-700');
+            addBtn.classList.add('bg-primary', 'hover:bg-primary/90');
+            
+            // NEW: If we were editing an existing highlight, disable marker dragging
+            if (this.editingExistingHighlight && this.editingHighlightId !== null) {
+                const marker = this.highlightMarkers[`existing_${this.editingHighlightId}`];
+                if (marker && marker.dragging) {
+                    marker.dragging.disable();
+                }
+            }
+
+            // Clear editing mode
+            this.editingHighlightId = null;
+            this.editingExistingHighlight = false;
         }
 
         updateHighlightsInput() {
             const input = document.getElementById('highlights-data-input');
             if (input) {
                 input.value = JSON.stringify(this.highlights);
+            }
+        }
+        
+        updateEditedExistingHighlightsInput() {
+            const input = document.getElementById('edited-highlights-input');
+            if (input) {
+                input.value = JSON.stringify(this.editedExistingHighlights);
             }
         }
     }
