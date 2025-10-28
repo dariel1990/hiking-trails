@@ -448,56 +448,68 @@
                 });
                 
                 // Get feature media if available
-                let mediaHTML = '';
+                // Build media thumbnails HTML (ALL media, not just primary)
+                let mediaThumbnailsHTML = '';
                 if (feature.media && feature.media.length > 0) {
-                    const primaryMedia = feature.media.find(m => m.pivot && m.pivot.is_primary) || feature.media[0];
-                    
-                    if (primaryMedia.media_type === 'photo' && primaryMedia.storage_path) {
-                        mediaHTML = `
-                            <div class="mt-2 mb-2">
-                                <img src="{{ asset('storage/') }}/${primaryMedia.storage_path}" 
-                                    alt="${feature.name}"
-                                    class="w-full h-32 object-cover rounded-md border border-gray-200"
-                                    onclick="openMediaModal('{{ asset('storage/') }}/${primaryMedia.storage_path}', 'photo', '${feature.name}')">
-                            </div>
-                        `;
-                    } else if (primaryMedia.media_type === 'video_url' && primaryMedia.video_url) {
-                        // Create video thumbnail
-                        let thumbnailHTML = '';
-                        if (primaryMedia.video_provider === 'youtube') {
-                            const youtubeMatch = primaryMedia.video_url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\s]+)/);
-                            if (youtubeMatch) {
-                                thumbnailHTML = `<img src="https://img.youtube.com/vi/${youtubeMatch[1]}/mqdefault.jpg" class="w-full h-32 object-cover rounded-md border border-gray-200">`;
+                    const thumbnails = feature.media.map((media, index) => {
+                        if (media.media_type === 'photo' && media.storage_path) {
+                            // Photo thumbnail
+                            return `
+                                <div class="inline-block cursor-pointer hover:opacity-80 transition-opacity" 
+                                     onclick="openMediaModal('{{ asset('storage/') }}/${media.storage_path}', 'photo', '${feature.name}')">
+                                    <img src="{{ asset('storage/') }}/${media.storage_path}" 
+                                         alt="${feature.name}"
+                                         class="w-16 h-16 object-cover rounded border border-gray-200"
+                                         title="Click to view larger">
+                                </div>
+                            `;
+                        } else if (media.media_type === 'video_url' && media.video_url) {
+                            // Video thumbnail
+                            let thumbUrl = '';
+                            if (media.video_provider === 'youtube') {
+                                const youtubeMatch = media.video_url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\s]+)/);
+                                if (youtubeMatch) {
+                                    thumbUrl = `https://img.youtube.com/vi/${youtubeMatch[1]}/mqdefault.jpg`;
+                                }
                             }
-                        } else {
-                            thumbnailHTML = `
-                                <div class="w-full h-32 bg-gray-900 flex items-center justify-center rounded-md border border-gray-200">
-                                    <svg class="w-12 h-12 text-white opacity-75" fill="currentColor" viewBox="0 0 20 20">
-                                        <path d="M2 6a2 2 0 012-2h6a2 2 0 012 6v8a2 2 0 01-2 2H4a2 2 0 01-2-2V6zM14.553 7.106A1 1 0 0014 8v4a1 1 0 00.553.894l2 1A1 1 0 0018 13V7a1 1 0 00-1.447-.894l-2 1z"/>
-                                    </svg>
+                            
+                            const thumbContent = thumbUrl 
+                                ? `<img src="${thumbUrl}" class="w-16 h-16 object-cover rounded border border-gray-200">`
+                                : `<div class="w-16 h-16 bg-gray-800 flex items-center justify-center rounded border border-gray-200">
+                                       <svg class="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                           <path d="M2 6a2 2 0 012-2h6a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V6zM14.553 7.106A1 1 0 0014 8v4a1 1 0 00.553.894l2 1A1 1 0 0018 13V7a1 1 0 00-1.447-.894l-2 1z"/>
+                                       </svg>
+                                   </div>`;
+                            
+                            return `
+                                <div class="inline-block cursor-pointer hover:opacity-80 transition-opacity relative" 
+                                     onclick="openMediaModal('${media.video_url}', 'video', '${feature.name}')">
+                                    ${thumbContent}
+                                    <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                        <div class="bg-white bg-opacity-90 rounded-full p-1 shadow">
+                                            <svg class="w-4 h-4 text-gray-900" fill="currentColor" viewBox="0 0 20 20">
+                                                <path d="M6.3 2.841A1.5 1.5 0 004 4.11V15.89a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z"/>
+                                            </svg>
+                                        </div>
+                                    </div>
                                 </div>
                             `;
                         }
-                        
-                        mediaHTML = `
-                            <div class="mt-2 mb-2 cursor-pointer relative" onclick="openMediaModal('${primaryMedia.video_url}', 'video', '${feature.name}')">
-                                ${thumbnailHTML}
-                                <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
-                                    <div class="bg-white bg-opacity-90 rounded-full p-2 shadow-lg">
-                                        <svg class="w-6 h-6 text-gray-900" fill="currentColor" viewBox="0 0 20 20">
-                                            <path d="M6.3 2.841A1.5 1.5 0 004 4.11V15.89a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z"/>
-                                        </svg>
-                                    </div>
-                                </div>
+                        return '';
+                    }).filter(Boolean).join('');
+                    
+                    if (thumbnails) {
+                        mediaThumbnailsHTML = `
+                            <div class="flex flex-wrap gap-2 pt-2 border-t border-gray-100">
+                                ${thumbnails}
                             </div>
                         `;
                     }
                 }
                 
-                // Create popup content
+                // Create popup content with media BELOW description
                 const popupContent = `
                     <div class="min-w-[220px] max-w-[280px]">
-                        ${mediaHTML}
                         <div class="space-y-2">
                             <div class="flex items-start gap-2">
                                 <div style="background-color: ${feature.color || '#6366f1'};" class="w-7 h-7 rounded-lg flex items-center justify-center text-white shadow-sm flex-shrink-0">
@@ -515,6 +527,7 @@
                                     ${feature.description}
                                 </p>
                             ` : ''}
+                            ${mediaThumbnailsHTML}
                         </div>
                     </div>
                 `;
