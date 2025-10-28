@@ -36,11 +36,12 @@
                 </button>
 
                 <!-- All Filters Button -->
-                <button class="filter-pill bg-white hover:bg-gray-50 border border-gray-300 rounded-full px-4 py-2 text-sm font-medium text-gray-700 flex items-center gap-2 shadow-sm flex-shrink-0">
+                <button id="all-filters-btn-mobile" class="filter-pill bg-white hover:bg-gray-50 border border-gray-300 rounded-full px-4 py-2 text-sm font-medium text-gray-700 flex items-center gap-2 shadow-sm flex-shrink-0">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"/>
                     </svg>
                     <span>More</span>
+                    <span id="filter-count-badge-mobile" class="hidden ml-1 bg-primary-600 text-white text-xs rounded-full px-2 py-0.5 font-bold">0</span>
                 </button>
             </div>
         </div>
@@ -121,6 +122,186 @@
                     <input type="radio" name="difficulty-mobile" value="5" class="difficulty-radio-mobile w-5 h-5">
                     <span class="ml-3 text-base">5 - Very Hard</span>
                 </label>
+            </div>
+        </div>
+    </div>
+
+    <!-- All Filters Modal -->
+    <div id="all-filters-modal" class="hidden fixed inset-0 z-50">
+        <div class="absolute inset-0 bg-black bg-opacity-50" onclick="document.getElementById('all-filters-modal').classList.add('hidden')"></div>
+        <div class="absolute md:inset-auto md:top-1/2 md:left-1/2 md:-translate-x-1/2 md:-translate-y-1/2 max-md:bottom-0 max-md:left-0 max-md:right-0 bg-white md:rounded-2xl max-md:rounded-t-2xl p-6 max-h-[85vh] md:max-h-[80vh] overflow-y-auto md:w-[600px]">
+            <div class="flex items-center justify-between mb-6">
+                <h3 class="text-xl font-bold">All Filters</h3>
+                <button onclick="document.getElementById('all-filters-modal').classList.add('hidden')" class="text-gray-400 hover:text-gray-600">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                </button>
+            </div>
+
+            <!-- Trail Type -->
+            <div class="mb-6">
+                <h4 class="font-semibold text-base mb-3">Trail Type</h4>
+                <div class="space-y-2">
+                    <label class="flex items-center cursor-pointer hover:bg-gray-50 p-3 rounded-lg">
+                        <input type="radio" name="trail-type" value="" class="trail-type-radio w-5 h-5" checked>
+                        <span class="ml-3 text-sm">All types</span>
+                    </label>
+                    <label class="flex items-center cursor-pointer hover:bg-gray-50 p-3 rounded-lg">
+                        <input type="radio" name="trail-type" value="loop" class="trail-type-radio w-5 h-5">
+                        <span class="ml-3 text-sm">Loop</span>
+                    </label>
+                    <label class="flex items-center cursor-pointer hover:bg-gray-50 p-3 rounded-lg">
+                        <input type="radio" name="trail-type" value="out-and-back" class="trail-type-radio w-5 h-5">
+                        <span class="ml-3 text-sm">Out and Back</span>
+                    </label>
+                    <label class="flex items-center cursor-pointer hover:bg-gray-50 p-3 rounded-lg">
+                        <input type="radio" name="trail-type" value="point-to-point" class="trail-type-radio w-5 h-5">
+                        <span class="ml-3 text-sm">Point to Point</span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Duration -->
+            <div class="mb-6 border-t pt-6">
+                <h4 class="font-semibold text-base mb-3">Duration</h4>
+                <div class="space-y-2">
+                    <label class="flex items-center cursor-pointer hover:bg-gray-50 p-3 rounded-lg">
+                        <input type="radio" name="duration" value="" class="duration-radio w-5 h-5" checked>
+                        <span class="ml-3 text-sm">Any duration</span>
+                    </label>
+                    <label class="flex items-center cursor-pointer hover:bg-gray-50 p-3 rounded-lg">
+                        <input type="radio" name="duration" value="0-1" class="duration-radio w-5 h-5">
+                        <span class="ml-3 text-sm">Under 1 hour</span>
+                    </label>
+                    <label class="flex items-center cursor-pointer hover:bg-gray-50 p-3 rounded-lg">
+                        <input type="radio" name="duration" value="1-2" class="duration-radio w-5 h-5">
+                        <span class="ml-3 text-sm">1-2 hours</span>
+                    </label>
+                    <label class="flex items-center cursor-pointer hover:bg-gray-50 p-3 rounded-lg">
+                        <input type="radio" name="duration" value="2-4" class="duration-radio w-5 h-5">
+                        <span class="ml-3 text-sm">2-4 hours</span>
+                    </label>
+                    <label class="flex items-center cursor-pointer hover:bg-gray-50 p-3 rounded-lg">
+                        <input type="radio" name="duration" value="4-6" class="duration-radio w-5 h-5">
+                        <span class="ml-3 text-sm">4-6 hours</span>
+                    </label>
+                    <label class="flex items-center cursor-pointer hover:bg-gray-50 p-3 rounded-lg">
+                        <input type="radio" name="duration" value="6+" class="duration-radio w-5 h-5">
+                        <span class="ml-3 text-sm">6+ hours</span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Elevation Gain -->
+            <div class="mb-6 border-t pt-6">
+                <h4 class="font-semibold text-base mb-3">Elevation Gain</h4>
+                <div class="space-y-2">
+                    <label class="flex items-center cursor-pointer hover:bg-gray-50 p-3 rounded-lg">
+                        <input type="radio" name="elevation" value="" class="elevation-radio w-5 h-5" checked>
+                        <span class="ml-3 text-sm">Any elevation</span>
+                    </label>
+                    <label class="flex items-center cursor-pointer hover:bg-gray-50 p-3 rounded-lg">
+                        <input type="radio" name="elevation" value="0-100" class="elevation-radio w-5 h-5">
+                        <span class="ml-3 text-sm">Flat (0-100m)</span>
+                    </label>
+                    <label class="flex items-center cursor-pointer hover:bg-gray-50 p-3 rounded-lg">
+                        <input type="radio" name="elevation" value="100-300" class="elevation-radio w-5 h-5">
+                        <span class="ml-3 text-sm">Easy climb (100-300m)</span>
+                    </label>
+                    <label class="flex items-center cursor-pointer hover:bg-gray-50 p-3 rounded-lg">
+                        <input type="radio" name="elevation" value="300-600" class="elevation-radio w-5 h-5">
+                        <span class="ml-3 text-sm">Moderate (300-600m)</span>
+                    </label>
+                    <label class="flex items-center cursor-pointer hover:bg-gray-50 p-3 rounded-lg">
+                        <input type="radio" name="elevation" value="600-1000" class="elevation-radio w-5 h-5">
+                        <span class="ml-3 text-sm">Steep (600-1000m)</span>
+                    </label>
+                    <label class="flex items-center cursor-pointer hover:bg-gray-50 p-3 rounded-lg">
+                        <input type="radio" name="elevation" value="1000+" class="elevation-radio w-5 h-5">
+                        <span class="ml-3 text-sm">Very steep (1000m+)</span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Features -->
+            <div class="mb-6 border-t pt-6">
+                <h4 class="font-semibold text-base mb-3">Features</h4>
+                <div class="grid grid-cols-2 gap-2">
+                    <label class="flex items-center cursor-pointer hover:bg-gray-50 p-3 rounded-lg">
+                        <input type="checkbox" value="waterfall" class="feature-checkbox w-5 h-5">
+                        <span class="ml-3 text-sm">💧 Waterfall</span>
+                    </label>
+                    <label class="flex items-center cursor-pointer hover:bg-gray-50 p-3 rounded-lg">
+                        <input type="checkbox" value="viewpoint" class="feature-checkbox w-5 h-5">
+                        <span class="ml-3 text-sm">👁️ Viewpoint</span>
+                    </label>
+                    <label class="flex items-center cursor-pointer hover:bg-gray-50 p-3 rounded-lg">
+                        <input type="checkbox" value="wildlife" class="feature-checkbox w-5 h-5">
+                        <span class="ml-3 text-sm">🦌 Wildlife</span>
+                    </label>
+                    <label class="flex items-center cursor-pointer hover:bg-gray-50 p-3 rounded-lg">
+                        <input type="checkbox" value="lake" class="feature-checkbox w-5 h-5">
+                        <span class="ml-3 text-sm">🏞️ Lake</span>
+                    </label>
+                    <label class="flex items-center cursor-pointer hover:bg-gray-50 p-3 rounded-lg">
+                        <input type="checkbox" value="summit" class="feature-checkbox w-5 h-5">
+                        <span class="ml-3 text-sm">⛰️ Summit</span>
+                    </label>
+                    <label class="flex items-center cursor-pointer hover:bg-gray-50 p-3 rounded-lg">
+                        <input type="checkbox" value="bridge" class="feature-checkbox w-5 h-5">
+                        <span class="ml-3 text-sm">🌉 Bridge</span>
+                    </label>
+                    <label class="flex items-center cursor-pointer hover:bg-gray-50 p-3 rounded-lg">
+                        <input type="checkbox" value="forest" class="feature-checkbox w-5 h-5">
+                        <span class="ml-3 text-sm">🌲 Forest</span>
+                    </label>
+                    <label class="flex items-center cursor-pointer hover:bg-gray-50 p-3 rounded-lg">
+                        <input type="checkbox" value="camping" class="feature-checkbox w-5 h-5">
+                        <span class="ml-3 text-sm">⛺ Camping</span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Activities -->
+            <div class="mb-6 border-t pt-6">
+                <h4 class="font-semibold text-base mb-3">Activities</h4>
+                <div class="grid grid-cols-2 gap-2">
+                    <label class="flex items-center cursor-pointer hover:bg-gray-50 p-3 rounded-lg">
+                        <input type="checkbox" value="hiking" class="activity-checkbox w-5 h-5">
+                        <span class="ml-3 text-sm">Hiking</span>
+                    </label>
+                    <label class="flex items-center cursor-pointer hover:bg-gray-50 p-3 rounded-lg">
+                        <input type="checkbox" value="camping" class="activity-checkbox w-5 h-5">
+                        <span class="ml-3 text-sm">Camping</span>
+                    </label>
+                    <label class="flex items-center cursor-pointer hover:bg-gray-50 p-3 rounded-lg">
+                        <input type="checkbox" value="fishing" class="activity-checkbox w-5 h-5">
+                        <span class="ml-3 text-sm">Fishing</span>
+                    </label>
+                    <label class="flex items-center cursor-pointer hover:bg-gray-50 p-3 rounded-lg">
+                        <input type="checkbox" value="snowshoeing" class="activity-checkbox w-5 h-5">
+                        <span class="ml-3 text-sm">Snowshoeing</span>
+                    </label>
+                    <label class="flex items-center cursor-pointer hover:bg-gray-50 p-3 rounded-lg">
+                        <input type="checkbox" value="cross-country-skiing" class="activity-checkbox w-5 h-5">
+                        <span class="ml-3 text-sm">Cross-country Skiing</span>
+                    </label>
+                    <label class="flex items-center cursor-pointer hover:bg-gray-50 p-3 rounded-lg">
+                        <input type="checkbox" value="ice-fishing" class="activity-checkbox w-5 h-5">
+                        <span class="ml-3 text-sm">Ice Fishing</span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="flex gap-3 border-t pt-6">
+                <button onclick="clearAllFilters()" class="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 py-3 px-4 rounded-lg font-medium transition-colors">
+                    Clear All
+                </button>
+                <button onclick="applyAllFilters()" class="flex-1 bg-primary-600 hover:bg-primary-700 text-white py-3 px-4 rounded-lg font-medium transition-colors">
+                    Apply Filters
+                </button>
             </div>
         </div>
     </div>
@@ -313,11 +494,12 @@
         </div>
 
         <!-- All Filters Button -->
-        <button class="filter-pill bg-white hover:bg-gray-50 border border-gray-300 rounded-full px-4 py-2 text-sm font-medium text-gray-700 flex items-center gap-2 shadow-sm">
+        <button id="all-filters-btn" class="filter-pill bg-white hover:bg-gray-50 border border-gray-300 rounded-full px-4 py-2 text-sm font-medium text-gray-700 flex items-center gap-2 shadow-sm">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"/>
             </svg>
             <span>All filters</span>
+            <span id="filter-count-badge" class="hidden ml-1 bg-primary-600 text-white text-xs rounded-full px-2 py-0.5 font-bold">0</span>
         </button>
     </div>
 
@@ -734,7 +916,113 @@
 }
 </style>
 <script>
+    // Advanced Filters State
+    let advancedFilters = {
+        trailType: '',
+        duration: '',
+        elevation: '',
+        features: [],
+        activities: []
+    };
 
+    // Open All Filters Modal
+    document.getElementById('all-filters-btn')?.addEventListener('click', function() {
+        document.getElementById('all-filters-modal').classList.remove('hidden');
+    });
+
+    document.getElementById('all-filters-btn-mobile')?.addEventListener('click', function() {
+        document.getElementById('all-filters-modal').classList.remove('hidden');
+    });
+
+    // Apply All Filters
+    function applyAllFilters() {
+        // Get trail type
+        const trailTypeRadio = document.querySelector('.trail-type-radio:checked');
+        advancedFilters.trailType = trailTypeRadio ? trailTypeRadio.value : '';
+
+        // Get duration
+        const durationRadio = document.querySelector('.duration-radio:checked');
+        advancedFilters.duration = durationRadio ? durationRadio.value : '';
+
+        // Get elevation
+        const elevationRadio = document.querySelector('.elevation-radio:checked');
+        advancedFilters.elevation = elevationRadio ? elevationRadio.value : '';
+
+        // Get features (multi-select)
+        const featureCheckboxes = document.querySelectorAll('.feature-checkbox:checked');
+        advancedFilters.features = Array.from(featureCheckboxes).map(cb => cb.value);
+
+        // Get activities (multi-select)
+        const activityCheckboxes = document.querySelectorAll('.activity-checkbox:checked');
+        advancedFilters.activities = Array.from(activityCheckboxes).map(cb => cb.value);
+
+        // Close modal
+        document.getElementById('all-filters-modal').classList.add('hidden');
+
+        // Update filter count badge
+        updateFilterCountBadge();
+
+        // Apply filters to map
+        if (window.trailMap) {
+            window.trailMap.applyAdvancedFilters(advancedFilters);
+        }
+    }
+
+    // Clear All Filters
+    function clearAllFilters() {
+        // Reset all radio buttons
+        document.querySelectorAll('.trail-type-radio[value=""]')[0].checked = true;
+        document.querySelectorAll('.duration-radio[value=""]')[0].checked = true;
+        document.querySelectorAll('.elevation-radio[value=""]')[0].checked = true;
+
+        // Uncheck all checkboxes
+        document.querySelectorAll('.feature-checkbox').forEach(cb => cb.checked = false);
+        document.querySelectorAll('.activity-checkbox').forEach(cb => cb.checked = false);
+
+        // Reset filters state
+        advancedFilters = {
+            trailType: '',
+            duration: '',
+            elevation: '',
+            features: [],
+            activities: []
+        };
+
+        // Update badge
+        updateFilterCountBadge();
+
+        // Apply filters (will show all)
+        if (window.trailMap) {
+            window.trailMap.applyAdvancedFilters(advancedFilters);
+        }
+    }
+
+    // Update Filter Count Badge
+    function updateFilterCountBadge() {
+        let count = 0;
+        if (advancedFilters.trailType) count++;
+        if (advancedFilters.duration) count++;
+        if (advancedFilters.elevation) count++;
+        count += advancedFilters.features.length;
+        count += advancedFilters.activities.length;
+
+        const badge = document.getElementById('filter-count-badge');
+        const badgeMobile = document.getElementById('filter-count-badge-mobile');
+
+        if (count > 0) {
+            if (badge) {
+                badge.textContent = count;
+                badge.classList.remove('hidden');
+            }
+            if (badgeMobile) {
+                badgeMobile.textContent = count;
+                badgeMobile.classList.remove('hidden');
+            }
+        } else {
+            if (badge) badge.classList.add('hidden');
+            if (badgeMobile) badgeMobile.classList.add('hidden');
+        }
+    }
     class EnhancedTrailMap {
         constructor() {
             this.map = null;
@@ -1060,6 +1348,36 @@
                     });
                 });
 
+                document.querySelectorAll('.trail-type-radio').forEach(radio => {
+                    radio.addEventListener('change', () => {
+                        updateFilterCountBadge();
+                    });
+                });
+
+                document.querySelectorAll('.duration-radio').forEach(radio => {
+                    radio.addEventListener('change', () => {
+                        updateFilterCountBadge();
+                    });
+                });
+
+                document.querySelectorAll('.elevation-radio').forEach(radio => {
+                    radio.addEventListener('change', () => {
+                        updateFilterCountBadge();
+                    });
+                });
+
+                document.querySelectorAll('.feature-checkbox').forEach(checkbox => {
+                    checkbox.addEventListener('change', () => {
+                        updateFilterCountBadge();
+                    });
+                });
+
+                document.querySelectorAll('.activity-checkbox').forEach(checkbox => {
+                    checkbox.addEventListener('change', () => {
+                        updateFilterCountBadge();
+                    });
+                });
+
                 document.querySelectorAll('.difficulty-radio-mobile').forEach(radio => {
                     radio.addEventListener('change', (e) => {
                         this.currentDifficulty = e.target.value;
@@ -1265,8 +1583,80 @@
                     return false;
                 }
 
+                // Apply advanced filters
+                if (!this.matchesAdvancedFilters(trail)) {
+                    return false;
+                }
+
                 return true;
             });
+        }
+
+        matchesAdvancedFilters(trail) {
+            // Trail Type filter
+            if (advancedFilters.trailType && trail.trail_type !== advancedFilters.trailType) {
+                return false;
+            }
+
+            // Duration filter
+            if (advancedFilters.duration) {
+                const duration = parseFloat(trail.estimated_time);
+                if (advancedFilters.duration === '0-1' && duration >= 1) return false;
+                if (advancedFilters.duration === '1-2' && (duration < 1 || duration >= 2)) return false;
+                if (advancedFilters.duration === '2-4' && (duration < 2 || duration >= 4)) return false;
+                if (advancedFilters.duration === '4-6' && (duration < 4 || duration >= 6)) return false;
+                if (advancedFilters.duration === '6+' && duration < 6) return false;
+            }
+
+            // Elevation filter
+            if (advancedFilters.elevation) {
+                const elevation = parseInt(trail.elevation_gain);
+                if (advancedFilters.elevation === '0-100' && elevation >= 100) return false;
+                if (advancedFilters.elevation === '100-300' && (elevation < 100 || elevation >= 300)) return false;
+                if (advancedFilters.elevation === '300-600' && (elevation < 300 || elevation >= 600)) return false;
+                if (advancedFilters.elevation === '600-1000' && (elevation < 600 || elevation >= 1000)) return false;
+                if (advancedFilters.elevation === '1000+' && elevation < 1000) return false;
+            }
+
+            // Features filter (OR logic - trail must have ANY of the selected features)
+            if (advancedFilters.features.length > 0) {
+                if (!trail.highlights || trail.highlights.length === 0) {
+                    return false;
+                }
+                
+                const trailFeatureTypes = trail.highlights.map(h => h.type);
+                const hasAnyFeature = advancedFilters.features.some(feature => 
+                    trailFeatureTypes.includes(feature)
+                );
+                
+                if (!hasAnyFeature) {
+                    return false;
+                }
+            }
+
+            // Activities filter (AND logic - trail must have ALL selected activities)
+            if (advancedFilters.activities.length > 0) {
+                if (!trail.activities || trail.activities.length === 0) {
+                    return false;
+                }
+                
+                const trailActivityTypes = trail.activities.map(a => a.type || a.slug || a.name);
+                const hasAllActivities = advancedFilters.activities.every(activity => 
+                    trailActivityTypes.includes(activity)
+                );
+                
+                if (!hasAllActivities) {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        applyAdvancedFilters(filters) {
+            // This method is called from the global applyAllFilters function
+            // Trigger a re-render of the map and list
+            this.applyFilters();
         }
 
         updateVisibleTrails() {
@@ -2107,7 +2497,8 @@
 
     // Initialize map when DOM is loaded
     document.addEventListener('DOMContentLoaded', function() {
-        const trailMap = new EnhancedTrailMap();
+        window.trailMap = new EnhancedTrailMap();
+        const trailMap = window.trailMap;
 
         // Initialize mobile state
         function initializeMobileState() {
