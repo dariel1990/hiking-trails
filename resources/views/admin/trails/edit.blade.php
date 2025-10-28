@@ -946,7 +946,7 @@
         <div class="h-16"></div>
 
         <!-- Form Actions -->
-        <div class="fixed bottom-0 left-0 right-0 bg-white border-t shadow-lg z-[9999] flex items-center justify-between py-4 px-6">
+        <div class="fixed bottom-0 left-0 right-0 bg-white border-t shadow-lg z-[101] flex items-center justify-between py-4 px-6">
             <a href="{{ route('admin.trails.index') }}" 
                class="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2">
                 <svg class="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -985,6 +985,29 @@
         </div>
     </div>
 </div>
+
+<!-- Media Modal -->
+    <div id="media-modal" class="hidden fixed inset-0 bg-black bg-opacity-75 z-[102] flex items-center justify-center p-4">
+        <div class="relative max-w-5xl w-full bg-white rounded-lg shadow-xl">
+            <!-- Close button -->
+            <button onclick="closeMediaModal()" 
+                    class="absolute top-4 right-4 z-10 bg-gray-900 bg-opacity-75 hover:bg-opacity-100 text-white rounded-full p-2 transition-all">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+            </button>
+            
+            <!-- Content container -->
+            <div id="modal-content" class="p-4">
+                <!-- Content will be dynamically inserted here -->
+            </div>
+            
+            <!-- Caption -->
+            <div id="modal-caption" class="px-6 pb-6 text-center text-gray-700">
+                <!-- Caption will be dynamically inserted here -->
+            </div>
+        </div>
+    </div>
 
 @push('scripts')
 <script>
@@ -1494,6 +1517,61 @@
                     draggable: false  // NEW: Start as NOT draggable (will enable when editing)
                 }).addTo(this.highlightsLayer);
                 
+                // Build media thumbnails HTML for this feature
+                let mediaThumbnailsHTML = '';
+                if (feature.media && feature.media.length > 0) {
+                    const thumbnails = feature.media.map((media) => {
+                        if (media.media_type === 'photo' && media.storage_path) {
+                            return `
+                                <div class="inline-block cursor-pointer hover:opacity-80 transition-opacity" 
+                                     onclick="event.stopPropagation(); openMediaModal('{{ asset('storage/') }}/${media.storage_path}', 'photo', '${feature.name}')">
+                                    <img src="{{ asset('storage/') }}/${media.storage_path}" 
+                                         alt="${feature.name}"
+                                         class="w-14 h-14 object-cover rounded border border-gray-200"
+                                         title="Click to view">
+                                </div>
+                            `;
+                        } else if (media.media_type === 'video_url' && media.video_url) {
+                            let thumbUrl = '';
+                            if (media.video_provider === 'youtube') {
+                                const match = media.video_url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\s]+)/);
+                                if (match) thumbUrl = `https://img.youtube.com/vi/${match[1]}/mqdefault.jpg`;
+                            }
+                            
+                            const thumbContent = thumbUrl 
+                                ? `<img src="${thumbUrl}" class="w-14 h-14 object-cover rounded border border-gray-200">`
+                                : `<div class="w-14 h-14 bg-gray-800 flex items-center justify-center rounded border border-gray-200">
+                                       <svg class="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                           <path d="M2 6a2 2 0 012-2h6a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V6zM14.553 7.106A1 1 0 0014 8v4a1 1 0 00.553.894l2 1A1 1 0 0018 13V7a1 1 0 00-1.447-.894l-2 1z"/>
+                                       </svg>
+                                   </div>`;
+                            
+                            return `
+                                <div class="inline-block cursor-pointer hover:opacity-80 transition-opacity relative" 
+                                     onclick="event.stopPropagation(); openMediaModal('${media.video_url}', 'video', '${feature.name}')">
+                                    ${thumbContent}
+                                    <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                        <div class="bg-white bg-opacity-90 rounded-full p-1 shadow">
+                                            <svg class="w-3 h-3 text-gray-900" fill="currentColor" viewBox="0 0 20 20">
+                                                <path d="M6.3 2.841A1.5 1.5 0 004 4.11V15.89a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z"/>
+                                            </svg>
+                                        </div>
+                                    </div>
+                                </div>
+                            `;
+                        }
+                        return '';
+                    }).filter(Boolean).join('');
+                    
+                    if (thumbnails) {
+                        mediaThumbnailsHTML = `
+                            <div class="flex flex-wrap gap-1.5 pt-2 border-t border-gray-100">
+                                ${thumbnails}
+                            </div>
+                        `;
+                    }
+                }
+                
                 marker.bindPopup(`
                     <div class="min-w-[200px] space-y-2">
                         <div class="flex items-start gap-2">
@@ -1512,8 +1590,10 @@
                                 ${feature.description}
                             </p>
                         ` : ''}
+                        ${mediaThumbnailsHTML}
                     </div>
                 `);
+
                 marker.highlightId = feature.id;
                 marker.isExisting = true;
                 
@@ -2750,23 +2830,6 @@
                         <h5 class="font-medium text-sm">${h.name}</h5>
                         <p class="text-xs text-muted-foreground capitalize">${(h.feature_type || '').replace('_', ' ')}</p>
                         ${h.description ? `<p class="text-xs text-gray-600 mt-1">${h.description}</p>` : ''}
-                        ${h.media && h.media.length > 0 ? `
-                            <div class="mt-2 space-y-1">
-                                ${h.media.map(media => `
-                                    <div class="flex items-center gap-2 text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded">
-                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            ${media.media_type === 'photo' ? `
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
-                                            ` : `
-                                                <path d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/>
-                                            `}
-                                        </svg>
-                                        <span class="truncate">${media.original_name || media.filename}</span>
-                                        ${media.pivot && media.pivot.is_primary ? '<span class="text-xs bg-blue-600 text-white px-1 rounded">Primary</span>' : ''}
-                                    </div>
-                                `).join('')}
-                            </div>
-                        ` : ''}
                     </div>
                     <div class="flex gap-2 shrink-0">
                         <button type="button" onclick="window.trailBuilder.editExistingHighlight(${h.id})" class="text-blue-600 hover:text-blue-800" title="Edit highlight">
@@ -3118,9 +3181,12 @@
                 icon: icon,
                 color: color,
                 coordinates: highlight.coordinates,
+                videoUrl: highlight.videoUrl,
                 mediaIndex: highlightIndex,  // Set index immediately
                 videoIndex: highlightIndex   // Set index immediately
             };
+
+            console.log(this.editedExistingHighlights);
 
             // IMPORTANT: Transfer the actual file input to the form
             if (mediaInput.files[0]) {
@@ -4396,6 +4462,78 @@
         
         document.body.appendChild(modal);
     }
+
+    // Media Modal Functions
+    function openMediaModal(url, type, caption) {
+        const modal = document.getElementById('media-modal');
+        const content = document.getElementById('modal-content');
+        const captionEl = document.getElementById('modal-caption');
+        
+        if (type === 'photo') {
+            content.innerHTML = `<img src="${url}" alt="${caption}" class="w-full h-auto max-h-[70vh] object-contain rounded-lg">`;
+        } else if (type === 'video') {
+            // Convert video URL to embed URL
+            let embedUrl = '';
+            
+            // YouTube
+            const youtubeMatch = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\s]+)/);
+            if (youtubeMatch) {
+                embedUrl = `https://www.youtube.com/embed/${youtubeMatch[1]}`;
+            }
+            
+            // Vimeo
+            const vimeoMatch = url.match(/vimeo\.com\/(\d+)/);
+            if (vimeoMatch) {
+                embedUrl = `https://player.vimeo.com/video/${vimeoMatch[1]}`;
+            }
+            
+            if (embedUrl) {
+                content.innerHTML = `
+                    <div class="relative" style="padding-bottom: 56.25%; height: 0;">
+                        <iframe src="${embedUrl}" 
+                                frameborder="0" 
+                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                                allowfullscreen
+                                class="absolute top-0 left-0 w-full h-full rounded-lg">
+                        </iframe>
+                    </div>
+                `;
+            }
+        }
+        
+        captionEl.textContent = caption;
+        modal.classList.remove('hidden');
+    }
+
+    function closeMediaModal() {
+        const modal = document.getElementById('media-modal');
+        const content = document.getElementById('modal-content');
+        
+        modal.classList.add('hidden');
+        content.innerHTML = ''; // Clear content to stop video playback
+    }
+
+    // Close modal when clicking outside
+    document.addEventListener('DOMContentLoaded', function() {
+        const mediaModal = document.getElementById('media-modal');
+        if (mediaModal) {
+            mediaModal.addEventListener('click', function(e) {
+                if (e.target === this) {
+                    closeMediaModal();
+                }
+            });
+        }
+        
+        // Close modal with Escape key
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                const modal = document.getElementById('media-modal');
+                if (modal && !modal.classList.contains('hidden')) {
+                    closeMediaModal();
+                }
+            }
+        });
+    });
 
     
 </script>

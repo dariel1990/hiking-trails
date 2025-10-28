@@ -1016,16 +1016,56 @@ document.addEventListener('DOMContentLoaded', function() {
                                         </div>
                                     `;
                                 } else if (media.media_type === 'video_url') {
-                                    return `
-                                        <div class="relative aspect-square rounded overflow-hidden cursor-pointer hover:opacity-90 transition group bg-gray-900"
-                                            onclick="event.stopPropagation(); openMediaModal('${media.video_url || media.url}', 'video', '${media.caption || feature.name}')">
-                                            <div class="w-full h-full flex items-center justify-center">
+                                    // Generate thumbnail for video
+                                    let thumbnailHTML = '';
+                                    const videoUrl = media.video_url || media.url;
+                                    
+                                    if (media.video_provider === 'youtube') {
+                                        // Extract YouTube video ID and create thumbnail
+                                        const youtubeMatch = videoUrl.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\s]+)/);
+                                        if (youtubeMatch && youtubeMatch[1]) {
+                                            const videoId = youtubeMatch[1];
+                                            thumbnailHTML = `
+                                                <img src="https://img.youtube.com/vi/${videoId}/mqdefault.jpg" 
+                                                    alt="${media.caption || feature.name}"
+                                                    class="w-full h-full object-cover"
+                                                    onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                                                <div class="w-full h-full hidden items-center justify-center bg-gray-900">
+                                                    <svg class="w-8 h-8 text-white opacity-75" fill="currentColor" viewBox="0 0 20 20">
+                                                        <path d="M2 6a2 2 0 012-2h6a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V6zM14.553 7.106A1 1 0 0014 8v4a1 1 0 00.553.894l2 1A1 1 0 0018 13V7a1 1 0 00-1.447-.894l-2 1z"/>
+                                                    </svg>
+                                                </div>
+                                            `;
+                                        }
+                                    } else if (media.video_provider === 'vimeo') {
+                                        // For Vimeo, we'd need an API call, so we'll use generic icon for now
+                                        thumbnailHTML = `
+                                            <div class="w-full h-full flex items-center justify-center bg-gradient-to-br from-blue-500 to-blue-700">
+                                                <svg class="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                                    <path d="M2 6a2 2 0 012-2h6a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V6zM14.553 7.106A1 1 0 0014 8v4a1 1 0 00.553.894l2 1A1 1 0 0018 13V7a1 1 0 00-1.447-.894l-2 1z"/>
+                                                </svg>
+                                            </div>
+                                        `;
+                                    }
+                                    
+                                    // Fallback if no thumbnail could be generated
+                                    if (!thumbnailHTML) {
+                                        thumbnailHTML = `
+                                            <div class="w-full h-full flex items-center justify-center bg-gray-900">
                                                 <svg class="w-8 h-8 text-white opacity-75" fill="currentColor" viewBox="0 0 20 20">
                                                     <path d="M2 6a2 2 0 012-2h6a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V6zM14.553 7.106A1 1 0 0014 8v4a1 1 0 00.553.894l2 1A1 1 0 0018 13V7a1 1 0 00-1.447-.894l-2 1z"/>
                                                 </svg>
                                             </div>
+                                        `;
+                                    }
+                                    
+                                    return `
+                                        <div class="relative aspect-square rounded overflow-hidden cursor-pointer hover:opacity-90 transition group"
+                                            onclick="event.stopPropagation(); openMediaModal('${videoUrl}', 'video', '${media.caption || feature.name}')">
+                                            ${thumbnailHTML}
+                                            <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-all"></div>
                                             <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
-                                                <div class="bg-white bg-opacity-90 rounded-full p-1.5">
+                                                <div class="bg-white bg-opacity-90 rounded-full p-1.5 shadow-lg group-hover:scale-110 transition-transform">
                                                     <svg class="w-4 h-4 text-gray-900" fill="currentColor" viewBox="0 0 20 20">
                                                         <path d="M6.3 2.841A1.5 1.5 0 004 4.11V15.89a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z"/>
                                                     </svg>

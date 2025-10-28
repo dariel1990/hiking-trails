@@ -517,7 +517,7 @@ class AdminTrailController extends Controller
             }
         }
 
-        if ($request->has('edited_highlights')) {
+        if ($request->has('edited_highlights') && ($editedHighlights = json_decode($request->edited_highlights, true)) && !empty(array_filter($editedHighlights))) {
             $editedHighlights = json_decode($request->edited_highlights, true);
             
             if (is_array($editedHighlights)) {
@@ -525,6 +525,7 @@ class AdminTrailController extends Controller
                     $feature = TrailFeature::find($highlightId);
                     
                     if ($feature && $feature->trail_id === $trail->id) {
+                        // Update basic feature data
                         $feature->update([
                             'feature_type' => $highlightData['feature_type'],
                             'name' => $highlightData['name'],
@@ -534,53 +535,78 @@ class AdminTrailController extends Controller
                             'color' => $highlightData['color'] ?? null,
                         ]);
                         
-                        // === Handle media for edited existing highlights ===
-                        // If the frontend sent a mediaIndex and a file was uploaded for it,
-                        // store the photo and attach it to the existing feature.
-                        try {
-                            if (isset($highlightData['mediaIndex']) && $request->hasFile("highlight_media_{$highlightData['mediaIndex']}")) {
-                                $mediaFile = $request->file("highlight_media_{$highlightData['mediaIndex']}");
-                                $filename = Str::random(40) . '.' . $mediaFile->getClientOriginalExtension();
-                                $path = $mediaFile->storeAs('trail-photos', $filename, 'public');
-
-                                $media = TrailMedia::create([
-                                    'trail_id' => $trail->id,
-                                    'media_type' => 'photo',
-                                    'filename' => $filename,
-                                    'original_name' => $mediaFile->getClientOriginalName(),
-                                    'storage_path' => $path,
-                                    'file_size' => $mediaFile->getSize(),
-                                    'mime_type' => $mediaFile->getMimeType(),
-                                    'sort_order' => 0,
-                                    'is_featured' => false,
-                                    'uploaded_by' => auth()->id(),
-                                ]);
-
-                                // Attach the new media to the feature (mark primary)
-                                $feature->media()->attach($media->id, [
-                                    'is_primary' => true,
-                                    'sort_order' => 0,
-                                ]);
-
-                                // Update cached count on feature
-                                $feature->updateMediaCount();
+                        // FIX: Handle NEW photo file upload for existing highlight
+                        if (isset($highlightData['mediaIndex']) && $request->hasFile("highlight_media_{$highlightData['mediaIndex']}")) {
+                            $mediaFile = $request->file("highlight_media_{$highlightData['mediaIndex']}");
+                            
+                            // STEP 1: Remove old photo media linked to this feature
+                            $oldPhotos = $feature->media()->where('media_type', 'photo')->get();
+                            foreach ($oldPhotos as $oldPhoto) {
+                                // Check if media is only linked to this feature
+                                $linkCount = $oldPhoto->features()->count();
+                                
+                                if ($linkCount <= 1) {
+                                    // Delete physical file
+                                    if (!empty($oldPhoto->storage_path)) {
+                                        Storage::disk('public')->delete($oldPhoto->storage_path);
+                                    }
+                                    // Delete database record
+                                    $oldPhoto->delete();
+                                } else {
+                                    // Just detach from this feature
+                                    $feature->media()->detach($oldPhoto->id);
+                                }
                             }
-                        } catch (\Exception $e) {
-                            // Log and continue - do not block the whole update if media fails
-                            Log::warning('Failed to attach edited highlight media: ' . $e->getMessage());
+                            
+                            // STEP 2: Upload and attach new photo
+                            $filename = Str::random(40) . '.' . $mediaFile->getClientOriginalExtension();
+                            $path = $mediaFile->storeAs('trail-photos', $filename, 'public');
+                            
+                            // Create media record
+                            $media = TrailMedia::create([
+                                'trail_id' => $trail->id,
+                                'media_type' => 'photo',
+                                'filename' => $filename,
+                                'original_name' => $mediaFile->getClientOriginalName(),
+                                'storage_path' => $path,
+                                'file_size' => $mediaFile->getSize(),
+                                'mime_type' => $mediaFile->getMimeType(),
+                                'sort_order' => 0,
+                                'is_featured' => false,
+                                'uploaded_by' => auth()->id(),
+                            ]);
+                            
+                            // Link media to feature
+                            $feature->media()->attach($media->id, [
+                                'is_primary' => true,
+                                'sort_order' => 0,
+                            ]);
+                            
+                            // Update cached count
+                            $feature->updateMediaCount();
                         }
-
-                        // Handle video URL passed as part of edited highlights data (preferred)
-                        // or as an individual input highlight_video_url_X
-                        try {
-                            $videoUrl = null;
-                            if (isset($highlightData['videoUrl']) && !empty($highlightData['videoUrl'])) {
-                                $videoUrl = $highlightData['videoUrl'];
-                            } elseif (isset($highlightData['videoIndex']) && $request->has("highlight_video_url_{$highlightData['videoIndex']}")) {
-                                $videoUrl = $request->input("highlight_video_url_{$highlightData['videoIndex']}");
-                            }
-
+                        
+                        // FIX: Handle NEW video URL for existing highlight
+                        if (isset($highlightData['videoIndex'])) {
+                            $videoUrl = $highlightData['videoUrl'];
+                            
                             if (!empty($videoUrl)) {
+                                // STEP 1: Remove old video URLs linked to this feature
+                                $oldVideos = $feature->media()->where('media_type', 'video_url')->get();
+                                foreach ($oldVideos as $oldVideo) {
+                                    // Check if media is only linked to this feature
+                                    $linkCount = $oldVideo->features()->count();
+                                    
+                                    if ($linkCount <= 1) {
+                                        // Delete database record (no physical file for URLs)
+                                        $oldVideo->delete();
+                                    } else {
+                                        // Just detach from this feature
+                                        $feature->media()->detach($oldVideo->id);
+                                    }
+                                }
+                                
+                                // STEP 2: Create and attach new video URL
                                 $media = TrailMedia::create([
                                     'trail_id' => $trail->id,
                                     'media_type' => 'video_url',
@@ -590,16 +616,16 @@ class AdminTrailController extends Controller
                                     'is_featured' => false,
                                     'uploaded_by' => auth()->id(),
                                 ]);
-
+                                
+                                // Link media to feature
                                 $feature->media()->attach($media->id, [
-                                    'is_primary' => true,
-                                    'sort_order' => 0,
+                                    'is_primary' => false,
+                                    'sort_order' => 1,
                                 ]);
-
+                                
+                                // Update cached count
                                 $feature->updateMediaCount();
                             }
-                        } catch (\Exception $e) {
-                            Log::warning('Failed to attach edited highlight video URL: ' . $e->getMessage());
                         }
                     }
                 }
@@ -608,6 +634,7 @@ class AdminTrailController extends Controller
 
         // Handle new highlights/features
         if ($request->has('highlights_data')) {
+            // dd($request->all());
             $newHighlights = json_decode($request->highlights_data, true);
             
             if (is_array($newHighlights)) {
@@ -655,8 +682,8 @@ class AdminTrailController extends Controller
                     }
                     
                     // Handle video URL if exists for this highlight
-                    if (isset($highlightData['videoIndex']) && $request->has("highlight_video_url_{$highlightData['videoIndex']}")) {
-                         $videoUrl = $request->input("highlight_video_url_{$highlightData['videoIndex']}");
+                    if (isset($highlightData['videoIndex'])) {
+                        $videoUrl = $highlightData['videoUrl'];
                         
                         if (!empty($videoUrl)) {
                             // Create media record for video URL
@@ -689,7 +716,37 @@ class AdminTrailController extends Controller
             $deletedIds = json_decode($request->deleted_features, true);
             
             if (is_array($deletedIds)) {
-                $trail->features()->whereIn('id', $deletedIds)->delete();
+                foreach ($deletedIds as $featureId) {
+                    $feature = TrailFeature::find($featureId);
+                    
+                    if ($feature && $feature->trail_id === $trail->id) {
+                        // Get all media linked to this feature
+                        $featureMedia = $feature->media()->get();
+                        
+                        foreach ($featureMedia as $media) {
+                            // Check if this media is ONLY linked to this feature
+                            $linkCount = $media->features()->count();
+                            
+                            if ($linkCount <= 1) {
+                                // This media is only used by this feature, safe to delete completely
+                                
+                                // Delete physical file from storage (if it's a photo)
+                                if ($media->media_type === 'photo' && !empty($media->storage_path)) {
+                                    Storage::disk('public')->delete($media->storage_path);
+                                }
+                                
+                                // Delete the TrailMedia record
+                                $media->delete();
+                            } else {
+                                // Media is shared with other features, just detach from this feature
+                                $feature->media()->detach($media->id);
+                            }
+                        }
+                        
+                        // Finally, delete the feature itself
+                        $feature->delete();
+                    }
+                }
             }
         }
 
