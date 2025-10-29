@@ -385,10 +385,29 @@
         </div>
         
         <!-- Trail Count -->
-        <div class="px-4 py-2 bg-gray-50 border-b border-gray-200">
-            <p class="text-sm text-gray-600">
-                <span id="trail-count">0</span> trails
-            </p>
+        <div class="overflow-y-auto" id="trail-results">
+            <!-- Search Input -->
+            <div class="p-3 border-b border-gray-200">
+                <div class="relative">
+                    <input 
+                        type="text" 
+                        id="trail-list-search" 
+                        placeholder="Search trails by name..." 
+                        class="w-full px-4 py-2 pl-10 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-sm"
+                    />
+                    <svg class="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                    </svg>
+                    <button id="clear-trail-search-btn" class="hidden absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                    </button>
+                </div>
+                <div class="py-0 px-2 text-sm text-gray-600 mt-2">
+                    <span id="trail-count">0</span> trails found
+                </div>
+            </div>
         </div>
         
         <!-- Scrollable Trail List -->
@@ -1280,13 +1299,13 @@
             });
 
             // Map movement/zoom event - update visible trails
-            this.map.on('moveend', () => {
-                this.updateVisibleTrails();
-            });
+            // this.map.on('moveend', () => {
+            //     this.updateVisibleTrails();
+            // });
 
-            this.map.on('zoomend', () => {
-                this.updateVisibleTrails();
-            });
+            // this.map.on('zoomend', () => {
+            //     this.updateVisibleTrails();
+            // });
 
             // Geocoding search with debouncing
             const globalSearch = document.getElementById('global-trail-search');
@@ -1537,33 +1556,8 @@
         }
 
         getVisibleTrails() {
-            const bounds = this.map.getBounds();
-            
-            const visibleTrails = this.allTrails.filter(trail => {
-                if (!trail.coordinates) return false;
-                
-                // Sanitize coordinates
-                const coords = this.sanitizeCoordinates(trail.coordinates);
-                if (!coords) return false;
-                
-                const [lat, lng] = coords;
-                
-                // Validate lat/lng are numbers
-                if (typeof lat !== 'number' || typeof lng !== 'number') return false;
-                
-                const isVisible = bounds.contains([lat, lng]);
-                
-                if (!isVisible && trail.route_coordinates && trail.route_coordinates.length > 0) {
-                    return trail.route_coordinates.some(coord => {
-                        const sanitized = this.sanitizeCoordinates(coord);
-                        return sanitized && bounds.contains(sanitized);
-                    });
-                }
-                
-                return isVisible;
-            });
-            
-            return this.filterTrails(visibleTrails);
+            // Simply return filtered trails without map bounds check
+            return this.filterTrails(this.allTrails);
         }
 
         filterTrails(trails) {
@@ -2499,6 +2493,61 @@
     document.addEventListener('DOMContentLoaded', function() {
         window.trailMap = new EnhancedTrailMap();
         const trailMap = window.trailMap;
+
+        const searchInput = document.getElementById('trail-list-search');
+        const clearSearchBtn = document.getElementById('clear-trail-search-btn');
+        
+        if (searchInput) {
+            searchInput.addEventListener('input', function(e) {
+                const searchTerm = e.target.value.toLowerCase().trim();
+                
+                // Show/hide clear button
+                if (searchTerm) {
+                    clearSearchBtn.classList.remove('hidden');
+                } else {
+                    clearSearchBtn.classList.add('hidden');
+                }
+                
+                // Filter trail cards using the correct class
+                const trailCards = document.querySelectorAll('.trail-list-card');
+                let visibleCount = 0;
+                
+                trailCards.forEach(card => {
+                    // Get trail name from h3 element
+                    const trailName = card.querySelector('h3')?.textContent.toLowerCase() || '';
+                    
+                    if (trailName.includes(searchTerm)) {
+                        card.style.display = '';
+                        visibleCount++;
+                    } else {
+                        card.style.display = 'none';
+                    }
+                });
+                
+                // Update count
+                const countElement = document.getElementById('trail-count');
+                if (countElement) {
+                    countElement.textContent = visibleCount;
+                }
+            });
+            
+            // Clear search button
+            if (clearSearchBtn) {
+                clearSearchBtn.addEventListener('click', function() {
+                    searchInput.value = '';
+                    clearSearchBtn.classList.add('hidden');
+                    
+                    // Show all trail cards
+                    const trailCards = document.querySelectorAll('.trail-list-card');
+                    trailCards.forEach(card => {
+                        card.style.display = '';
+                    });
+                    
+                    // Reset count to all visible trails
+                    trailMap.updateVisibleTrails();
+                });
+            }
+        }
 
         // Initialize mobile state
         function initializeMobileState() {
