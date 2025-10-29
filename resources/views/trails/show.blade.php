@@ -1417,16 +1417,15 @@ document.addEventListener('DOMContentLoaded', function() {
             `      <trkpt lat="${coord[0]}" lon="${coord[1]}"></trkpt>`
         ).join('\n');
 
-        return `<?xml version="1.0" encoding="UTF-8"?>
-    <gpx version="1.1" creator="Trail Finder" xmlns="http://www.topografix.com/GPX/1/1">
-    <trk>
-        <name>${name}</name>
-        <trkseg>
-    ${trackPoints}
-        </trkseg>
-    </trk>
-    </gpx>`;
-    }
+        return `<gpx version="1.1" creator="Trail Finder" xmlns="http://www.topografix.com/GPX/1/1">
+        <trk>
+            <name>${name}</name>
+            <trkseg>
+        ${trackPoints}
+            </trkseg>
+        </trk>
+        </gpx>`;
+        }
 });
 
 
