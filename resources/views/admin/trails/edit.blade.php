@@ -182,8 +182,49 @@
                 <div class="w-1/2 border-r">
                     <div class="h-full flex flex-col">
                         <!-- Map Container -->
-                        <div class="flex-1 p-6">
+                        <div class="flex-1 p-6 relative">
                             <div id="trail-map" class="w-full h-full rounded-md border border-input bg-muted relative z-10"></div>
+                            <!-- Map Style Selector - Top Right -->
+                            <div class="absolute top-2 right-2 z-[9999]">
+                                <div class="relative">
+                                    <!-- Toggle Button -->
+                                    <button type="button" id="map-layers-toggle" class="bg-white rounded-lg shadow-lg p-2.5 mt-6 mr-6 hover:bg-gray-50 transition-colors border border-gray-200">
+                                        <svg class="w-5 h-5 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 0v10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2z"/>
+                                        </svg>
+                                    </button>
+                                    
+                                    <!-- Dropdown Menu -->
+                                    <div id="map-layers-dropdown" class="hidden absolute top-full right-0 mt-1 mr-6 bg-white rounded-lg shadow-xl border border-gray-200 overflow-hidden" style="min-width: 180px;">
+                                        <div class="p-2">
+                                            <div class="text-xs font-semibold text-gray-500 uppercase tracking-wider px-2 py-1.5">Map Style</div>
+                                            <div class="grid grid-cols-2 gap-2">
+                                                <button type="button" class="map-layer-option-card active" data-map-type="standard">
+                                                    <div class="map-layer-preview">
+                                                        <img src="{{ asset('images/map-layers/standard.png') }}" 
+                                                            alt="Standard" class="w-full h-full object-cover">
+                                                    </div>
+                                                    <span class="map-layer-label">Standard</span>
+                                                    <svg class="map-layer-checkmark" fill="currentColor" viewBox="0 0 20 20">
+                                                        <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                                                    </svg>
+                                                </button>
+                                                
+                                                <button type="button" class="map-layer-option-card" data-map-type="satellite">
+                                                    <div class="map-layer-preview">
+                                                        <img src="{{ asset('images/map-layers/satellite.png') }}" 
+                                                            alt="Satellite" class="w-full h-full object-cover">
+                                                    </div>
+                                                    <span class="map-layer-label">Satellite</span>
+                                                    <svg class="map-layer-checkmark" fill="currentColor" viewBox="0 0 20 20">
+                                                        <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                                                    </svg>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                             <div id="map-status" class="text-xs text-muted-foreground mt-2">
                                 <div class="flex items-center gap-2">
                                     <span class="inline-block w-2 h-2 bg-gray-400 rounded-full animate-pulse"></span>
@@ -1470,10 +1511,23 @@
                     minZoom: 5
                 }).setView([8.4542, 124.6319], 13); // Cagayan de Oro coordinates
                 
-                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                    attribution: '© OpenStreetMap contributors',
-                    maxZoom: 20
-                }).addTo(this.map);
+                // Define base layers for map styles
+                this.baseLayers = {
+                    'standard': L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                        attribution: '© OpenStreetMap contributors',
+                        maxZoom: 20
+                    }),
+                    'satellite': L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+                        attribution: '© Esri, Maxar, Earthstar Geographics',
+                        maxZoom: 18
+                    })
+                };
+
+                // Track current map type
+                this.currentMapType = 'standard';
+
+                // Add default base layer
+                this.baseLayers[this.currentMapType].addTo(this.map);
 
                 this.routeLayer = L.layerGroup().addTo(this.map);
                 this.highlightsLayer = L.layerGroup().addTo(this.map); 
@@ -1672,6 +1726,34 @@
             }
         }
 
+        switchMapType(mapType) {
+            // Remove current base layer
+            if (this.map.hasLayer(this.baseLayers[this.currentMapType])) {
+                this.map.removeLayer(this.baseLayers[this.currentMapType]);
+            }
+            
+            // Update current map type
+            this.currentMapType = mapType;
+            
+            // Add new base layer
+            this.baseLayers[this.currentMapType].addTo(this.map);
+            
+            // Update active state in dropdown
+            document.querySelectorAll('.map-layer-option-card').forEach(btn => {
+                if (btn.dataset.mapType === mapType) {
+                    btn.classList.add('active');
+                } else {
+                    btn.classList.remove('active');
+                }
+            });
+            
+            // Close dropdown
+            const dropdown = document.getElementById('map-layers-dropdown');
+            if (dropdown) {
+                dropdown.classList.add('hidden');
+            }
+        }
+
         setupEventListeners() {
             // Keep existing GPX import functionality
             const gpxInput = document.getElementById('gpx-import');
@@ -1700,6 +1782,35 @@
             document.getElementById('load-elevation')?.addEventListener('click', () => {
                 this.loadElevationProfile();
             });
+
+            // Map layer controls
+            const layersToggle = document.getElementById('map-layers-toggle');
+            const layersDropdown = document.getElementById('map-layers-dropdown');
+            
+            if (layersToggle && layersDropdown) {
+                // Toggle dropdown on button click
+                layersToggle.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    layersDropdown.classList.toggle('hidden');
+                });
+
+                // Close dropdown when clicking outside
+                document.addEventListener('click', (e) => {
+                    if (!layersDropdown.contains(e.target) && !layersToggle.contains(e.target)) {
+                        layersDropdown.classList.add('hidden');
+                    }
+                });
+
+                // Layer option clicks
+                document.querySelectorAll('.map-layer-option-card').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        const mapType = btn.dataset.mapType;
+                        if (mapType) {
+                            this.switchMapType(mapType);
+                        }
+                    });
+                });
+            }
         }
 
         setupMapClicks() {
@@ -4786,6 +4897,80 @@
 /* Highlight mode cursor */
 #trail-map.highlight-mode {
     cursor: pointer !important;
+}
+
+/* Map Layer Selector Styles */
+.map-layer-option-card {
+    position: relative;
+    cursor: pointer;
+    border-radius: 0.375rem;
+    overflow: hidden;
+    transition: all 0.2s;
+    border: 2px solid transparent;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background: white;
+}
+
+.map-layer-option-card:hover {
+    border-color: #93C5FD;
+}
+
+.map-layer-option-card.active {
+    border-color: #2563EB;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.map-layer-preview {
+    width: 100%;
+    height: 60px;
+    border-radius: 0.25rem;
+    overflow: hidden;
+    position: relative;
+}
+
+.map-layer-preview img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+.map-layer-label {
+    display: block;
+    font-size: 0.7rem;
+    font-weight: 500;
+    color: #374151;
+    text-align: center;
+    margin-top: 0.375rem;
+    padding: 0 0.25rem 0.375rem;
+}
+
+.map-layer-checkmark {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    width: 18px;
+    height: 18px;
+    color: white;
+    background-color: #2563EB;
+    border-radius: 50%;
+    padding: 2px;
+    display: none;
+}
+
+.map-layer-option-card.active .map-layer-checkmark {
+    display: block;
+}
+
+#map-layers-toggle {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+#map-layers-dropdown {
+    z-index: 1000;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 </style>
 @endpush

@@ -1064,7 +1064,7 @@
             // Initialize map
             this.map = L.map('main-map', {
                 zoomControl: false
-            }).setView([49.2827, -122.7927], 10);
+            }).setView([54.7804, -127.1698], 10);
 
             // Add zoom control to bottom right
             L.control.zoom({
