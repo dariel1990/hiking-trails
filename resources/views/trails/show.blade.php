@@ -397,8 +397,9 @@
                                                             </div>
                                                         @elseif($media->media_type === 'video_url')
                                                             <div class="relative aspect-square rounded overflow-hidden cursor-pointer hover:opacity-90 transition group bg-gray-900"
+                                                                data-video-url="{{ $media->video_url }}"
                                                                 onclick="event.stopPropagation(); openMediaModal('{{ $media->video_url }}', 'video', '{{ $media->caption ?? $highlight->name }}')">
-                                                                <div class="w-full h-full flex items-center justify-center">
+                                                                <div class="video-icon-placeholder w-full h-full flex items-center justify-center">
                                                                     <svg class="w-8 h-8 text-white opacity-75" fill="currentColor" viewBox="0 0 20 20">
                                                                         <path d="M2 6a2 2 0 012-2h6a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V6zM14.553 7.106A1 1 0 0014 8v4a1 1 0 00.553.894l2 1A1 1 0 0018 13V7a1 1 0 00-1.447-.894l-2 1z"/>
                                                                     </svg>
@@ -412,19 +413,40 @@
                                                                 </div>
                                                             </div>
                                                         @elseif($media->media_type === 'video')
+                                                            @php
+                                                                // If it's a local video with URL, try to get thumbnail
+                                                                $videoUrl = $media->url;
+                                                                $hasExternalUrl = false;
+                                                                
+                                                                // Check if it's actually an external video URL stored as 'video' type
+                                                                if (filter_var($videoUrl, FILTER_VALIDATE_URL) && 
+                                                                    (strpos($videoUrl, 'youtube.com') !== false || 
+                                                                     strpos($videoUrl, 'youtu.be') !== false || 
+                                                                     strpos($videoUrl, 'vimeo.com') !== false)) {
+                                                                    $hasExternalUrl = true;
+                                                                }
+                                                            @endphp
+                                                            
                                                             <div class="relative aspect-square rounded overflow-hidden cursor-pointer hover:opacity-90 transition group bg-gray-900"
-                                                                onclick="event.stopPropagation(); openMediaModal('{{ $media->url }}', 'video', '{{ $media->caption ?? $highlight->name }}')">
-                                                                @if($media->thumbnail_url)
-                                                                    <img src="{{ $media->thumbnail_url }}" 
-                                                                        alt="Video thumbnail"
-                                                                        class="w-full h-full object-cover">
+                                                                @if($hasExternalUrl) data-video-url="{{ $videoUrl }}" @endif
+                                                                onclick="event.stopPropagation(); openMediaModal('{{ $videoUrl }}', 'video', '{{ $media->caption ?? $highlight->name }}')">
+                                                                
+                                                                @if($hasExternalUrl)
+                                                                    <!-- Dynamic thumbnail will load here -->
+                                                                    <div class="video-icon-placeholder w-full h-full flex items-center justify-center">
+                                                                        <svg class="w-8 h-8 text-white opacity-75" fill="currentColor" viewBox="0 0 20 20">
+                                                                            <path d="M2 6a2 2 0 012-2h6a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V6zM14.553 7.106A1 1 0 0014 8v4a1 1 0 00.553.894l2 1A1 1 0 0018 13V7a1 1 0 00-1.447-.894l-2 1z"/>
+                                                                        </svg>
+                                                                    </div>
                                                                 @else
+                                                                    <!-- Local video - show video element or placeholder -->
                                                                     <div class="w-full h-full flex items-center justify-center">
                                                                         <svg class="w-8 h-8 text-white opacity-75" fill="currentColor" viewBox="0 0 20 20">
                                                                             <path d="M2 6a2 2 0 012-2h6a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V6zM14.553 7.106A1 1 0 0014 8v4a1 1 0 00.553.894l2 1A1 1 0 0018 13V7a1 1 0 00-1.447-.894l-2 1z"/>
                                                                         </svg>
                                                                     </div>
                                                                 @endif
+                                                                
                                                                 <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
                                                                     <div class="bg-white bg-opacity-90 rounded-full p-2">
                                                                         <svg class="w-5 h-5 text-gray-900" fill="currentColor" viewBox="0 0 20 20">
@@ -745,7 +767,7 @@
                             </button>
                             
                             @if($trail->start_coordinates)
-                            <a href="https://www.google.com/maps/dir/?api=1&destination={{ $trail->start_coordinates[0] }},{{ $trail->start_coordinates[1] }}" 
+                            <a href="https://www.google.com/maps/dir/Hazelton,+BC/{{ $trail->start_coordinates[0] }},{{ $trail->start_coordinates[1] }}" 
                                target="_blank"
                                class="block w-full bg-blue-600 hover:bg-blue-700 text-white py-3 px-4 rounded-lg font-semibold transition-all duration-200 transform hover:scale-105 text-center">
                                 Get Directions
@@ -811,6 +833,61 @@
 @vite(['resources/js/app.js'])
 <script src="{{ asset('js/cesium-loader.js') }}"></script>
 <script>
+// Video Thumbnail Generator Functions
+function getVideoThumbnail(videoUrl) {
+    // YouTube
+    const youtubeMatch = videoUrl.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\s]+)/);
+    if (youtubeMatch) {
+        const videoId = youtubeMatch[1];
+        return `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
+    }
+    
+    // Vimeo
+    const vimeoMatch = videoUrl.match(/vimeo\.com\/(\d+)/);
+    if (vimeoMatch) {
+        const videoId = vimeoMatch[1];
+        return `https://vumbnail.com/${videoId}.jpg`;
+    }
+    
+    return null;
+}
+
+function loadVideoThumbnails() {
+    // Find all video thumbnail containers
+    const videoContainers = document.querySelectorAll('[data-video-url]');
+    
+    videoContainers.forEach(container => {
+        const videoUrl = container.getAttribute('data-video-url');
+        const thumbnailUrl = getVideoThumbnail(videoUrl);
+        
+        if (thumbnailUrl) {
+            // Create img element
+            const img = document.createElement('img');
+            img.src = thumbnailUrl;
+            img.alt = 'Video thumbnail';
+            img.className = 'w-full h-full object-cover';
+            
+            // Handle thumbnail load error
+            img.onerror = function() {
+                // Keep the default video icon if thumbnail fails
+                console.log('Thumbnail failed to load for:', videoUrl);
+            };
+            
+            // Replace the video icon with thumbnail
+            img.onload = function() {
+                const iconDiv = container.querySelector('.video-icon-placeholder');
+                if (iconDiv) {
+                    iconDiv.remove();
+                }
+                container.prepend(img);
+            };
+        }
+    });
+}
+
+// Call after page loads
+document.addEventListener('DOMContentLoaded', loadVideoThumbnails);
+
 function openMediaModal(url, type, caption) {
     const modal = document.getElementById('media-modal');
     const content = document.getElementById('modal-content');
@@ -896,7 +973,9 @@ document.addEventListener('DOMContentLoaded', function() {
             if (targetTab === 'route' && window.trailMap) {
                 setTimeout(() => {
                     window.trailMap.invalidateSize();
-                }, 100);
+                    // Auto-trigger center route button
+                    document.getElementById('fit-route-btn')?.click();
+                }, 300);
             }
         });
     });
@@ -936,8 +1015,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const map = L.map('trail-detail-map').setView(trail.start_coordinates, 13);
     window.trailMap = map;
     
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-        attribution: '&copy; OpenStreetMap contributors &copy; CARTO'
+    L.tileLayer('https://{s}.tile-cyclosm.openstreetmap.fr/cyclosm/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap, CyclOSM',
     }).addTo(map);
     
     // Add trail route
@@ -949,7 +1028,7 @@ document.addEventListener('DOMContentLoaded', function() {
             lineJoin: 'round',
             lineCap: 'round'
         }).addTo(map);
-        
+
         map.fitBounds(trailRoute.getBounds(), { padding: [50, 50] });
     }
     

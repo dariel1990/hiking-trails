@@ -232,11 +232,6 @@ class TrailController extends Controller
 
             // Map features/highlights with their media
             $highlights = $trail->features->map(function($feature) {
-                // Get primary media for this feature
-                $primaryMedia = $feature->media()
-                    ->wherePivot('is_primary', true)
-                    ->first();
-                
                 // Normalize feature coordinates
                 $featureCoords = null;
                 if (is_array($feature->coordinates) && count($feature->coordinates) >= 2) {
@@ -246,17 +241,43 @@ class TrailController extends Controller
                     ];
                 }
                 
+                // Get primary media from the eager-loaded collection
+                $primaryMedia = $feature->media->where('is_primary', true)->first();
+                
+                // Map ALL media items for this feature
+                $allMedia = $feature->media->map(function($media) {
+                    $mediaData = [
+                        'id' => $media->id,
+                        'media_type' => $media->media_type,
+                        'caption' => $media->caption,
+                    ];
+                    
+                    // Handle different media types
+                    if ($media->media_type === 'photo') {
+                        $mediaData['url'] = Storage::url($media->storage_path);
+                    } elseif ($media->media_type === 'video_url') {
+                        $mediaData['video_url'] = $media->video_url;
+                        $mediaData['url'] = $media->video_url;
+                    } elseif ($media->media_type === 'video') {
+                        $mediaData['url'] = Storage::url($media->storage_path);
+                        $mediaData['video_url'] = Storage::url($media->storage_path);
+                    }
+                    
+                    return $mediaData;
+                });
+                
                 return [
                     'id' => $feature->id,
                     'name' => $feature->name,
                     'description' => $feature->description,
-                    'type' => $feature->feature_type, // Make sure this is 'type' not 'feature_type'
-                    'feature_type' => $feature->feature_type, // Keep both for compatibility
+                    'type' => $feature->feature_type,
+                    'feature_type' => $feature->feature_type,
                     'coordinates' => $featureCoords,
                     'photo_url' => $primaryMedia ? Storage::url($primaryMedia->storage_path) : null,
+                    'media' => $allMedia,
                     'media_count' => $feature->media_count ?? 0,
-                    'icon' => $this->getFeatureIcon($feature->feature_type),
-                    'color' => $this->getFeatureColor($feature->feature_type),
+                    'icon' => $feature->icon,
+                    'color' => $feature->color,
                 ];
             });
             

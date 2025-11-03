@@ -185,7 +185,7 @@
                         <div class="flex-1 p-6 relative">
                             <div id="trail-map" class="w-full h-full rounded-md border border-input bg-muted relative z-10"></div>
                             <!-- Map Style Selector - Top Right -->
-                            <div class="absolute top-2 right-2 z-[9999]">
+                            <div class="absolute top-2 right-2 z-[99]">
                                 <div class="relative">
                                     <!-- Toggle Button -->
                                     <button type="button" id="map-layers-toggle" class="bg-white rounded-lg shadow-lg p-2.5 mt-6 mr-6 hover:bg-gray-50 transition-colors border border-gray-200">
@@ -199,12 +199,12 @@
                                         <div class="p-2">
                                             <div class="text-xs font-semibold text-gray-500 uppercase tracking-wider px-2 py-1.5">Map Style</div>
                                             <div class="grid grid-cols-2 gap-2">
-                                                <button type="button" class="map-layer-option-card active" data-map-type="standard">
+                                                <button type="button" class="map-layer-option-card active" data-map-type="outdoors">
                                                     <div class="map-layer-preview">
-                                                        <img src="{{ asset('images/map-layers/standard.png') }}" 
-                                                            alt="Standard" class="w-full h-full object-cover">
+                                                        <img src="{{ asset('images/map-layers/outdoor.png') }}" 
+                                                            alt="Outdoors" class="w-full h-full object-cover">
                                                     </div>
-                                                    <span class="map-layer-label">Standard</span>
+                                                    <span class="map-layer-label">Outdoors</span>
                                                     <svg class="map-layer-checkmark" fill="currentColor" viewBox="0 0 20 20">
                                                         <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
                                                     </svg>
@@ -1513,8 +1513,8 @@
                 
                 // Define base layers for map styles
                 this.baseLayers = {
-                    'standard': L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                        attribution: '© OpenStreetMap contributors',
+                    'outdoors': L.tileLayer('https://{s}.tile-cyclosm.openstreetmap.fr/cyclosm/{z}/{x}/{y}.png', {
+                        attribution: '© OpenStreetMap, CyclOSM',
                         maxZoom: 20
                     }),
                     'satellite': L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
@@ -1524,7 +1524,7 @@
                 };
 
                 // Track current map type
-                this.currentMapType = 'standard';
+                this.currentMapType = 'outdoors';
 
                 // Add default base layer
                 this.baseLayers[this.currentMapType].addTo(this.map);

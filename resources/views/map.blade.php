@@ -129,8 +129,10 @@
     <!-- All Filters Modal -->
     <div id="all-filters-modal" class="hidden fixed inset-0 z-50">
         <div class="absolute inset-0 bg-black bg-opacity-50" onclick="document.getElementById('all-filters-modal').classList.add('hidden')"></div>
-        <div class="absolute md:inset-auto md:top-1/2 md:left-1/2 md:-translate-x-1/2 md:-translate-y-1/2 max-md:bottom-0 max-md:left-0 max-md:right-0 bg-white md:rounded-2xl max-md:rounded-t-2xl p-6 max-h-[85vh] md:max-h-[80vh] overflow-y-auto md:w-[600px]">
-            <div class="flex items-center justify-between mb-6">
+        <div class="absolute md:inset-auto md:top-1/2 md:left-1/2 md:-translate-x-1/2 md:-translate-y-1/2 max-md:bottom-0 max-md:left-0 max-md:right-0 bg-white md:rounded-2xl max-md:rounded-t-2xl max-h-[85vh] md:max-h-[80vh] md:w-[600px] flex flex-col">
+            
+            <!-- Header (Fixed) -->
+            <div class="flex items-center justify-between p-6 pb-4 border-b border-gray-200 flex-shrink-0">
                 <h3 class="text-xl font-bold">All Filters</h3>
                 <button onclick="document.getElementById('all-filters-modal').classList.add('hidden')" class="text-gray-400 hover:text-gray-600">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -139,163 +141,166 @@
                 </button>
             </div>
 
-            <!-- Trail Type -->
-            <div class="mb-6">
-                <h4 class="font-semibold text-base mb-3">Trail Type</h4>
-                <div class="space-y-2">
-                    <label class="flex items-center cursor-pointer hover:bg-gray-50 p-3 rounded-lg">
-                        <input type="radio" name="trail-type" value="" class="trail-type-radio w-5 h-5" checked>
-                        <span class="ml-3 text-sm">All types</span>
-                    </label>
-                    <label class="flex items-center cursor-pointer hover:bg-gray-50 p-3 rounded-lg">
-                        <input type="radio" name="trail-type" value="loop" class="trail-type-radio w-5 h-5">
-                        <span class="ml-3 text-sm">Loop</span>
-                    </label>
-                    <label class="flex items-center cursor-pointer hover:bg-gray-50 p-3 rounded-lg">
-                        <input type="radio" name="trail-type" value="out-and-back" class="trail-type-radio w-5 h-5">
-                        <span class="ml-3 text-sm">Out and Back</span>
-                    </label>
-                    <label class="flex items-center cursor-pointer hover:bg-gray-50 p-3 rounded-lg">
-                        <input type="radio" name="trail-type" value="point-to-point" class="trail-type-radio w-5 h-5">
-                        <span class="ml-3 text-sm">Point to Point</span>
-                    </label>
+            <!-- Scrollable Content -->
+            <div class="overflow-y-auto flex-1 px-6 py-4">
+                <!-- Trail Type -->
+                <div class="mb-6">
+                    <h4 class="font-semibold text-base mb-3">Trail Type</h4>
+                    <div class="space-y-2">
+                        <label class="flex items-center cursor-pointer hover:bg-gray-50 p-3 rounded-lg">
+                            <input type="radio" name="trail-type" value="" class="trail-type-radio w-5 h-5" checked>
+                            <span class="ml-3 text-sm">All types</span>
+                        </label>
+                        <label class="flex items-center cursor-pointer hover:bg-gray-50 p-3 rounded-lg">
+                            <input type="radio" name="trail-type" value="loop" class="trail-type-radio w-5 h-5">
+                            <span class="ml-3 text-sm">Loop</span>
+                        </label>
+                        <label class="flex items-center cursor-pointer hover:bg-gray-50 p-3 rounded-lg">
+                            <input type="radio" name="trail-type" value="out-and-back" class="trail-type-radio w-5 h-5">
+                            <span class="ml-3 text-sm">Out and Back</span>
+                        </label>
+                        <label class="flex items-center cursor-pointer hover:bg-gray-50 p-3 rounded-lg">
+                            <input type="radio" name="trail-type" value="point-to-point" class="trail-type-radio w-5 h-5">
+                            <span class="ml-3 text-sm">Point to Point</span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Duration -->
+                <div class="mb-6 border-t pt-6">
+                    <h4 class="font-semibold text-base mb-3">Duration</h4>
+                    <div class="space-y-2">
+                        <label class="flex items-center cursor-pointer hover:bg-gray-50 p-3 rounded-lg">
+                            <input type="radio" name="duration" value="" class="duration-radio w-5 h-5" checked>
+                            <span class="ml-3 text-sm">Any duration</span>
+                        </label>
+                        <label class="flex items-center cursor-pointer hover:bg-gray-50 p-3 rounded-lg">
+                            <input type="radio" name="duration" value="0-1" class="duration-radio w-5 h-5">
+                            <span class="ml-3 text-sm">Under 1 hour</span>
+                        </label>
+                        <label class="flex items-center cursor-pointer hover:bg-gray-50 p-3 rounded-lg">
+                            <input type="radio" name="duration" value="1-2" class="duration-radio w-5 h-5">
+                            <span class="ml-3 text-sm">1-2 hours</span>
+                        </label>
+                        <label class="flex items-center cursor-pointer hover:bg-gray-50 p-3 rounded-lg">
+                            <input type="radio" name="duration" value="2-4" class="duration-radio w-5 h-5">
+                            <span class="ml-3 text-sm">2-4 hours</span>
+                        </label>
+                        <label class="flex items-center cursor-pointer hover:bg-gray-50 p-3 rounded-lg">
+                            <input type="radio" name="duration" value="4-6" class="duration-radio w-5 h-5">
+                            <span class="ml-3 text-sm">4-6 hours</span>
+                        </label>
+                        <label class="flex items-center cursor-pointer hover:bg-gray-50 p-3 rounded-lg">
+                            <input type="radio" name="duration" value="6+" class="duration-radio w-5 h-5">
+                            <span class="ml-3 text-sm">6+ hours</span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Elevation Gain -->
+                <div class="mb-6 border-t pt-6">
+                    <h4 class="font-semibold text-base mb-3">Elevation Gain</h4>
+                    <div class="space-y-2">
+                        <label class="flex items-center cursor-pointer hover:bg-gray-50 p-3 rounded-lg">
+                            <input type="radio" name="elevation" value="" class="elevation-radio w-5 h-5" checked>
+                            <span class="ml-3 text-sm">Any elevation</span>
+                        </label>
+                        <label class="flex items-center cursor-pointer hover:bg-gray-50 p-3 rounded-lg">
+                            <input type="radio" name="elevation" value="0-100" class="elevation-radio w-5 h-5">
+                            <span class="ml-3 text-sm">Flat (0-100m)</span>
+                        </label>
+                        <label class="flex items-center cursor-pointer hover:bg-gray-50 p-3 rounded-lg">
+                            <input type="radio" name="elevation" value="100-300" class="elevation-radio w-5 h-5">
+                            <span class="ml-3 text-sm">Easy climb (100-300m)</span>
+                        </label>
+                        <label class="flex items-center cursor-pointer hover:bg-gray-50 p-3 rounded-lg">
+                            <input type="radio" name="elevation" value="300-600" class="elevation-radio w-5 h-5">
+                            <span class="ml-3 text-sm">Moderate (300-600m)</span>
+                        </label>
+                        <label class="flex items-center cursor-pointer hover:bg-gray-50 p-3 rounded-lg">
+                            <input type="radio" name="elevation" value="600-1000" class="elevation-radio w-5 h-5">
+                            <span class="ml-3 text-sm">Steep (600-1000m)</span>
+                        </label>
+                        <label class="flex items-center cursor-pointer hover:bg-gray-50 p-3 rounded-lg">
+                            <input type="radio" name="elevation" value="1000+" class="elevation-radio w-5 h-5">
+                            <span class="ml-3 text-sm">Very steep (1000m+)</span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Features -->
+                <div class="mb-6 border-t pt-6">
+                    <h4 class="font-semibold text-base mb-3">Features</h4>
+                    <div class="grid grid-cols-2 gap-2">
+                        <label class="flex items-center cursor-pointer hover:bg-gray-50 p-3 rounded-lg">
+                            <input type="checkbox" value="waterfall" class="feature-checkbox w-5 h-5">
+                            <span class="ml-3 text-sm">💧 Waterfall</span>
+                        </label>
+                        <label class="flex items-center cursor-pointer hover:bg-gray-50 p-3 rounded-lg">
+                            <input type="checkbox" value="viewpoint" class="feature-checkbox w-5 h-5">
+                            <span class="ml-3 text-sm">👁️ Viewpoint</span>
+                        </label>
+                        <label class="flex items-center cursor-pointer hover:bg-gray-50 p-3 rounded-lg">
+                            <input type="checkbox" value="wildlife" class="feature-checkbox w-5 h-5">
+                            <span class="ml-3 text-sm">🦌 Wildlife</span>
+                        </label>
+                        <label class="flex items-center cursor-pointer hover:bg-gray-50 p-3 rounded-lg">
+                            <input type="checkbox" value="lake" class="feature-checkbox w-5 h-5">
+                            <span class="ml-3 text-sm">🏞️ Lake</span>
+                        </label>
+                        <label class="flex items-center cursor-pointer hover:bg-gray-50 p-3 rounded-lg">
+                            <input type="checkbox" value="summit" class="feature-checkbox w-5 h-5">
+                            <span class="ml-3 text-sm">⛰️ Summit</span>
+                        </label>
+                        <label class="flex items-center cursor-pointer hover:bg-gray-50 p-3 rounded-lg">
+                            <input type="checkbox" value="bridge" class="feature-checkbox w-5 h-5">
+                            <span class="ml-3 text-sm">🌉 Bridge</span>
+                        </label>
+                        <label class="flex items-center cursor-pointer hover:bg-gray-50 p-3 rounded-lg">
+                            <input type="checkbox" value="forest" class="feature-checkbox w-5 h-5">
+                            <span class="ml-3 text-sm">🌲 Forest</span>
+                        </label>
+                        <label class="flex items-center cursor-pointer hover:bg-gray-50 p-3 rounded-lg">
+                            <input type="checkbox" value="camping" class="feature-checkbox w-5 h-5">
+                            <span class="ml-3 text-sm">⛺ Camping</span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Activities -->
+                <div class="mb-6 border-t pt-6">
+                    <h4 class="font-semibold text-base mb-3">Activities</h4>
+                    <div class="grid grid-cols-2 gap-2">
+                        <label class="flex items-center cursor-pointer hover:bg-gray-50 p-3 rounded-lg">
+                            <input type="checkbox" value="hiking" class="activity-checkbox w-5 h-5">
+                            <span class="ml-3 text-sm">Hiking</span>
+                        </label>
+                        <label class="flex items-center cursor-pointer hover:bg-gray-50 p-3 rounded-lg">
+                            <input type="checkbox" value="camping" class="activity-checkbox w-5 h-5">
+                            <span class="ml-3 text-sm">Camping</span>
+                        </label>
+                        <label class="flex items-center cursor-pointer hover:bg-gray-50 p-3 rounded-lg">
+                            <input type="checkbox" value="fishing" class="activity-checkbox w-5 h-5">
+                            <span class="ml-3 text-sm">Fishing</span>
+                        </label>
+                        <label class="flex items-center cursor-pointer hover:bg-gray-50 p-3 rounded-lg">
+                            <input type="checkbox" value="snowshoeing" class="activity-checkbox w-5 h-5">
+                            <span class="ml-3 text-sm">Snowshoeing</span>
+                        </label>
+                        <label class="flex items-center cursor-pointer hover:bg-gray-50 p-3 rounded-lg">
+                            <input type="checkbox" value="cross-country-skiing" class="activity-checkbox w-5 h-5">
+                            <span class="ml-3 text-sm">Cross-country Skiing</span>
+                        </label>
+                        <label class="flex items-center cursor-pointer hover:bg-gray-50 p-3 rounded-lg">
+                            <input type="checkbox" value="ice-fishing" class="activity-checkbox w-5 h-5">
+                            <span class="ml-3 text-sm">Ice Fishing</span>
+                        </label>
+                    </div>
                 </div>
             </div>
 
-            <!-- Duration -->
-            <div class="mb-6 border-t pt-6">
-                <h4 class="font-semibold text-base mb-3">Duration</h4>
-                <div class="space-y-2">
-                    <label class="flex items-center cursor-pointer hover:bg-gray-50 p-3 rounded-lg">
-                        <input type="radio" name="duration" value="" class="duration-radio w-5 h-5" checked>
-                        <span class="ml-3 text-sm">Any duration</span>
-                    </label>
-                    <label class="flex items-center cursor-pointer hover:bg-gray-50 p-3 rounded-lg">
-                        <input type="radio" name="duration" value="0-1" class="duration-radio w-5 h-5">
-                        <span class="ml-3 text-sm">Under 1 hour</span>
-                    </label>
-                    <label class="flex items-center cursor-pointer hover:bg-gray-50 p-3 rounded-lg">
-                        <input type="radio" name="duration" value="1-2" class="duration-radio w-5 h-5">
-                        <span class="ml-3 text-sm">1-2 hours</span>
-                    </label>
-                    <label class="flex items-center cursor-pointer hover:bg-gray-50 p-3 rounded-lg">
-                        <input type="radio" name="duration" value="2-4" class="duration-radio w-5 h-5">
-                        <span class="ml-3 text-sm">2-4 hours</span>
-                    </label>
-                    <label class="flex items-center cursor-pointer hover:bg-gray-50 p-3 rounded-lg">
-                        <input type="radio" name="duration" value="4-6" class="duration-radio w-5 h-5">
-                        <span class="ml-3 text-sm">4-6 hours</span>
-                    </label>
-                    <label class="flex items-center cursor-pointer hover:bg-gray-50 p-3 rounded-lg">
-                        <input type="radio" name="duration" value="6+" class="duration-radio w-5 h-5">
-                        <span class="ml-3 text-sm">6+ hours</span>
-                    </label>
-                </div>
-            </div>
-
-            <!-- Elevation Gain -->
-            <div class="mb-6 border-t pt-6">
-                <h4 class="font-semibold text-base mb-3">Elevation Gain</h4>
-                <div class="space-y-2">
-                    <label class="flex items-center cursor-pointer hover:bg-gray-50 p-3 rounded-lg">
-                        <input type="radio" name="elevation" value="" class="elevation-radio w-5 h-5" checked>
-                        <span class="ml-3 text-sm">Any elevation</span>
-                    </label>
-                    <label class="flex items-center cursor-pointer hover:bg-gray-50 p-3 rounded-lg">
-                        <input type="radio" name="elevation" value="0-100" class="elevation-radio w-5 h-5">
-                        <span class="ml-3 text-sm">Flat (0-100m)</span>
-                    </label>
-                    <label class="flex items-center cursor-pointer hover:bg-gray-50 p-3 rounded-lg">
-                        <input type="radio" name="elevation" value="100-300" class="elevation-radio w-5 h-5">
-                        <span class="ml-3 text-sm">Easy climb (100-300m)</span>
-                    </label>
-                    <label class="flex items-center cursor-pointer hover:bg-gray-50 p-3 rounded-lg">
-                        <input type="radio" name="elevation" value="300-600" class="elevation-radio w-5 h-5">
-                        <span class="ml-3 text-sm">Moderate (300-600m)</span>
-                    </label>
-                    <label class="flex items-center cursor-pointer hover:bg-gray-50 p-3 rounded-lg">
-                        <input type="radio" name="elevation" value="600-1000" class="elevation-radio w-5 h-5">
-                        <span class="ml-3 text-sm">Steep (600-1000m)</span>
-                    </label>
-                    <label class="flex items-center cursor-pointer hover:bg-gray-50 p-3 rounded-lg">
-                        <input type="radio" name="elevation" value="1000+" class="elevation-radio w-5 h-5">
-                        <span class="ml-3 text-sm">Very steep (1000m+)</span>
-                    </label>
-                </div>
-            </div>
-
-            <!-- Features -->
-            <div class="mb-6 border-t pt-6">
-                <h4 class="font-semibold text-base mb-3">Features</h4>
-                <div class="grid grid-cols-2 gap-2">
-                    <label class="flex items-center cursor-pointer hover:bg-gray-50 p-3 rounded-lg">
-                        <input type="checkbox" value="waterfall" class="feature-checkbox w-5 h-5">
-                        <span class="ml-3 text-sm">💧 Waterfall</span>
-                    </label>
-                    <label class="flex items-center cursor-pointer hover:bg-gray-50 p-3 rounded-lg">
-                        <input type="checkbox" value="viewpoint" class="feature-checkbox w-5 h-5">
-                        <span class="ml-3 text-sm">👁️ Viewpoint</span>
-                    </label>
-                    <label class="flex items-center cursor-pointer hover:bg-gray-50 p-3 rounded-lg">
-                        <input type="checkbox" value="wildlife" class="feature-checkbox w-5 h-5">
-                        <span class="ml-3 text-sm">🦌 Wildlife</span>
-                    </label>
-                    <label class="flex items-center cursor-pointer hover:bg-gray-50 p-3 rounded-lg">
-                        <input type="checkbox" value="lake" class="feature-checkbox w-5 h-5">
-                        <span class="ml-3 text-sm">🏞️ Lake</span>
-                    </label>
-                    <label class="flex items-center cursor-pointer hover:bg-gray-50 p-3 rounded-lg">
-                        <input type="checkbox" value="summit" class="feature-checkbox w-5 h-5">
-                        <span class="ml-3 text-sm">⛰️ Summit</span>
-                    </label>
-                    <label class="flex items-center cursor-pointer hover:bg-gray-50 p-3 rounded-lg">
-                        <input type="checkbox" value="bridge" class="feature-checkbox w-5 h-5">
-                        <span class="ml-3 text-sm">🌉 Bridge</span>
-                    </label>
-                    <label class="flex items-center cursor-pointer hover:bg-gray-50 p-3 rounded-lg">
-                        <input type="checkbox" value="forest" class="feature-checkbox w-5 h-5">
-                        <span class="ml-3 text-sm">🌲 Forest</span>
-                    </label>
-                    <label class="flex items-center cursor-pointer hover:bg-gray-50 p-3 rounded-lg">
-                        <input type="checkbox" value="camping" class="feature-checkbox w-5 h-5">
-                        <span class="ml-3 text-sm">⛺ Camping</span>
-                    </label>
-                </div>
-            </div>
-
-            <!-- Activities -->
-            <div class="mb-6 border-t pt-6">
-                <h4 class="font-semibold text-base mb-3">Activities</h4>
-                <div class="grid grid-cols-2 gap-2">
-                    <label class="flex items-center cursor-pointer hover:bg-gray-50 p-3 rounded-lg">
-                        <input type="checkbox" value="hiking" class="activity-checkbox w-5 h-5">
-                        <span class="ml-3 text-sm">Hiking</span>
-                    </label>
-                    <label class="flex items-center cursor-pointer hover:bg-gray-50 p-3 rounded-lg">
-                        <input type="checkbox" value="camping" class="activity-checkbox w-5 h-5">
-                        <span class="ml-3 text-sm">Camping</span>
-                    </label>
-                    <label class="flex items-center cursor-pointer hover:bg-gray-50 p-3 rounded-lg">
-                        <input type="checkbox" value="fishing" class="activity-checkbox w-5 h-5">
-                        <span class="ml-3 text-sm">Fishing</span>
-                    </label>
-                    <label class="flex items-center cursor-pointer hover:bg-gray-50 p-3 rounded-lg">
-                        <input type="checkbox" value="snowshoeing" class="activity-checkbox w-5 h-5">
-                        <span class="ml-3 text-sm">Snowshoeing</span>
-                    </label>
-                    <label class="flex items-center cursor-pointer hover:bg-gray-50 p-3 rounded-lg">
-                        <input type="checkbox" value="cross-country-skiing" class="activity-checkbox w-5 h-5">
-                        <span class="ml-3 text-sm">Cross-country Skiing</span>
-                    </label>
-                    <label class="flex items-center cursor-pointer hover:bg-gray-50 p-3 rounded-lg">
-                        <input type="checkbox" value="ice-fishing" class="activity-checkbox w-5 h-5">
-                        <span class="ml-3 text-sm">Ice Fishing</span>
-                    </label>
-                </div>
-            </div>
-
-            <!-- Action Buttons -->
-            <div class="flex gap-3 border-t pt-6">
+            <!-- Action Buttons (Fixed at Bottom) -->
+            <div class="flex gap-3 p-6 pt-4 border-t border-gray-200 bg-white md:rounded-b-2xl max-md:rounded-t-2xl flex-shrink-0">
                 <button onclick="clearAllFilters()" class="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 py-3 px-4 rounded-lg font-medium transition-colors">
                     Clear All
                 </button>
@@ -321,7 +326,7 @@
                 <div class="p-2">
                     <div class="text-xs font-semibold text-gray-500 uppercase tracking-wider px-3 py-2">Map Style</div>
                     <div class="grid grid-cols-2 gap-2 mb-2">
-                        <button class="layer-option-card active" data-map-type="standard">
+                        <button class="layer-option-card" data-map-type="standard">
                             <div class="layer-preview">
                                 <img src="{{ asset('images/map-layers/standard.png') }}" 
                                     alt="Standard" class="w-full h-full object-cover">
@@ -354,7 +359,7 @@
                             </svg>
                         </button>
 
-                        <button class="layer-option-card" data-map-type="outdoors">
+                        <button class="layer-option-card active" data-map-type="outdoors">
                             <div class="layer-preview">
                                 <img src="{{ asset('images/map-layers/outdoor.png') }}" 
                                     alt="Outdoors" class="w-full h-full object-cover">
@@ -544,7 +549,28 @@
         </div>
     </div>
 </div>
-
+<!-- Media Modal for Highlights -->
+<div id="highlight-media-modal" class="hidden fixed inset-0 bg-black bg-opacity-90 z-[9999] flex items-center justify-center p-4">
+    <div class="relative max-w-5xl w-full bg-white rounded-lg shadow-xl">
+        <!-- Close button -->
+        <button onclick="closeHighlightMediaModal()" 
+                class="absolute top-4 right-4 z-10 bg-gray-900 bg-opacity-75 hover:bg-opacity-100 text-white rounded-full p-2 transition-all">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+            </svg>
+        </button>
+        
+        <!-- Content container -->
+        <div id="highlight-modal-content" class="p-4">
+            <!-- Content will be dynamically inserted here -->
+        </div>
+        
+        <!-- Caption -->
+        <div id="highlight-modal-caption" class="px-6 pb-6 text-center text-gray-700">
+            <!-- Caption will be dynamically inserted here -->
+        </div>
+    </div>
+</div>
 @push('scripts')
 <style>
 /* Filter Pills */
@@ -933,8 +959,102 @@
     background: linear-gradient(135deg, #3B82F6 0%, #2563EB 100%);
     box-shadow: 0 2px 4px rgba(59, 130, 246, 0.3);
 }
+
+#trail-info-panel .panel-content {
+    height: 300px;
+    overflow-y: auto;
+}
 </style>
 <script>
+
+    // Video Thumbnail Generator Functions
+    function getVideoThumbnail(videoUrl) {
+        // YouTube
+        const youtubeMatch = videoUrl.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\s]+)/);
+        if (youtubeMatch) {
+            const videoId = youtubeMatch[1];
+            return `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
+        }
+        
+        // Vimeo - returns placeholder, actual thumbnail needs API call
+        const vimeoMatch = videoUrl.match(/vimeo\.com\/(\d+)/);
+        if (vimeoMatch) {
+            const videoId = vimeoMatch[1];
+            return `https://vumbnail.com/${videoId}.jpg`; // Third-party service for Vimeo thumbnails
+        }
+        
+        return null;
+    }
+
+    function getVideoEmbedUrl(videoUrl) {
+        // YouTube
+        const youtubeMatch = videoUrl.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\s]+)/);
+        if (youtubeMatch) {
+            return `https://www.youtube.com/embed/${youtubeMatch[1]}`;
+        }
+        
+        // Vimeo
+        const vimeoMatch = videoUrl.match(/vimeo\.com\/(\d+)/);
+        if (vimeoMatch) {
+            return `https://player.vimeo.com/video/${vimeoMatch[1]}`;
+        }
+        
+        return null;
+    }
+
+    // Highlight Media Modal Functions
+    function openHighlightMediaModal(url, type, caption) {
+        const modal = document.getElementById('highlight-media-modal');
+        const content = document.getElementById('highlight-modal-content');
+        const captionEl = document.getElementById('highlight-modal-caption');
+        
+        if (type === 'photo') {
+            content.innerHTML = `<img src="${url}" alt="${caption}" class="w-full h-auto max-h-[70vh] object-contain rounded-lg">`;
+        } else if (type === 'video') {
+            const embedUrl = getVideoEmbedUrl(url);
+            
+            if (embedUrl) {
+                content.innerHTML = `
+                    <div class="relative" style="padding-bottom: 56.25%; height: 0;">
+                        <iframe src="${embedUrl}" 
+                                frameborder="0" 
+                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                                allowfullscreen
+                                class="absolute top-0 left-0 w-full h-full rounded-lg">
+                        </iframe>
+                    </div>
+                `;
+            } else {
+                content.innerHTML = `<p class="text-red-500 text-center p-4">Unable to load video</p>`;
+            }
+        }
+        
+        captionEl.textContent = caption || '';
+        modal.classList.remove('hidden');
+    }
+
+    function closeHighlightMediaModal() {
+        const modal = document.getElementById('highlight-media-modal');
+        const content = document.getElementById('highlight-modal-content');
+        
+        modal.classList.add('hidden');
+        content.innerHTML = ''; // Clear content to stop video playback
+    }
+
+    // Close modal when clicking outside
+    document.getElementById('highlight-media-modal')?.addEventListener('click', function(e) {
+        if (e.target === this) {
+            closeHighlightMediaModal();
+        }
+    });
+
+    // Close modal with Escape key
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            closeHighlightMediaModal();
+        }
+    });
+
     // Advanced Filters State
     let advancedFilters = {
         trailType: '',
@@ -1087,12 +1207,12 @@
                 }),
                 'outdoors': L.tileLayer('https://{s}.tile-cyclosm.openstreetmap.fr/cyclosm/{z}/{x}/{y}.png', {
                     attribution: '© OpenStreetMap, CyclOSM',
-                    maxZoom: 20
+                    maxZoom: 18
                 })
             };
 
             // Track current map type
-            this.currentMapType = 'standard';
+            this.currentMapType = 'outdoors';
 
             // Activity overlay layers
             this.overlayLayers = {
@@ -1635,11 +1755,11 @@
                 }
                 
                 const trailActivityTypes = trail.activities.map(a => a.type || a.slug || a.name);
-                const hasAllActivities = advancedFilters.activities.every(activity => 
+                const hasAnyActivity = advancedFilters.activities.some(activity => 
                     trailActivityTypes.includes(activity)
                 );
                 
-                if (!hasAllActivities) {
+                if (!hasAnyActivity) {
                     return false;
                 }
             }
@@ -1967,6 +2087,63 @@
             const panel = document.getElementById('trail-info-panel');
             const content = document.getElementById('trail-info-content');
             
+            // Build media HTML if media exists
+            let mediaHTML = '';
+            if (highlight.media && highlight.media.length > 0) {
+                mediaHTML = `
+                    <div class="mb-4 border-t pt-4">
+                        <div class="grid grid-cols-${Math.min(highlight.media.length, 3)} gap-2">
+                            ${highlight.media.map(media => {
+                                if (media.media_type === 'photo') {
+                                    return `
+                                        <div class="relative aspect-square rounded-lg overflow-hidden cursor-pointer hover:opacity-90 transition group"
+                                            onclick="openHighlightMediaModal('${media.url}', 'photo', '${media.caption || highlight.name}')">
+                                            <img src="${media.url}" 
+                                                alt="${media.caption || highlight.name}"
+                                                class="w-full h-full object-cover">
+                                            <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-all flex items-center justify-center">
+                                                <svg class="w-6 h-6 text-white opacity-0 group-hover:opacity-100 transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7"/>
+                                                </svg>
+                                            </div>
+                                        </div>
+                                    `;
+                                } else if (media.media_type === 'video_url' || media.media_type === 'video') {
+                                    const videoUrl = media.video_url || media.url;
+                                    const thumbnailUrl = getVideoThumbnail(videoUrl);
+                                    
+                                    return `
+                                        <div class="relative aspect-square rounded-lg overflow-hidden cursor-pointer hover:opacity-90 transition group bg-gray-900"
+                                            onclick="openHighlightMediaModal('${videoUrl}', 'video', '${media.caption || highlight.name}')">
+                                            ${thumbnailUrl ? `
+                                                <img src="${thumbnailUrl}" 
+                                                    alt="Video thumbnail"
+                                                    class="w-full h-full object-cover"
+                                                    onerror="this.parentElement.innerHTML='<div class=\\'w-full h-full flex items-center justify-center\\'><svg class=\\'w-8 h-8 text-white opacity-75\\' fill=\\'currentColor\\' viewBox=\\'0 0 20 20\\'><path d=\\'M2 6a2 2 0 012-2h6a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V6zM14.553 7.106A1 1 0 0014 8v4a1 1 0 00.553.894l2 1A1 1 0 0018 13V7a1 1 0 00-1.447-.894l-2 1z\\'></path></svg></div>'">
+                                            ` : `
+                                                <div class="w-full h-full flex items-center justify-center">
+                                                    <svg class="w-8 h-8 text-white opacity-75" fill="currentColor" viewBox="0 0 20 20">
+                                                        <path d="M2 6a2 2 0 012-2h6a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V6zM14.553 7.106A1 1 0 0014 8v4a1 1 0 00.553.894l2 1A1 1 0 0018 13V7a1 1 0 00-1.447-.894l-2 1z"/>
+                                                    </svg>
+                                                </div>
+                                            `}
+                                            <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                                <div class="bg-white bg-opacity-90 rounded-full p-2">
+                                                    <svg class="w-5 h-5 text-gray-900" fill="currentColor" viewBox="0 0 20 20">
+                                                        <path d="M6.3 2.841A1.5 1.5 0 004 4.11V15.89a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z"/>
+                                                    </svg>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    `;
+                                }
+                                return '';
+                            }).join('')}
+                        </div>
+                    </div>
+                `;
+            }
+            
             content.innerHTML = `
                 <div class="flex justify-between items-start mb-4">
                     <div class="flex items-center">
@@ -1992,16 +2169,7 @@
                     </div>
                 ` : ''}
 
-                ${highlight.photo_url ? `
-                    <div class="mb-4 border-t pt-4">
-                        <div class="relative rounded-lg overflow-hidden bg-gray-100">
-                            <img src="${highlight.photo_url}" 
-                                alt="${highlight.name}"
-                                class="w-full h-64 object-cover cursor-pointer hover:opacity-90 transition-opacity"
-                                onclick="window.open('${highlight.photo_url}', '_blank')">
-                        </div>
-                    </div>
-                ` : ''}
+                ${mediaHTML}
                 
                 <div class="space-y-2">
                     <a href="/trails/${trail.id}" 
@@ -2110,7 +2278,7 @@
             
             // Format photos gallery - NOW USING trail.photos from trail_media
             let photosHTML = '';
-           
+        
             // Format highlights with media - NOW USING features with their own media
             let highlightsHTML = '';
             if (trail.highlights && trail.highlights.length > 0) {
@@ -2168,6 +2336,7 @@
             }
             
             content.innerHTML = `
+                <!-- Fixed Header -->
                 <div class="flex items-start justify-between mb-4">
                     <h3 class="text-xl font-bold pr-8">${trail.name}</h3>
                     <button onclick="closeTrailInfoPanel()" 
@@ -2178,36 +2347,40 @@
                     </button>
                 </div>
                 
-                ${photosHTML}
-                
-                <div class="grid grid-cols-2 gap-3 mb-4">
-                    <div class="bg-blue-50 p-3 rounded text-center">
-                        <div class="text-2xl font-bold text-blue-600">${trail.distance}</div>
-                        <div class="text-xs text-gray-600">km</div>
+                <!-- Scrollable Content with Fixed 100px Height -->
+                <div class="panel-content mb-4">
+                    ${photosHTML}
+                    
+                    <div class="grid grid-cols-2 gap-3 mb-4">
+                        <div class="bg-blue-50 p-3 rounded text-center">
+                            <div class="text-2xl font-bold text-blue-600">${trail.distance}</div>
+                            <div class="text-xs text-gray-600">km</div>
+                        </div>
+                        <div class="bg-green-50 p-3 rounded text-center">
+                            <div class="text-2xl font-bold text-green-600">${trail.elevation_gain || 0}</div>
+                            <div class="text-xs text-gray-600">meters</div>
+                        </div>
+                        <div class="bg-yellow-50 p-3 rounded text-center">
+                            <div class="text-2xl font-bold text-yellow-600">${trail.estimated_time || 'N/A'}</div>
+                            <div class="text-xs text-gray-600">hours</div>
+                        </div>
+                        <div class="bg-purple-50 p-3 rounded text-center">
+                            <div class="text-2xl font-bold text-purple-600">${trail.difficulty}</div>
+                            <div class="text-xs text-gray-600">difficulty</div>
+                        </div>
                     </div>
-                    <div class="bg-green-50 p-3 rounded text-center">
-                        <div class="text-2xl font-bold text-green-600">${trail.elevation_gain || 0}</div>
-                        <div class="text-xs text-gray-600">meters</div>
+                    
+                    ${seasonalHTML}
+                    
+                    <div class="mt-4">
+                        <p class="text-sm text-gray-600 leading-relaxed">${trail.description}</p>
                     </div>
-                    <div class="bg-yellow-50 p-3 rounded text-center">
-                        <div class="text-2xl font-bold text-yellow-600">${trail.estimated_time || 'N/A'}</div>
-                        <div class="text-xs text-gray-600">hours</div>
-                    </div>
-                    <div class="bg-purple-50 p-3 rounded text-center">
-                        <div class="text-2xl font-bold text-purple-600">${trail.difficulty}</div>
-                        <div class="text-xs text-gray-600">difficulty</div>
-                    </div>
+                    
+                    ${highlightsHTML}
                 </div>
                 
-                ${seasonalHTML}
-                
-                <div class="mt-4">
-                    <p class="text-sm text-gray-600 leading-relaxed">${trail.description}</p>
-                </div>
-                
-                ${highlightsHTML}
-                
-                <div class="mt-6 pt-4 border-t space-y-2">
+                <!-- Fixed Footer Buttons -->
+                <div class="space-y-2">
                     <button onclick="window.trailMap.viewRoute(${trail.id})" 
                             class="w-full bg-primary-500 hover:bg-primary-600 text-white font-medium py-2.5 px-4 rounded transition flex items-center justify-center">
                         <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
