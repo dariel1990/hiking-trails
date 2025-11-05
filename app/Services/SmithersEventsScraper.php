@@ -135,8 +135,8 @@ class SmithersEventsScraper
                 $dateTimeText = trim($eventDateNode->text());
             }
 
-            // Extract time from the date text if present
-            $eventTime = $this->extractTimeFromDateText($dateTimeText);
+            // Extract start and end times from the date text
+            $times = $this->extractTimesFromDateText($dateTimeText);
 
             // Parse dates
             $parsedStartDate = $this->parseDate($startDate);
@@ -153,9 +153,9 @@ class SmithersEventsScraper
                 'title' => trim($title),
                 'description' => trim($description),
                 'event_date' => $parsedStartDate,
-                'event_time' => $eventTime,
+                'event_time' => $times['start_time'],
                 'end_date' => $parsedEndDate,
-                'end_time' => null,
+                'end_time' => $times['end_time'],
                 'location' => trim($location),
                 'venue' => trim($location),
                 'organizer' => null,
@@ -194,31 +194,51 @@ class SmithersEventsScraper
     }
 
     /**
-     * Extract time from formatted date text
+     * Extract both start and end times from formatted date text
      *
      * @param string|null $dateText
-     * @return string|null
+     * @return array ['start_time' => string|null, 'end_time' => string|null]
      */
-    protected function extractTimeFromDateText($dateText)
+    protected function extractTimesFromDateText($dateText)
     {
+        $result = [
+            'start_time' => null,
+            'end_time' => null,
+        ];
+
         if (!$dateText) {
-            return null;
+            return $result;
         }
 
         try {
-            // Look for time patterns like "9:30am" or "9:30 AM"
-            if (preg_match('/(\d{1,2}:\d{2}\s*(?:am|pm))/i', $dateText, $matches)) {
-                $timeStr = $matches[1];
+            // Pattern for time range: "9:30am-10:15am" or "9:30 AM - 10:15 AM"
+            if (preg_match('/(\d{1,2}:\d{2}\s*(?:am|pm))\s*-\s*(\d{1,2}:\d{2}\s*(?:am|pm))/i', $dateText, $matches)) {
+                // Found start and end time
+                $startTimeStr = trim($matches[1]);
+                $endTimeStr = trim($matches[2]);
+                
+                $startTime = Carbon::parse($startTimeStr);
+                $result['start_time'] = $startTime->format('H:i:s');
+                
+                $endTime = Carbon::parse($endTimeStr);
+                $result['end_time'] = $endTime->format('H:i:s');
+                
+                Log::info("Extracted times: Start={$result['start_time']}, End={$result['end_time']}");
+            }
+            // Pattern for single time: "9:30am" or "9:30 AM"
+            elseif (preg_match('/(\d{1,2}:\d{2}\s*(?:am|pm))/i', $dateText, $matches)) {
+                $timeStr = trim($matches[1]);
                 $time = Carbon::parse($timeStr);
-                return $time->format('H:i:s');
+                $result['start_time'] = $time->format('H:i:s');
+                
+                Log::info("Extracted single time: {$result['start_time']}");
             }
 
-            return null;
-
         } catch (Exception $e) {
-            Log::warning('Could not parse time from date text: ' . $dateText);
-            return null;
+            Log::warning('Could not parse times from date text: ' . $dateText . ' - ' . $e->getMessage());
         }
+
+        return $result;
     }
 
     /**

@@ -88,8 +88,8 @@ class ScrapeSmithersEvents extends Command
                     $parsedStartDate = $this->parseDate($startDate);
                     $parsedEndDate = $endDate ? $this->parseDate($endDate) : null;
 
-                    // Extract time from date text
-                    $eventTime = $this->extractTime($dateText);
+                    // Extract start and end times from date text
+                    $times = $this->extractTimes($dateText);
 
                     // Generate source_id
                     $sourceId = $eventUrl ? 'smithers-' . md5($eventUrl) : 'smithers-' . md5($finalTitle . '-' . $parsedStartDate);
@@ -111,9 +111,9 @@ class ScrapeSmithersEvents extends Command
                         'title' => $finalTitle,
                         'description' => $finalDescription,
                         'event_date' => $parsedStartDate,
-                        'event_time' => $eventTime,
+                        'event_time' => $times['start_time'],
                         'end_date' => $parsedEndDate,
-                        'end_time' => null,
+                        'end_time' => $times['end_time'],
                         'location' => $finalLocation,
                         'venue' => $finalLocation,
                         'organizer' => null,
@@ -132,6 +132,9 @@ class ScrapeSmithersEvents extends Command
                         if ($this->option('debug')) {
                             $this->newLine();
                             $this->line("✓ Updated: {$finalTitle}");
+                            if ($times['start_time'] && $times['end_time']) {
+                                $this->line("  Times: {$times['start_time']} - {$times['end_time']}");
+                            }
                         }
                     } else {
                         Event::create($eventData);
@@ -140,6 +143,9 @@ class ScrapeSmithersEvents extends Command
                         if ($this->option('debug')) {
                             $this->newLine();
                             $this->line("✓ Created: {$finalTitle}");
+                            if ($times['start_time'] && $times['end_time']) {
+                                $this->line("  Times: {$times['start_time']} - {$times['end_time']}");
+                            }
                         }
                     }
 
@@ -206,23 +212,38 @@ class ScrapeSmithersEvents extends Command
     }
 
     /**
-     * Extract time from date text
+     * Extract start and end times from date text
      */
-    protected function extractTime($dateText)
+    protected function extractTimes($dateText)
     {
+        $result = [
+            'start_time' => null,
+            'end_time' => null,
+        ];
+
         if (!$dateText) {
-            return null;
+            return $result;
         }
 
         try {
-            if (preg_match('/(\d{1,2}:\d{2})\s*(am|pm)/i', $dateText, $matches)) {
-                $time = Carbon::parse($matches[1] . ' ' . $matches[2]);
-                return $time->format('H:i:s');
+            // Pattern for time range: "9:30am-10:15am" or "9:30 AM - 10:15 AM"
+            if (preg_match('/(\d{1,2}:\d{2}\s*(?:am|pm))\s*-\s*(\d{1,2}:\d{2}\s*(?:am|pm))/i', $dateText, $matches)) {
+                $startTime = Carbon::parse(trim($matches[1]));
+                $result['start_time'] = $startTime->format('H:i:s');
+                
+                $endTime = Carbon::parse(trim($matches[2]));
+                $result['end_time'] = $endTime->format('H:i:s');
             }
-            return null;
+            // Pattern for single time
+            elseif (preg_match('/(\d{1,2}:\d{2}\s*(?:am|pm))/i', $dateText, $matches)) {
+                $time = Carbon::parse(trim($matches[1]));
+                $result['start_time'] = $time->format('H:i:s');
+            }
         } catch (Exception $e) {
-            return null;
+            // Silently fail
         }
+
+        return $result;
     }
 
     /**

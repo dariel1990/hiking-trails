@@ -4,6 +4,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\TrailController;
 use App\Http\Controllers\Admin\AdminController;
 use App\Http\Controllers\Admin\AdminTrailController;
+use App\Http\Controllers\EventsController;
 
 // PUBLIC ROUTES (No authentication required)
 Route::get('/', [TrailController::class, 'home'])->name('home');
@@ -50,3 +51,9 @@ Route::prefix('admin')->name('admin.')->group(function () {
 Route::get('/login', function () {
     return redirect()->route('admin.login');
 })->name('login');
+
+// Events Routes (Public - No admin middleware)
+Route::get('/events', [EventsController::class, 'index'])->name('events.index');
+Route::get('/events/{event}', [EventsController::class, 'show'])->name('events.show');
+Route::get('/events/{event}/calendar', [EventsController::class, 'downloadCalendar'])->name('events.calendar');
+Route::get('/events/{event}/details', [EventsController::class, 'getEventDetails'])->name('events.details');
