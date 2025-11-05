@@ -19,6 +19,14 @@ class ScrapeSmithersEvents extends Command
         $this->info('Starting to scrape events from SmithersEvents.com...');
         $this->newLine();
 
+        // DELETE ALL OLD DATA WHEN --force IS USED
+        if ($this->option('force')) {
+            $this->info('Deleting all existing events...');
+            Event::truncate(); // Deletes ALL events from database
+            $this->info('✓ All events deleted.');
+            $this->newLine();
+        }
+
         try {
             $url = 'https://smithersevents.com/';
             $html = Http::timeout(30)->get($url)->body();

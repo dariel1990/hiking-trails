@@ -18,10 +18,10 @@
     
     <style>
         :root {
-            --color-primary: #F29727;
-            --color-secondary: #10221B;
+            --color-primary: #10221B;
+            --color-secondary: #1DC5CE;
             --color-text: #483E3E;
-            --color-accent: #1DC5CE;
+            --color-accent: #F29727;
             --color-gold: #DDAA6B;
         }
 
@@ -48,14 +48,14 @@
         }
 
         .event-card:hover {
-            box-shadow: 0 20px 40px rgba(242, 151, 39, 0.15);
+            box-shadow: 0 20px 40px rgba(16, 34, 27, 0.15);
             border-color: var(--color-primary);
             z-index: 2; /* Slightly higher than others */
         }
         
         .category-badge {
-            background-color: var(--color-gold);
-            color: var(--color-secondary);
+            background-color: var(--color-primary);
+            color: white;
         }
         
         .btn-primary {
@@ -64,7 +64,7 @@
         }
         
         .btn-primary:hover {
-            background-color: #e08616;
+            background-color: #0d1b15;
         }
         
         .btn-secondary {
@@ -73,7 +73,7 @@
         }
         
         .btn-secondary:hover {
-            background-color: #1a3329;
+            background-color: #18a5ad;
         }
         
         .calendar-btn-wrapper {
@@ -220,7 +220,7 @@
             <div class="flex flex-wrap items-center justify-between gap-4">
                 
                 <div>
-                    <h1 class="text-3xl font-bold mb-2" style="color: var(--color-secondary);">Events Calendar</h1>
+                    <h1 class="text-3xl font-bold mb-2" style="color: var(--color-primary);">Events Calendar</h1>
                     <p class="text-gray-600">Discover events in Smithers, Telkwa & Bulkley Valley</p>
                 </div>
                 
@@ -276,8 +276,8 @@
                                     @endif
                                     
                                     <!-- Event Title -->
-                                    <h3 class="text-lg font-bold mb-3 line-clamp-2 flex-1" style="color: var(--color-secondary);">
-                                        <a href="{{ route('events.show', $event) }}" class="hover:opacity-80 transition">
+                                    <h3 class="text-lg font-bold mb-3 line-clamp-2 flex-1" style="color: var(--color-accent);">
+                                        <a href="#" onClick="openEventModal({{ $event->id }})" class="hover:opacity-80 transition">
                                             {{ $event->title }}
                                         </a>
                                     </h3>
@@ -372,7 +372,7 @@
                         <i class="fas fa-chevron-left text-2xl"></i>
                     </a>
                     
-                    <h2 class="text-3xl font-bold" style="color: var(--color-secondary);">
+                    <h2 class="text-3xl font-bold" style="color: var(--color-primary);">
                         {{ $firstDayOfMonth->format('F Y') }}
                     </h2>
                     
@@ -414,9 +414,9 @@
                             
                             @foreach($dayEvents->take(3) as $event)
                                 <div class="mb-1.5">
-                                    <a href="{{ route('events.show', $event) }}" 
+                                    <a href="#" onclick="openEventModal({{ $event->id }})" 
                                        class="block text-xs rounded px-2 py-1.5 truncate transition hover:opacity-80"
-                                       style="background-color: #fef3e2; color: var(--color-secondary);"
+                                       style="background-color: #fef3e2; color: var(--color-primary);"
                                        title="{{ $event->title }}">
                                         <span class="event-dot inline-block mr-1"></span>
                                         <span class="font-medium">{{ \Str::limit($event->title, 18) }}</span>
@@ -440,7 +440,8 @@
 
     <div id="eventModal" class="modal">
         <div class="modal-content">
-            <div class="modal-close flex justify-end p-4 border-b border-gray-200">
+            <div class="modal-close flex items-center justify-between p-6 border-b border-gray-200">
+                <h2 class="text-2xl font-bold" style="color: var(--color-primary);">Event Details</h2>
                 <button onclick="closeEventModal()" class="text-gray-400 hover:text-gray-600 transition">
                     <i class="fas fa-times text-2xl"></i>
                 </button>
@@ -462,16 +463,21 @@
         function toggleCalendarDropdown(event, eventId) {
             event.stopPropagation();
             const dropdown = document.getElementById('calendar-dropdown-' + eventId);
+            const card = dropdown.closest('.event-card'); // Get the parent card
             
             // Clear any pending close timeout
             if (closeTimeout) {
                 clearTimeout(closeTimeout);
             }
             
-            // Close all other dropdowns
+            // Close all other dropdowns and remove dropdown-active from all cards
             document.querySelectorAll('.calendar-dropdown').forEach(d => {
                 if (d.id !== 'calendar-dropdown-' + eventId) {
                     d.classList.remove('active');
+                    const otherCard = d.closest('.event-card');
+                    if (otherCard) {
+                        otherCard.classList.remove('dropdown-active');
+                    }
                 }
             });
             
@@ -480,9 +486,11 @@
             
             if (!isActive) {
                 dropdown.classList.add('active');
+                card.classList.add('dropdown-active'); // Add high z-index to card
                 currentOpenDropdown = eventId;
             } else {
                 dropdown.classList.remove('active');
+                card.classList.remove('dropdown-active'); // Remove high z-index from card
                 currentOpenDropdown = null;
             }
         }
@@ -498,7 +506,9 @@
         function scheduleDropdownClose(eventId) {
             closeTimeout = setTimeout(() => {
                 const dropdown = document.getElementById('calendar-dropdown-' + eventId);
+                const card = dropdown.closest('.event-card');
                 dropdown.classList.remove('active');
+                card.classList.remove('dropdown-active'); // Remove high z-index when closing
                 currentOpenDropdown = null;
             }, 300);
         }
@@ -508,6 +518,10 @@
             if (!event.target.closest('.calendar-dropdown') && !event.target.closest('.calendar-btn')) {
                 document.querySelectorAll('.calendar-dropdown').forEach(d => {
                     d.classList.remove('active');
+                    const card = d.closest('.event-card');
+                    if (card) {
+                        card.classList.remove('dropdown-active'); // Remove high z-index from all cards
+                    }
                 });
                 currentOpenDropdown = null;
             }
@@ -540,7 +554,7 @@
                         <div>
                             ${data.category ? `<span class="category-badge text-xs font-semibold px-3 py-1.5 rounded-full inline-block mb-4">${data.category}</span>` : ''}
                             
-                            <h2 class="text-3xl font-bold mb-6" style="color: var(--color-secondary);">${data.title}</h2>
+                            <h2 class="text-3xl font-bold mb-6" style="color: var(--color-accent);">${data.title}</h2>
                             
                             <div class="grid md:grid-cols-2 gap-6 mb-6">
                                 <div class="space-y-3">
