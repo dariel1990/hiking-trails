@@ -270,6 +270,80 @@
     </div>
 </section>
 
+{{-- Donation Section Component --}}
+<section class="donation-section-wrapper py-16 bg-gray-50">
+    <div class="container mx-auto px-4">
+        <div class="donation-section max-w-4xl mx-auto bg-white rounded-3xl shadow-xl overflow-hidden">
+            
+            <!-- Header -->
+            <div class="donation-header bg-gradient-to-br from-[#10221B] to-[#1a3329] text-center py-12 px-8 relative overflow-hidden">
+                <div class="absolute top-[-50%] right-[-20%] w-[300px] h-[300px] bg-[#1DC5CE] opacity-10 rounded-full"></div>
+                <div class="absolute bottom-[-30%] left-[-10%] w-[200px] h-[200px] bg-[#F29727] opacity-10 rounded-full"></div>
+                
+                <div class="relative z-10">
+                    <i class="fas fa-heart text-5xl text-[#1DC5CE] mb-4 inline-block animate-pulse"></i>
+                    <h2 class="text-4xl font-semibold text-white mb-2">Support Xplore Smithers</h2>
+                </div>
+            </div>
+
+            <!-- Content -->
+            <div class="donation-content p-10">
+                <div class="donation-pitch text-lg leading-relaxed text-[#483E3E]">
+                    <p class="mb-5">
+                        <strong class="text-[#10221B] font-semibold">Xplore Smithers is a 100% independent initiative</strong> created to promote ethical, authentic tourism and to support our local economy. 🌲✨
+                    </p>
+                    
+                    <p class="mb-5">
+                        We're not funded by any government or organization — everything you see, from the photos and videos to the maps and community stories, is made with passion, time, and a genuine love for this region.
+                    </p>
+                    
+                    <div class="bg-gradient-to-br from-blue-50 to-cyan-50 border-l-4 border-[#1DC5CE] rounded-xl p-6 my-8">
+                        <p class="text-[#10221B] font-medium m-0">
+                            Your support helps us keep creating content that celebrates local businesses, connects visitors with real experiences, and shines a light on the people who make Northern BC special.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Features Grid -->
+                <div class="grid md:grid-cols-3 gap-6 my-8">
+                    <div class="text-center p-4">
+                        <i class="fas fa-camera text-4xl text-[#1DC5CE] mb-3"></i>
+                        <h4 class="text-[#10221B] font-semibold text-sm mb-2">Original Content</h4>
+                        <p class="text-[#483E3E] text-sm opacity-80">Photos & videos of local gems</p>
+                    </div>
+                    <div class="text-center p-4">
+                        <i class="fas fa-map-marked-alt text-4xl text-[#1DC5CE] mb-3"></i>
+                        <h4 class="text-[#10221B] font-semibold text-sm mb-2">Community Maps</h4>
+                        <p class="text-[#483E3E] text-sm opacity-80">Discover hidden treasures</p>
+                    </div>
+                    <div class="text-center p-4">
+                        <i class="fas fa-users text-4xl text-[#1DC5CE] mb-3"></i>
+                        <h4 class="text-[#10221B] font-semibold text-sm mb-2">Local Stories</h4>
+                        <p class="text-[#483E3E] text-sm opacity-80">Real people, real experiences</p>
+                    </div>
+                </div>
+
+                <p class="text-center my-8 text-[#483E3E]">
+                    If you believe in what we're doing, consider making a donation — every contribution helps us keep exploring, filming, and sharing the true spirit of Smithers.
+                </p>
+
+                <!-- Donate Button -->
+                <div class="text-center pt-8 border-t border-gray-200">
+                    <a href="{{ $donationUrl ?? '#' }}" 
+                       class="inline-flex items-center gap-3 bg-gradient-to-r from-[#10221B] to-[#1DC5CE] text-white px-10 py-4 rounded-full font-semibold text-lg transition-all duration-300 shadow-lg hover:shadow-xl hover:-translate-y-1">
+                        <i class="fas fa-hand-holding-heart text-xl"></i>
+                        Donate & Support
+                    </a>
+                    <p class="text-[#483E3E] opacity-70 text-sm italic mt-6">
+                        Thank you for helping us share the beauty of Northern BC 🙏
+                    </p>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</section>
+
 <!-- Community Section - New -->
 <section class="section bg-white">
     <div class="max-w-7xl mx-auto px-4">
@@ -347,6 +421,221 @@
 @endsection
 
 @push('scripts')
+<style>
+    :root {
+        --color-primary: #F29727;
+        --color-secondary: #10221B;
+        --color-text: #483E3E;
+        --color-accent: #1DC5CE;
+        --color-gold: #DDAA6B;
+    }
+
+    * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+    }
+
+    .donation-section {
+        max-width: 800px;
+        margin: 0 auto;
+        background: white;
+        border-radius: 1.5rem;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.08);
+        overflow: hidden;
+    }
+
+    .donation-header {
+        background: linear-gradient(135deg, var(--color-secondary) 0%, #1a3329 100%);
+        padding: 3rem 2rem;
+        text-align: center;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .donation-header::before {
+        content: '';
+        position: absolute;
+        top: -50%;
+        right: -20%;
+        width: 300px;
+        height: 300px;
+        background: rgba(29, 197, 206, 0.1);
+        border-radius: 50%;
+    }
+
+    .donation-header::after {
+        content: '';
+        position: absolute;
+        bottom: -30%;
+        left: -10%;
+        width: 200px;
+        height: 200px;
+        background: rgba(242, 151, 39, 0.1);
+        border-radius: 50%;
+    }
+
+    .donation-header h2 {
+        color: white;
+        font-size: 2rem;
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+        position: relative;
+        z-index: 1;
+    }
+
+    .donation-header .heart-icon {
+        font-size: 2.5rem;
+        color: var(--color-accent);
+        margin-bottom: 1rem;
+        animation: heartbeat 1.5s ease-in-out infinite;
+    }
+
+    @keyframes heartbeat {
+        0%, 100% { transform: scale(1); }
+        50% { transform: scale(1.1); }
+    }
+
+    .donation-content {
+        padding: 2.5rem 2rem;
+    }
+
+    .donation-pitch {
+        font-size: 1.05rem;
+        line-height: 1.8;
+        margin-bottom: 2rem;
+        color: var(--color-text);
+    }
+
+    .donation-pitch strong {
+        color: var(--color-secondary);
+        font-weight: 600;
+    }
+
+    .highlight-box {
+        background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+        border-left: 4px solid var(--color-accent);
+        padding: 1.5rem;
+        border-radius: 0.75rem;
+        margin: 2rem 0;
+    }
+
+    .highlight-box p {
+        margin: 0;
+        font-size: 0.95rem;
+        color: var(--color-secondary);
+        font-weight: 500;
+    }
+
+    .features-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1.5rem;
+        margin: 2rem 0;
+    }
+
+    .feature-item {
+        text-align: center;
+        padding: 1rem;
+    }
+
+    .feature-item i {
+        font-size: 2rem;
+        color: var(--color-primary);
+        margin-bottom: 0.75rem;
+    }
+
+    .feature-item h4 {
+        color: var(--color-secondary);
+        font-size: 0.9rem;
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+    }
+
+    .feature-item p {
+        font-size: 0.85rem;
+        color: var(--color-text);
+        opacity: 0.8;
+    }
+
+    .donate-button {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.75rem;
+        background: linear-gradient(135deg, var(--color-primary) 0%, #e08616 100%);
+        color: white;
+        padding: 1rem 2.5rem;
+        border-radius: 3rem;
+        text-decoration: none;
+        font-weight: 600;
+        font-size: 1.1rem;
+        transition: all 0.3s ease;
+        box-shadow: 0 8px 20px rgba(242, 151, 39, 0.3);
+        margin-top: 1.5rem;
+    }
+
+    .donate-button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 12px 30px rgba(242, 151, 39, 0.4);
+        background: linear-gradient(135deg, #e08616 0%, var(--color-primary) 100%);
+    }
+
+    .donate-button i {
+        font-size: 1.3rem;
+    }
+
+    .button-wrapper {
+        text-align: center;
+        margin-top: 2rem;
+        padding-top: 2rem;
+        border-top: 1px solid #e5e7eb;
+    }
+
+    .gratitude-text {
+        text-align: center;
+        margin-top: 1.5rem;
+        font-size: 0.9rem;
+        color: var(--color-text);
+        opacity: 0.7;
+        font-style: italic;
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+        .donation-header {
+            padding: 2rem 1.5rem;
+        }
+
+        .donation-header h2 {
+            font-size: 1.5rem;
+        }
+
+        .donation-content {
+            padding: 2rem 1.5rem;
+        }
+
+        .donation-pitch {
+            font-size: 1rem;
+        }
+
+        .features-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .donate-button {
+            padding: 0.875rem 2rem;
+            font-size: 1rem;
+        }
+    }
+    @keyframes pulse {
+        0%, 100% { transform: scale(1); opacity: 1; }
+        50% { transform: scale(1.05); opacity: 0.9; }
+    }
+    
+    .animate-pulse {
+        animation: pulse 2s ease-in-out infinite;
+    }
+</style>
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         // Initialize hero map with better styling
