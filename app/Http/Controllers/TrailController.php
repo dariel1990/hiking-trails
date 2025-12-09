@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\Trail;
+use App\Models\ActivityType;
 use Illuminate\Support\Facades\Storage;
 
 class TrailController extends Controller
@@ -102,10 +103,14 @@ class TrailController extends Controller
             'features.media',
             'highlights.media'
         ])->findOrFail($id);
+        
         // Increment view count
         $trail->increment('view_count');
+        
+        // Get only general trail media (excludes feature-linked media)
+        $generalMedia = $trail->generalMedia;
 
-        return view('trails.show', compact('trail'));
+        return view('trails.show', compact('trail', 'generalMedia'));
     }
 
     /**
@@ -113,9 +118,13 @@ class TrailController extends Controller
      */
     public function map()
     {
-        return view('map');
+        // Fetch all active activities for the filters
+        $activities = ActivityType::where('is_active', true)
+            ->orderBy('name')
+            ->get();
+        
+        return view('map', compact('activities'));
     }
-
     /**
      * API endpoint for trail data
      */
@@ -206,7 +215,7 @@ class TrailController extends Controller
             }
 
             // Get all photos from trail_media
-                $photos = $trail->media->map(function($media) {
+            $photos = $trail->generalMedia->map(function($media) {
                 return [
                     'id' => $media->id,
                     'url' => Storage::url($media->storage_path),
@@ -214,11 +223,6 @@ class TrailController extends Controller
                     'is_featured' => $media->is_featured,
                 ];
             });
-
-            // Get seasonal info for this trail
-            $seasonalData = $trail->seasonalData()
-                ->where('season', $season)
-                ->first();
             
             // Map activities to the format expected by frontend
             $activities = $trail->activities->map(function($activity) {
@@ -298,12 +302,6 @@ class TrailController extends Controller
                 'photos' => $photos,
                 'highlights' => $highlights,
                 'activities' => $activities,
-                'seasonal_info' => $seasonalData ? [
-                    'season' => $seasonalData->season,
-                    'recommended' => $seasonalData->recommended,
-                    'notes' => $seasonalData->notes,
-                    'conditions' => $seasonalData->conditions,
-                ] : null,
             ];
         });
 

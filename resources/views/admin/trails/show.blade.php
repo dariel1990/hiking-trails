@@ -120,12 +120,16 @@
             @endif
 
             <!-- Photos & Videos Section -->
-            @if($trail->media && $trail->media->count() > 0)
+            @php
+                // Get only general trail media (excludes feature-linked media)
+                $generalMedia = $trail->generalMedia;
+            @endphp
+            @if($generalMedia->count() > 0)
             <div class="rounded-lg border bg-card text-card-foreground shadow-sm">
                 <div class="p-6">
-                    <h3 class="text-lg font-semibold mb-4">Media ({{ $trail->media->count() }})</h3>
+                    <h3 class="text-lg font-semibold mb-4">Media ({{ $generalMedia->count() }})</h3>
                     <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
-                        @foreach($trail->media as $media)
+                        @foreach($generalMedia as $media)
                             @if($media->media_type === 'photo')
                                 {{-- Photo Display --}}
                                 <div class="relative group overflow-hidden rounded-lg border border-input cursor-pointer"

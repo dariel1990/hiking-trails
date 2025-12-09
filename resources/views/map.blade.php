@@ -271,30 +271,17 @@
                 <div class="mb-6 border-t pt-6">
                     <h4 class="font-semibold text-base mb-3">Activities</h4>
                     <div class="grid grid-cols-2 gap-2">
+                        @foreach($activities as $activity)
                         <label class="flex items-center cursor-pointer hover:bg-gray-50 p-3 rounded-lg">
-                            <input type="checkbox" value="hiking" class="activity-checkbox w-5 h-5">
-                            <span class="ml-3 text-sm">Hiking</span>
+                            <input type="checkbox" value="{{ $activity->slug }}" class="activity-checkbox w-5 h-5">
+                            <span class="ml-3 text-sm">
+                                @if($activity->icon)
+                                    {{ $activity->icon }} 
+                                @endif
+                                {{ $activity->name }}
+                            </span>
                         </label>
-                        <label class="flex items-center cursor-pointer hover:bg-gray-50 p-3 rounded-lg">
-                            <input type="checkbox" value="camping" class="activity-checkbox w-5 h-5">
-                            <span class="ml-3 text-sm">Camping</span>
-                        </label>
-                        <label class="flex items-center cursor-pointer hover:bg-gray-50 p-3 rounded-lg">
-                            <input type="checkbox" value="fishing" class="activity-checkbox w-5 h-5">
-                            <span class="ml-3 text-sm">Fishing</span>
-                        </label>
-                        <label class="flex items-center cursor-pointer hover:bg-gray-50 p-3 rounded-lg">
-                            <input type="checkbox" value="snowshoeing" class="activity-checkbox w-5 h-5">
-                            <span class="ml-3 text-sm">Snowshoeing</span>
-                        </label>
-                        <label class="flex items-center cursor-pointer hover:bg-gray-50 p-3 rounded-lg">
-                            <input type="checkbox" value="cross-country-skiing" class="activity-checkbox w-5 h-5">
-                            <span class="ml-3 text-sm">Cross-country Skiing</span>
-                        </label>
-                        <label class="flex items-center cursor-pointer hover:bg-gray-50 p-3 rounded-lg">
-                            <input type="checkbox" value="ice-fishing" class="activity-checkbox w-5 h-5">
-                            <span class="ml-3 text-sm">Ice Fishing</span>
-                        </label>
+                        @endforeach
                     </div>
                 </div>
             </div>
@@ -1692,11 +1679,6 @@
                     return false;
                 }
 
-                // Apply seasonal recommendation filter
-                if (trail.seasonal_info && !trail.seasonal_info.recommended) {
-                    return false;
-                }
-
                 // Apply advanced filters
                 if (!this.matchesAdvancedFilters(trail)) {
                     return false;
@@ -2317,24 +2299,6 @@
                 `;
             }
             
-            // Seasonal info
-            let seasonalHTML = '';
-            if (trail.seasonal_info && trail.seasonal_info.notes) {
-                seasonalHTML = `
-                    <div class="mt-4 bg-blue-50 border border-blue-200 rounded p-3">
-                        <div class="flex items-start">
-                            <svg class="w-5 h-5 text-blue-600 mr-2 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
-                                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
-                            </svg>
-                            <div>
-                                <div class="font-medium text-sm text-blue-900">${trail.seasonal_info.season} Conditions</div>
-                                <div class="text-xs text-blue-800 mt-1">${trail.seasonal_info.notes}</div>
-                            </div>
-                        </div>
-                    </div>
-                `;
-            }
-            
             content.innerHTML = `
                 <!-- Fixed Header -->
                 <div class="flex items-start justify-between mb-4">
@@ -2369,8 +2333,6 @@
                             <div class="text-xs text-gray-600">difficulty</div>
                         </div>
                     </div>
-                    
-                    ${seasonalHTML}
                     
                     <div class="mt-4">
                         <p class="text-sm text-gray-600 leading-relaxed">${trail.description}</p>

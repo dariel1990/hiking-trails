@@ -98,42 +98,61 @@
                     <p class="text-sm text-muted-foreground">What activities are available on this trail?</p>
                 </div>
                 
-                <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <label class="flex items-start gap-3 p-4 rounded-lg border border-input bg-background hover:bg-accent hover:text-accent-foreground cursor-pointer transition-colors">
-                        <input type="checkbox" name="activities[]" value="hiking" 
-                               class="mt-1 h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary" checked>
-                        <div class="space-y-1">
-                            <div class="text-sm font-medium">Hiking</div>
-                            <div class="text-xs text-muted-foreground">Walking trails</div>
+                <div class="space-y-4">
+                    <!-- Summer Activities -->
+                    @php
+                        $summerActivities = $activities->filter(function($activity) {
+                            return $activity->season_applicable === 'summer' || $activity->season_applicable === 'both';
+                        });
+                        $winterActivities = $activities->filter(function($activity) {
+                            return $activity->season_applicable === 'winter' || $activity->season_applicable === 'both';
+                        });
+                    @endphp
+                    
+                    @if($summerActivities->count() > 0)
+                    <div>
+                        <div class="text-sm font-medium text-gray-700 mb-3">Summer Activities</div>
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                            @foreach($summerActivities as $activity)
+                            <label class="flex items-start gap-3 p-4 rounded-lg border border-input bg-background hover:bg-accent hover:text-accent-foreground cursor-pointer transition-colors">
+                                <input type="checkbox" name="activities[]" value="{{ $activity->id }}" 
+                                       class="mt-1 h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                                       {{ $activity->slug === 'hiking' ? 'checked' : '' }}>
+                                <div class="space-y-1">
+                                    <div class="text-sm font-medium">{{ $activity->name }}</div>
+                                    <div class="text-xs text-muted-foreground">
+                                        @if($activity->season_applicable === 'both')
+                                            <span class="text-blue-600">All seasons</span>
+                                        @else
+                                            <span class="text-amber-600">Summer only</span>
+                                        @endif
+                                    </div>
+                                </div>
+                            </label>
+                            @endforeach
                         </div>
-                    </label>
-
-                    <label class="flex items-start gap-3 p-4 rounded-lg border border-input bg-background hover:bg-accent hover:text-accent-foreground cursor-pointer transition-colors">
-                        <input type="checkbox" name="activities[]" value="fishing" 
-                               class="mt-1 h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary">
-                        <div class="space-y-1">
-                            <div class="text-sm font-medium">Fishing</div>
-                            <div class="text-xs text-muted-foreground">Fishing spots</div>
+                    </div>
+                    @endif
+                    
+                    @if($winterActivities->where('season_applicable', 'winter')->count() > 0)
+                    <div>
+                        <div class="text-sm font-medium text-gray-700 mb-3">Winter Activities</div>
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                            @foreach($winterActivities->where('season_applicable', 'winter') as $activity)
+                            <label class="flex items-start gap-3 p-4 rounded-lg border border-input bg-background hover:bg-accent hover:text-accent-foreground cursor-pointer transition-colors">
+                                <input type="checkbox" name="activities[]" value="{{ $activity->id }}" 
+                                       class="mt-1 h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary">
+                                <div class="space-y-1">
+                                    <div class="text-sm font-medium">{{ $activity->name }}</div>
+                                    <div class="text-xs text-muted-foreground">
+                                        <span class="text-cyan-600">Winter only</span>
+                                    </div>
+                                </div>
+                            </label>
+                            @endforeach
                         </div>
-                    </label>
-
-                    <label class="flex items-start gap-3 p-4 rounded-lg border border-input bg-background hover:bg-accent hover:text-accent-foreground cursor-pointer transition-colors">
-                        <input type="checkbox" name="activities[]" value="camping" 
-                               class="mt-1 h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary">
-                        <div class="space-y-1">
-                            <div class="text-sm font-medium">Camping</div>
-                            <div class="text-xs text-muted-foreground">Camping areas</div>
-                        </div>
-                    </label>
-
-                    <label class="flex items-start gap-3 p-4 rounded-lg border border-input bg-background hover:bg-accent hover:text-accent-foreground cursor-pointer transition-colors">
-                        <input type="checkbox" name="activities[]" value="viewpoint" 
-                               class="mt-1 h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary">
-                        <div class="space-y-1">
-                            <div class="text-sm font-medium">Viewpoints</div>
-                            <div class="text-xs text-muted-foreground">Scenic overlooks</div>
-                        </div>
-                    </label>
+                    </div>
+                    @endif
                 </div>
 
                 <div class="space-y-2">
@@ -164,6 +183,41 @@
                         <!-- Map Container -->
                         <div class="flex-1 p-6 relative">
                             <div id="trail-map" class="w-full h-full rounded-md border border-input bg-muted"></div>
+                            <div class="absolute top-8 left-8 z-[9999]">
+                                <div class="relative">
+                                    <!-- Search Input -->
+                                    <div class="bg-white rounded-lg shadow-lg border border-gray-200 flex items-center overflow-hidden transition-all duration-200" style="width: 300px;">
+                                        <div class="pl-3 pr-2 flex items-center text-gray-400">
+                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                                            </svg>
+                                        </div>
+                                        <input 
+                                            type="text" 
+                                            id="map-search-input" 
+                                            placeholder="Search for a location..." 
+                                            class="flex-1 py-2.5 px-2 text-sm focus:outline-none bg-transparent"
+                                            autocomplete="off"
+                                        >
+                                        <button type="button" id="clear-search-btn" class="hidden px-3 text-gray-400 hover:text-gray-600 transition-colors">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                                            </svg>
+                                        </button>
+                                        <div id="search-loading" class="hidden px-3">
+                                            <svg class="animate-spin h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24">
+                                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                            </svg>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Results Dropdown -->
+                                    <div id="search-results-dropdown" class="hidden absolute top-full left-0 right-0 mt-2 bg-white rounded-lg shadow-xl border border-gray-200 max-h-80 overflow-y-auto">
+                                        <!-- Results will be inserted here -->
+                                    </div>
+                                </div>
+                            </div>
                             <!-- Map Style Selector - Top Right -->
                             <div class="absolute top-2 right-2 z-[9999]">
                                 <div class="relative">
@@ -464,6 +518,7 @@
                                                 <option value="parking" data-icon="🅿️" data-color="#8B5CF6">🅿️ Parking</option>
                                                 <option value="restroom" data-icon="🚻" data-color="#EC4899">🚻 Restroom</option>
                                                 <option value="picnic" data-icon="🍽️" data-color="#F97316">🍽️ Picnic Area</option>
+                                                <option value="fishing" data-icon="🐟" data-color="#3B82F6">🐟 Fishing Area</option>
                                                 <option value="other" data-icon="📍" data-color="#6B7280">📍 Other</option>
                                             </select>
                                         </div>
@@ -777,7 +832,7 @@
             <div class="p-6 space-y-6">
                 <div class="space-y-2">
                     <h3 class="text-lg font-semibold">Trail Media</h3>
-                    <p class="text-sm text-muted-foreground">Upload up to 10 photos and add video links. First item will be featured.</p>
+                    <p class="text-sm text-muted-foreground">Upload up to 10 photos and unlimited video links. First item will be featured.</p>
                 </div>
 
                 <!-- Drag & Drop Zone for Photos -->
@@ -1029,6 +1084,10 @@
             this.highlightFiles = [];
             this.waypointModeEnabled = false;
             this.highlightModeEnabled = false; 
+            this.searchTimeout = null;
+            this.searchMarker = null;
+            this.currentSearchResults = [];
+            this.selectedSearchIndex = -1;
             this.setupMediaPreview();
             this.init();
         }
@@ -1159,8 +1218,14 @@
             try {
                 this.map = L.map('trail-map', {
                     maxZoom: 20,
-                    minZoom: 1
+                    minZoom: 1,
+                    zoomControl: false  // Disable default zoom control
                 }).setView([54.7804, -127.1698], 10);
+
+                // Add zoom control to bottom left
+                L.control.zoom({
+                    position: 'bottomleft'
+                }).addTo(this.map);
                 
                 // Define base layers for map styles
                 this.baseLayers = {
@@ -1185,6 +1250,7 @@
                 this.setupEventListeners();
                 this.setupMapClicks();
                 this.setupHighlightHandlers();
+                this.initMapSearch();
             } catch (error) {
             }
         }
@@ -2546,6 +2612,251 @@
                 input.value = JSON.stringify(this.highlights);
             }
         }
+
+        // ============================================
+        // MAP SEARCH FUNCTIONALITY
+        // ============================================
+        
+        initMapSearch() {
+            const searchInput = document.getElementById('map-search-input');
+            const clearBtn = document.getElementById('clear-search-btn');
+            const resultsDropdown = document.getElementById('search-results-dropdown');
+            
+            if (!searchInput) return;
+            
+            // Input event with debounce
+            searchInput.addEventListener('input', (e) => {
+                const query = e.target.value.trim();
+                
+                // Show/hide clear button
+                if (query.length > 0) {
+                    clearBtn.classList.remove('hidden');
+                } else {
+                    clearBtn.classList.add('hidden');
+                    this.hideSearchResults();
+                }
+                
+                // Debounce search
+                clearTimeout(this.searchTimeout);
+                if (query.length >= 3) {
+                    this.searchTimeout = setTimeout(() => {
+                        this.performSearch(query);
+                    }, 300);
+                } else {
+                    this.hideSearchResults();
+                }
+            });
+            
+            // Clear button
+            clearBtn.addEventListener('click', () => {
+                searchInput.value = '';
+                clearBtn.classList.add('hidden');
+                this.hideSearchResults();
+                this.removeSearchMarker();
+            });
+            
+            // Keyboard navigation
+            searchInput.addEventListener('keydown', (e) => {
+                if (!resultsDropdown.classList.contains('hidden')) {
+                    this.handleSearchKeyboard(e);
+                }
+            });
+            
+            // Click outside to close
+            document.addEventListener('click', (e) => {
+                if (!e.target.closest('.absolute.top-8.left-8')) {
+                    this.hideSearchResults();
+                }
+            });
+        }
+        
+        async performSearch(query) {
+            const loadingIcon = document.getElementById('search-loading');
+            const resultsDropdown = document.getElementById('search-results-dropdown');
+            
+            // Show loading
+            loadingIcon.classList.remove('hidden');
+            
+            try {
+                const response = await fetch(
+                    `https://nominatim.openstreetmap.org/search?` +
+                    `q=${encodeURIComponent(query)}` +
+                    `&format=json` +
+                    `&addressdetails=1` +
+                    `&limit=7`,
+                    {
+                        headers: {
+                            'User-Agent': 'TrailBuilder/1.0'
+                        }
+                    }
+                );
+                
+                if (!response.ok) throw new Error('Search failed');
+                
+                const results = await response.json();
+                this.currentSearchResults = results;
+                this.displaySearchResults(results);
+                
+            } catch (error) {
+                console.error('Search error:', error);
+                this.displaySearchError();
+            } finally {
+                loadingIcon.classList.add('hidden');
+            }
+        }
+        
+        displaySearchResults(results) {
+            const dropdown = document.getElementById('search-results-dropdown');
+            this.selectedSearchIndex = -1;
+            
+            if (results.length === 0) {
+                dropdown.innerHTML = '<div class="search-no-results">No results found</div>';
+                dropdown.classList.remove('hidden');
+                return;
+            }
+            
+            const html = results.map((result, index) => {
+                const name = result.name || result.display_name.split(',')[0];
+                const address = result.display_name;
+                
+                return `
+                    <div class="search-result-item" data-index="${index}">
+                        <div class="search-result-name">${this.escapeHtml(name)}</div>
+                        <div class="search-result-address">${this.escapeHtml(address)}</div>
+                    </div>
+                `;
+            }).join('');
+            
+            dropdown.innerHTML = html;
+            dropdown.classList.remove('hidden');
+            
+            // Add click handlers
+            dropdown.querySelectorAll('.search-result-item').forEach(item => {
+                item.addEventListener('click', () => {
+                    const index = parseInt(item.dataset.index);
+                    this.selectSearchResult(index);
+                });
+            });
+        }
+        
+        displaySearchError() {
+            const dropdown = document.getElementById('search-results-dropdown');
+            dropdown.innerHTML = '<div class="search-no-results">Search failed. Please try again.</div>';
+            dropdown.classList.remove('hidden');
+        }
+        
+        selectSearchResult(index) {
+            const result = this.currentSearchResults[index];
+            if (!result) return;
+            
+            const lat = parseFloat(result.lat);
+            const lon = parseFloat(result.lon);
+            
+            // Fly to location
+            this.map.flyTo([lat, lon], 15, {
+                duration: 1.5
+            });
+            
+            // Add temporary search marker
+            this.addSearchMarker(lat, lon, result.display_name);
+            
+            // Clear search
+            document.getElementById('map-search-input').value = '';
+            document.getElementById('clear-search-btn').classList.add('hidden');
+            this.hideSearchResults();
+        }
+        
+        addSearchMarker(lat, lon, name) {
+            // Remove existing search marker
+            this.removeSearchMarker();
+            
+            // Create pulsing marker
+            const pulseIcon = L.divIcon({
+                html: `
+                    <div class="relative">
+                        <div class="absolute inset-0 bg-blue-500 rounded-full opacity-50 search-marker-pulse"></div>
+                        <div class="relative w-6 h-6 bg-blue-600 rounded-full border-2 border-white shadow-lg"></div>
+                    </div>
+                `,
+                className: 'custom-search-marker',
+                iconSize: [24, 24],
+                iconAnchor: [12, 12]
+            });
+            
+            this.searchMarker = L.marker([lat, lon], {
+                icon: pulseIcon
+            }).addTo(this.map);
+            
+            this.searchMarker.bindPopup(`<b>Search Result</b><br>${name}`).openPopup();
+            
+            // Auto remove after 10 seconds
+            setTimeout(() => {
+                this.removeSearchMarker();
+            }, 10000);
+        }
+        
+        removeSearchMarker() {
+            if (this.searchMarker) {
+                this.map.removeLayer(this.searchMarker);
+                this.searchMarker = null;
+            }
+        }
+        
+        hideSearchResults() {
+            const dropdown = document.getElementById('search-results-dropdown');
+            if (dropdown) {
+                dropdown.classList.add('hidden');
+            }
+            this.selectedSearchIndex = -1;
+        }
+        
+        handleSearchKeyboard(e) {
+            const items = document.querySelectorAll('.search-result-item');
+            if (items.length === 0) return;
+            
+            // Arrow Down
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                this.selectedSearchIndex = Math.min(this.selectedSearchIndex + 1, items.length - 1);
+                this.updateSearchSelection(items);
+            }
+            // Arrow Up
+            else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                this.selectedSearchIndex = Math.max(this.selectedSearchIndex - 1, 0);
+                this.updateSearchSelection(items);
+            }
+            // Enter
+            else if (e.key === 'Enter') {
+                e.preventDefault();
+                if (this.selectedSearchIndex >= 0) {
+                    this.selectSearchResult(this.selectedSearchIndex);
+                }
+            }
+            // Escape
+            else if (e.key === 'Escape') {
+                e.preventDefault();
+                this.hideSearchResults();
+                document.getElementById('map-search-input').blur();
+            }
+        }
+        
+        updateSearchSelection(items) {
+            items.forEach((item, index) => {
+                if (index === this.selectedSearchIndex) {
+                    item.classList.add('active');
+                    item.scrollIntoView({ block: 'nearest' });
+                } else {
+                    item.classList.remove('active');
+                }
+            });
+        }
+        
+        escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
     }
 
     // Photo Upload Handler
@@ -2619,13 +2930,6 @@
         }
 
         addVideoUrl(url) {            
-            const totalMedia = this.photos.length + this.videos.length;
-            
-            if (totalMedia >= this.maxTotal) {
-                alert(`Maximum of ${this.maxTotal} media items (photos + videos) reached`);
-                return;
-            }
-            
             // Validate URL format
             const embedUrl = this.getVideoEmbedUrl(url);
             
@@ -3760,6 +4064,66 @@
 #map-layers-dropdown {
     z-index: 1000;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* Map Search Styles */
+#map-search-input:focus {
+    outline: none;
+}
+
+#search-results-dropdown {
+    z-index: 10000;
+}
+
+.search-result-item {
+    padding: 12px 16px;
+    cursor: pointer;
+    border-bottom: 1px solid #f3f4f6;
+    transition: background-color 0.15s;
+}
+
+.search-result-item:last-child {
+    border-bottom: none;
+}
+
+.search-result-item:hover {
+    background-color: #f9fafb;
+}
+
+.search-result-item.active {
+    background-color: #eff6ff;
+}
+
+.search-result-name {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #111827;
+    margin-bottom: 2px;
+}
+
+.search-result-address {
+    font-size: 0.75rem;
+    color: #6b7280;
+}
+
+.search-no-results {
+    padding: 16px;
+    text-align: center;
+    color: #6b7280;
+    font-size: 0.875rem;
+}
+
+.search-marker-pulse {
+    animation: pulse-search 2s ease-in-out infinite;
+}
+
+@keyframes pulse-search {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.5;
+    }
 }
 </style>
 @endpush

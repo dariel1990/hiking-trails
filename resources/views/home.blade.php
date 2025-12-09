@@ -290,7 +290,7 @@
             <div class="donation-content p-10">
                 <div class="donation-pitch text-lg leading-relaxed text-[#483E3E]">
                     <p class="mb-5">
-                        <strong class="text-[#10221B] font-semibold">Xplore Smithers is a 100% independent initiative</strong> created to promote ethical, authentic tourism and to support our local economy. 🌲✨
+                        <strong class="text-[#10221B] font-semibold">Xplore Smithers is a 100% independent initiative</strong> created to promote ethical, authentic tourism and to support our local economy.
                     </p>
                     
                     <p class="mb-5">
@@ -329,13 +329,13 @@
 
                 <!-- Donate Button -->
                 <div class="text-center pt-8 border-t border-gray-200">
-                    <a href="{{ $donationUrl ?? '#' }}" 
+                    <a href="https://xploresmithers.com/support/" 
                        class="inline-flex items-center gap-3 bg-gradient-to-r from-[#10221B] to-[#1DC5CE] text-white px-10 py-4 rounded-full font-semibold text-lg transition-all duration-300 shadow-lg hover:shadow-xl hover:-translate-y-1">
                         <i class="fas fa-hand-holding-heart text-xl"></i>
                         Donate & Support
                     </a>
                     <p class="text-[#483E3E] opacity-70 text-sm italic mt-6">
-                        Thank you for helping us share the beauty of Northern BC 🙏
+                        Thank you for helping us share the beauty of Northern BC
                     </p>
                 </div>
             </div>

@@ -110,50 +110,65 @@
                     <p class="text-sm text-muted-foreground">What activities are available on this trail?</p>
                 </div>
                 
-                <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    @php 
-                        $trailActivities = $trail->activities->pluck('slug')->toArray();
+                <div class="space-y-4">
+                    @php
+                        // Get IDs of activities already assigned to this trail
+                        $trailActivityIds = $trail->activities->pluck('id')->toArray();
+                        
+                        // Group activities by season
+                        $summerActivities = $activities->filter(function($activity) {
+                            return $activity->season_applicable === 'summer' || $activity->season_applicable === 'both';
+                        });
+                        $winterActivities = $activities->filter(function($activity) {
+                            return $activity->season_applicable === 'winter' || $activity->season_applicable === 'both';
+                        });
                     @endphp
                     
-                    <label class="flex items-start gap-3 p-4 rounded-lg border border-input bg-background hover:bg-accent hover:text-accent-foreground cursor-pointer transition-colors">
-                        <input type="checkbox" name="activities[]" value="hiking" 
-                            {{ in_array('hiking', old('activities', $trailActivities)) ? 'checked' : '' }}
-                            class="mt-1 h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary">
-                        <div class="space-y-1">
-                            <div class="text-sm font-medium">Hiking</div>
-                            <div class="text-xs text-muted-foreground">Walking trails</div>
+                    @if($summerActivities->count() > 0)
+                    <div>
+                        <div class="text-sm font-medium text-gray-700 mb-3">Summer Activities</div>
+                            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                @foreach($summerActivities as $activity)
+                                <label class="flex items-start gap-3 p-4 rounded-lg border border-input bg-background hover:bg-accent hover:text-accent-foreground cursor-pointer transition-colors">
+                                    <input type="checkbox" name="activities[]" value="{{ $activity->id }}" 
+                                        {{ in_array($activity->id, old('activities', $trailActivityIds)) ? 'checked' : '' }}
+                                        class="mt-1 h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary">
+                                    <div class="space-y-1">
+                                        <div class="text-sm font-medium">{{ $activity->name }}</div>
+                                        <div class="text-xs text-muted-foreground">
+                                            @if($activity->season_applicable === 'both')
+                                                <span class="text-blue-600">All seasons</span>
+                                            @else
+                                                <span class="text-amber-600">Summer only</span>
+                                            @endif
+                                        </div>
+                                    </div>
+                                </label>
+                                @endforeach
+                            </div>
                         </div>
-                    </label>
-
-                    <label class="flex items-start gap-3 p-4 rounded-lg border border-input bg-background hover:bg-accent hover:text-accent-foreground cursor-pointer transition-colors">
-                        <input type="checkbox" name="activities[]" value="fishing" 
-                            {{ in_array('fishing', old('activities', $trailActivities)) ? 'checked' : '' }}
-                            class="mt-1 h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary">
-                        <div class="space-y-1">
-                            <div class="text-sm font-medium">Fishing</div>
-                            <div class="text-xs text-muted-foreground">Fishing spots</div>
+                    @endif
+                    
+                    @if($winterActivities->where('season_applicable', 'winter')->count() > 0)
+                    <div>
+                        <div class="text-sm font-medium text-gray-700 mb-3">Winter Activities</div>
+                            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                @foreach($winterActivities->where('season_applicable', 'winter') as $activity)
+                                <label class="flex items-start gap-3 p-4 rounded-lg border border-input bg-background hover:bg-accent hover:text-accent-foreground cursor-pointer transition-colors">
+                                    <input type="checkbox" name="activities[]" value="{{ $activity->id }}" 
+                                        {{ in_array($activity->id, old('activities', $trailActivityIds)) ? 'checked' : '' }}
+                                        class="mt-1 h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary">
+                                    <div class="space-y-1">
+                                        <div class="text-sm font-medium">{{ $activity->name }}</div>
+                                        <div class="text-xs text-muted-foreground">
+                                            <span class="text-cyan-600">Winter only</span>
+                                        </div>
+                                    </div>
+                                </label>
+                                @endforeach
+                            </div>
                         </div>
-                    </label>
-
-                    <label class="flex items-start gap-3 p-4 rounded-lg border border-input bg-background hover:bg-accent hover:text-accent-foreground cursor-pointer transition-colors">
-                        <input type="checkbox" name="activities[]" value="camping" 
-                            {{ in_array('camping', old('activities', $trailActivities)) ? 'checked' : '' }}
-                            class="mt-1 h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary">
-                        <div class="space-y-1">
-                            <div class="text-sm font-medium">Camping</div>
-                            <div class="text-xs text-muted-foreground">Camping areas</div>
-                        </div>
-                    </label>
-
-                    <label class="flex items-start gap-3 p-4 rounded-lg border border-input bg-background hover:bg-accent hover:text-accent-foreground cursor-pointer transition-colors">
-                        <input type="checkbox" name="activities[]" value="viewpoint" 
-                            {{ in_array('viewpoint', old('activities', $trailActivities)) ? 'checked' : '' }}
-                            class="mt-1 h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary">
-                        <div class="space-y-1">
-                            <div class="text-sm font-medium">Viewpoints</div>
-                            <div class="text-xs text-muted-foreground">Scenic overlooks</div>
-                        </div>
-                    </label>
+                    @endif
                 </div>
 
                 <div class="space-y-2">
@@ -485,6 +500,7 @@
                                                 <option value="parking" data-icon="🅿️" data-color="#8B5CF6">🅿️ Parking</option>
                                                 <option value="restroom" data-icon="🚻" data-color="#EC4899">🚻 Restroom</option>
                                                 <option value="picnic" data-icon="🍽️" data-color="#F97316">🍽️ Picnic Area</option>
+                                                <option value="fishing" data-icon="🐟" data-color="#3B82F6">🐟 Fishing Area</option>
                                                 <option value="other" data-icon="📍" data-color="#6B7280">📍 Other</option>
                                             </select>
                                         </div>
@@ -817,19 +833,22 @@
             <div class="p-6 space-y-6">
                 <div class="space-y-2">
                     <h3 class="text-lg font-semibold">Trail Media</h3>
-                    <p class="text-sm text-muted-foreground">Upload up to 10 photos and video links. Drag to reorder, click star to set featured.</p>
+                    <p class="text-sm text-muted-foreground">Upload photos and video links. Drag to reorder, click star to set featured.</p>
                 </div>
                 
                 <!-- Existing Media Display -->
-                @if($trail->media && $trail->media->count() > 0)
+                @php
+                    $trailOnlyMedia = $trail->generalMedia;
+                @endphp
+                @if($trailOnlyMedia->count() > 0)
                 <div class="space-y-4">
                     <div class="flex items-center justify-between">
-                        <h4 class="font-medium text-sm">Current Media ({{ $trail->media->count() }})</h4>
+                        <h4 class="font-medium text-sm">Current Media ({{ $trailOnlyMedia->count() }})</h4>
                         <p class="text-xs text-muted-foreground">Manage your media below</p>
                     </div>
                     
                     <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-                        @foreach($trail->media as $media)
+                        @foreach($trailOnlyMedia as $media)
                         <div class="space-y-2" data-media-id="{{ $media->id }}">
                             @if($media->media_type === 'photo')
                                 {{-- Photo Display --}}
@@ -918,16 +937,14 @@
                 </div>
                 @endif
 
-                <!-- Upload New Media Section -->
-                @if(!$trail->media || $trail->media->count() < 10)
-                <div class="space-y-4 {{ $trail->media && $trail->media->count() > 0 ? 'border-t pt-6' : '' }}">
-                    @if($trail->media && $trail->media->count() > 0)
-                    <h4 class="font-medium text-sm">Upload Additional Media ({{ 10 - $trail->media->count() }} remaining)</h4>
+                <div class="space-y-4 {{ $trailOnlyMedia->count() > 0 ? 'border-t pt-6' : '' }}">
+                    @if($trailOnlyMedia->count() > 0)
+                    <h4 class="font-medium text-sm">Upload Additional Media</h4>
                     @endif
-                    
+
                     <!-- Drag & Drop Zone -->
                     <div id="photo-upload-zone" class="border-2 border-dashed border-input rounded-lg p-8 text-center hover:border-primary transition-colors cursor-pointer">
-                        <input type="file" id="photo-input" name="photos[]" multiple accept="image/*" class="hidden" max="10">
+                        <input type="file" id="photo-input" name="photos[]" multiple accept="image/*" class="hidden">
                         <div id="upload-prompt">
                             <svg class="mx-auto h-12 w-12 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
@@ -935,10 +952,21 @@
                             <p class="mt-2 text-sm text-muted-foreground">
                                 <span class="font-semibold text-primary">Click to upload</span> or drag and drop
                             </p>
-                            <p class="text-xs text-muted-foreground mt-1">PNG, JPG, GIF up to 10MB (max 10 photos)</p>
+                            <p class="text-xs text-muted-foreground mt-1">PNG, JPG, GIF up to 10MB</p>
                         </div>
                     </div>
                     
+                    <!-- Photo Preview Grid -->
+                    <div id="photo-preview-grid" class="hidden">
+                        <div class="flex items-center justify-between mb-3">
+                            <p class="text-sm font-medium">New Media (<span id="photo-count">0</span>)</p>
+                            <button type="button" id="clear-photos" class="text-sm text-red-600 hover:text-red-800">Clear All</button>
+                        </div>
+                        <div id="photo-previews" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+                            <!-- Photo previews will be inserted here -->
+                        </div>
+                    </div>
+
                     <!-- Video URL Input Section -->
                     <div class="space-y-3 mt-4 p-4 bg-gray-50 rounded-lg border">
                         <label class="text-sm font-medium">Add Video URL (Optional)</label>
@@ -955,31 +983,11 @@
                         </div>
                         <p class="text-xs text-muted-foreground">Add YouTube or Vimeo video links</p>
                     </div>
-                    
-                    <!-- Photo Preview Grid -->
-                    <div id="photo-preview-grid" class="hidden">
-                        <div class="flex items-center justify-between mb-3">
-                            <p class="text-sm font-medium">New Media (<span id="photo-count">0</span>/10)</p>
-                            <button type="button" id="clear-photos" class="text-sm text-red-600 hover:text-red-800">Clear All</button>
-                        </div>
-                        <div id="photo-previews" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-                            <!-- Photo previews will be inserted here -->
-                        </div>
-                    </div>
-                </div>
-                @else
-                <div class="border-t pt-6">
-                    <div class="rounded-lg bg-yellow-50 border border-yellow-200 p-4 text-center">
-                        <p class="text-sm text-yellow-800">
-                            <span class="font-semibold">Maximum photos reached.</span> Delete existing photos to upload new ones.
-                        </p>
-                    </div>
-                </div>
-                @endif
 
-                <!-- Hidden inputs for photo data -->
-                <input type="hidden" name="featured_photo_index" id="featured-photo-index" value="-1">
-                <input type="hidden" name="featured_photo_id" id="featured-photo-id" value="">
+                    <!-- Hidden inputs for photo data -->
+                    <input type="hidden" name="featured_photo_index" id="featured-photo-index" value="-1">
+                    <input type="hidden" name="featured_photo_id" id="featured-photo-id" value="">
+                </div>
             </div>
         </div>
 
@@ -1051,6 +1059,9 @@
     </div>
 
 @push('scripts')
+@php
+    $trailOnlyMedia = $trail->media->where('trail_feature_id', null)->values();
+@endphp
 <script>
     // Add this if you haven't already from Day 9
     function showNotification(title, message, type = 'info') {
@@ -3421,10 +3432,8 @@
             this.videos = [];
             
             // Initialize missing properties
-            this.existingPhotos = @json($trail->media ?? []); // Load existing photos from backend
+            this.existingPhotos = @json($trailOnlyMedia ?? []); // Load existing photos from backend
             this.deletedPhotos = [];
-            this.maxPhotos = 10;
-            this.maxTotal = 10; // Total media items (photos + videos)
             
             // NEW: Check if there's already a featured photo in existing photos
             const hasFeaturedPhoto = this.existingPhotos.some(photo => photo.is_featured);
@@ -3518,12 +3527,7 @@
         }
 
         addVideoUrl(url) {
-            const totalMedia = this.existingPhotos.length + this.photos.length + this.videos.length;
-            
-            if (totalMedia >= this.maxTotal) {
-                alert(`Maximum of ${this.maxTotal} media items (photos + videos) reached`);
-                return;
-            }
+            // Videos are unlimited (they're just URLs)
             
             // Validate URL format
             const embedUrl = this.getVideoEmbedUrl(url);
@@ -3610,14 +3614,6 @@
         }
 
         handleFiles(files) {
-            const totalPhotos = this.existingPhotos.length + this.photos.length;
-            const remainingSlots = this.maxPhotos - totalPhotos;
-            
-            if (files.length > remainingSlots) {
-                alert(`You can only upload ${remainingSlots} more photo(s). Maximum is ${this.maxPhotos} photos total.`);
-                return;
-            }
-
             Array.from(files).forEach(file => {
                 if (!file.type.startsWith('image/')) {
                     alert(`${file.name} is not an image file`);
@@ -3697,11 +3693,6 @@
             
             // Update the new photos preview only
             this.render();
-        }
-
-        canAddMore() {
-            const totalPhotos = this.existingPhotos.length + this.photos.length;
-            return totalPhotos < this.maxPhotos;
         }
 
         addPhoto(file) {
@@ -3787,7 +3778,7 @@
                 return;
             }
 
-            const totalMedia = this.photos.length + this.videos.length;
+            const totalMedia = this.photos.length;
 
             // Update count
             if (photoCount) {

@@ -10,6 +10,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use App\Models\TrailFeature;
+use App\Models\ActivityType;
 use Illuminate\Support\Facades\Log;
 
 use Exception;
@@ -48,7 +49,12 @@ class AdminTrailController extends Controller
      */
     public function create()
     {
-        return view('admin.trails.create');
+        // Fetch all active activities from the database
+        $activities = ActivityType::where('is_active', true)
+            ->orderBy('name')
+            ->get();
+        
+        return view('admin.trails.create', compact('activities'));
     }
 
     /**
@@ -78,7 +84,7 @@ class AdminTrailController extends Controller
             'is_featured' => 'boolean',
             'route_coordinates' => 'nullable|string',
             'waypoints' => 'nullable|string',
-            'photos' => 'nullable|array|max:10',
+            'photos' => 'nullable|array',
             'photos.*' => 'image|mimes:jpeg,png,jpg,gif|max:10240',
             'trail_video_urls' => 'nullable|array',
             'trail_video_urls.*' => 'nullable|url|max:500',
@@ -86,7 +92,7 @@ class AdminTrailController extends Controller
             'highlight_video_url_*' => 'nullable|url|max:500',
             'gpx_file' => 'nullable|file|mimes:gpx,xml|max:10240',
             'activities' => 'nullable|array',
-            'activities.*' => 'string',
+            'activities.*' => 'integer|exists:activity_types,id',
             'activity_notes' => 'nullable|string|max:1000',
             'seasonal' => 'nullable|array',
             'seasonal.*.conditions' => 'nullable|string|max:255',
@@ -154,16 +160,14 @@ class AdminTrailController extends Controller
 
         // Handle Activities
         if ($request->has('activities') && is_array($request->activities)) {
-            foreach ($request->activities as $activityValue) {
-                $activityType = \App\Models\ActivityType::firstOrCreate(
-                    ['slug' => $activityValue],
-                    ['name' => ucfirst($activityValue)]
-                );
-                
-                $trail->activities()->attach($activityType->id, [
+            // Activities now come as IDs from the form
+            $syncData = [];
+            foreach ($request->activities as $activityId) {
+                $syncData[$activityId] = [
                     'activity_notes' => $request->activity_notes,
-                ]);
+                ];
             }
+            $trail->activities()->sync($syncData);
         }
 
         // Handle Seasonal Data
@@ -344,7 +348,12 @@ class AdminTrailController extends Controller
     {
         $trail->load(['features' => function($query) {
             $query->with('media'); // Ensure media is loaded
-        }, 'media']);
+        }, 'media', 'activities']);
+        
+        // Fetch all active activities for the form
+        $activities = \App\Models\ActivityType::where('is_active', true)
+            ->orderBy('name')
+            ->get();
         
         // Transform media to include full URL
         $trail->media->transform(function($media) {
@@ -353,6 +362,8 @@ class AdminTrailController extends Controller
             }
             return $media;
         });
+
+        $trailOnlyMedia = $trail->media->whereNull('trail_feature_id');
 
         foreach ($trail->features as $feature) {
             if ($feature->media) {
@@ -370,7 +381,7 @@ class AdminTrailController extends Controller
             $trail->route_coordinates = json_decode($trail->route_coordinates, true);
         }
         
-        return view('admin.trails.edit', compact('trail'));
+        return view('admin.trails.edit', compact('trail', 'activities', 'trailOnlyMedia'));
     }
 
     /**
@@ -399,7 +410,7 @@ class AdminTrailController extends Controller
             'parking_info' => 'nullable|string',
             'safety_notes' => 'nullable|string',
             'is_featured' => 'boolean',
-            'photos' => 'nullable|array|max:10',
+            'photos' => 'nullable|array',
             'photos.*' => 'image|mimes:jpeg,png,jpg,gif|max:10240',
             'trail_video_urls' => 'nullable|array',
             'trail_video_urls.*' => 'nullable|url|max:500',
@@ -411,7 +422,7 @@ class AdminTrailController extends Controller
             'gpx_file' => 'nullable|file|mimes:gpx,xml|max:10240',
             'gpx_action' => 'nullable|in:keep_manual,use_gpx',
             'activities' => 'nullable|array',
-            'activities.*' => 'string',
+            'activities.*' => 'integer|exists:activity_types,id',
             'activity_notes' => 'nullable|string|max:1000',
             'seasonal' => 'nullable|array',
             'seasonal.*.conditions' => 'nullable|string|max:255',
@@ -424,8 +435,10 @@ class AdminTrailController extends Controller
             'name', 'description', 'location', 'difficulty_level', 
             'distance_km', 'elevation_gain_m', 'estimated_time_hours', 
             'trail_type', 'status', 'best_seasons', 'directions', 
-            'parking_info', 'safety_notes', 'is_featured'
+            'parking_info', 'safety_notes'
         ]);
+
+        $data['is_featured'] = $request->has('is_featured');
 
         // Set coordinates
         $data['start_coordinates'] = [$request->start_lat, $request->start_lng];
@@ -485,19 +498,18 @@ class AdminTrailController extends Controller
         $trail->update($data);
 
         // Update Activities
-        $trail->activities()->detach(); // Remove all existing
-        
         if ($request->has('activities') && is_array($request->activities)) {
-            foreach ($request->activities as $activityValue) {
-                $activityType = \App\Models\ActivityType::firstOrCreate(
-                    ['slug' => $activityValue],
-                    ['name' => ucfirst($activityValue)]
-                );
-                
-                $trail->activities()->attach($activityType->id, [
+            // Activities now come as IDs from the form
+            $syncData = [];
+            foreach ($request->activities as $activityId) {
+                $syncData[$activityId] = [
                     'activity_notes' => $request->activity_notes,
-                ]);
+                ];
             }
+            $trail->activities()->sync($syncData);
+        } else {
+            // If no activities selected, detach all
+            $trail->activities()->detach();
         }
 
         // Update Seasonal Data

@@ -6,6 +6,8 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
     <title>@yield('title', 'Trail Finder - Discover Ethical Adventures')</title>
+    <!-- Meta Tags Stack -->
+    @stack('meta')
     <link rel="icon" type="image/png" href="{{ asset('images/logo.png') }}">
     
     <!-- SEO Meta Tags -->

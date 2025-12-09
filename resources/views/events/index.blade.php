@@ -257,7 +257,7 @@
     </div>
 
     <!-- Main Content -->
-    <div class="container mx-auto px-4 py-10">
+    <div class="container mx-auto px-4 py-4">
 
         @if($view === 'list')
             <!-- List View -->
@@ -277,7 +277,7 @@
                                     
                                     <!-- Event Title -->
                                     <h3 class="text-lg font-bold mb-3 line-clamp-2 flex-1" style="color: var(--color-accent);">
-                                        <a href="#" onClick="openEventModal({{ $event->id }})" class="hover:opacity-80 transition">
+                                        <a href="#" onClick="openEventModal({{ $event->id }})" class="hover:opacity-80 transition truncate">
                                             {{ $event->title }}
                                         </a>
                                     </h3>
@@ -310,11 +310,11 @@
                                         @endif
                                     </div>
                                     
-                                    <!-- Description -->
+                                    {{-- <!-- Description -->
                                     @if($event->description)
                                         <p class="text-gray-600 text-sm mb-4 line-clamp-3">{{ $event->description }}</p>
                                     @endif
-                                    
+                                     --}}
                                     <!-- Actions -->
                                     <div class="flex gap-2 mt-auto">
                                         <button onclick="openEventModal({{ $event->id }})" 
@@ -350,7 +350,7 @@
                     </div>
                     
                     <!-- Pagination -->
-                    <div class="mt-10">
+                    <div class="mt-5">
                         {{ $upcomingEvents->links() }}
                     </div>
                 @else
@@ -366,7 +366,7 @@
             <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-8">
                 
                 <!-- Calendar Header -->
-                <div class="flex items-center justify-between mb-8">
+                <div class="flex items-center justify-between mb-1">
                     <a href="{{ route('events.index', ['view' => 'calendar', 'month' => $prevMonth->month, 'year' => $prevMonth->year]) }}" 
                        class="text-gray-600 hover:text-gray-900 transition p-2">
                         <i class="fas fa-chevron-left text-2xl"></i>

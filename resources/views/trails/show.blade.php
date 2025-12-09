@@ -1,7 +1,32 @@
 @extends('layouts.public')
 
 @section('title', $trail->name . ' - Trail Finder')
+@push('meta')
+<!-- Open Graph / Facebook Meta Tags -->
+<meta property="og:type" content="website">
+<meta property="og:url" content="{{ url()->current() }}">
+<meta property="og:title" content="{{ $trail->name }} - {{ $trail->difficulty_text }} Trail">
+<meta property="og:description" content="{{ Str::limit($trail->description, 200) }}">
+@if($trail->media && $trail->media->count() > 0)
+<meta property="og:image" content="{{ url($trail->media->first()->url) }}">
+<meta property="og:image:secure_url" content="{{ url($trail->media->first()->url) }}">
+<meta property="og:image:type" content="image/jpeg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="{{ $trail->name }} - Trail Photo">
+@endif
+<meta property="og:site_name" content="Trail Finder">
 
+<!-- Twitter Card Meta Tags -->
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:url" content="{{ url()->current() }}">
+<meta name="twitter:title" content="{{ $trail->name }} - {{ $trail->difficulty_text }} Trail">
+<meta name="twitter:description" content="{{ Str::limit($trail->description, 200) }}">
+@if($trail->media && $trail->media->count() > 0)
+<meta name="twitter:image" content="{{ url($trail->media->first()->url) }}">
+<meta name="twitter:image:alt" content="{{ $trail->name }} - Trail Photo">
+@endif
+@endpush
 @push('styles')
 <link href="https://cesium.com/downloads/cesiumjs/releases/1.95/Build/Cesium/Widgets/widgets.css" rel="stylesheet">
 <style>
@@ -556,12 +581,12 @@
                 <!-- Photos Tab -->
                 <div id="photos-tab" class="tab-content">
                     <!-- Photos & Videos Section -->
-                    @if($trail->media && $trail->media->count() > 0)
+                    @if($generalMedia->count() > 0)
                     <div class="rounded-lg border bg-card text-card-foreground shadow-sm">
                         <div class="p-6">
-                            <h3 class="text-lg font-semibold mb-4">Media ({{ $trail->media->count() }})</h3>
+                            <h3 class="text-lg font-semibold mb-4">Media ({{ $generalMedia->count() }})</h3>
                             <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
-                                @foreach($trail->media as $media)
+                                @foreach($generalMedia as $media)
                                     @if($media->media_type === 'photo')
                                         {{-- Photo Display --}}
                                         <div class="relative group overflow-hidden rounded-lg border border-input cursor-pointer"
@@ -777,6 +802,14 @@
                             <button id="download-gpx-btn" class="w-full bg-gray-600 hover:bg-gray-700 text-white py-3 px-4 rounded-lg font-semibold transition-all duration-200">
                                 Download GPX
                             </button>
+
+                            <!-- Share Button (NEW) -->
+                            <button id="share-trail-btn" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-3 px-4 rounded-lg font-semibold transition-all duration-200 flex items-center justify-center gap-2">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"/>
+                                </svg>
+                                Share Trail
+                            </button>
                         </div>
                         
                         <!-- Leave No Trace -->
@@ -823,6 +856,99 @@
         <!-- Caption -->
         <div id="modal-caption" class="px-6 pb-6 text-center text-gray-700">
             <!-- Caption will be dynamically inserted here -->
+        </div>
+    </div>
+</div>
+
+<!-- Share Modal (COMPLETE VERSION) -->
+<div id="share-modal" 
+     class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden items-center justify-center p-4"
+     style="display: none;">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden transform transition-all"
+         onclick="event.stopPropagation()">
+        <!-- Modal Header -->
+        <div class="bg-gradient-to-r from-emerald-500 to-emerald-600 px-6 py-4 flex justify-between items-center">
+            <h3 class="text-xl font-bold text-white">Share This Trail</h3>
+            <button id="close-share-modal" 
+                    class="text-white hover:text-gray-200 transition-colors">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+            </button>
+        </div>
+
+        <!-- Modal Body -->
+        <div class="p-6">
+            <!-- Trail Preview -->
+            <div class="mb-6 p-4 bg-gray-50 rounded-lg">
+                <h4 class="font-semibold text-gray-900 mb-1">{{ $trail->name }}</h4>
+                <p class="text-sm text-gray-600 flex items-center">
+                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
+                    </svg>
+                    {{ $trail->location }}
+                </p>
+            </div>
+
+            <!-- Copy Link Section -->
+            <div class="mb-6">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Trail Link</label>
+                <div class="flex gap-2">
+                    <input type="text" 
+                           id="trail-url" 
+                           readonly 
+                           value="{{ url()->current() }}"
+                           class="flex-1 px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-700 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                    <button id="copy-link-btn"
+                            class="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors flex items-center gap-2 font-medium whitespace-nowrap">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+                        </svg>
+                        <span id="copy-btn-text">Copy</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Social Share Buttons -->
+            <div class="space-y-3">
+                <p class="text-sm font-medium text-gray-700 mb-3">Share via social media</p>
+                
+                <!-- Facebook -->
+                <button onclick="shareToFacebook()" 
+                        class="w-full flex items-center gap-3 px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-sm hover:shadow-md">
+                    <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+                    </svg>
+                    <span class="font-semibold">Share on Facebook</span>
+                </button>
+
+                <!-- Twitter/X -->
+                <button onclick="shareToTwitter()" 
+                        class="w-full flex items-center gap-3 px-4 py-3 bg-black text-white rounded-lg hover:bg-gray-800 transition-colors shadow-sm hover:shadow-md">
+                    <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+                    </svg>
+                    <span class="font-semibold">Share on X (Twitter)</span>
+                </button>
+
+                <!-- WhatsApp -->
+                <button onclick="shareToWhatsApp()" 
+                        class="w-full flex items-center gap-3 px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors shadow-sm hover:shadow-md">
+                    <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/>
+                    </svg>
+                    <span class="font-semibold">Share on WhatsApp</span>
+                </button>
+
+                <!-- Email -->
+                <button onclick="shareViaEmail()" 
+                        class="w-full flex items-center gap-3 px-4 py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors shadow-sm hover:shadow-md">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+                    </svg>
+                    <span class="font-semibold">Share via Email</span>
+                </button>
+            </div>
         </div>
     </div>
 </div>
@@ -981,7 +1107,10 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     
     // Photo Lightbox
-    const trailPhotos = @json($trail->media->map(function($photo) {
+    @php
+        $generalMediaForJs = $trail->generalMedia;
+    @endphp
+    const trailPhotos = @json($generalMediaForJs->map(function($photo) {
         return ['url' => $photo->url, 'caption' => $photo->caption];
     }) ?? []);
 
@@ -1472,6 +1601,7 @@ document.addEventListener('DOMContentLoaded', function() {
     if (window.location.hash === '#route' || document.getElementById('route-tab')?.classList.contains('active')) {
         setTimeout(loadElevationIfNeeded, 500);
     }
+    
     // Download GPX functionality
     document.getElementById('download-gpx-btn')?.addEventListener('click', function() {
         if (!trail.route_coordinates || trail.route_coordinates.length < 2) {
@@ -1504,7 +1634,126 @@ document.addEventListener('DOMContentLoaded', function() {
             </trkseg>
         </trk>
         </gpx>`;
+    }
+
+    // Share Modal Functionality (NEW)
+    const shareBtn = document.getElementById('share-trail-btn');
+    const shareModal = document.getElementById('share-modal');
+    const closeModalBtn = document.getElementById('close-share-modal');
+    const copyLinkBtn = document.getElementById('copy-link-btn');
+    const trailUrlInput = document.getElementById('trail-url');
+
+    // Open modal
+    shareBtn?.addEventListener('click', function() {
+        shareModal.style.display = 'flex';
+        setTimeout(() => {
+            shareModal.classList.remove('hidden');
+        }, 10);
+    });
+
+    // Close modal
+    function closeShareModal() {
+        shareModal.classList.add('hidden');
+        setTimeout(() => {
+            shareModal.style.display = 'none';
+        }, 300);
+    }
+
+    closeModalBtn?.addEventListener('click', closeShareModal);
+    
+    // Close on backdrop click
+    shareModal?.addEventListener('click', function(e) {
+        if (e.target === shareModal) {
+            closeShareModal();
         }
+    });
+
+    // Close on Escape key
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && !shareModal.classList.contains('hidden')) {
+            closeShareModal();
+        }
+    });
+
+    // Copy link functionality
+    copyLinkBtn?.addEventListener('click', async function() {
+        const url = trailUrlInput.value;
+        const btnText = document.getElementById('copy-btn-text');
+        
+        try {
+            if (navigator.clipboard && window.isSecureContext) {
+                await navigator.clipboard.writeText(url);
+            } else {
+                // Fallback for older browsers
+                trailUrlInput.select();
+                document.execCommand('copy');
+            }
+            
+            // Success feedback
+            btnText.textContent = 'Copied!';
+            copyLinkBtn.classList.remove('bg-emerald-600', 'hover:bg-emerald-700');
+            copyLinkBtn.classList.add('bg-green-600');
+            
+            setTimeout(() => {
+                btnText.textContent = 'Copy';
+                copyLinkBtn.classList.remove('bg-green-600');
+                copyLinkBtn.classList.add('bg-emerald-600', 'hover:bg-emerald-700');
+            }, 2000);
+        } catch (err) {
+            console.error('Failed to copy:', err);
+            btnText.textContent = 'Failed';
+            setTimeout(() => {
+                btnText.textContent = 'Copy';
+            }, 2000);
+        }
+    });
+
+    // Trail data for sharing
+    const trailData = {
+        name: '{{ addslashes($trail->name) }}',
+        difficulty: '{{ $trail->difficulty_text }}',
+        location: '{{ addslashes($trail->location) }}',
+        distance: '{{ $trail->distance ? number_format($trail->distance, 1) . " km" : "" }}'
+    };
+
+    // Social Share Functions
+    window.shareToFacebook = function() {
+        const url = encodeURIComponent(trailUrlInput.value);
+        const shareUrl = `https://www.facebook.com/sharer/sharer.php?u=${url}`;
+        window.open(shareUrl, 'facebook-share', 'width=600,height=400');
+    };
+
+    window.shareToTwitter = function() {
+        const url = encodeURIComponent(trailUrlInput.value);
+        const text = encodeURIComponent(`Check out ${trailData.name} - ${trailData.difficulty} trail in ${trailData.location}! 🥾⛰️`);
+        const shareUrl = `https://twitter.com/intent/tweet?url=${url}&text=${text}`;
+        window.open(shareUrl, 'twitter-share', 'width=600,height=400');
+    };
+
+    window.shareToWhatsApp = function() {
+        const url = encodeURIComponent(trailUrlInput.value);
+        const text = encodeURIComponent(`Check out this trail: ${trailData.name} - ${trailData.difficulty} in ${trailData.location}! 🥾⛰️\n\n`);
+        const shareUrl = `https://wa.me/?text=${text}${url}`;
+        window.open(shareUrl, 'whatsapp-share');
+    };
+
+    window.shareViaEmail = function() {
+        const url = trailUrlInput.value;
+        const subject = encodeURIComponent(`Check out this trail: ${trailData.name}`);
+        
+        let emailBody = `I found this amazing trail and thought you might be interested!\n\n`;
+        emailBody += `Trail: ${trailData.name}\n`;
+        emailBody += `Location: ${trailData.location}\n`;
+        emailBody += `Difficulty: ${trailData.difficulty}\n`;
+        if (trailData.distance) {
+            emailBody += `Distance: ${trailData.distance}\n`;
+        }
+        emailBody += `Link: ${url}\n\n`;
+        emailBody += `Happy hiking! 🥾⛰️`;
+        
+        const body = encodeURIComponent(emailBody);
+        window.location.href = `mailto:?subject=${subject}&body=${body}`;
+    };    
 });
 
 
