@@ -173,7 +173,8 @@ class AdminTrailController extends Controller
         // Handle Seasonal Data
         if ($request->has('seasonal') && is_array($request->seasonal)) {
             foreach ($request->seasonal as $season => $seasonData) {
-                if (!empty($seasonData['conditions']) || !empty($seasonData['notes'])) {
+                // Save if there's any content OR if recommended checkbox was explicitly set
+                if (!empty($seasonData['conditions']) || !empty($seasonData['notes']) || isset($seasonData['recommended'])) {
                     \App\Models\SeasonalTrailData::create([
                         'trail_id' => $trail->id,
                         'season' => $season,
@@ -346,9 +347,12 @@ class AdminTrailController extends Controller
      */
     public function edit(Trail $trail)
     {
+        // dd($trail->load(['features' => function($query) {
+        //     $query->with('media'); // Ensure media is loaded
+        // }, 'media', 'seasonalData', 'activities']));
         $trail->load(['features' => function($query) {
             $query->with('media'); // Ensure media is loaded
-        }, 'media', 'activities']);
+        }, 'media', 'seasonalData', 'activities']);
         
         // Fetch all active activities for the form
         $activities = \App\Models\ActivityType::where('is_active', true)
@@ -517,13 +521,14 @@ class AdminTrailController extends Controller
         
         if ($request->has('seasonal') && is_array($request->seasonal)) {
             foreach ($request->seasonal as $season => $seasonData) {
-                if (!empty($seasonData['conditions']) || !empty($seasonData['notes'])) {
+                // Save if there's any content OR if recommended checkbox was explicitly set
+                if (!empty($seasonData['conditions']) || !empty($seasonData['notes']) || isset($seasonData['recommended'])) {
                     \App\Models\SeasonalTrailData::create([
                         'trail_id' => $trail->id,
                         'season' => $season,
-                        'conditions' => $seasonData['conditions'] ?? null,
+                        'trail_conditions' => $seasonData['conditions'] ?? null,
                         'recommended' => isset($seasonData['recommended']) && $seasonData['recommended'] == '1',
-                        'notes' => $seasonData['notes'] ?? null,
+                        'seasonal_notes' => $seasonData['notes'] ?? null,
                     ]);
                 }
             }

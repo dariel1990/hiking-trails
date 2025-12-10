@@ -341,43 +341,42 @@
                                 <!-- Route Statistics Section -->
                                 <div class="border-t pt-6 mt-6 space-y-4">
                                     <h4 class="font-medium">Route Statistics</h4>
+                                    <p class="text-xs text-muted-foreground">These values update automatically when you edit waypoints</p>
                                     
                                     <div class="grid grid-cols-2 gap-3">
                                         <div class="rounded-lg bg-blue-50 border border-blue-200 p-3 space-y-1">
                                             <span class="text-xs text-blue-600 font-medium">Distance</span>
-                                            <div id="route-distance" class="text-lg font-semibold text-blue-700">0.00 km</div>
+                                            <div id="route-distance" class="text-lg font-semibold text-blue-700">{{ number_format($trail->distance_km ?? 0, 2) }} km</div>
                                         </div>
                                         <div class="rounded-lg bg-green-50 border border-green-200 p-3 space-y-1">
                                             <span class="text-xs text-green-600 font-medium">Elevation Gain</span>
-                                            <div id="route-elevation" class="text-lg font-semibold text-green-700">0 m</div>
+                                            <div id="route-elevation" class="text-lg font-semibold text-green-700">{{ $trail->elevation_gain_m ?? 0 }} m</div>
                                         </div>
                                         <div class="rounded-lg bg-purple-50 border border-purple-200 p-3 space-y-1">
                                             <span class="text-xs text-purple-600 font-medium">Est. Time</span>
-                                            <div id="route-time" class="text-lg font-semibold text-purple-700">0.0 hrs</div>
+                                            <div id="route-time" class="text-lg font-semibold text-purple-700">{{ number_format($trail->estimated_time_hours ?? 0, 1) }} hrs</div>
                                         </div>
                                         <div class="rounded-lg bg-gray-50 border border-gray-200 p-3 space-y-1">
                                             <span class="text-xs text-gray-600 font-medium">Waypoints</span>
-                                            <div id="waypoint-count-display" class="text-lg font-semibold text-gray-700">0</div>
+                                            <div id="waypoint-count-display" class="text-lg font-semibold text-gray-700">{{ is_array($trail->route_coordinates) ? count($trail->route_coordinates) : 0 }}</div>
                                         </div>
                                     </div>
                                     <div class="border-t pt-6 mt-6 space-y-4">
                                         <h5 class="text-sm font-medium text-muted-foreground">Manual Adjustments</h5>
+                                        <p class="text-xs text-muted-foreground">Edit these values directly if needed</p>
                                         <!-- Editable Fields -->
                                         <div class="grid grid-cols-3 gap-3">
                                             <div class="space-y-1">
                                                 <label class="text-xs font-medium">Distance (km)</label>
-                                                <input type="number" name="distance_km" step="0.01" value="{{ old('distance_km', $trail->distance_km) }}"
-                                                    class="flex h-9 w-full text-sm rounded-md border border-input bg-background px-3 py-2 ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                                                <input type="number" name="distance_km" step="0.01" value="{{ old('distance_km', $trail->distance_km) }}" class="flex h-9 w-full text-sm rounded-md border border-input bg-background px-3 py-2 ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
                                             </div>
                                             <div class="space-y-1">
                                                 <label class="text-xs font-medium">Est. Time (hours)</label>
-                                                <input type="number" name="estimated_time_hours" step="0.1" value="{{ old('estimated_time_hours', $trail->estimated_time_hours) }}"
-                                                    class="flex h-9 w-full text-sm rounded-md border border-input bg-background px-3 py-2 ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                                                <input type="number" name="estimated_time_hours" step="0.1" value="{{ old('estimated_time_hours', $trail->estimated_time_hours) }}" class="flex h-9 w-full text-sm rounded-md border border-input bg-background px-3 py-2 ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
                                             </div>
                                             <div class="space-y-1">
                                                 <label class="text-xs font-medium">Elevation Gain (m)</label>
-                                                <input type="number" name="elevation_gain_m" step="1" value="{{ old('elevation_gain_m', $trail->elevation_gain_m) }}"
-                                                    class="flex h-9 w-full text-sm rounded-md border border-input bg-background px-3 py-2 ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                                                <input type="number" name="elevation_gain_m" step="1" value="{{ old('elevation_gain_m', $trail->elevation_gain_m) }}" class="flex h-9 w-full text-sm rounded-md border border-input bg-background px-3 py-2 ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
                                             </div>
                                         </div>
                                     </div>
@@ -618,6 +617,14 @@
                     <h3 class="text-lg font-semibold">Seasonal Information</h3>
                     <p class="text-sm text-muted-foreground">Trail conditions and recommendations throughout the year</p>
                 </div>
+
+                @php
+                    // Define all seasonal data variables at the top
+                    $springData = $trail->seasonalData->firstWhere('season', 'spring');
+                    $summerData = $trail->seasonalData->firstWhere('season', 'summer');
+                    $fallData = $trail->seasonalData->firstWhere('season', 'fall');
+                    $winterData = $trail->seasonalData->firstWhere('season', 'winter');
+                @endphp
                 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <!-- Spring -->
@@ -631,14 +638,11 @@
                                 <label class="text-sm font-medium">Trail Conditions</label>
                                 <input type="text" name="seasonal[spring][conditions]" 
                                     placeholder="e.g., Muddy, Snow patches"
-                                    value="{{ old('seasonal.spring.conditions', $springData->conditions ?? '') }}"
+                                    value="{{ old('seasonal.spring.conditions', $springData->trail_conditions ?? '') }}"
                                     class="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm">
                             </div>
                             
                             <div class="flex items-center space-x-2">
-                                @php
-                                    $springData = $trail->seasonalData->firstWhere('season', 'spring');
-                                @endphp
                                 <input type="checkbox" name="seasonal[spring][recommended]" value="1" 
                                     {{ old('seasonal.spring.recommended', $springData->recommended ?? true) ? 'checked' : '' }}
                                     class="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary">
@@ -649,7 +653,7 @@
                                 <label class="text-sm font-medium">Notes</label>
                                 <textarea name="seasonal[spring][notes]" rows="2" 
                                     placeholder="Special spring considerations..."
-                                    class="flex min-h-[60px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm">{{ old('seasonal.spring.notes', $springData->notes ?? '') }}</textarea>
+                                    class="flex min-h-[60px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm">{{ old('seasonal.spring.notes', $springData->seasonal_notes ?? '') }}</textarea>
                             </div>
                         </div>
                     </div>
@@ -664,15 +668,12 @@
                             <div class="space-y-2">
                                 <label class="text-sm font-medium">Trail Conditions</label>
                                 <input type="text" name="seasonal[summer][conditions]" 
-                                       placeholder="e.g., Dry, Clear"
-                                       value="{{ old('seasonal.summer.conditions') }}"
-                                       class="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">
+                                placeholder="e.g., Dry, Clear"
+                                value="{{ old('seasonal.summer.conditions', $summerData->trail_conditions ?? '') }}"
+                                class="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">
                             </div>
                             
                             <div class="flex items-center space-x-2">
-                                @php
-                                    $summerData = $trail->seasonalData->firstWhere('season', 'summer');
-                                @endphp
                                 <input type="checkbox" name="seasonal[summer][recommended]" value="1" 
                                     {{ old('seasonal.summer.recommended', $summerData->recommended ?? true) ? 'checked' : '' }}
                                     class="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary">
@@ -683,7 +684,7 @@
                                 <label class="text-sm font-medium">Notes</label>
                                 <textarea name="seasonal[summer][notes]" rows="2" 
                                           placeholder="Special summer considerations..."
-                                          class="flex min-h-[60px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">{{ old('seasonal.summer.notes') }}</textarea>
+                                          class="flex min-h-[60px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">{{ old('seasonal.fall.notes', $summerData->seasonal_notes ?? '') }}</textarea>
                             </div>
                         </div>
                     </div>
@@ -699,14 +700,11 @@
                                 <label class="text-sm font-medium">Trail Conditions</label>
                                 <input type="text" name="seasonal[fall][conditions]" 
                                        placeholder="e.g., Wet leaves, Early snow"
-                                       value="{{ old('seasonal.fall.conditions') }}"
+                                       value="{{ old('seasonal.spring.conditions', $fallData->trail_conditions ?? '') }}"
                                        class="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">
                             </div>
                             
                             <div class="flex items-center space-x-2">
-                                @php
-                                    $fallData = $trail->seasonalData->firstWhere('season', 'fall');
-                                @endphp
                                 <input type="checkbox" name="seasonal[fall][recommended]" value="1" 
                                     {{ old('seasonal.fall.recommended', $fallData->recommended ?? true) ? 'checked' : '' }}
                                     class="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary">
@@ -717,7 +715,7 @@
                                 <label class="text-sm font-medium">Notes</label>
                                 <textarea name="seasonal[fall][notes]" rows="2" 
                                           placeholder="Special fall considerations..."
-                                          class="flex min-h-[60px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">{{ old('seasonal.fall.notes') }}</textarea>
+                                          class="flex min-h-[60px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">{{ old('seasonal.fall.notes', $fallData->seasonal_notes ?? '') }}</textarea>
                             </div>
                         </div>
                     </div>
@@ -733,14 +731,11 @@
                                 <label class="text-sm font-medium">Trail Conditions</label>
                                 <input type="text" name="seasonal[winter][conditions]" 
                                        placeholder="e.g., Snow, Ice, Closed"
-                                       value="{{ old('seasonal.winter.conditions') }}"
+                                       value="{{ old('seasonal.winter.conditions', $winterData->trail_conditions ?? '') }}"
                                        class="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">
                             </div>
                             
                             <div class="flex items-center space-x-2">
-                                @php
-                                    $winterData = $trail->seasonalData->firstWhere('season', 'winter');
-                                @endphp
                                 <input type="checkbox" name="seasonal[winter][recommended]" value="1" 
                                     {{ old('seasonal.winter.recommended', $winterData->recommended ?? false) ? 'checked' : '' }}
                                     class="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary">
@@ -751,7 +746,7 @@
                                 <label class="text-sm font-medium">Notes</label>
                                 <textarea name="seasonal[winter][notes]" rows="2" 
                                           placeholder="Special winter considerations..."
-                                          class="flex min-h-[60px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">{{ old('seasonal.winter.notes') }}</textarea>
+                                          class="flex min-h-[60px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">{{ old('seasonal.winter.notes', $winterData->seasonal_notes ?? '') }}</textarea>
                             </div>
                         </div>
                     </div>
@@ -1520,7 +1515,7 @@
                 this.map = L.map('trail-map', {
                     maxZoom: 20,
                     minZoom: 5
-                }).setView([8.4542, 124.6319], 13); // Cagayan de Oro coordinates
+                }).setView([54.7804, -127.1698], 10);
                 
                 // Define base layers for map styles
                 this.baseLayers = {

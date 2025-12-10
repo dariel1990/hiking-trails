@@ -8,6 +8,15 @@
     <title>@yield('title', 'Trail Finder - Discover Ethical Adventures')</title>
     <!-- Meta Tags Stack -->
     @stack('meta')
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-E170L5ZVE8"></script>
+    <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    gtag('config', 'G-E170L5ZVE8');
+    </script>
     <link rel="icon" type="image/png" href="{{ asset('images/logo.png') }}">
     
     <!-- SEO Meta Tags -->

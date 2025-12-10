@@ -4,6 +4,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\TrailController;
 use App\Http\Controllers\Admin\AdminController;
 use App\Http\Controllers\Admin\AdminTrailController;
+use App\Http\Controllers\Admin\ActivityTypeController;
 use App\Http\Controllers\EventsController;
 
 // PUBLIC ROUTES (No authentication required)
@@ -27,8 +28,10 @@ Route::prefix('admin')->name('admin.')->group(function () {
         
         // Trail management
         Route::resource('trails', AdminTrailController::class);
+        Route::resource('activity-types', ActivityTypeController::class); 
         Route::post('/trails/{trail}/photos', [AdminTrailController::class, 'uploadPhotos'])->name('trails.photos.store');
         Route::delete('/photos/{photo}', [AdminTrailController::class, 'deletePhoto'])->name('photos.delete');
+        Route::patch('/trails/{trail}/toggle-featured', [AdminTrailController::class, 'toggleFeatured'])->name('trails.toggle-featured')->middleware('throttle:10,1');
 
         // Media Management Routes
         // Route::get('/trails/{trail}/media', [AdminTrailController::class, 'mediaManagement'])->name('trails.media');
