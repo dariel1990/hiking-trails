@@ -92,9 +92,9 @@
                         <div class="absolute bottom-0 left-0 w-0 h-0.5 bg-accent-600 group-hover:w-full transition-all duration-300 {{ request()->routeIs('map') ? 'w-full' : '' }}"></div>
                     </a>
                     <a href="https://xploresmithers.com/" 
-                       class="relative text-forest-700 hover:text-accent-600 font-medium transition-all duration-300 py-2 group {{ request()->routeIs('map') ? 'text-accent-700' : '' }}">
+                       class="relative text-forest-700 hover:text-accent-600 font-medium transition-all duration-300 py-2 group">
                         <span>Back to Xplore Smithers</span>
-                        <div class="absolute bottom-0 left-0 w-0 h-0.5 bg-accent-600 group-hover:w-full transition-all duration-300 {{ request()->routeIs('map') ? 'w-full' : '' }}"></div>
+                        <div class="absolute bottom-0 left-0 w-0 h-0.5 bg-accent-600 group-hover:w-full transition-all duration-300"></div>
                     </a>
 
                     <!-- New navigation items inspired by XploreSmithers -->

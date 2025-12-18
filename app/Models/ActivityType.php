@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class ActivityType extends Model
 {
-    protected $fillable = ['name', 'slug', 'icon', 'color', 'description', 'is_active'];
+    protected $fillable = ['name', 'slug', 'icon', 'color', 'description', 'season_applicable', 'is_active'];
 
     public function trails()
     {

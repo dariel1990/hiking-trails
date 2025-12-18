@@ -611,149 +611,139 @@
         </div>
 
         <!-- Seasonal Information -->
-        <div class="rounded-lg border bg-card text-card-foreground shadow-sm">
-            <div class="p-6 space-y-6">
-                <div class="space-y-2">
-                    <h3 class="text-lg font-semibold">Seasonal Information</h3>
-                    <p class="text-sm text-muted-foreground">Trail conditions and recommendations throughout the year</p>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            @php
+                // Define all seasonal data variables at the top
+                $springData = $trail->seasonalData->firstWhere('season', 'spring');
+                $summerData = $trail->seasonalData->firstWhere('season', 'summer');
+                $fallData = $trail->seasonalData->firstWhere('season', 'fall');
+                $winterData = $trail->seasonalData->firstWhere('season', 'winter');
+            @endphp
+            
+            <!-- Spring -->
+            <div class="rounded-lg border border-input p-4 space-y-4">
+                <div class="flex items-center gap-2">
+                    <span class="text-lg">🌸 Spring</span>
                 </div>
-
-                @php
-                    // Define all seasonal data variables at the top
-                    $springData = $trail->seasonalData->firstWhere('season', 'spring');
-                    $summerData = $trail->seasonalData->firstWhere('season', 'summer');
-                    $fallData = $trail->seasonalData->firstWhere('season', 'fall');
-                    $winterData = $trail->seasonalData->firstWhere('season', 'winter');
-                @endphp
                 
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <!-- Spring -->
-                    <div class="rounded-lg border border-input p-4 space-y-4">
-                        <div class="flex items-center gap-2">
-                            <span class="text-lg">Spring</span>
-                        </div>
-                        
-                        <div class="space-y-3">
-                            <div class="space-y-2">
-                                <label class="text-sm font-medium">Trail Conditions</label>
-                                <input type="text" name="seasonal[spring][conditions]" 
-                                    placeholder="e.g., Muddy, Snow patches"
-                                    value="{{ old('seasonal.spring.conditions', $springData->trail_conditions ?? '') }}"
-                                    class="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm">
-                            </div>
-                            
-                            <div class="flex items-center space-x-2">
-                                <input type="checkbox" name="seasonal[spring][recommended]" value="1" 
-                                    {{ old('seasonal.spring.recommended', $springData->recommended ?? true) ? 'checked' : '' }}
-                                    class="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary">
-                                <label class="text-sm font-medium">Recommended in Spring</label>
-                            </div>
-                            
-                            <div class="space-y-2">
-                                <label class="text-sm font-medium">Notes</label>
-                                <textarea name="seasonal[spring][notes]" rows="2" 
-                                    placeholder="Special spring considerations..."
-                                    class="flex min-h-[60px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm">{{ old('seasonal.spring.notes', $springData->seasonal_notes ?? '') }}</textarea>
-                            </div>
-                        </div>
+                <div class="space-y-3">
+                    <div class="space-y-2">
+                        <label class="text-sm font-medium">Trail Conditions</label>
+                        <input type="text" name="seasonal[spring][conditions]" 
+                            placeholder="e.g., Muddy, Snow patches"
+                            value="{{ old('seasonal.spring.conditions', $springData->trail_conditions ?? '') }}"
+                            class="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm">
                     </div>
-
-                    <!-- Summer -->
-                    <div class="rounded-lg border border-input p-4 space-y-4">
-                        <div class="flex items-center gap-2">
-                            <span class="text-lg">Summer</span>
-                        </div>
-                        
-                        <div class="space-y-3">
-                            <div class="space-y-2">
-                                <label class="text-sm font-medium">Trail Conditions</label>
-                                <input type="text" name="seasonal[summer][conditions]" 
-                                placeholder="e.g., Dry, Clear"
-                                value="{{ old('seasonal.summer.conditions', $summerData->trail_conditions ?? '') }}"
-                                class="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">
-                            </div>
-                            
-                            <div class="flex items-center space-x-2">
-                                <input type="checkbox" name="seasonal[summer][recommended]" value="1" 
-                                    {{ old('seasonal.summer.recommended', $summerData->recommended ?? true) ? 'checked' : '' }}
-                                    class="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary">
-                                <label class="text-sm font-medium">Recommended in Summer</label>
-                            </div>
-                            
-                            <div class="space-y-2">
-                                <label class="text-sm font-medium">Notes</label>
-                                <textarea name="seasonal[summer][notes]" rows="2" 
-                                          placeholder="Special summer considerations..."
-                                          class="flex min-h-[60px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">{{ old('seasonal.fall.notes', $summerData->seasonal_notes ?? '') }}</textarea>
-                            </div>
-                        </div>
+                    
+                    <div class="flex items-center space-x-2">
+                        <input type="checkbox" name="seasonal[spring][recommended]" value="1" 
+                            {{ old('seasonal.spring.recommended', ($springData && $springData->recommended) ? '1' : '0') == '1' ? 'checked' : '' }}
+                            class="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary">
+                        <label class="text-sm font-medium">Recommended in Spring</label>
                     </div>
-
-                    <!-- Fall -->
-                    <div class="rounded-lg border border-input p-4 space-y-4">
-                        <div class="flex items-center gap-2">
-                            <span class="text-lg">Fall</span>
-                        </div>
-                        
-                        <div class="space-y-3">
-                            <div class="space-y-2">
-                                <label class="text-sm font-medium">Trail Conditions</label>
-                                <input type="text" name="seasonal[fall][conditions]" 
-                                       placeholder="e.g., Wet leaves, Early snow"
-                                       value="{{ old('seasonal.spring.conditions', $fallData->trail_conditions ?? '') }}"
-                                       class="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">
-                            </div>
-                            
-                            <div class="flex items-center space-x-2">
-                                <input type="checkbox" name="seasonal[fall][recommended]" value="1" 
-                                    {{ old('seasonal.fall.recommended', $fallData->recommended ?? true) ? 'checked' : '' }}
-                                    class="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary">
-                                <label class="text-sm font-medium">Recommended in Fall</label>
-                            </div>
-                            
-                            <div class="space-y-2">
-                                <label class="text-sm font-medium">Notes</label>
-                                <textarea name="seasonal[fall][notes]" rows="2" 
-                                          placeholder="Special fall considerations..."
-                                          class="flex min-h-[60px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">{{ old('seasonal.fall.notes', $fallData->seasonal_notes ?? '') }}</textarea>
-                            </div>
-                        </div>
+                    
+                    <div class="space-y-2">
+                        <label class="text-sm font-medium">Notes</label>
+                        <textarea name="seasonal[spring][notes]" rows="2" 
+                            placeholder="Special spring considerations..."
+                            class="flex min-h-[60px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm">{{ old('seasonal.spring.notes', $springData->seasonal_notes ?? '') }}</textarea>
                     </div>
+                </div>
+            </div>
 
-                    <!-- Winter -->
-                    <div class="rounded-lg border border-input p-4 space-y-4">
-                        <div class="flex items-center gap-2">
-                            <span class="text-lg">Winter</span>
-                        </div>
-                        
-                        <div class="space-y-3">
-                            <div class="space-y-2">
-                                <label class="text-sm font-medium">Trail Conditions</label>
-                                <input type="text" name="seasonal[winter][conditions]" 
-                                       placeholder="e.g., Snow, Ice, Closed"
-                                       value="{{ old('seasonal.winter.conditions', $winterData->trail_conditions ?? '') }}"
-                                       class="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">
-                            </div>
-                            
-                            <div class="flex items-center space-x-2">
-                                <input type="checkbox" name="seasonal[winter][recommended]" value="1" 
-                                    {{ old('seasonal.winter.recommended', $winterData->recommended ?? false) ? 'checked' : '' }}
-                                    class="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary">
-                                <label class="text-sm font-medium">Recommended in Winter</label>
-                            </div>
-                            
-                            <div class="space-y-2">
-                                <label class="text-sm font-medium">Notes</label>
-                                <textarea name="seasonal[winter][notes]" rows="2" 
-                                          placeholder="Special winter considerations..."
-                                          class="flex min-h-[60px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">{{ old('seasonal.winter.notes', $winterData->seasonal_notes ?? '') }}</textarea>
-                            </div>
-                        </div>
+            <!-- Summer -->
+            <div class="rounded-lg border border-input p-4 space-y-4">
+                <div class="flex items-center gap-2">
+                    <span class="text-lg">☀️ Summer</span>
+                </div>
+                
+                <div class="space-y-3">
+                    <div class="space-y-2">
+                        <label class="text-sm font-medium">Trail Conditions</label>
+                        <input type="text" name="seasonal[summer][conditions]" 
+                            placeholder="e.g., Dry, Clear"
+                            value="{{ old('seasonal.summer.conditions', $summerData->trail_conditions ?? '') }}"
+                            class="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm">
+                    </div>
+                    
+                    <div class="flex items-center space-x-2">
+                        <input type="checkbox" name="seasonal[summer][recommended]" value="1" 
+                            {{ old('seasonal.summer.recommended', ($summerData && $summerData->recommended) ? '1' : '0') == '1' ? 'checked' : '' }}
+                            class="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary">
+                        <label class="text-sm font-medium">Recommended in Summer</label>
+                    </div>
+                    
+                    <div class="space-y-2">
+                        <label class="text-sm font-medium">Notes</label>
+                        <textarea name="seasonal[summer][notes]" rows="2" 
+                                placeholder="Special summer considerations..."
+                                class="flex min-h-[60px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm">{{ old('seasonal.summer.notes', $summerData->seasonal_notes ?? '') }}</textarea>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Fall -->
+            <div class="rounded-lg border border-input p-4 space-y-4">
+                <div class="flex items-center gap-2">
+                    <span class="text-lg">🍂 Fall</span>
+                </div>
+                
+                <div class="space-y-3">
+                    <div class="space-y-2">
+                        <label class="text-sm font-medium">Trail Conditions</label>
+                        <input type="text" name="seasonal[fall][conditions]" 
+                            placeholder="e.g., Wet leaves, Early snow"
+                            value="{{ old('seasonal.fall.conditions', $fallData->trail_conditions ?? '') }}"
+                            class="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm">
+                    </div>
+                    
+                    <div class="flex items-center space-x-2">
+                        <input type="checkbox" name="seasonal[fall][recommended]" value="1" 
+                            {{ old('seasonal.fall.recommended', ($fallData && $fallData->recommended) ? '1' : '0') == '1' ? 'checked' : '' }}
+                            class="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary">
+                        <label class="text-sm font-medium">Recommended in Fall</label>
+                    </div>
+                    
+                    <div class="space-y-2">
+                        <label class="text-sm font-medium">Notes</label>
+                        <textarea name="seasonal[fall][notes]" rows="2" 
+                                placeholder="Special fall considerations..."
+                                class="flex min-h-[60px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm">{{ old('seasonal.fall.notes', $fallData->seasonal_notes ?? '') }}</textarea>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Winter -->
+            <div class="rounded-lg border border-input p-4 space-y-4">
+                <div class="flex items-center gap-2">
+                    <span class="text-lg">❄️ Winter</span>
+                </div>
+                
+                <div class="space-y-3">
+                    <div class="space-y-2">
+                        <label class="text-sm font-medium">Trail Conditions</label>
+                        <input type="text" name="seasonal[winter][conditions]" 
+                            placeholder="e.g., Snow, Ice, Closed"
+                            value="{{ old('seasonal.winter.conditions', $winterData->trail_conditions ?? '') }}"
+                            class="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm">
+                    </div>
+                    
+                    <div class="flex items-center space-x-2">
+                        <input type="checkbox" name="seasonal[winter][recommended]" value="1" 
+                            {{ old('seasonal.winter.recommended', ($winterData && $winterData->recommended) ? '1' : '0') == '1' ? 'checked' : '' }}
+                            class="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary">
+                        <label class="text-sm font-medium">Recommended in Winter</label>
+                    </div>
+                    
+                    <div class="space-y-2">
+                        <label class="text-sm font-medium">Notes</label>
+                        <textarea name="seasonal[winter][notes]" rows="2" 
+                                placeholder="Special winter considerations..."
+                                class="flex min-h-[60px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm">{{ old('seasonal.winter.notes', $winterData->seasonal_notes ?? '') }}</textarea>
                     </div>
                 </div>
             </div>
         </div>
-
         <!-- Additional Information -->
         <div class="rounded-lg border bg-card text-card-foreground shadow-sm">
             <div class="p-6 space-y-6">
@@ -2244,33 +2234,33 @@
             this.updateFormInputs();
         }
 
-        updateStats() {
-            this.totalDistance = this.routeSegments.reduce((sum, segment) => sum + (segment.distance / 1000), 0);
-            this.totalTime = (this.totalDistance / 4) * 60; // Assume 4 km/h walking speed
+        // updateStats() {
+        //     this.totalDistance = this.routeSegments.reduce((sum, segment) => sum + (segment.distance / 1000), 0);
+        //     this.totalTime = (this.totalDistance / 4) * 60; // Assume 4 km/h walking speed
 
-            // Update display cards
-            const distanceEl = document.getElementById('route-distance');
-            const timeEl = document.getElementById('route-time');
-            const waypointCountEl = document.getElementById('waypoint-count-display');
+        //     // Update display cards
+        //     const distanceEl = document.getElementById('route-distance');
+        //     const timeEl = document.getElementById('route-time');
+        //     const waypointCountEl = document.getElementById('waypoint-count-display');
             
-            if (distanceEl) distanceEl.textContent = `${this.totalDistance.toFixed(2)} km`;
-            if (timeEl) timeEl.textContent = `${(this.totalTime / 60).toFixed(1)} hrs`;
-            if (waypointCountEl) waypointCountEl.textContent = this.waypoints.length;
+        //     if (distanceEl) distanceEl.textContent = `${this.totalDistance.toFixed(2)} km`;
+        //     if (timeEl) timeEl.textContent = `${(this.totalTime / 60).toFixed(1)} hrs`;
+        //     if (waypointCountEl) waypointCountEl.textContent = this.waypoints.length;
 
-            // Update input fields (these should match the display cards)
-            const distanceInput = document.querySelector('input[name="distance_km"]');
-            const timeInput = document.querySelector('input[name="estimated_time_hours"]');
+        //     // Update input fields (these should match the display cards)
+        //     const distanceInput = document.querySelector('input[name="distance_km"]');
+        //     const timeInput = document.querySelector('input[name="estimated_time_hours"]');
             
-            if (distanceInput) distanceInput.value = this.totalDistance.toFixed(2);
-            if (timeInput) timeInput.value = (this.totalTime / 60).toFixed(1);
+        //     if (distanceInput) distanceInput.value = this.totalDistance.toFixed(2);
+        //     if (timeInput) timeInput.value = (this.totalTime / 60).toFixed(1);
 
-            // Auto-load elevation profile when we have route segments
-            if (this.routeSegments.length > 0) {
-                this.loadElevationProfile();
-            }
+        //     // Auto-load elevation profile when we have route segments
+        //     if (this.routeSegments.length > 0) {
+        //         this.loadElevationProfile();
+        //     }
 
-            this.updateUI();
-        }
+        //     this.updateUI();
+        // }
 
         updateFormInputs() {
             // Combine all segment coordinates into one route

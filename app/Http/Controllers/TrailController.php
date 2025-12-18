@@ -37,7 +37,11 @@ class TrailController extends Controller
             'locations_count' => Trail::distinct('location')->count('location'),
         ];
 
-        return view('home', compact('featuredTrails', 'stats'));
+        $activities = ActivityType::where('is_active', true)
+            ->orderBy('name')
+            ->get();
+
+        return view('home', compact('featuredTrails', 'stats', 'activities'));
     }
 
     /**
@@ -51,8 +55,8 @@ class TrailController extends Controller
         if ($request->search) {
             $query->where(function($q) use ($request) {
                 $q->where('name', 'like', "%{$request->search}%")
-                  ->orWhere('description', 'like', "%{$request->search}%")
-                  ->orWhere('location', 'like', "%{$request->search}%");
+                ->orWhere('description', 'like', "%{$request->search}%")
+                ->orWhere('location', 'like', "%{$request->search}%");
             });
         }
 
@@ -79,18 +83,35 @@ class TrailController extends Controller
             }
         }
 
+        // Apply activity filter
+        if ($request->activity) {
+            $query->whereHas('activities', function($q) use ($request) {
+                $q->where('slug', $request->activity);
+            });
+        }
+
+        // Apply season filter
+        if ($request->season) {
+            $query->whereJsonContains('best_seasons', ucfirst($request->season));
+        }
+
         $trails = $query->with(['trailMedia' => function($q) {
                             // Only include photos for featured image display
                             $q->where('media_type', 'photo')
-                              ->where(function($q2) {
-                                  $q2->where('is_featured', true)->orWhere('sort_order', 0);
-                              });
+                            ->where(function($q2) {
+                                $q2->where('is_featured', true)->orWhere('sort_order', 0);
+                            });
                         }])
-                       ->orderBy('is_featured', 'desc')
-                       ->orderBy('name')
-                       ->paginate(12);
+                    ->orderBy('is_featured', 'desc')
+                    ->orderBy('name')
+                    ->paginate(12);
 
-        return view('trails.index', compact('trails'));
+        // Fetch all active activities for the filter dropdown
+        $activities = ActivityType::where('is_active', true)
+            ->orderBy('name')
+            ->get();
+
+        return view('trails.index', compact('trails', 'activities'));
     }
 
     /**

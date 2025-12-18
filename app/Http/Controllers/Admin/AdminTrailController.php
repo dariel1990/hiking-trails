@@ -446,12 +446,12 @@ class AdminTrailController extends Controller
 
         // Set coordinates
         $data['start_coordinates'] = [$request->start_lat, $request->start_lng];
-        
         if ($request->end_lat && $request->end_lng) {
             $data['end_coordinates'] = [$request->end_lat, $request->end_lng];
         } else {
             $data['end_coordinates'] = null;
         }
+        
 
         // Handle route coordinates
         if ($request->has('route_coordinates')) {
@@ -499,6 +499,7 @@ class AdminTrailController extends Controller
         }
 
         // Update the trail
+        // dd($data);
         $trail->update($data);
 
         // Update Activities
