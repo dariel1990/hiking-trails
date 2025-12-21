@@ -53,8 +53,10 @@ class AdminTrailController extends Controller
         $activities = ActivityType::where('is_active', true)
             ->orderBy('name')
             ->get();
-        
-        return view('admin.trails.create', compact('activities'));
+        $trailNetworks = \App\Models\TrailNetwork::orderBy('network_name')->get();
+
+
+        return view('admin.trails.create', compact('activities', 'trailNetworks'));
     }
 
     /**
@@ -98,6 +100,7 @@ class AdminTrailController extends Controller
             'seasonal.*.conditions' => 'nullable|string|max:255',
             'seasonal.*.recommended' => 'nullable',
             'seasonal.*.notes' => 'nullable|string|max:1000',
+            'trail_network_id' => 'nullable|exists:trail_networks,id',
         ]);
 
         // Prepare trail data
@@ -358,6 +361,8 @@ class AdminTrailController extends Controller
         $activities = \App\Models\ActivityType::where('is_active', true)
             ->orderBy('name')
             ->get();
+
+        $trailNetworks = \App\Models\TrailNetwork::orderBy('network_name')->get();
         
         // Transform media to include full URL
         $trail->media->transform(function($media) {
@@ -384,8 +389,8 @@ class AdminTrailController extends Controller
         if ($trail->route_coordinates && is_string($trail->route_coordinates)) {
             $trail->route_coordinates = json_decode($trail->route_coordinates, true);
         }
-        
-        return view('admin.trails.edit', compact('trail', 'activities', 'trailOnlyMedia'));
+
+        return view('admin.trails.edit', compact('trail', 'activities', 'trailOnlyMedia', 'trailNetworks'));
     }
 
     /**
@@ -432,6 +437,7 @@ class AdminTrailController extends Controller
             'seasonal.*.conditions' => 'nullable|string|max:255',
             'seasonal.*.recommended' => 'nullable',
             'seasonal.*.notes' => 'nullable|string|max:1000',
+            'trail_network_id' => 'nullable|exists:trail_networks,id',
         ]);
 
         // Prepare trail data

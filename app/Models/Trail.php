@@ -311,4 +311,9 @@ class Trail extends Model
     {
         return $this->features();
     }
+
+    public function trailNetwork()
+    {
+        return $this->belongsTo(TrailNetwork::class);
+    }
 }

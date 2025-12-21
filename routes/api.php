@@ -12,6 +12,10 @@ Route::get('/user', function (Request $request) {
 // API Routes for map data
 Route::get('/trails', [TrailController::class, 'apiIndex']);
 Route::get('/trails/{trail}', [TrailController::class, 'apiShow']);
+// Trail Networks API
+Route::get('/trail-networks', function() {
+    return \App\Models\TrailNetwork::where('is_always_visible', true)->get();
+});
 
 Route::post('/calculate-route', function (Request $request) {
     $request->validate([

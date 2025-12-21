@@ -165,10 +165,17 @@ class TrailController extends Controller
                         ->orWhere('season_applicable', 'both');
                 })->where('is_active', true);
             },
-            'seasonalData'
+            'seasonalData',
+            'trailNetwork'
         ]);
         
         $query->whereIn('status', ['active', 'seasonal']);
+
+        // Include trails from always-visible networks (Nordic Centre, Ski Hill)
+        $alwaysVisibleNetworkIds = \App\Models\TrailNetwork::where('is_always_visible', true)->pluck('id');
+        if ($alwaysVisibleNetworkIds->isNotEmpty()) {
+            $query->orWhereIn('trail_network_id', $alwaysVisibleNetworkIds);
+        }
 
         $query->whereHas('activities', function($q) use ($season) {
             $q->where(function($query) use ($season) {

@@ -51,7 +51,7 @@
                 </div>
                 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div class="space-y-2">
+                    <div class="md:col-span-2 space-y-2">
                         <label class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
                             Trail Name <span class="text-red-500">*</span>
                         </label>
@@ -59,6 +59,26 @@
                                placeholder="Enter trail name"
                                class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 @error('name') border-red-300 @enderror">
                         @error('name')
+                            <p class="text-sm text-red-500">{{ $message }}</p>
+                        @enderror
+                    </div>
+                    
+                    <!-- Trail Network -->
+                    <div class="space-y-2">
+                        <label class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                            Trail Network <span class="text-gray-400">(Optional)</span>
+                        </label>
+                        <select name="trail_network_id"
+                                class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 @error('trail_network_id') border-red-300 @enderror">
+                            <option value="">-- None (Standalone Trail) --</option>
+                            @foreach($trailNetworks as $network)
+                                <option value="{{ $network->id }}" {{ old('trail_network_id') == $network->id ? 'selected' : '' }}>
+                                    {{ $network->network_name }}
+                                </option>
+                            @endforeach
+                        </select>
+                        <p class="text-xs text-gray-500">Select if this trail belongs to a network (e.g., Nordic Centre or Ski Hill)</p>
+                        @error('trail_network_id')
                             <p class="text-sm text-red-500">{{ $message }}</p>
                         @enderror
                     </div>
