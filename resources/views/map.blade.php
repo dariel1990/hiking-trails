@@ -951,22 +951,6 @@
     height: 300px;
     overflow-y: auto;
 }
-
-/* Network marker styling */
-.network-center-marker {
-    background: transparent !important;
-    border: none !important;
-}
-
-/* Network popup styling */
-.network-popup .leaflet-popup-content-wrapper {
-    border-radius: 12px;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
-}
-
-.network-popup .leaflet-popup-content {
-    margin: 0;
-}
 </style>
 <script>
 
@@ -1237,7 +1221,6 @@
 
             this.setupEventListeners();
             this.loadTrails();
-            this.loadTrailNetworks();
         }
 
         setupEventListeners() {
@@ -2513,83 +2496,6 @@
                 }
             } catch (error) {
                 console.error('Error loading trails:', error);
-            }
-        }
-
-        async loadTrailNetworks() {
-            try {
-                const response = await fetch('/api/trail-networks');
-                const networks = await response.json();
-                
-                console.log('Loaded trail networks:', networks);
-                
-                networks.forEach(network => {
-                    // Add network center marker with custom styling
-                    const networkIcon = L.divIcon({
-                        className: 'network-center-marker',
-                        html: `
-                            <div style="
-                                background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
-                                color: white;
-                                padding: 8px 16px;
-                                border-radius: 20px;
-                                font-weight: bold;
-                                font-size: 13px;
-                                box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
-                                white-space: nowrap;
-                                border: 2px solid white;
-                            ">
-                                📍 ${network.network_name}
-                            </div>
-                        `,
-                        iconSize: [200, 40],
-                        iconAnchor: [100, 20]
-                    });
-                    
-                    const networkMarker = L.marker([network.latitude, network.longitude], {
-                        icon: networkIcon,
-                        zIndexOffset: 1000 // Keep network markers on top
-                    }).addTo(this.map);
-                    
-                    // Create popup content
-                    const popupContent = `
-                        <div style="padding: 12px; min-width: 200px;">
-                            <h3 style="margin: 0 0 8px 0; font-size: 16px; font-weight: bold; color: #1f2937;">
-                                ${network.network_name}
-                            </h3>
-                            ${network.description ? `
-                                <p style="margin: 0 0 8px 0; font-size: 14px; color: #4b5563; line-height: 1.4;">
-                                    ${network.description}
-                                </p>
-                            ` : ''}
-                            <p style="margin: 0 0 4px 0; font-size: 12px; color: #6b7280;">
-                                <strong>Type:</strong> ${network.type.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
-                            </p>
-                            ${network.address ? `
-                                <p style="margin: 0 0 8px 0; font-size: 12px; color: #6b7280;">
-                                    <strong>Location:</strong> ${network.address}
-                                </p>
-                            ` : ''}
-                            ${network.website_url ? `
-                                <p style="margin: 8px 0 0 0;">
-                                    <a href="${network.website_url}" 
-                                    target="_blank" 
-                                    style="color: #3b82f6; text-decoration: none; font-size: 13px; font-weight: 500;">
-                                        Visit Website →
-                                    </a>
-                                </p>
-                            ` : ''}
-                        </div>
-                    `;
-                    
-                    networkMarker.bindPopup(popupContent, {
-                        maxWidth: 300,
-                        className: 'network-popup'
-                    });
-                });
-                
-            } catch (error) {
-                console.error('Error loading trail networks:', error);
             }
         }
 
