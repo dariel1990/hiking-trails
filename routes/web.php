@@ -5,6 +5,7 @@ use App\Http\Controllers\TrailController;
 use App\Http\Controllers\Admin\AdminController;
 use App\Http\Controllers\Admin\AdminTrailController;
 use App\Http\Controllers\Admin\ActivityTypeController;
+use App\Http\Controllers\Admin\AdminTrailNetworkController;
 use App\Http\Controllers\EventsController;
 
 // PUBLIC ROUTES (No authentication required)
@@ -33,6 +34,29 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::delete('/photos/{photo}', [AdminTrailController::class, 'deletePhoto'])->name('photos.delete');
         Route::patch('/trails/{trail}/toggle-featured', [AdminTrailController::class, 'toggleFeatured'])->name('trails.toggle-featured')->middleware('throttle:10,1');
 
+        // Add the trail networks routes here
+        Route::resource('trail-networks', AdminTrailNetworkController::class)
+        ->names([
+                'index' => 'trail-networks.index',
+                'create' => 'trail-networks.create',
+                'store' => 'trail-networks.store',
+                'show' => 'trail-networks.show',
+                'edit' => 'trail-networks.edit',
+                'update' => 'trail-networks.update',
+                'destroy' => 'trail-networks.destroy',
+            ]);
+
+        // Trail Network Facilities Management
+        Route::resource('trail-networks/{trailNetwork}/facilities', App\Http\Controllers\Admin\NetworkFacilityController::class)
+            ->names([
+                'index' => 'trail-networks.facilities.index',
+                'create' => 'trail-networks.facilities.create',
+                'store' => 'trail-networks.facilities.store',
+                'edit' => 'trail-networks.facilities.edit',
+                'update' => 'trail-networks.facilities.update',
+                'destroy' => 'trail-networks.facilities.destroy',
+            ])
+            ->parameters(['trailNetwork' => 'trailNetwork', 'facility' => 'facility']);
         // Media Management Routes
         // Route::get('/trails/{trail}/media', [AdminTrailController::class, 'mediaManagement'])->name('trails.media');
         // Route::post('/trails/{trail}/media/upload', [AdminTrailController::class, 'uploadMedia'])->name('trails.media.upload');

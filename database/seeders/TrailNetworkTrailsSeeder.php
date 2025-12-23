@@ -10,14 +10,40 @@ class TrailNetworkTrailsSeeder extends Seeder
 {
     public function run()
     {
-        // Get the trail networks
-        $nordicCentre = TrailNetwork::where('network_name', 'Bulkley Valley Nordic Centre')->first();
-        $skiHill = TrailNetwork::where('network_name', 'Hudson Bay Mountain - Ski & Ride Smithers')->first();
+        // Create or get the trail networks
+        $nordicCentre = TrailNetwork::firstOrCreate(
+            ['slug' => 'bulkley-valley-nordic-centre'],
+            [
+                'network_name' => 'Bulkley Valley Nordic Centre',
+                'type' => 'nordic_skiing',
+                'latitude' => 54.8000,
+                'longitude' => -127.2000,
+                'address' => 'Smithers, BC',
+                'website_url' => 'https://bvnordic.ca',
+                'is_always_visible' => true,
+                'description' => 'Cross-country ski trail network with multiple loops and difficulty levels.'
+            ]
+        );
 
-        if (!$nordicCentre || !$skiHill) {
-            $this->command->error('Trail networks not found. Please run migrations and create networks first.');
-            return;
-        }
+        $skiHill = TrailNetwork::firstOrCreate(
+            ['slug' => 'hudson-bay-mountain-ski-ride-smithers'],
+            [
+                'network_name' => 'Hudson Bay Mountain - Ski & Ride Smithers',
+                'type' => 'downhill_skiing',
+                'latitude' => 54.7667,
+                'longitude' => -127.3167,
+                'address' => 'Smithers, BC',
+                'website_url' => 'https://hudsonbay.ski',
+                'is_always_visible' => true,
+                'description' => 'Downhill ski resort with varied terrain for all skill levels.'
+            ]
+        );
+
+        $this->command->info('Trail networks ready: ' . $nordicCentre->network_name . ' and ' . $skiHill->network_name);
+
+        // Delete existing trails for these networks to avoid duplicates
+        Trail::where('trail_network_id', $nordicCentre->id)->delete();
+        Trail::where('trail_network_id', $skiHill->id)->delete();
 
         // Nordic Centre Trails (from the map PDF)
         $nordicTrails = [

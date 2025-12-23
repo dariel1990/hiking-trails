@@ -40,4 +40,20 @@ class TrailNetwork extends Model
     {
         return $this->hasMany(Trail::class);
     }
+
+    /**
+     * Get all facilities for this trail network
+     */
+    public function facilities()
+    {
+        return $this->hasMany(NetworkFacility::class);
+    }
+
+    /**
+     * Get active facilities only
+     */
+    public function activeFacilities()
+    {
+        return $this->hasMany(NetworkFacility::class)->where('is_active', true);
+    }
 }
