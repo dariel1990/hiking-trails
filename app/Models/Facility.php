@@ -5,12 +5,11 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 
-class NetworkFacility extends Model
+class Facility extends Model
 {
     use HasFactory;
 
     protected $fillable = [
-        'trail_network_id',
         'facility_type',
         'name',
         'latitude',
@@ -25,14 +24,6 @@ class NetworkFacility extends Model
         'longitude' => 'decimal:7',
         'is_active' => 'boolean',
     ];
-
-    /**
-     * Get the trail network this facility belongs to
-     */
-    public function trailNetwork()
-    {
-        return $this->belongsTo(TrailNetwork::class);
-    }
 
     /**
      * Get icon based on facility type

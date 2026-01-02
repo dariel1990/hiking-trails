@@ -4,6 +4,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Services\RouteService;
 use App\Http\Controllers\TrailController;
+use App\Models\Facility;
 
 Route::get('/user', function (Request $request) {
     return $request->user();
@@ -64,4 +65,8 @@ Route::post('/elevation-profile', function (Request $request) {
     }
 
     return response()->json($elevation);
+});
+
+Route::get('/facilities', function() {
+    return Facility::where('is_active', true)->get();
 });

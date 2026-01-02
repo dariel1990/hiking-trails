@@ -2255,33 +2255,31 @@
             this.updateFormInputs();
         }
 
-        // updateStats() {
-        //     this.totalDistance = this.routeSegments.reduce((sum, segment) => sum + (segment.distance / 1000), 0);
-        //     this.totalTime = (this.totalDistance / 4) * 60; // Assume 4 km/h walking speed
+        updateStats() {
+            this.totalDistance = this.routeSegments.reduce((sum, segment) => sum + (segment.distance / 1000), 0);
+            this.totalTime = (this.totalDistance / 4) * 60;
 
-        //     // Update display cards
-        //     const distanceEl = document.getElementById('route-distance');
-        //     const timeEl = document.getElementById('route-time');
-        //     const waypointCountEl = document.getElementById('waypoint-count-display');
+            // Update display cards
+            const distanceEl = document.getElementById('route-distance');
+            const timeEl = document.getElementById('route-time');
+            const waypointCountEl = document.getElementById('waypoint-count-display');
             
-        //     if (distanceEl) distanceEl.textContent = `${this.totalDistance.toFixed(2)} km`;
-        //     if (timeEl) timeEl.textContent = `${(this.totalTime / 60).toFixed(1)} hrs`;
-        //     if (waypointCountEl) waypointCountEl.textContent = this.waypoints.length;
+            if (distanceEl) distanceEl.textContent = `${this.totalDistance.toFixed(2)} km`;
+            if (timeEl) timeEl.textContent = `${(this.totalTime / 60).toFixed(1)} hrs`;
+            if (waypointCountEl) waypointCountEl.textContent = this.waypoints.length;
 
-        //     // Update input fields (these should match the display cards)
-        //     const distanceInput = document.querySelector('input[name="distance_km"]');
-        //     const timeInput = document.querySelector('input[name="estimated_time_hours"]');
+            // Update input fields
+            const distanceInput = document.querySelector('input[name="distance_km"]');
+            const timeInput = document.querySelector('input[name="estimated_time_hours"]');
             
-        //     if (distanceInput) distanceInput.value = this.totalDistance.toFixed(2);
-        //     if (timeInput) timeInput.value = (this.totalTime / 60).toFixed(1);
+            if (distanceInput) distanceInput.value = this.totalDistance.toFixed(2);
+            if (timeInput) timeInput.value = (this.totalTime / 60).toFixed(1);
 
-        //     // Auto-load elevation profile when we have route segments
-        //     if (this.routeSegments.length > 0) {
-        //         this.loadElevationProfile();
-        //     }
-
-        //     this.updateUI();
-        // }
+            // DON'T auto-load elevation profile - only recalculate when user changes points
+            // Elevation will only update when user drags a waypoint
+            
+            this.updateUI();
+        }
 
         updateFormInputs() {
             // Combine all segment coordinates into one route
@@ -2324,6 +2322,9 @@
 
             // Recalculate affected route segments
             await this.recalculateRoutesForWaypoint(waypointId);
+
+            this.updateStats();
+
             this.updateFormInputs();
         }
 
@@ -2607,42 +2608,28 @@
         }
 
         createWaypointsFromGPX(coordinates) {
-            // Sample waypoints from the GPX track (take every 10th point or so)
-            const sampleRate = Math.max(1, Math.floor(coordinates.length / 20)); // Max 20 waypoints
-            
-            for (let i = 0; i < coordinates.length; i += sampleRate) {
-                const coord = coordinates[i];
-                const waypoint = { lat: coord[0], lng: coord[1], id: Date.now() + i };
+            // Create a waypoint for EVERY coordinate point
+            coordinates.forEach((coord, i) => {
+                const waypoint = { 
+                    lat: coord[0], 
+                    lng: coord[1], 
+                    id: Date.now() + i 
+                };
                 this.waypoints.push(waypoint);
                 
-                // Add waypoint marker
+                // Add DRAGGABLE waypoint marker with proper event handler
                 const marker = L.marker([coord[0], coord[1]], {
                     icon: this.createWaypointIcon(this.waypoints.length),
                     draggable: true
                 }).addTo(this.routeLayer);
                 
                 marker.waypointId = waypoint.id;
+                
+                // Add drag event handler
                 marker.on('dragend', (e) => {
                     this.updateWaypoint(waypoint.id, e.target.getLatLng());
                 });
-            }
-            
-            // Always include the last point
-            if (coordinates.length > 1) {
-                const lastCoord = coordinates[coordinates.length - 1];
-                const lastWaypoint = { lat: lastCoord[0], lng: lastCoord[1], id: Date.now() + coordinates.length };
-                this.waypoints.push(lastWaypoint);
-                
-                const marker = L.marker([lastCoord[0], lastCoord[1]], {
-                    icon: this.createWaypointIcon(this.waypoints.length),
-                    draggable: true
-                }).addTo(this.routeLayer);
-                
-                marker.waypointId = lastWaypoint.id;
-                marker.on('dragend', (e) => {
-                    this.updateWaypoint(lastWaypoint.id, e.target.getLatLng());
-                });
-            }
+            });
         }
 
         displayGPXRoute(coordinates) {
@@ -2686,19 +2673,61 @@
             // Clear any existing route first
             this.clearRoute();
             
-            // Display the route
-            this.displayGPXRoute(coordinates);
-            
-            // Create waypoints from the route
+            // Create waypoints from coordinates FIRST
             this.createWaypointsFromGPX(coordinates);
+            
+            // Then rebuild the route between waypoints
+            this.rebuildRouteFromWaypoints();
             
             // Fit map to route bounds
             const bounds = L.latLngBounds(coordinates);
             this.map.fitBounds(bounds, { padding: [50, 50] });
             
-            // Update the UI
+            // Update form inputs but DON'T recalculate stats
             this.updateFormInputs();
-            this.updateStats();
+            
+            // Load existing stats from database instead of recalculating
+            this.loadExistingStats();
+        }
+
+        loadExistingStats() {
+            // Just display the existing database values without recalculating
+            const existingTrail = @json($trail);
+            
+            const distanceEl = document.getElementById('route-distance');
+            const timeEl = document.getElementById('route-time');
+            const elevationEl = document.getElementById('route-elevation');
+            const waypointCountEl = document.getElementById('waypoint-count-display');
+            
+            if (distanceEl && existingTrail.distance_km) {
+                distanceEl.textContent = `${parseFloat(existingTrail.distance_km).toFixed(2)} km`;
+            }
+            if (timeEl && existingTrail.estimated_time_hours) {
+                timeEl.textContent = `${parseFloat(existingTrail.estimated_time_hours).toFixed(1)} hrs`;
+            }
+            if (elevationEl && existingTrail.elevation_gain_m) {
+                elevationEl.textContent = `${existingTrail.elevation_gain_m} m`;
+            }
+            if (waypointCountEl) {
+                waypointCountEl.textContent = this.waypoints.length;
+            }
+            
+            console.log('Loaded existing stats from database (no recalculation)');
+        }
+
+        async rebuildRouteFromWaypoints() {
+            // Clear existing route segments
+            this.routeSegments.forEach(segment => {
+                if (segment.line) {
+                    this.routeLayer.removeLayer(segment.line);
+                }
+            });
+            this.routeSegments = [];
+            
+            // Build route segments between consecutive waypoints
+            for (let i = 0; i < this.waypoints.length - 1; i++) {
+                await this.calculateRouteSegment(this.waypoints[i], this.waypoints[i + 1]);
+            }
         }
 
         displayGPXFromBackend(coordinates) {

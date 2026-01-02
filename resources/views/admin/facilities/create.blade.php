@@ -1,23 +1,25 @@
 @extends('layouts.admin')
 
-@section('title', 'Add Facility - ' . $trailNetwork->network_name)
+@section('title', 'Add Facility')
 
 @section('content')
+
 <!-- Leaflet CSS -->
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
 <div class="container mx-auto px-4 py-8">
     <!-- Header -->
     <div class="mb-6">
-        <a href="{{ route('admin.trail-networks.facilities.index', $trailNetwork) }}" class="text-gray-600 hover:text-gray-900 mb-4 inline-block">
+        <a href="{{ route('admin.facilities.index') }}" class="text-gray-600 hover:text-gray-900 mb-4 inline-block">
             ← Back to Facilities
         </a>
         <h1 class="text-3xl font-bold text-gray-900">Add Facility</h1>
-        <p class="text-gray-600 mt-1">{{ $trailNetwork->network_name }}</p>
+        <p class="text-gray-600 mt-1">Add a new facility to appear on the map</p>
     </div>
 
     <!-- Form -->
     <div class="bg-white rounded-lg shadow-md p-6">
-        <form action="{{ route('admin.trail-networks.facilities.store', $trailNetwork) }}" method="POST">
+        <form action="{{ route('admin.facilities.store') }}" method="POST">
             @csrf
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -81,13 +83,13 @@
                                 Latitude <span class="text-red-500">*</span>
                             </label>
                             <input type="number" 
-                                name="latitude" 
-                                id="latitude" 
-                                step="0.0000001"
-                                value="{{ old('latitude', $trailNetwork->latitude) }}" 
-                                required
-                                readonly
-                                class="mt-1 block w-full rounded-md border-gray-300 bg-gray-50 shadow-sm focus:border-green-500 focus:ring-green-500 @error('latitude') border-red-300 @enderror">
+                                   name="latitude" 
+                                   id="latitude" 
+                                   step="0.0000001"
+                                   value="{{ old('latitude', '54.7804') }}" 
+                                   required
+                                   readonly
+                                   class="mt-1 block w-full rounded-md border-gray-300 bg-gray-50 shadow-sm focus:border-green-500 focus:ring-green-500 @error('latitude') border-red-300 @enderror">
                             @error('latitude')
                                 <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                             @enderror
@@ -98,13 +100,13 @@
                                 Longitude <span class="text-red-500">*</span>
                             </label>
                             <input type="number" 
-                                name="longitude" 
-                                id="longitude" 
-                                step="0.0000001"
-                                value="{{ old('longitude', $trailNetwork->longitude) }}" 
-                                required
-                                readonly
-                                class="mt-1 block w-full rounded-md border-gray-300 bg-gray-50 shadow-sm focus:border-green-500 focus:ring-green-500 @error('longitude') border-red-300 @enderror">
+                                   name="longitude" 
+                                   id="longitude" 
+                                   step="0.0000001"
+                                   value="{{ old('longitude', '-127.1698') }}" 
+                                   required
+                                   readonly
+                                   class="mt-1 block w-full rounded-md border-gray-300 bg-gray-50 shadow-sm focus:border-green-500 focus:ring-green-500 @error('longitude') border-red-300 @enderror">
                             @error('longitude')
                                 <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                             @enderror
@@ -161,7 +163,7 @@
 
             <!-- Submit Buttons -->
             <div class="mt-6 flex items-center justify-end space-x-3">
-                <a href="{{ route('admin.trail-networks.facilities.index', $trailNetwork) }}" 
+                <a href="{{ route('admin.facilities.index') }}" 
                    class="bg-gray-200 hover:bg-gray-300 text-gray-800 px-6 py-2 rounded-lg font-medium transition-colors">
                     Cancel
                 </a>
@@ -173,33 +175,24 @@
         </form>
     </div>
 </div>
+
 <!-- Leaflet JS -->
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Get network center coordinates as default
+    // Get default coordinates (Smithers)
     const defaultLat = parseFloat(document.getElementById('latitude').value);
     const defaultLng = parseFloat(document.getElementById('longitude').value);
     
-    // Initialize map centered on network location
-    const map = L.map('coordinate-map').setView([defaultLat, defaultLng], 14);
+    // Initialize map centered on Smithers
+    const map = L.map('coordinate-map').setView([defaultLat, defaultLng], 11);
     
     // Add tile layer
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '© OpenStreetMap contributors',
         maxZoom: 18
     }).addTo(map);
-    
-    // Add network center marker (different color)
-    L.circleMarker([defaultLat, defaultLng], {
-        radius: 8,
-        fillColor: '#3b82f6',
-        color: '#fff',
-        weight: 2,
-        opacity: 1,
-        fillOpacity: 0.6
-    }).addTo(map).bindPopup('Network Center');
     
     // Marker for selected facility location
     let marker = L.marker([defaultLat, defaultLng], {
@@ -243,23 +236,5 @@ document.addEventListener('DOMContentLoaded', function() {
     updateFacilityIcon();
 });
 </script>
-<script>
-function updateFacilityIcon() {
-    const select = document.getElementById('facility_type');
-    const iconPreview = document.getElementById('icon-preview');
-    const selectedOption = select.options[select.selectedIndex];
-    
-    if (selectedOption.value) {
-        const icon = selectedOption.text.split(' ')[0]; // Get emoji from option text
-        iconPreview.textContent = icon;
-    } else {
-        iconPreview.textContent = '--';
-    }
-}
 
-// Initialize icon preview on page load
-document.addEventListener('DOMContentLoaded', function() {
-    updateFacilityIcon();
-});
-</script>
 @endsection

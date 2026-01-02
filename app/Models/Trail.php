@@ -34,6 +34,7 @@ class Trail extends Model
         'parking_info',
         'safety_notes',
         'is_featured',
+        'trail_network_id',
     ];
 
     protected $casts = [

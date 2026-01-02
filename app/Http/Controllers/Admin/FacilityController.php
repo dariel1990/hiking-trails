@@ -3,34 +3,33 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\TrailNetwork;
-use App\Models\NetworkFacility;
+use App\Models\Facility;
 use Illuminate\Http\Request;
 
-class NetworkFacilityController extends Controller
+class FacilityController extends Controller
 {
     /**
-     * Display facilities for a trail network
+     * Display all facilities
      */
-    public function index(TrailNetwork $trailNetwork)
+    public function index()
     {
-        $facilities = $trailNetwork->facilities()->orderBy('facility_type')->get();
+        $facilities = Facility::orderBy('facility_type')->orderBy('name')->get();
         
-        return view('admin.trail-networks.facilities.index', compact('trailNetwork', 'facilities'));
+        return view('admin.facilities.index', compact('facilities'));
     }
 
     /**
      * Show the form for creating a new facility
      */
-    public function create(TrailNetwork $trailNetwork)
+    public function create()
     {
-        return view('admin.trail-networks.facilities.create', compact('trailNetwork'));
+        return view('admin.facilities.create');
     }
 
     /**
      * Store a newly created facility
      */
-    public function store(Request $request, TrailNetwork $trailNetwork)
+    public function store(Request $request)
     {
         $validated = $request->validate([
             'facility_type' => 'required|in:parking,toilets,emergency_kit,lodge,viewpoint,info,picnic,water,shelter',
@@ -42,38 +41,27 @@ class NetworkFacilityController extends Controller
             'is_active' => 'boolean',
         ]);
 
-        $validated['trail_network_id'] = $trailNetwork->id;
         $validated['is_active'] = $request->has('is_active');
 
-        NetworkFacility::create($validated);
+        Facility::create($validated);
 
-        return redirect()->route('admin.trail-networks.facilities.index', $trailNetwork)
+        return redirect()->route('admin.facilities.index')
             ->with('success', 'Facility added successfully.');
     }
 
     /**
      * Show the form for editing a facility
      */
-    public function edit(TrailNetwork $trailNetwork, NetworkFacility $facility)
+    public function edit(Facility $facility)
     {
-        // Ensure facility belongs to this network
-        if ($facility->trail_network_id !== $trailNetwork->id) {
-            abort(404);
-        }
-
-        return view('admin.trail-networks.facilities.edit', compact('trailNetwork', 'facility'));
+        return view('admin.facilities.edit', compact('facility'));
     }
 
     /**
      * Update the specified facility
      */
-    public function update(Request $request, TrailNetwork $trailNetwork, NetworkFacility $facility)
+    public function update(Request $request, Facility $facility)
     {
-        // Ensure facility belongs to this network
-        if ($facility->trail_network_id !== $trailNetwork->id) {
-            abort(404);
-        }
-
         $validated = $request->validate([
             'facility_type' => 'required|in:parking,toilets,emergency_kit,lodge,viewpoint,info,picnic,water,shelter',
             'name' => 'required|string|max:255',
@@ -88,23 +76,18 @@ class NetworkFacilityController extends Controller
 
         $facility->update($validated);
 
-        return redirect()->route('admin.trail-networks.facilities.index', $trailNetwork)
+        return redirect()->route('admin.facilities.index')
             ->with('success', 'Facility updated successfully.');
     }
 
     /**
      * Remove the specified facility
      */
-    public function destroy(TrailNetwork $trailNetwork, NetworkFacility $facility)
+    public function destroy(Facility $facility)
     {
-        // Ensure facility belongs to this network
-        if ($facility->trail_network_id !== $trailNetwork->id) {
-            abort(404);
-        }
-
         $facility->delete();
 
-        return redirect()->route('admin.trail-networks.facilities.index', $trailNetwork)
+        return redirect()->route('admin.facilities.index')
             ->with('success', 'Facility deleted successfully.');
     }
 }

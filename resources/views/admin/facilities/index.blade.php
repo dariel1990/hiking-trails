@@ -1,24 +1,19 @@
 @extends('layouts.admin')
 
-@section('title', 'Manage Facilities - ' . $trailNetwork->network_name)
+@section('title', 'Manage Facilities')
 
 @section('content')
 <div class="container mx-auto px-4 py-8">
     <!-- Header -->
-    <div class="mb-6">
-        <a href="{{ route('admin.trail-networks.show', $trailNetwork) }}" class="text-gray-600 hover:text-gray-900 mb-4 inline-block">
-            ← Back to {{ $trailNetwork->network_name }}
-        </a>
-        <div class="flex justify-between items-center">
-            <div>
-                <h1 class="text-3xl font-bold text-gray-900">Manage Facilities</h1>
-                <p class="text-gray-600 mt-1">{{ $trailNetwork->network_name }}</p>
-            </div>
-            <a href="{{ route('admin.trail-networks.facilities.create', $trailNetwork) }}" 
-               class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition-colors">
-                + Add Facility
-            </a>
+    <div class="flex justify-between items-center mb-6">
+        <div>
+            <h1 class="text-3xl font-bold text-gray-900">Facilities</h1>
+            <p class="text-gray-600 mt-1">Manage all facilities that appear on the map</p>
         </div>
+        <a href="{{ route('admin.facilities.create') }}" 
+           class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition-colors">
+            + Add Facility
+        </a>
     </div>
 
     <!-- Success Message -->
@@ -61,11 +56,11 @@
                 </div>
 
                 <div class="flex items-center justify-end space-x-2">
-                    <a href="{{ route('admin.trail-networks.facilities.edit', [$trailNetwork, $facility]) }}" 
+                    <a href="{{ route('admin.facilities.edit', $facility) }}" 
                        class="text-blue-600 hover:text-blue-900 text-sm font-medium">
                         Edit
                     </a>
-                    <form action="{{ route('admin.trail-networks.facilities.destroy', [$trailNetwork, $facility]) }}" 
+                    <form action="{{ route('admin.facilities.destroy', $facility) }}" 
                           method="POST" 
                           class="inline"
                           onsubmit="return confirm('Are you sure you want to delete this facility?');">
@@ -85,7 +80,7 @@
                     </svg>
                 </div>
                 <p class="text-gray-600 mb-4">No facilities added yet.</p>
-                <a href="{{ route('admin.trail-networks.facilities.create', $trailNetwork) }}" 
+                <a href="{{ route('admin.facilities.create') }}" 
                    class="text-green-600 hover:underline font-medium">
                     Add your first facility
                 </a>

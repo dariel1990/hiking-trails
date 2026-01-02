@@ -951,6 +951,22 @@
     height: 300px;
     overflow-y: auto;
 }
+
+/* Facility marker styling */
+.facility-marker {
+    background: transparent !important;
+    border: none !important;
+}
+
+/* Facility popup styling */
+.facility-popup .leaflet-popup-content-wrapper {
+    border-radius: 12px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+}
+
+.facility-popup .leaflet-popup-content {
+    margin: 0;
+}
 </style>
 <script>
 
@@ -1221,6 +1237,7 @@
 
             this.setupEventListeners();
             this.loadTrails();
+            this.loadFacilities();
         }
 
         setupEventListeners() {
@@ -2499,6 +2516,75 @@
             }
         }
 
+        async loadFacilities() {
+            try {
+                const response = await fetch('/api/facilities');
+                const facilities = await response.json();
+                
+                console.log('Loaded facilities:', facilities);
+                
+                facilities.forEach(facility => {
+                    // Create custom icon with facility emoji
+                    const facilityIcon = L.divIcon({
+                        className: 'facility-marker',
+                        html: `
+                            <div style="
+                                background: white;
+                                color: #059669;
+                                padding: 8px;
+                                border-radius: 50%;
+                                font-size: 20px;
+                                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+                                border: 3px solid #059669;
+                                width: 44px;
+                                height: 44px;
+                                display: flex;
+                                align-items: center;
+                                justify-content: center;
+                            ">
+                                ${facility.icon}
+                            </div>
+                        `,
+                        iconSize: [44, 44],
+                        iconAnchor: [22, 22]
+                    });
+                    
+                    const facilityMarker = L.marker([facility.latitude, facility.longitude], {
+                        icon: facilityIcon,
+                        zIndexOffset: 500 // Below network markers but above trails
+                    }).addTo(this.map);
+                    
+                    // Create popup content
+                    const popupContent = `
+                        <div style="padding: 12px; min-width: 200px;">
+                            <div style="display: flex; align-items: center; margin-bottom: 8px;">
+                                <span style="font-size: 24px; margin-right: 8px;">${facility.icon}</span>
+                                <h3 style="margin: 0; font-size: 16px; font-weight: bold; color: #1f2937;">
+                                    ${facility.name}
+                                </h3>
+                            </div>
+                            <p style="margin: 0 0 8px 0; font-size: 12px; color: #6b7280;">
+                                <strong>Type:</strong> ${facility.facility_type.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                            </p>
+                            ${facility.description ? `
+                                <p style="margin: 0; font-size: 13px; color: #4b5563; line-height: 1.4;">
+                                    ${facility.description}
+                                </p>
+                            ` : ''}
+                        </div>
+                    `;
+                    
+                    facilityMarker.bindPopup(popupContent, {
+                        maxWidth: 300,
+                        className: 'facility-popup'
+                    });
+                });
+                
+            } catch (error) {
+                console.error('Error loading facilities:', error);
+            }
+        }
+
         renderTrailList(trails) {
             const container = document.getElementById('trail-cards');
             const countElement = document.getElementById('trail-count');
@@ -2516,7 +2602,7 @@
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
                         </svg>
                         <p class="font-medium">No trails found in this area</p>
-                        <p class="text-sm mt-2">Try zooming out or adjusting your filters</p>
+                        <p class="text-sm mt-2">Try zooming out or adjusting your filters</p6
                     </div>
                 `;
                 return;

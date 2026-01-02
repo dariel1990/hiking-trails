@@ -130,13 +130,14 @@
             <div class="bg-white rounded-lg shadow-md p-6">
                 <h3 class="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
                 <div class="space-y-2">
+                    <a href="{{ route('trail-networks.show', $trailNetwork->slug) }}" 
+                        target="_blank"
+                        class="block w-full text-center bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition-colors">
+                        🗺️ View Network Map
+                    </a>
                     <a href="{{ route('admin.trails.create') }}?network={{ $trailNetwork->id }}" 
                        class="block w-full text-center bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition-colors">
                         Add Trail to Network
-                    </a>
-                    <a href="{{ route('admin.trail-networks.facilities.index', $trailNetwork) }}" 
-                    class="block w-full text-center bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors">
-                        Manage Facilities
                     </a>
                 </div>
             </div>

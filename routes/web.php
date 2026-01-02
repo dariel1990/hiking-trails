@@ -6,6 +6,7 @@ use App\Http\Controllers\Admin\AdminController;
 use App\Http\Controllers\Admin\AdminTrailController;
 use App\Http\Controllers\Admin\ActivityTypeController;
 use App\Http\Controllers\Admin\AdminTrailNetworkController;
+use App\Http\Controllers\Admin\FacilityController;
 use App\Http\Controllers\EventsController;
 
 // PUBLIC ROUTES (No authentication required)
@@ -13,6 +14,13 @@ Route::get('/', [TrailController::class, 'home'])->name('home');
 Route::get('/trails', [TrailController::class, 'index'])->name('trails.index');
 Route::get('/trails/{trail}', [TrailController::class, 'show'])->name('trails.show');
 Route::get('/map', [TrailController::class, 'map'])->name('map');
+
+// Public Trail Networks Routes
+Route::get('/trail-networks', [App\Http\Controllers\TrailNetworkController::class, 'index'])
+    ->name('trail-networks.index');
+
+Route::get('/trail-networks/{slug}', [App\Http\Controllers\TrailNetworkController::class, 'show'])
+    ->name('trail-networks.show');
 
 // ADMIN ROUTES
 Route::prefix('admin')->name('admin.')->group(function () {
@@ -46,17 +54,16 @@ Route::prefix('admin')->name('admin.')->group(function () {
                 'destroy' => 'trail-networks.destroy',
             ]);
 
-        // Trail Network Facilities Management
-        Route::resource('trail-networks/{trailNetwork}/facilities', App\Http\Controllers\Admin\NetworkFacilityController::class)
+        // Facilities Management (Standalone - Global)
+        Route::resource('facilities', FacilityController::class)
             ->names([
-                'index' => 'trail-networks.facilities.index',
-                'create' => 'trail-networks.facilities.create',
-                'store' => 'trail-networks.facilities.store',
-                'edit' => 'trail-networks.facilities.edit',
-                'update' => 'trail-networks.facilities.update',
-                'destroy' => 'trail-networks.facilities.destroy',
-            ])
-            ->parameters(['trailNetwork' => 'trailNetwork', 'facility' => 'facility']);
+                'index' => 'facilities.index',
+                'create' => 'facilities.create',
+                'store' => 'facilities.store',
+                'edit' => 'facilities.edit',
+                'update' => 'facilities.update',
+                'destroy' => 'facilities.destroy',
+            ]);
         // Media Management Routes
         // Route::get('/trails/{trail}/media', [AdminTrailController::class, 'mediaManagement'])->name('trails.media');
         // Route::post('/trails/{trail}/media/upload', [AdminTrailController::class, 'uploadMedia'])->name('trails.media.upload');

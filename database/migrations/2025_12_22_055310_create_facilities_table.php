@@ -8,9 +8,8 @@ return new class extends Migration
 {
     public function up()
     {
-        Schema::create('network_facilities', function (Blueprint $table) {
+        Schema::create('facilities', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('trail_network_id')->constrained('trail_networks')->onDelete('cascade');
             $table->enum('facility_type', [
                 'parking',
                 'toilets',
@@ -34,6 +33,6 @@ return new class extends Migration
 
     public function down()
     {
-        Schema::dropIfExists('network_facilities');
+        Schema::dropIfExists('facilities');
     }
 };

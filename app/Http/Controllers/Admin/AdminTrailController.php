@@ -113,6 +113,7 @@ class AdminTrailController extends Controller
 
         // Set coordinates
         $data['start_coordinates'] = [$request->start_lat, $request->start_lng];
+        $data['trail_network_id'] = $request->trail_network_id ?? null;
         
         if ($request->end_lat && $request->end_lng) {
             $data['end_coordinates'] = [$request->end_lat, $request->end_lng];
@@ -449,6 +450,7 @@ class AdminTrailController extends Controller
         ]);
 
         $data['is_featured'] = $request->has('is_featured');
+        $data['trail_network_id'] = $request->input('trail_network_id');
 
         // Set coordinates
         $data['start_coordinates'] = [$request->start_lat, $request->start_lng];
@@ -1068,5 +1070,35 @@ class AdminTrailController extends Controller
             return 'vimeo';
         }
         return 'other';
+    }
+
+    /**
+     * Toggle the featured status of a trail
+     */
+    public function toggleFeatured(Trail $trail)
+    {
+        try {
+            // Toggle the is_featured status
+            $trail->is_featured = !$trail->is_featured;
+            $trail->save();
+
+            // Prepare success message
+            $message = $trail->is_featured 
+                ? "Trail '{$trail->name}' has been marked as featured!" 
+                : "Trail '{$trail->name}' has been removed from featured trails.";
+
+            // Return with success message
+            return redirect()->back()->with('success', $message);
+
+        } catch (\Exception $e) {
+            // Log the error
+            \Log::error('Failed to toggle featured status for trail: ' . $trail->id, [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            // Return with error message
+            return redirect()->back()->with('error', 'Failed to update featured status. Please try again.');
+        }
     }
 }

@@ -1,0 +1,997 @@
+@extends('layouts.public')
+
+@section('title', $network->network_name)
+
+@section('content')
+
+<!-- Leaflet CSS -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://cdn.jsdelivr.net/npm/leaflet-textpath@1.2.3/leaflet.textpath.min.js"></script>
+
+<style>
+    #network-map {
+        height: calc(100vh - 64px);
+        width: 100%;
+        z-index: 1;
+    }
+
+    /* Trail name labels */
+    .trail-name-label {
+        background: transparent !important;
+        border: none !important;
+        pointer-events: auto !important;  /* Changed from none to auto */
+    }
+
+    .trail-label-text {
+        padding: 4px 10px;
+        border-radius: 12px;
+        font-size: 11px;
+        font-weight: bold;
+        color: white;
+        white-space: nowrap;
+        text-align: center;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+        border: 2px solid white;
+        text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+        cursor: pointer;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .trail-label-text:hover {
+        transform: scale(1.05);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+    }
+
+    /* Sidebar */
+    .network-sidebar {
+        position: absolute;
+        top: 20px;
+        left: 20px;
+        z-index: 1000;
+        width: 350px;
+        max-height: calc(100vh - 140px);
+        overflow-y: auto;
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+
+    @media (max-width: 768px) {
+        .network-sidebar {
+            width: calc(100% - 40px);
+        }
+    }
+
+    /* Custom scrollbar */
+    .network-sidebar::-webkit-scrollbar {
+        width: 6px;
+    }
+
+    .network-sidebar::-webkit-scrollbar-track {
+        background: #f1f1f1;
+        border-radius: 3px;
+    }
+
+    .network-sidebar::-webkit-scrollbar-thumb {
+        background: #888;
+        border-radius: 3px;
+    }
+
+    .network-sidebar::-webkit-scrollbar-thumb:hover {
+        background: #555;
+    }
+
+    /* Custom scrollbar for trails list */
+    .overflow-y-auto::-webkit-scrollbar {
+        width: 8px;
+    }
+
+    .overflow-y-auto::-webkit-scrollbar-track {
+        background: #f9fafb;
+    }
+
+    .overflow-y-auto::-webkit-scrollbar-thumb {
+        background: #d1d5db;
+        border-radius: 4px;
+    }
+
+    .overflow-y-auto::-webkit-scrollbar-thumb:hover {
+        background: #9ca3af;
+    }
+
+    /* Custom scrollbar for trails list */
+    .overflow-y-auto::-webkit-scrollbar {
+        width: 8px;
+    }
+
+    .overflow-y-auto::-webkit-scrollbar-track {
+        background: #f9fafb;
+    }
+
+    .overflow-y-auto::-webkit-scrollbar-thumb {
+        background: #d1d5db;
+        border-radius: 4px;
+    }
+
+    .overflow-y-auto::-webkit-scrollbar-thumb:hover {
+        background: #9ca3af;
+    }
+
+    /* Facility marker styling */
+    .facility-marker {
+        background: transparent !important;
+        border: none !important;
+    }
+
+    /* Facility popup styling */
+    .facility-popup .leaflet-popup-content-wrapper {
+        border-radius: 12px;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+    }
+
+    .facility-popup .leaflet-popup-content {
+        margin: 0;
+    }
+
+    /* Trail highlight animation - Solid Glow Effect */
+    @keyframes solidGlow {
+        0%, 100% {
+            filter: drop-shadow(0 0 4px currentColor) 
+                    drop-shadow(0 0 8px currentColor) 
+                    drop-shadow(0 0 12px currentColor);
+        }
+        50% {
+            filter: drop-shadow(0 0 8px currentColor) 
+                    drop-shadow(0 0 16px currentColor) 
+                    drop-shadow(0 0 24px currentColor);
+        }
+    }
+
+    .trail-highlight {
+        filter: drop-shadow(0 0 6px currentColor) 
+                drop-shadow(0 0 12px currentColor) 
+                drop-shadow(0 0 18px currentColor) !important;
+        animation: solidGlow 1.5s ease-in-out infinite !important;
+    }
+
+    /* Waypoint markers */
+    .waypoint-marker {
+        background: transparent !important;
+        border: none !important;
+    }
+
+    .waypoint-start {
+        width: 16px;
+        height: 16px;
+        background: #10b981;
+        border: 3px solid white;
+        box-shadow: 0 3px 8px rgba(16, 185, 129, 0.5);
+    }
+
+    .waypoint-end {
+        width: 16px;
+        height: 16px;
+        background: #ef4444;
+        border: 3px solid white;
+        box-shadow: 0 3px 8px rgba(239, 68, 68, 0.5);
+    }
+
+    /* Trail detail popup styling */
+    .trail-detail-popup .leaflet-popup-content-wrapper {
+        border-radius: 16px;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+        padding: 5px 0 5px 0;
+    }
+
+    .trail-detail-popup .leaflet-popup-content {
+        margin: 16px;
+    }
+
+    .trail-detail-popup .leaflet-popup-tip {
+        background: white;
+    }
+
+    /* Layer option cards with images */
+    .layer-option-card {
+        position: relative;
+        cursor: pointer;
+        border-radius: 0.5rem;
+        overflow: hidden;
+        transition: all 0.2s;
+        border: 2px solid transparent;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        background: white;
+    }
+
+    .layer-option-card:hover {
+        border-color: #93C5FD;
+    }
+
+    .layer-option-card.active {
+        border-color: #2563EB;
+        box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+    }
+
+    .layer-preview {
+        width: 100%;
+        height: 70px;
+        border-radius: 0.375rem;
+        overflow: hidden;
+        position: relative;
+    }
+
+    .layer-preview img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+    }
+
+    .layer-label {
+        display: block;
+        font-size: 0.75rem;
+        font-weight: 500;
+        color: #374151;
+        text-align: center;
+        margin-top: 0.5rem;
+        padding: 0 0.25rem;
+    }
+
+    .layer-checkmark {
+        position: absolute;
+        top: 4px;
+        right: 4px;
+        width: 20px;
+        height: 20px;
+        color: white;
+        background-color: #2563EB;
+        border-radius: 50%;
+        padding: 2px;
+        display: none;
+    }
+
+    .layer-option-card.active .layer-checkmark {
+        display: block;
+    }
+
+    #layers-dropdown {
+        animation: slideDown 0.2s ease-out;
+    }
+
+    @keyframes slideDown {
+        from {
+            opacity: 0;
+            transform: translateY(-10px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+</style>
+
+<div class="relative">
+    <!-- Map Container -->
+    <div id="network-map"></div>
+
+    <!-- Sidebar -->
+    <div class="network-sidebar">
+        <!-- Header -->
+        <div class="p-6 border-b border-gray-200 bg-white">
+            <div class="flex items-start justify-between mb-4">
+                <div class="flex-1">
+                    <h1 class="text-2xl font-bold text-gray-900 mb-2">{{ $network->network_name }}</h1>
+                    <span class="inline-flex items-center px-3 py-1 rounded-md text-sm font-medium
+                        {{ $network->type === 'nordic_skiing' ? 'bg-blue-100 text-blue-700' : '' }}
+                        {{ $network->type === 'downhill_skiing' ? 'bg-purple-100 text-purple-700' : '' }}
+                        {{ $network->type === 'hiking' ? 'bg-green-100 text-green-700' : '' }}
+                        {{ $network->type === 'mountain_biking' ? 'bg-orange-100 text-orange-700' : '' }}">
+                        {{ ucwords(str_replace('_', ' ', $network->type)) }}
+                    </span>
+                </div>
+                <a href="{{ route('trail-networks.index') }}" 
+                class="flex-shrink-0 ml-3 text-gray-400 hover:text-gray-600 transition-colors">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                </a>
+            </div>
+
+            @if($network->description)
+                <p class="text-sm text-gray-600 leading-relaxed mb-4">{{ $network->description }}</p>
+            @endif
+
+            <div class="space-y-2 text-sm">
+                @if($network->address)
+                    <div class="flex items-center text-gray-600">
+                        <svg class="w-4 h-4 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
+                        </svg>
+                        <span>{{ $network->address }}</span>
+                    </div>
+                @endif
+
+                @if($network->website_url)
+                    <div class="flex items-center">
+                        <a href="{{ $network->website_url }}" 
+                        target="_blank"
+                        class="inline-flex items-center text-sm font-medium text-green-600 hover:text-green-700 transition-colors">
+                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"/>
+                            </svg>
+                            Visit Website
+                        </a>
+                    </div>
+                @endif
+            </div>
+
+            <!-- Stats -->
+            <div class="grid grid-cols-2 gap-3 mt-4">
+                <div class="bg-gray-50 rounded-lg p-3 border border-gray-200">
+                    <div class="text-2xl font-bold text-gray-900">{{ $network->trails->count() }}</div>
+                    <div class="text-xs font-medium text-gray-500 uppercase tracking-wide">Trails</div>
+                </div>
+                <div class="bg-gray-50 rounded-lg p-3 border border-gray-200">
+                    <div class="text-2xl font-bold text-gray-900">{{ number_format($network->trails->sum('distance_km'), 1) }}</div>
+                    <div class="text-xs font-medium text-gray-500 uppercase tracking-wide">Total km</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Trails Section -->
+        <div class="bg-white">
+            <div class="p-4 border-b border-gray-200">
+                <h3 class="text-sm font-semibold text-gray-900 uppercase tracking-wide mb-3">Trails</h3>
+                
+                <!-- Search Box -->
+                <div class="relative">
+                    <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                        <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                        </svg>
+                    </div>
+                    <input type="text" 
+                        id="trail-search" 
+                        placeholder="Search trails..." 
+                        class="w-full pl-10 pr-4 py-2.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all"
+                        onkeyup="searchTrails()">
+                </div>
+            </div>
+
+            <!-- Scrollable Trails Container -->
+            <div class="overflow-y-auto" style="max-height: 320px;">
+                @if($network->trails->count() > 0)
+                    <div class="p-3 space-y-2" id="trails-container">
+                        @foreach($network->trails->sortBy('difficulty_level') as $trail)
+                            @php
+                                $difficultyLevel = floor($trail->difficulty_level);
+                            @endphp
+                            <div class="group p-3 bg-white hover:bg-gray-50 rounded-lg cursor-pointer transition-all border border-gray-200 hover:border-gray-300 hover:shadow-sm trail-item"
+                                data-trail-id="{{ $trail->id }}"
+                                data-trail-name="{{ strtolower($trail->name) }}"
+                                onclick="focusTrail({{ $trail->id }})">
+                                <div class="flex items-center justify-between">
+                                    <div class="flex-1 min-w-0">
+                                        <h4 class="font-medium text-gray-900 text-sm truncate trail-name mb-1">{{ $trail->name }}</h4>
+                                        <div class="flex items-center gap-2">
+                                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium
+                                                @if($difficultyLevel <= 2) bg-green-100 text-green-700 ring-1 ring-green-600/20
+                                                @elseif($difficultyLevel == 3) bg-blue-100 text-blue-700 ring-1 ring-blue-600/20
+                                                @else bg-red-100 text-red-700 ring-1 ring-red-600/20
+                                                @endif">
+                                                Level {{ $trail->difficulty_level }}
+                                            </span>
+                                            <span class="text-xs text-gray-500 font-medium">{{ $trail->distance_km }} km</span>
+                                        </div>
+                                    </div>
+                                    <div class="ml-3 flex-shrink-0">
+                                        <div class="w-9 h-9 rounded-full flex items-center justify-center shadow-sm ring-2 ring-white trail-color-badge"
+                                            data-difficulty="{{ $difficultyLevel }}">
+                                            <span class="text-white text-xs font-bold">{{ substr($trail->name, 0, 1) }}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        @endforeach
+                    </div>
+                @else
+                    <div class="p-8 text-center">
+                        <div class="text-gray-400 mb-2">
+                            <svg class="w-12 h-12 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/>
+                            </svg>
+                        </div>
+                        <p class="text-gray-500 text-sm">No trails in this network yet.</p>
+                    </div>
+                @endif
+            </div>
+
+            <!-- No Results Message -->
+            <div id="no-results" class="hidden p-8 text-center border-t border-gray-200">
+                <div class="text-gray-400 mb-2">
+                    <svg class="w-12 h-12 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                    </svg>
+                </div>
+                <p class="text-gray-500 text-sm font-medium">No trails found</p>
+                <p class="text-gray-400 text-xs mt-1">Try adjusting your search</p>
+            </div>
+        </div>
+
+        <!-- Legend -->
+        <div class="p-4 border-t border-gray-200 bg-gray-50">
+            <h3 class="text-xs font-semibold text-gray-900 uppercase tracking-wide mb-3">Difficulty</h3>
+            <div class="space-y-2">
+                <div class="flex items-center">
+                    <div class="w-3 h-3 rounded-full bg-green-500 mr-2 ring-2 ring-green-500/20"></div>
+                    <span class="text-xs text-gray-700 font-medium">Easy (1-2)</span>
+                </div>
+                <div class="flex items-center">
+                    <div class="w-3 h-3 rounded-full bg-blue-500 mr-2 ring-2 ring-blue-500/20"></div>
+                    <span class="text-xs text-gray-700 font-medium">Intermediate (3)</span>
+                </div>
+                <div class="flex items-center">
+                    <div class="w-3 h-3 rounded-full bg-red-500 mr-2 ring-2 ring-red-500/20"></div>
+                    <span class="text-xs text-gray-700 font-medium">Advanced (4-5)</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- Map Type Selector - Top Right -->
+    <div class="absolute top-4 right-4 z-30">
+        <div class="relative">
+            <!-- Toggle Button -->
+            <button id="layers-toggle" class="bg-white rounded-lg shadow-lg p-3 hover:bg-gray-50 transition-colors">
+                <svg class="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 0v10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2z"/>
+                </svg>
+            </button>
+            
+            <!-- Dropdown Menu -->
+            <div id="layers-dropdown" class="hidden absolute top-full right-0 mt-2 bg-white rounded-lg shadow-xl border border-gray-200 overflow-hidden" style="min-width: 200px;">
+                <div class="p-2">
+                    <div class="text-xs font-semibold text-gray-500 uppercase tracking-wider px-3 py-2">Map Style</div>
+                    <div class="grid grid-cols-2 gap-2 mb-2">
+                        <button class="layer-option-card active" data-map-type="standard">
+                            <div class="layer-preview">
+                                <img src="{{ asset('images/map-layers/standard.png') }}" 
+                                    alt="Standard" class="w-full h-full object-cover">
+                            </div>
+                            <span class="layer-label">Standard</span>
+                            <svg class="layer-checkmark" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                            </svg>
+                        </button>
+                        
+                        <button class="layer-option-card" data-map-type="satellite">
+                            <div class="layer-preview">
+                                <img src="{{ asset('images/map-layers/satellite.png') }}" 
+                                    alt="Satellite" class="w-full h-full object-cover">
+                            </div>
+                            <span class="layer-label">Satellite</span>
+                            <svg class="layer-checkmark" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                            </svg>
+                        </button>
+                        
+                        <button class="layer-option-card" data-map-type="terrain">
+                            <div class="layer-preview">
+                                <img src="{{ asset('images/map-layers/terrain.png') }}" 
+                                    alt="Terrain" class="w-full h-full object-cover">
+                            </div>
+                            <span class="layer-label">Terrain</span>
+                            <svg class="layer-checkmark" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                            </svg>
+                        </button>
+
+                        <button class="layer-option-card" data-map-type="outdoors">
+                            <div class="layer-preview">
+                                <img src="{{ asset('images/map-layers/outdoor.png') }}" 
+                                    alt="Outdoors" class="w-full h-full object-cover">
+                            </div>
+                            <span class="layer-label">Outdoors</span>
+                            <svg class="layer-checkmark" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Leaflet JS -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/leaflet-textpath@1.2.3/leaflet.textpath.min.js"></script>
+
+<script>
+// Network data
+const networkData = @json($network);
+const trails = @json($network->trails);
+
+// Difficulty color mapping
+function getDifficultyColor(difficulty) {
+    const colors = {
+        1: '#22c55e',  // Green - Easy
+        2: '#22c55e',  // Green - Easy
+        3: '#3b82f6',  // Blue - Intermediate
+        4: '#ef4444',  // Red - Advanced
+        5: '#ef4444',  // Red - Advanced
+    };
+    return colors[Math.floor(difficulty)] || '#6b7280';
+}
+
+// Initialize map
+const map = L.map('network-map', {
+    zoomControl: false  // Disable default zoom control
+}).setView([networkData.latitude, networkData.longitude], 13);
+
+// Add zoom control to bottom right
+L.control.zoom({
+    position: 'bottomright'
+}).addTo(map);
+
+// Base layers for different map types
+const baseLayers = {
+    'standard': L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors',
+        maxZoom: 19
+    }),
+    'satellite': L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+        attribution: '© Esri, Maxar, Earthstar Geographics',
+        maxZoom: 18
+    }),
+    'terrain': L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
+        attribution: 'Map data: © OpenStreetMap, SRTM | Map style: © OpenTopoMap',
+        maxZoom: 18
+    }),
+    'outdoors': L.tileLayer('https://{s}.tile-cyclosm.openstreetmap.fr/cyclosm/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap, CyclOSM',
+        maxZoom: 18
+    })
+};
+
+// Track current map type (default to satellite for network maps)
+let currentMapType = 'standard';
+
+// Add default base layer
+baseLayers[currentMapType].addTo(map);
+
+map.on('click', function(e) {
+    // Close any open facility popups when clicking on the map
+    map.closePopup();
+});
+
+// Layers dropdown toggle
+document.getElementById('layers-toggle').addEventListener('click', (e) => {
+    e.stopPropagation();
+    const dropdown = document.getElementById('layers-dropdown');
+    dropdown.classList.toggle('hidden');
+});
+
+// Close dropdown when clicking outside
+document.addEventListener('click', (e) => {
+    const dropdown = document.getElementById('layers-dropdown');
+    const toggle = document.getElementById('layers-toggle');
+    if (!dropdown.contains(e.target) && !toggle.contains(e.target)) {
+        dropdown.classList.add('hidden');
+    }
+});
+
+// Map layer button clicks
+document.querySelectorAll('.layer-option-card').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+        const mapType = btn.dataset.mapType;
+        if (mapType) {
+            // Remove current base layer
+            if (map.hasLayer(baseLayers[currentMapType])) {
+                map.removeLayer(baseLayers[currentMapType]);
+            }
+            
+            // Update current map type
+            currentMapType = mapType;
+            
+            // Add new base layer
+            baseLayers[currentMapType].addTo(map);
+            
+            // Update active state in dropdown
+            document.querySelectorAll('.layer-option-card').forEach(b => {
+                if (b.dataset.mapType === mapType) {
+                    b.classList.add('active');
+                } else {
+                    b.classList.remove('active');
+                }
+            });
+            
+            // Close dropdown
+            document.getElementById('layers-dropdown').classList.add('hidden');
+        }
+    });
+});
+
+// Add network center marker
+L.circleMarker([networkData.latitude, networkData.longitude], {
+    radius: 10,
+    fillColor: '#3b82f6',
+    color: '#fff',
+    weight: 3,
+    opacity: 1,
+    fillOpacity: 0.8
+}).addTo(map).bindPopup(`<strong>${networkData.network_name}</strong><br>Network Center`);
+
+// Add network center marker
+L.circleMarker([networkData.latitude, networkData.longitude], {
+    radius: 10,
+    fillColor: '#3b82f6',
+    color: '#fff',
+    weight: 3,
+    opacity: 1,
+    fillOpacity: 0.8
+}).addTo(map).bindPopup(`<strong>${networkData.network_name}</strong><br>Network Center`);
+
+// Load and display facilities - FIXED VERSION
+fetch('/api/facilities')
+    .then(response => response.json())
+    .then(facilities => {
+        console.log('Loaded facilities:', facilities);
+        
+        facilities.forEach(facility => {
+            // Create custom icon with facility emoji
+            const facilityIcon = L.divIcon({
+                className: 'facility-marker-custom',
+                html: `
+                    <div style="
+                        background: white;
+                        color: #059669;
+                        padding: 6px;
+                        border-radius: 50%;
+                        font-size: 18px;
+                        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+                        border: 3px solid #059669;
+                        width: 38px;
+                        height: 38px;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        cursor: pointer;
+                    ">
+                        ${facility.icon}
+                    </div>
+                `,
+                iconSize: [38, 38],
+                iconAnchor: [19, 19]
+            });
+            
+            // Create marker
+            const facilityMarker = L.marker([facility.latitude, facility.longitude], {
+                icon: facilityIcon,
+                zIndexOffset: 500
+            });
+            
+            // Store facility data on the marker
+            facilityMarker.facilityData = facility;
+            
+            // Add to map
+            facilityMarker.addTo(map);
+            
+            // Store reference
+            facilityMarkers.push(facilityMarker);
+        });
+        
+        console.log('Facility markers created:', facilityMarkers.length);
+    })
+    .catch(error => console.error('Error loading facilities:', error));
+
+// Global handler for facility marker clicks
+map.on('click', function(e) {
+    // Check if click was on a facility marker
+    let clickedFacility = null;
+    
+    facilityMarkers.forEach(marker => {
+        const markerLatLng = marker.getLatLng();
+        const distance = map.distance(e.latlng, markerLatLng);
+        
+        // If click is within 20 pixels of marker center
+        if (distance < 20) {
+            clickedFacility = marker.facilityData;
+        }
+    });
+    
+    // Only show popup if a facility was clicked
+    if (clickedFacility) {
+        const popupContent = `
+            <div style="padding: 12px; min-width: 200px;">
+                <div style="display: flex; align-items: center; margin-bottom: 8px;">
+                    <span style="font-size: 24px; margin-right: 8px;">${clickedFacility.icon}</span>
+                    <h3 style="margin: 0; font-size: 16px; font-weight: bold; color: #1f2937;">
+                        ${clickedFacility.name}
+                    </h3>
+                </div>
+                <p style="margin: 0 0 8px 0; font-size: 12px; color: #6b7280;">
+                    <strong>Type:</strong> ${clickedFacility.facility_type.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                </p>
+                ${clickedFacility.description ? `
+                    <p style="margin: 0; font-size: 13px; color: #4b5563; line-height: 1.4;">
+                        ${clickedFacility.description}
+                    </p>
+                ` : ''}
+            </div>
+        `;
+        
+        L.popup({
+            maxWidth: 300,
+            className: 'facility-popup',
+            closeButton: true
+        })
+        .setLatLng(e.latlng)
+        .setContent(popupContent)
+        .openOn(map);
+    }
+});
+// Store trail layers and waypoints for focusing
+const trailLayers = {};
+const trailWaypoints = {};
+let selectedTrailId = null;
+const facilityMarkers = [];
+
+// Add trails to map
+trails.forEach(trail => {
+    if (!trail.route_coordinates || trail.route_coordinates.length === 0) {
+        return;
+    }
+
+    const color = getDifficultyColor(trail.difficulty_level);
+    
+    // Create trail route
+    const route = L.polyline(trail.route_coordinates, {
+        color: color,
+        weight: 5,
+        opacity: 0.9,
+        className: `trail-route-${trail.id}`
+    }).addTo(map);
+
+    // // Add animated arrows along the path
+    // route.setText('  ➤  ', {
+    //     repeat: true,
+    //     offset: 6,
+    //     attributes: {
+    //         fill: 'black',
+    //         'font-size': '16',
+    //         'font-weight': 'bold',
+    //         'text-shadow': '0 0 2px rgba(255,255,255,0.8)'
+    //     }
+    // });
+
+    // Store layer reference
+    trailLayers[trail.id] = route;
+    trailWaypoints[trail.id] = [];
+
+    // Add waypoint markers
+    const coordinates = trail.route_coordinates;
+    
+    // Start marker (green)
+    const startMarker = L.marker(coordinates[0], {
+        icon: L.divIcon({
+            className: 'waypoint-marker',
+            html: `<div class="waypoint-start" style="border-color: ${color};"></div>`,
+            iconSize: [16, 16],
+            iconAnchor: [8, 8]
+        }),
+        opacity: 0.8
+    }).addTo(map);
+    startMarker.bindTooltip('Start', { permanent: false, direction: 'top', className: 'waypoint-tooltip' });
+    trailWaypoints[trail.id].push(startMarker);
+
+    // Intermediate waypoints (show every 3rd point for clarity)
+    for (let i = 1; i < coordinates.length - 1; i += 3) {
+        const waypoint = L.marker(coordinates[i], {
+            icon: L.divIcon({
+                className: 'waypoint-marker',
+                html: `<div class="waypoint-dot" style="color: ${color};"></div>`,
+                iconSize: [12, 12],
+                iconAnchor: [6, 6]
+            }),
+            opacity: 0.6
+        }).addTo(map);
+        trailWaypoints[trail.id].push(waypoint);
+    }
+
+    // End marker (red)
+    const endMarker = L.marker(coordinates[coordinates.length - 1], {
+        icon: L.divIcon({
+            className: 'waypoint-marker',
+            html: `<div class="waypoint-end" style="border-color: ${color};"></div>`,
+            iconSize: [16, 16],
+            iconAnchor: [8, 8]
+        }),
+        opacity: 0.8
+    }).addTo(map);
+    endMarker.bindTooltip('End', { permanent: false, direction: 'top', className: 'waypoint-tooltip' });
+    trailWaypoints[trail.id].push(endMarker);
+
+    // Add enhanced popup with trail image and details
+    const featuredImage = trail.preview_photo || (trail.photos && trail.photos.length > 0 ? trail.photos[0].url : null);
+
+    const popupContent = `
+        <div style="width: 300px; font-family: system-ui, -apple-system, sans-serif;">
+            <!-- Featured Image -->
+            ${featuredImage ? `
+                <div style="margin-bottom: 16px; border-radius: 12px; overflow: hidden;">
+                    <img src="${featuredImage}" 
+                        alt="${trail.name}"
+                        style="width: 100%; height: 200px; object-fit: cover; display: block;"
+                        onerror="this.parentElement.innerHTML='<div style=\\'width:100%;height:200px;background:linear-gradient(135deg, #10B981 0%, #3B82F6 100%);display:flex;align-items:center;justify-content:center;\\'><svg style=\\'width:48px;height:48px;color:white;opacity:0.75\\' fill=\\'none\\' stroke=\\'currentColor\\' viewBox=\\'0 0 24 24\\'><path stroke-linecap=\\'round\\' stroke-linejoin=\\'round\\' stroke-width=\\'2\\' d=\\'M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z\\'></path></svg></div>'">
+                </div>
+            ` : `
+                <div style="margin-bottom: 16px; border-radius: 12px; overflow: hidden; width: 100%; height: 200px; background: linear-gradient(135deg, #10B981 0%, #3B82F6 100%); display: flex; align-items: center; justify-content: center;">
+                    <svg style="width: 48px; height: 48px; color: white; opacity: 0.75;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"/>
+                    </svg>
+                </div>
+            `}
+            
+            <!-- Trail Name and Type -->
+            <div style="margin-bottom: 16px;">
+                <h3 style="margin: 0 0 4px 0; font-size: 18px; font-weight: bold; color: #1f2937;">
+                    ${trail.name}
+                </h3>
+                <p style="margin: 0; font-size: 13px; color: #6b7280; text-transform: capitalize;">
+                    ${trail.trail_type ? trail.trail_type.replace(/-/g, ' ') : 'Trail'}
+                </p>
+            </div>
+            
+            <!-- Description -->
+            ${trail.description ? `
+                <p style="margin: 0 0 16px 0; font-size: 14px; color: #4b5563; line-height: 1.5;">
+                    ${trail.description.substring(0, 100)}${trail.description.length > 100 ? '...' : ''}
+                </p>
+            ` : ''}
+            
+            <!-- Action Buttons -->
+            <div style="display: flex; flex-direction: column; gap: 8px;">
+                <a href="/trails/${trail.id}" 
+                style="display: block; text-align: center; background: #059669; color: white; padding: 14px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 15px; transition: background 0.2s;">
+                    View Full Trail
+                </a>
+                <button onclick="focusTrail(${trail.id}); return false;"
+                style="width: 100%; text-align: center; background: #f3f4f6; color: #374151; padding: 14px; border-radius: 8px; font-weight: 600; font-size: 15px; border: none; cursor: pointer; transition: background 0.2s;">
+                    Center on Map
+                </button>
+            </div>
+        </div>
+    `;
+
+    route.bindPopup(popupContent, {
+        maxWidth: 340,
+        className: 'trail-detail-popup'
+    });
+
+    // Add trail name label at midpoint
+    const midIndex = Math.floor(coordinates.length / 2);
+    const midpoint = coordinates[midIndex];
+
+    const labelMarker = L.marker(midpoint, {
+        icon: L.divIcon({
+            className: 'trail-name-label',
+            html: `<div class="trail-label-text" style="background-color: ${color}; cursor: pointer;" onclick="focusTrail(${trail.id})">${trail.name}</div>`,
+            iconSize: [150, 30],
+            iconAnchor: [75, 15]
+        })
+    }).addTo(map);
+
+    // Make the label clickable
+    labelMarker.on('click', function() {
+        focusTrail(trail.id);
+    });
+});
+
+// Fit map to show all trails
+if (trails.length > 0 && trails.some(t => t.route_coordinates && t.route_coordinates.length > 0)) {
+    const allCoordinates = trails
+        .filter(t => t.route_coordinates && t.route_coordinates.length > 0)
+        .flatMap(t => t.route_coordinates);
+    
+    if (allCoordinates.length > 0) {
+        const bounds = L.latLngBounds(allCoordinates);
+        map.fitBounds(bounds, { padding: [50, 50] });
+    }
+}
+
+// Focus on trail when clicked in sidebar
+window.focusTrail = function(trailId) {
+    // Remove previous highlights
+    if (selectedTrailId !== null) {
+        const prevRoute = trailLayers[selectedTrailId];
+        if (prevRoute) {
+            prevRoute._path.classList.remove('trail-highlight');
+            prevRoute.setStyle({ 
+                weight: 5, 
+                opacity: 0.9 
+            });
+        }
+        // Reset waypoint opacity
+        if (trailWaypoints[selectedTrailId]) {
+            trailWaypoints[selectedTrailId].forEach(waypoint => {
+                waypoint.setOpacity(0.6);
+            });
+        }
+    }
+
+    // Highlight selected trail
+    const layer = trailLayers[trailId];
+    if (layer) {
+        // Make the trail much more prominent
+        layer.setStyle({ 
+            weight: 10,  // Much thicker line
+            opacity: 1
+        });
+        
+        // Add highlight animation to route
+        layer._path.classList.add('trail-highlight');
+        
+        // Bring trail to front
+        layer.bringToFront();
+        
+        // Highlight all waypoints
+        if (trailWaypoints[trailId]) {
+            trailWaypoints[trailId].forEach((waypoint, index) => {
+                waypoint.setOpacity(1);
+                // Bring waypoints to front too
+                if (waypoint._icon) {
+                    waypoint._icon.style.zIndex = 1000;
+                }
+            });
+        }
+        
+        // Fit bounds and open popup
+        map.fitBounds(layer.getBounds(), { padding: [100, 100] });
+        setTimeout(() => {
+            layer.openPopup();
+        }, 300);
+        
+        selectedTrailId = trailId;
+    }
+};
+
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.trail-color-badge').forEach(badge => {
+        const difficulty = parseInt(badge.dataset.difficulty);
+        const color = getDifficultyColor(difficulty);
+        badge.style.backgroundColor = color;
+    });
+});
+
+// Search trails function
+window.searchTrails = function() {
+    const searchTerm = document.getElementById('trail-search').value.toLowerCase().trim();
+    const trailItems = document.querySelectorAll('.trail-item');
+    const trailsContainer = document.getElementById('trails-container');
+    const noResults = document.getElementById('no-results');
+    let visibleCount = 0;
+
+    trailItems.forEach(item => {
+        const trailName = item.dataset.trailName;
+        
+        if (trailName.includes(searchTerm)) {
+            item.style.display = '';
+            visibleCount++;
+        } else {
+            item.style.display = 'none';
+        }
+    });
+
+    // Show/hide no results message
+    if (visibleCount === 0 && searchTerm !== '') {
+        if (noResults) noResults.classList.remove('hidden');
+        if (trailsContainer) trailsContainer.classList.add('hidden');
+    } else {
+        if (noResults) noResults.classList.add('hidden');
+        if (trailsContainer) trailsContainer.classList.remove('hidden');
+    }
+};
+</script>
+@endsection
