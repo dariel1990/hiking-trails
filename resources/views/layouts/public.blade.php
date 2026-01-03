@@ -41,19 +41,19 @@
         <div class="{{ request()->routeIs('map') ? 'w-full' : 'max-w-7xl mx-auto' }} px-4">
             <div class="flex justify-between items-center h-20">
                 <!-- Logo - Enhanced with brand elements -->
-                <a href="{{ route('home') }}" class="flex items-center space-x-2 {{ request()->routeIs('map') ? 'hidden md:flex' : 'flex' }}">
+                <a href="https://xploresmithers.com/" class="flex items-center space-x-2 {{ request()->routeIs('map') ? 'hidden md:flex' : 'flex' }}">
                     <div class="relative">
-                        <img src="{{ asset('images/logo.png') }}" 
-                            alt="Trail Finder Logo" 
+                        <img src="{{ asset('images/xplore-smithers-logo.png') }}" 
+                            alt="Xplore Smithers Logo" 
                             class="w-12 h-12 object-contain transition-all duration-300 group-hover:scale-105">
                     </div>
                     <div class="flex flex-col">
-                        <span class="text-2xl font-bold text-gray-900 tracking-tight">Trail Finder</span>
-                        <span class="text-xs text-accent-600 font-medium tracking-wider uppercase">Ethical Adventures</span>
+                        <span class="text-2xl font-bold text-gray-900 tracking-tight">Xplore Smithers</span>
+                        <span class="text-xs text-accent-600 font-medium tracking-wider uppercase">Discover Smithers BC</span>
                     </div>
                 </a>
 
-                 @if(request()->routeIs('map'))
+                @if(request()->routeIs('map'))
                 <div class="flex-1 {{ request()->routeIs('map') ? 'max-w-full md:max-w-5xl md:mx-8' : 'max-w-2xl mx-8' }}">
                     <div class="relative">
                         <input 
@@ -75,46 +75,27 @@
                 
 
                 <!-- Desktop Navigation - Enhanced with better spacing and hover effects -->
-                <div class="hidden lg:flex items-center space-x-8">
+                <div class="hidden lg:flex items-center space-x-8">                    
                     <a href="{{ route('home') }}" 
                        class="relative text-forest-700 hover:text-accent-600 font-medium transition-all duration-300 py-2 group {{ request()->routeIs('home') ? 'text-accent-700' : '' }}">
                         <span>Home</span>
                         <div class="absolute bottom-0 left-0 w-0 h-0.5 bg-accent-600 group-hover:w-full transition-all duration-300 {{ request()->routeIs('home') ? 'w-full' : '' }}"></div>
                     </a>
                     <a href="{{ route('trails.index') }}" 
-                       class="relative text-forest-700 hover:text-accent-600 font-medium transition-all duration-300 py-2 group {{ request()->routeIs('trails.*') ? 'text-accent-700' : '' }}">
-                        <span>Browse Trails</span>
-                        <div class="absolute bottom-0 left-0 w-0 h-0.5 bg-accent-600 group-hover:w-full transition-all duration-300 {{ request()->routeIs('trails.*') ? 'w-full' : '' }}"></div>
+                    class="relative text-forest-700 hover:text-accent-600 font-medium transition-all duration-300 py-2 group {{ request()->routeIs('trails.index') ? 'text-accent-700' : '' }}">
+                        <span>Individual Trails</span>
+                        <div class="absolute bottom-0 left-0 w-0 h-0.5 bg-accent-600 group-hover:w-full transition-all duration-300 {{ request()->routeIs('trails.index') ? 'w-full' : '' }}"></div>
+                    </a>
+                    <a href="{{ route('trail-networks.index') }}" 
+                    class="relative text-forest-700 hover:text-accent-600 font-medium transition-all duration-300 py-2 group {{ request()->routeIs('trail-networks.*') ? 'text-accent-700' : '' }}">
+                        <span>Trail Networks</span>
+                        <div class="absolute bottom-0 left-0 w-0 h-0.5 bg-accent-600 group-hover:w-full transition-all duration-300 {{ request()->routeIs('trail-networks.*') ? 'w-full' : '' }}"></div>
                     </a>
                     <a href="{{ route('map') }}" 
                        class="relative text-forest-700 hover:text-accent-600 font-medium transition-all duration-300 py-2 group {{ request()->routeIs('map') ? 'text-accent-700' : '' }}">
                         <span>Interactive Map</span>
                         <div class="absolute bottom-0 left-0 w-0 h-0.5 bg-accent-600 group-hover:w-full transition-all duration-300 {{ request()->routeIs('map') ? 'w-full' : '' }}"></div>
                     </a>
-                    <a href="https://xploresmithers.com/" 
-                       class="relative text-forest-700 hover:text-accent-600 font-medium transition-all duration-300 py-2 group">
-                        <span>Back to Xplore Smithers</span>
-                        <div class="absolute bottom-0 left-0 w-0 h-0.5 bg-accent-600 group-hover:w-full transition-all duration-300"></div>
-                    </a>
-
-                    <!-- New navigation items inspired by XploreSmithers -->
-                    {{-- <div class="relative group">
-                        <button class="text-gray-700 hover:text-emerald-600 font-medium transition-colors duration-300 flex items-center space-x-1">
-                            <span>Community</span>
-                            <svg class="w-4 h-4 transition-transform duration-300 group-hover:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
-                            </svg>
-                        </button>
-                        <!-- Dropdown menu -->
-                        <div class="absolute top-full left-0 mt-2 w-48 bg-white rounded-xl shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 transform translate-y-2 group-hover:translate-y-0">
-                            <div class="py-2">
-                                <a href="#" class="block px-4 py-3 text-sm text-gray-700 hover:bg-emerald-50 hover:text-emerald-600 transition-colors">Local Culture</a>
-                                <a href="#" class="block px-4 py-3 text-sm text-gray-700 hover:bg-emerald-50 hover:text-emerald-600 transition-colors">Conservation</a>
-                                <a href="#" class="block px-4 py-3 text-sm text-gray-700 hover:bg-emerald-50 hover:text-emerald-600 transition-colors">Trail Safety</a>
-                                <a href="#" class="block px-4 py-3 text-sm text-gray-700 hover:bg-emerald-50 hover:text-emerald-600 transition-colors">Leave No Trace</a>
-                            </div>
-                        </div>
-                    </div> --}}
                 </div>
 
                 <!-- CTA Button - Enhanced design -->
@@ -139,9 +120,9 @@
                     class="absolute top-full left-0 right-0 bg-white shadow-xl border-t border-gray-100">
                     <div class="py-4 space-y-2">
                         <a href="{{ route('home') }}" class="block px-6 py-3 text-gray-700 hover:bg-emerald-50 hover:text-emerald-600 font-medium transition-colors">Home</a>
-                        <a href="{{ route('trails.index') }}" class="block px-6 py-3 text-gray-700 hover:bg-emerald-50 hover:text-emerald-600 font-medium transition-colors">Browse Trails</a>
+                        <a href="{{ route('trails.index') }}" class="block px-6 py-3 text-gray-700 hover:bg-emerald-50 hover:text-emerald-600 font-medium transition-colors">Individual Trails</a>
+                        <a href="{{ route('trail-networks.index') }}" class="block px-6 py-3 text-gray-700 hover:bg-emerald-50 hover:text-emerald-600 font-medium transition-colors">Trail Networks</a>
                         <a href="{{ route('map') }}" class="block px-6 py-3 text-gray-700 hover:bg-emerald-50 hover:text-emerald-600 font-medium transition-colors">Interactive Map</a>
-                        <a href="https://xploresmithers.com/" class="block px-6 py-3 text-gray-700 hover:bg-emerald-50 hover:text-emerald-600 font-medium transition-colors">Back to Xplore Smithers Map</a>
                     </div>
                 </div>
             </div>
@@ -213,15 +194,15 @@
         </div>
 
         <div class="relative max-w-7xl mx-auto py-16 px-4 lg:px-8">
-            <div class="grid md:grid-cols-12 gap-8">
+            <div class="grid md:grid-cols-12 gap-8 text-center md:text-left">
                 <!-- Brand Section - Enhanced -->
                 <div class="md:col-span-6">
-                    <div class="flex items-center space-x-3 mb-6">
+                    <div class="flex flex-col md:flex-row items-center md:space-x-3 space-y-3 md:space-y-0 mb-6">
                         <img src="{{ asset('images/logo.png') }}" 
                         alt="Trail Finder Logo" 
                         class="w-12 h-12 object-contain">
-                        <div>
-                            <span class="text-2xl font-bold">Trail Finder</span>
+                        <div class="text-center md:text-left">
+                            <span class="text-2xl font-bold block">Trail Finder</span>
                             <p class="text-accent-400 text-sm font-medium">Ethical Adventures</p>
                         </div>
                     </div>
@@ -244,7 +225,7 @@
                 <!-- Explore Links -->
                 <div class="md:col-span-3">
                     <h4 class="font-bold text-lg mb-6 text-accent-400">Explore</h4>
-                    <ul class="space-y-3">
+                    <ul class="space-y-3 flex flex-col items-center md:items-start">
                         <li><a href="{{ route('trails.index') }}" class="text-gray-300 hover:text-accent-400 transition-colors duration-300 flex items-center space-x-2">
                             <span>🥾</span><span>All Trails</span>
                         </a></li>
@@ -282,7 +263,7 @@
                 <!-- Connect With Us - Fixed -->
                 <div class="md:col-span-3">
                     <h4 class="font-bold text-lg mb-6 text-accent-400">Connect With Us</h4>
-                    <div class="space-y-6">
+                    <div class="space-y-6 flex flex-col items-center md:items-start">
                         <!-- Newsletter signup - Fixed styling -->
                         <div class="bg-forest-800/60 rounded-xl p-5 border border-forest-700/70">
                             <h5 class="font-semibold text-white text-base mb-4">Trail Updates</h5>
@@ -298,7 +279,7 @@
                         <!-- Social links -->
                         <div>
                             <p class="text-gray-300 text-sm mb-4 font-medium">Follow our adventures</p>
-                            <div class="flex space-x-3">
+                            <div class="flex space-x-3 justify-center md:justify-start">
                                 <a href="https://youtube.com/@xploresmithers?si=Q9jtjqElsvfcigNH" target="_blank" class="w-10 h-10 bg-green-700/60 hover:bg-accent-500 rounded-lg flex items-center justify-center transition-colors duration-300 group">
                                     <svg class="w-5 h-5 text-gray-300 group-hover:text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>
                                 </a>
@@ -319,7 +300,7 @@
             
             <!-- Bottom footer with enhanced styling -->
             <div class="mt-12 pt-8 border-t border-green-800/60">
-                <div class="flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
+                <div class="flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0 text-center md:text-left">
                     <div class="flex items-center space-x-6">
                         <p class="text-gray-400 text-sm">
                             &copy; {{ date('Y') }} Trail Finder. 

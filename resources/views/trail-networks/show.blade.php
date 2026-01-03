@@ -54,11 +54,48 @@
         background: white;
         border-radius: 12px;
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        transition: transform 0.3s ease-in-out;
     }
 
     @media (max-width: 768px) {
         .network-sidebar {
             width: calc(100% - 40px);
+            max-width: 400px;
+        }
+        
+        .network-sidebar.hidden-mobile {
+            transform: translateX(calc(-100% - 40px));
+        }
+    }
+
+    /* Sidebar toggle button for mobile */
+    .sidebar-toggle {
+        position: absolute;
+        top: 20px;
+        left: 20px;
+        z-index: 1001;
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        padding: 12px;
+        cursor: pointer;
+        display: none;
+        transition: all 0.3s ease-in-out;
+    }
+
+    .sidebar-toggle:hover {
+        background: #f9fafb;
+    }
+
+    .sidebar-toggle.hidden {
+        opacity: 0;
+        pointer-events: none;
+        transform: scale(0.8);
+    }
+
+    @media (max-width: 768px) {
+        .sidebar-toggle {
+            display: block;
         }
     }
 
@@ -270,16 +307,53 @@
             transform: translateY(0);
         }
     }
+
+    /* Sticky sidebar header */
+    .network-sidebar .sidebar-header {
+        position: sticky;
+        top: 0;
+        background: white;
+        z-index: 10;
+        border-bottom: 1px solid #e5e7eb;
+    }
+
+    /* Legend positioning */
+    .map-legend {
+        position: absolute;
+        top: 6rem;
+        right: 1rem;
+        z-index: 30;
+        background: white;
+        border-radius: 0.5rem;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        padding: 1rem;
+        max-width: 12rem;
+    }
+
+    @media (max-width: 768px) {
+        .map-legend {
+            top: auto;
+            bottom: 1.5rem;
+            right: auto;
+            left: 1rem;
+        }
+    }
 </style>
 
 <div class="relative">
+    <!-- Mobile Sidebar Toggle -->
+    <button class="sidebar-toggle" id="sidebar-toggle">
+        <svg class="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+        </svg>
+    </button>
     <!-- Map Container -->
     <div id="network-map"></div>
 
     <!-- Sidebar -->
     <div class="network-sidebar">
         <!-- Header -->
-        <div class="p-6 border-b border-gray-200 bg-white">
+        <div class="sidebar-header p-6 pb-3 bg-white">
             <div class="flex items-start justify-between mb-4">
                 <div class="flex-1">
                     <h1 class="text-2xl font-bold text-gray-900 mb-2">{{ $network->network_name }}</h1>
@@ -291,12 +365,11 @@
                         {{ ucwords(str_replace('_', ' ', $network->type)) }}
                     </span>
                 </div>
-                <a href="{{ route('trail-networks.index') }}" 
-                class="flex-shrink-0 ml-3 text-gray-400 hover:text-gray-600 transition-colors">
+                <button id="sidebar-close" class="flex-shrink-0 ml-3 text-gray-400 hover:text-gray-600 transition-colors">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                     </svg>
-                </a>
+                </button>
             </div>
 
             @if($network->description)
@@ -338,28 +411,25 @@
                     <div class="text-xs font-medium text-gray-500 uppercase tracking-wide">Total km</div>
                 </div>
             </div>
+
+            <h3 class="text-sm font-semibold text-gray-900 uppercase tracking-wide mt-3 mb-2">Trails</h3>
+            <!-- Search Box -->
+            <div class="relative">
+                <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                    <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                    </svg>
+                </div>
+                <input type="text" 
+                    id="trail-search" 
+                    placeholder="Search trails..." 
+                    class="w-full pl-10 pr-4 py-2.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all"
+                    onkeyup="searchTrails()">
+            </div>
         </div>
 
         <!-- Trails Section -->
         <div class="bg-white">
-            <div class="p-4 border-b border-gray-200">
-                <h3 class="text-sm font-semibold text-gray-900 uppercase tracking-wide mb-3">Trails</h3>
-                
-                <!-- Search Box -->
-                <div class="relative">
-                    <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-                        <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
-                        </svg>
-                    </div>
-                    <input type="text" 
-                        id="trail-search" 
-                        placeholder="Search trails..." 
-                        class="w-full pl-10 pr-4 py-2.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all"
-                        onkeyup="searchTrails()">
-                </div>
-            </div>
-
             <!-- Scrollable Trails Container -->
             <div class="overflow-y-auto" style="max-height: 320px;">
                 @if($network->trails->count() > 0)
@@ -419,28 +489,9 @@
                 <p class="text-gray-400 text-xs mt-1">Try adjusting your search</p>
             </div>
         </div>
-
-        <!-- Legend -->
-        <div class="p-4 border-t border-gray-200 bg-gray-50">
-            <h3 class="text-xs font-semibold text-gray-900 uppercase tracking-wide mb-3">Difficulty</h3>
-            <div class="space-y-2">
-                <div class="flex items-center">
-                    <div class="w-3 h-3 rounded-full bg-green-500 mr-2 ring-2 ring-green-500/20"></div>
-                    <span class="text-xs text-gray-700 font-medium">Easy (1-2)</span>
-                </div>
-                <div class="flex items-center">
-                    <div class="w-3 h-3 rounded-full bg-blue-500 mr-2 ring-2 ring-blue-500/20"></div>
-                    <span class="text-xs text-gray-700 font-medium">Intermediate (3)</span>
-                </div>
-                <div class="flex items-center">
-                    <div class="w-3 h-3 rounded-full bg-red-500 mr-2 ring-2 ring-red-500/20"></div>
-                    <span class="text-xs text-gray-700 font-medium">Advanced (4-5)</span>
-                </div>
-            </div>
-        </div>
     </div>
-    <!-- Map Type Selector - Top Right -->
-    <div class="absolute top-4 right-4 z-30">
+    <!-- Map Type Selector  - Top Right -->
+    <div class="absolute top-4 right-4 z-40">
         <div class="relative">
             <!-- Toggle Button -->
             <button id="layers-toggle" class="bg-white rounded-lg shadow-lg p-3 hover:bg-gray-50 transition-colors">
@@ -499,6 +550,25 @@
                         </button>
                     </div>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Legend - Responsive Positioning -->
+    <div class="map-legend">
+        <h3 class="text-xs font-semibold text-gray-900 uppercase tracking-wide mb-3">Difficulty</h3>
+        <div class="space-y-2">
+            <div class="flex items-center">
+                <div class="w-3 h-3 rounded-full bg-green-500 mr-2 ring-2 ring-green-500/20"></div>
+                <span class="text-xs text-gray-700 font-medium">Easy (1-2)</span>
+            </div>
+            <div class="flex items-center">
+                <div class="w-3 h-3 rounded-full bg-blue-500 mr-2 ring-2 ring-blue-500/20"></div>
+                <span class="text-xs text-gray-700 font-medium">Intermediate (3)</span>
+            </div>
+            <div class="flex items-center">
+                <div class="w-3 h-3 rounded-full bg-red-500 mr-2 ring-2 ring-red-500/20"></div>
+                <span class="text-xs text-gray-700 font-medium">Advanced (4-5)</span>
             </div>
         </div>
     </div>
@@ -903,6 +973,16 @@ if (trails.length > 0 && trails.some(t => t.route_coordinates && t.route_coordin
 
 // Focus on trail when clicked in sidebar
 window.focusTrail = function(trailId) {
+    // Close sidebar on mobile when trail is clicked
+    if (window.innerWidth <= 768) {
+        const sidebar = document.querySelector('.network-sidebar');
+        const toggleBtn = document.getElementById('sidebar-toggle');
+        if (sidebar && toggleBtn) {
+            sidebar.classList.add('hidden-mobile');
+            toggleBtn.classList.remove('hidden');
+        }
+    }
+    
     // Remove previous highlights
     if (selectedTrailId !== null) {
         const prevRoute = trailLayers[selectedTrailId];
@@ -947,11 +1027,44 @@ window.focusTrail = function(trailId) {
             });
         }
         
-        // Fit bounds and open popup
-        map.fitBounds(layer.getBounds(), { padding: [100, 100] });
-        setTimeout(() => {
-            layer.openPopup();
-        }, 300);
+        // Fit bounds with different behavior for mobile vs desktop
+        if (window.innerWidth <= 768) {
+            // On mobile: center the popup on screen
+            const bounds = layer.getBounds();
+            const center = bounds.getCenter();
+            
+            // First, center on the trail
+            map.setView(center, 14);
+            
+            // Wait a moment, then open popup
+            setTimeout(() => {
+                layer.openPopup();
+                
+                // After popup opens, pan to center it on screen
+                setTimeout(() => {
+                    const popup = document.querySelector('.leaflet-popup');
+                    if (popup) {
+                        const popupRect = popup.getBoundingClientRect();
+                        const mapHeight = window.innerHeight;
+                        const popupHeight = popupRect.height;
+                        
+                        // Calculate how much to pan: center of screen minus current popup center
+                        const screenCenter = mapHeight / 2;
+                        const popupCenter = popupRect.top + (popupHeight / 2);
+                        const panAmount = popupCenter - screenCenter;
+                        
+                        // Pan the map to center the popup
+                        map.panBy([0, panAmount], { animate: true, duration: 0.3 });
+                    }
+                }, 150);
+            }, 400);
+        } else {
+            // On desktop: original behavior
+            map.fitBounds(layer.getBounds(), { padding: [100, 100] });
+            setTimeout(() => {
+                layer.openPopup();
+            }, 300);
+        }
         
         selectedTrailId = trailId;
     }
@@ -993,5 +1106,60 @@ window.searchTrails = function() {
         if (trailsContainer) trailsContainer.classList.remove('hidden');
     }
 };
+
+// Mobile sidebar toggle functionality
+document.addEventListener('DOMContentLoaded', function() {
+    const sidebar = document.querySelector('.network-sidebar');
+    const toggleBtn = document.getElementById('sidebar-toggle');
+    const closeBtn = document.getElementById('sidebar-close');
+    
+    if (toggleBtn && sidebar && closeBtn) {
+        // Function to check if we're on mobile
+        function isMobile() {
+            return window.innerWidth <= 768;
+        }
+        
+        // Initialize - on mobile: sidebar hidden, toggle visible
+        if (isMobile()) {
+            sidebar.classList.add('hidden-mobile');
+            toggleBtn.classList.remove('hidden');
+        } else {
+            // On desktop: sidebar visible, toggle hidden
+            sidebar.classList.remove('hidden-mobile');
+            toggleBtn.classList.add('hidden');
+        }
+        
+        // Show sidebar when hamburger button is clicked
+        toggleBtn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            sidebar.classList.remove('hidden-mobile');
+            toggleBtn.classList.add('hidden');
+        });
+        
+        // Hide sidebar when close button is clicked
+        closeBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            if (isMobile()) {
+                // On mobile: close sidebar and show hamburger
+                sidebar.classList.add('hidden-mobile');
+                toggleBtn.classList.remove('hidden');
+            } else {
+                // On desktop: navigate to index
+                window.location.href = "{{ route('trail-networks.index') }}";
+            }
+        });
+        
+        // Handle window resize
+        window.addEventListener('resize', function() {
+            if (!isMobile()) {
+                // Switching to desktop view
+                sidebar.classList.remove('hidden-mobile');
+                toggleBtn.classList.add('hidden');
+            }
+        });
+    }
+});
 </script>
 @endsection

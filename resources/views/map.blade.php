@@ -1686,6 +1686,12 @@
 
         filterTrails(trails) {
             return trails.filter(trail => {
+                // Check if trail has activities for current season (MOST IMPORTANT CHECK)
+                const hasSeasonalActivities = trail.activities && trail.activities.length > 0;
+                if (!hasSeasonalActivities) {
+                    return false; // Hide trails with no activities for selected season
+                }
+
                 // Apply difficulty filter
                 if (this.currentDifficulty && trail.difficulty != this.currentDifficulty) {
                     return false;
@@ -1954,8 +1960,18 @@
             this.renderTrailList(visibleTrails);
 
             const allFilteredTrails = this.filterTrails(this.allTrails);
-            console.log(allFilteredTrails);
+            console.log('Filtered trails:', allFilteredTrails);
+            
             allFilteredTrails.forEach(trail => {
+                // Check if trail has activities for current season
+                const hasSeasonalActivities = trail.activities && trail.activities.length > 0;
+                
+                // Only render trail if it has activities for the selected season
+                if (!hasSeasonalActivities) {
+                    console.log('Skipping trail (no seasonal activities):', trail.name);
+                    return; // Skip this trail entirely
+                }
+
                 // Add trail route
                 const route = this.addTrailRoute(trail);
                 if (route) {
