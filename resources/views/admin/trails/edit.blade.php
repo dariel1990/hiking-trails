@@ -2332,27 +2332,43 @@
             const waypointIndex = this.waypoints.findIndex(w => w.id === waypointId);
             if (waypointIndex === -1) return;
 
-            // Remove old segments involving this waypoint
-            this.routeSegments = this.routeSegments.filter(segment => {
+            // Store all segments we need to keep (ones not affected by this waypoint)
+            const segmentsToKeep = [];
+            
+            // Remove segments involving this waypoint and keep track of others
+            this.routeSegments.forEach(segment => {
                 if (segment.startId === waypointId || segment.endId === waypointId) {
                     this.routeLayer.removeLayer(segment.line);
-                    return false;
+                } else {
+                    segmentsToKeep.push(segment);
                 }
-                return true;
             });
 
-            // Recalculate segments
-            const waypoint = this.waypoints[waypointIndex];
+            // Clear all segments and start fresh with the ones we're keeping
+            this.routeSegments = [];
             
-            // Route to previous waypoint
-            if (waypointIndex > 0) {
-                await this.calculateRouteSegment(this.waypoints[waypointIndex - 1], waypoint);
+            // Rebuild ALL route segments in the correct order
+            for (let i = 0; i < this.waypoints.length - 1; i++) {
+                const startWaypoint = this.waypoints[i];
+                const endWaypoint = this.waypoints[i + 1];
+                
+                // Check if we already have this segment (not involving the moved waypoint)
+                const existingSegment = segmentsToKeep.find(
+                    seg => seg.startId === startWaypoint.id && seg.endId === endWaypoint.id
+                );
+                
+                if (existingSegment) {
+                    // Reuse existing segment
+                    this.routeSegments.push(existingSegment);
+                } else {
+                    // Calculate new segment for the moved waypoint's connections
+                    await this.calculateRouteSegment(startWaypoint, endWaypoint);
+                }
             }
             
-            // Route to next waypoint
-            if (waypointIndex < this.waypoints.length - 1) {
-                await this.calculateRouteSegment(waypoint, this.waypoints[waypointIndex + 1]);
-            }
+            // Update stats and form inputs
+            this.updateStats();
+            this.updateFormInputs();
         }
 
         undoLastWaypoint() {
