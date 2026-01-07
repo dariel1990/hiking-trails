@@ -45,7 +45,7 @@
     /* Sidebar */
     .network-sidebar {
         position: absolute;
-        top: 20px;
+        top: 16px;
         left: 20px;
         z-index: 1000;
         width: 350px;
@@ -71,9 +71,9 @@
     /* Sidebar toggle button for mobile */
     .sidebar-toggle {
         position: absolute;
-        top: 20px;
+        top: 16px;
         left: 20px;
-        z-index: 1001;
+        z-index: 30;
         background: white;
         border-radius: 12px;
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
@@ -168,27 +168,6 @@
 
     .facility-popup .leaflet-popup-content {
         margin: 0;
-    }
-
-    /* Trail highlight animation - Solid Glow Effect */
-    @keyframes solidGlow {
-        0%, 100% {
-            filter: drop-shadow(0 0 4px currentColor) 
-                    drop-shadow(0 0 8px currentColor) 
-                    drop-shadow(0 0 12px currentColor);
-        }
-        50% {
-            filter: drop-shadow(0 0 8px currentColor) 
-                    drop-shadow(0 0 16px currentColor) 
-                    drop-shadow(0 0 24px currentColor);
-        }
-    }
-
-    .trail-highlight {
-        filter: drop-shadow(0 0 6px currentColor) 
-                drop-shadow(0 0 12px currentColor) 
-                drop-shadow(0 0 18px currentColor) !important;
-        animation: solidGlow 1.5s ease-in-out infinite !important;
     }
 
     /* Waypoint markers */
@@ -337,6 +316,65 @@
             right: auto;
             left: 1rem;
         }
+    }
+
+    /* Trail Details Card */
+    .trail-details-card {
+        position: absolute;
+        top: 20px;
+        left: 390px; /* 350px sidebar + 40px gap */
+        z-index: 999;
+        width: 350px;
+        max-height: calc(100vh - 140px);
+        overflow-y: auto;
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        transition: all 0.3s ease-in-out;
+        opacity: 0;
+        transform: translateX(-20px);
+        pointer-events: none;
+    }
+
+    .trail-details-card.visible {
+        opacity: 1;
+        transform: translateX(0);
+        pointer-events: auto;
+    }
+
+    @media (max-width: 768px) {
+        .trail-details-card {
+            left: 20px;
+            right: 20px;
+            width: auto;
+            top: 80px; /* Position below the hamburger button (20px top + 48px button height + 12px gap) */
+            bottom: auto;
+            max-height: calc(100vh - 100px); /* Leave space at bottom */
+            transform: translateY(-20px);
+        }
+        
+        .trail-details-card.visible {
+            transform: translateY(0);
+        }
+    }
+
+    /* Custom scrollbar for trail details */
+    .trail-details-card::-webkit-scrollbar {
+        width: 6px;
+    }
+
+    .trail-details-card::-webkit-scrollbar-track {
+        background: #f1f1f1;
+        border-radius: 3px;
+    }
+
+    .trail-details-card::-webkit-scrollbar-thumb {
+        background: #888;
+        border-radius: 3px;
+    }
+
+    .trail-details-card::-webkit-scrollbar-thumb:hover {
+        background: #555;
     }
 </style>
 
@@ -489,6 +527,9 @@
                 <p class="text-gray-400 text-xs mt-1">Try adjusting your search</p>
             </div>
         </div>
+    </div>
+    <div class="trail-details-card" id="trail-details-card">
+        <!-- Content will be dynamically inserted here -->
     </div>
     <!-- Map Type Selector  - Top Right -->
     <div class="absolute top-4 right-4 z-40">
@@ -816,13 +857,24 @@ trails.forEach(trail => {
 
     const color = getDifficultyColor(trail.difficulty_level);
     
-    // Create trail route
+    // Create trail route with white outline
+    const whiteOutline = L.polyline(trail.route_coordinates, {
+        color: 'white',
+        weight: 7,
+        opacity: 1,
+        className: `trail-outline-${trail.id}`,
+        interactive: false
+    }).addTo(map);
+
     const route = L.polyline(trail.route_coordinates, {
         color: color,
-        weight: 5,
-        opacity: 0.9,
+        weight: 3,
+        opacity: 1,
         className: `trail-route-${trail.id}`
     }).addTo(map);
+
+    // Store both layers together
+    trailLayers[trail.id] = { route: route, outline: whiteOutline };
 
     // // Add animated arrows along the path
     // route.setText('  ➤  ', {
@@ -837,7 +889,6 @@ trails.forEach(trail => {
     // });
 
     // Store layer reference
-    trailLayers[trail.id] = route;
     trailWaypoints[trail.id] = [];
 
     // Add waypoint markers
@@ -883,80 +934,64 @@ trails.forEach(trail => {
     endMarker.bindTooltip('End', { permanent: false, direction: 'top', className: 'waypoint-tooltip' });
     trailWaypoints[trail.id].push(endMarker);
 
-    // Add enhanced popup with trail image and details
-    const featuredImage = trail.preview_photo || (trail.photos && trail.photos.length > 0 ? trail.photos[0].url : null);
+    // Store trail data for the details card
+    if (!window.trailDetailsData) {
+        window.trailDetailsData = {};
+    }
+    window.trailDetailsData[trail.id] = {
+        id: trail.id,
+        name: trail.name,
+        trail_type: trail.trail_type,
+        description: trail.description,
+        distance_km: trail.distance_km,
+        difficulty_level: trail.difficulty_level,
+        elevation_gain: trail.elevation_gain,
+        preview_photo: trail.preview_photo,
+        photos: trail.photos
+    };
 
-    const popupContent = `
-        <div style="width: 300px; font-family: system-ui, -apple-system, sans-serif;">
-            <!-- Featured Image -->
-            ${featuredImage ? `
-                <div style="margin-bottom: 16px; border-radius: 12px; overflow: hidden;">
-                    <img src="${featuredImage}" 
-                        alt="${trail.name}"
-                        style="width: 100%; height: 200px; object-fit: cover; display: block;"
-                        onerror="this.parentElement.innerHTML='<div style=\\'width:100%;height:200px;background:linear-gradient(135deg, #10B981 0%, #3B82F6 100%);display:flex;align-items:center;justify-content:center;\\'><svg style=\\'width:48px;height:48px;color:white;opacity:0.75\\' fill=\\'none\\' stroke=\\'currentColor\\' viewBox=\\'0 0 24 24\\'><path stroke-linecap=\\'round\\' stroke-linejoin=\\'round\\' stroke-width=\\'2\\' d=\\'M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z\\'></path></svg></div>'">
-                </div>
-            ` : `
-                <div style="margin-bottom: 16px; border-radius: 12px; overflow: hidden; width: 100%; height: 200px; background: linear-gradient(135deg, #10B981 0%, #3B82F6 100%); display: flex; align-items: center; justify-content: center;">
-                    <svg style="width: 48px; height: 48px; color: white; opacity: 0.75;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"/>
-                    </svg>
-                </div>
-            `}
-            
-            <!-- Trail Name and Type -->
-            <div style="margin-bottom: 16px;">
-                <h3 style="margin: 0 0 4px 0; font-size: 18px; font-weight: bold; color: #1f2937;">
-                    ${trail.name}
-                </h3>
-                <p style="margin: 0; font-size: 13px; color: #6b7280; text-transform: capitalize;">
-                    ${trail.trail_type ? trail.trail_type.replace(/-/g, ' ') : 'Trail'}
-                </p>
-            </div>
-            
-            <!-- Description -->
-            ${trail.description ? `
-                <p style="margin: 0 0 16px 0; font-size: 14px; color: #4b5563; line-height: 1.5;">
-                    ${trail.description.substring(0, 100)}${trail.description.length > 100 ? '...' : ''}
-                </p>
-            ` : ''}
-            
-            <!-- Action Buttons -->
-            <div style="display: flex; flex-direction: column; gap: 8px;">
-                <a href="/trails/${trail.id}" 
-                style="display: block; text-align: center; background: #059669; color: white; padding: 14px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 15px; transition: background 0.2s;">
-                    View Full Trail
-                </a>
-                <button onclick="focusTrail(${trail.id}); return false;"
-                style="width: 100%; text-align: center; background: #f3f4f6; color: #374151; padding: 14px; border-radius: 8px; font-weight: 600; font-size: 15px; border: none; cursor: pointer; transition: background 0.2s;">
-                    Center on Map
-                </button>
-            </div>
-        </div>
-    `;
-
-    route.bindPopup(popupContent, {
-        maxWidth: 340,
-        className: 'trail-detail-popup'
-    });
-
-    // Add trail name label at midpoint
-    const midIndex = Math.floor(coordinates.length / 2);
-    const midpoint = coordinates[midIndex];
-
-    const labelMarker = L.marker(midpoint, {
-        icon: L.divIcon({
-            className: 'trail-name-label',
-            html: `<div class="trail-label-text" style="background-color: ${color}; cursor: pointer;" onclick="focusTrail(${trail.id})">${trail.name}</div>`,
-            iconSize: [150, 30],
-            iconAnchor: [75, 15]
-        })
-    }).addTo(map);
-
-    // Make the label clickable
-    labelMarker.on('click', function() {
+    // Call focusTrail when route is clicked
+    route.on('click', function(e) {
         focusTrail(trail.id);
     });
+
+    // Make outline clickable too - also trigger focusTrail
+    whiteOutline.on('click', function(e) {
+        focusTrail(trail.id);
+    });
+
+    // Add clickable circle icon in the middle of the trail
+    const midPoint = Math.floor(trail.route_coordinates.length / 2);
+    const iconPosition = trail.route_coordinates[midPoint];
+
+    const trailIcon = L.circleMarker(iconPosition, {
+        radius: 8,
+        fillColor: color,
+        color: 'white',
+        weight: 3,
+        opacity: 1,
+        fillOpacity: 1,
+        zIndexOffset: 100
+    }).addTo(map);
+
+    // Make the icon clickable
+    trailIcon.on('click', function(e) {
+        L.DomEvent.stopPropagation(e);
+        focusTrail(trail.id);
+    });
+
+    // Add tooltip with trail name on hover
+    trailIcon.bindTooltip(trail.name, {
+        permanent: false,
+        direction: 'top',
+        className: 'trail-icon-tooltip',
+        offset: [0, -10]
+    });
+
+    // Store the icon reference with the trail layers
+    if (!trailLayers[trail.id].icon) {
+        trailLayers[trail.id].icon = trailIcon;
+    }
 });
 
 // Fit map to show all trails
@@ -985,14 +1020,20 @@ window.focusTrail = function(trailId) {
     
     // Remove previous highlights
     if (selectedTrailId !== null) {
-        const prevRoute = trailLayers[selectedTrailId];
-        if (prevRoute) {
-            prevRoute._path.classList.remove('trail-highlight');
-            prevRoute.setStyle({ 
-                weight: 5, 
-                opacity: 0.9 
+        const prevLayers = trailLayers[selectedTrailId];
+        if (prevLayers) {
+            // Reset route to original size
+            prevLayers.route.setStyle({ 
+                weight: 3
+            });
+            
+            // Reset outline to white with normal size
+            prevLayers.outline.setStyle({
+                color: 'white',
+                weight: 7
             });
         }
+        
         // Reset waypoint opacity
         if (trailWaypoints[selectedTrailId]) {
             trailWaypoints[selectedTrailId].forEach(waypoint => {
@@ -1002,19 +1043,22 @@ window.focusTrail = function(trailId) {
     }
 
     // Highlight selected trail
-    const layer = trailLayers[trailId];
-    if (layer) {
-        // Make the trail much more prominent
-        layer.setStyle({ 
-            weight: 10,  // Much thicker line
-            opacity: 1
+    const layers = trailLayers[trailId];
+    if (layers) {
+        // Make the route slightly thicker
+        layers.route.setStyle({ 
+            weight: 3
         });
         
-        // Add highlight animation to route
-        layer._path.classList.add('trail-highlight');
+        // Change outline to yellow and make it thicker
+        layers.outline.setStyle({
+            color: '#f3fd44', // Yellow
+            weight: 15  // Thicker yellow stroke
+        });
         
-        // Bring trail to front
-        layer.bringToFront();
+        // Bring layers to front
+        layers.outline.bringToFront();
+        layers.route.bringToFront();
         
         // Highlight all waypoints
         if (trailWaypoints[trailId]) {
@@ -1027,48 +1071,138 @@ window.focusTrail = function(trailId) {
             });
         }
         
-        // Fit bounds with different behavior for mobile vs desktop
+        // Fit bounds and center the trail on map
+        const bounds = layers.route.getBounds();
+
         if (window.innerWidth <= 768) {
-            // On mobile: center the popup on screen
-            const bounds = layer.getBounds();
-            const center = bounds.getCenter();
-            
-            // First, center on the trail
-            map.setView(center, 14);
-            
-            // Wait a moment, then open popup
-            setTimeout(() => {
-                layer.openPopup();
-                
-                // After popup opens, pan to center it on screen
-                setTimeout(() => {
-                    const popup = document.querySelector('.leaflet-popup');
-                    if (popup) {
-                        const popupRect = popup.getBoundingClientRect();
-                        const mapHeight = window.innerHeight;
-                        const popupHeight = popupRect.height;
-                        
-                        // Calculate how much to pan: center of screen minus current popup center
-                        const screenCenter = mapHeight / 2;
-                        const popupCenter = popupRect.top + (popupHeight / 2);
-                        const panAmount = popupCenter - screenCenter;
-                        
-                        // Pan the map to center the popup
-                        map.panBy([0, panAmount], { animate: true, duration: 0.3 });
-                    }
-                }, 150);
-            }, 400);
+            // On mobile: fit bounds to show entire trail
+            map.fitBounds(bounds, { 
+                padding: [50, 50],
+                maxZoom: 16
+            });
         } else {
-            // On desktop: original behavior
-            map.fitBounds(layer.getBounds(), { padding: [100, 100] });
-            setTimeout(() => {
-                layer.openPopup();
-            }, 300);
+            // On desktop: fit bounds with offset for sidebar and card
+            // Account for sidebar (350px) and card (350px) on the left
+            map.fitBounds(bounds, { 
+                paddingTopLeft: [400, 50],  // Extra padding on left for sidebar + card
+                paddingBottomRight: [50, 50],
+                maxZoom: 16
+            });
         }
+        
+        // Show trail details card
+        setTimeout(() => {
+            showTrailDetailsCard(trailId);
+        }, 300);
         
         selectedTrailId = trailId;
     }
 };
+
+// Function to show trail details in card
+function showTrailDetailsCard(trailId) {
+    const trail = window.trailDetailsData[trailId];
+    if (!trail) return;
+
+    const card = document.getElementById('trail-details-card');
+    const color = getDifficultyColor(trail.difficulty_level);
+    const difficultyLevel = Math.floor(trail.difficulty_level);
+    
+    const featuredImage = trail.preview_photo || (trail.photos && trail.photos.length > 0 ? trail.photos[0].url : null);
+
+    const cardContent = `
+        <div class="relative">
+            <!-- Close Button -->
+            <button onclick="closeTrailDetailsCard()" class="absolute top-4 right-4 z-10 bg-white rounded-full p-2 shadow-lg hover:bg-gray-100 transition-colors">
+                <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+            </button>
+
+            <!-- Featured Image -->
+            ${featuredImage ? `
+                <div class="rounded-t-xl overflow-hidden">
+                    <img src="${featuredImage}" 
+                        alt="${trail.name}"
+                        class="w-full h-48 object-cover"
+                        onerror="this.parentElement.innerHTML='<div class=\\'w-full h-48 bg-gradient-to-br from-green-500 to-blue-500 flex items-center justify-center\\'><svg class=\\'w-12 h-12 text-white opacity-75\\' fill=\\'none\\' stroke=\\'currentColor\\' viewBox=\\'0 0 24 24\\'><path stroke-linecap=\\'round\\' stroke-linejoin=\\'round\\' stroke-width=\\'2\\' d=\\'M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z\\'></path></svg></div>'">
+                </div>
+            ` : `
+                <div class="w-full h-48 rounded-t-xl bg-gradient-to-br from-green-500 to-blue-500 flex items-center justify-center">
+                    <svg class="w-12 h-12 text-white opacity-75" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"/>
+                    </svg>
+                </div>
+            `}
+
+            <!-- Content -->
+            <div class="p-6">
+                <!-- Trail Name and Type -->
+                <div class="mb-4">
+                    <h3 class="text-2xl font-bold text-gray-900 mb-2">${trail.name}</h3>
+                    <p class="text-sm text-gray-600 capitalize">
+                        ${trail.trail_type ? trail.trail_type.replace(/-/g, ' ') : 'Trail'}
+                    </p>
+                </div>
+
+                <!-- Stats Grid -->
+                <div class="grid grid-cols-2 gap-3 mb-4">
+                    <div class="bg-gray-50 rounded-lg p-3 border border-gray-200">
+                        <div class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Distance</div>
+                        <div class="text-lg font-bold text-gray-900">${trail.distance_km} km</div>
+                    </div>
+                    <div class="bg-gray-50 rounded-lg p-3 border border-gray-200">
+                        <div class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Difficulty</div>
+                        <div>
+                            <span class="inline-flex items-center px-2 py-1 rounded text-xs font-medium
+                                ${difficultyLevel <= 2 ? 'bg-green-100 text-green-700 ring-1 ring-green-600/20' : ''}
+                                ${difficultyLevel == 3 ? 'bg-blue-100 text-blue-700 ring-1 ring-blue-600/20' : ''}
+                                ${difficultyLevel >= 4 ? 'bg-red-100 text-red-700 ring-1 ring-red-600/20' : ''}">
+                                Level ${trail.difficulty_level}
+                            </span>
+                        </div>
+                    </div>
+                    ${trail.elevation_gain ? `
+                        <div class="bg-gray-50 rounded-lg p-3 border border-gray-200 col-span-2">
+                            <div class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Elevation Gain</div>
+                            <div class="text-lg font-bold text-gray-900">${trail.elevation_gain} m</div>
+                        </div>
+                    ` : ''}
+                </div>
+
+                <!-- Description -->
+                ${trail.description ? `
+                    <div class="mb-4">
+                        <h4 class="text-sm font-semibold text-gray-900 mb-2">Description</h4>
+                        <p class="text-sm text-gray-600 leading-relaxed">${trail.description}</p>
+                    </div>
+                ` : ''}
+
+                <!-- Action Buttons -->
+                <div class="space-y-2">
+                    <a href="/trails/${trail.id}" 
+                       class="block w-full text-center bg-green-600 hover:bg-green-700 text-white px-4 py-3 rounded-lg font-semibold transition-colors">
+                        View Full Trail Details
+                    </a>
+                    <button onclick="closeTrailDetailsCard()" 
+                            class="w-full text-center bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-3 rounded-lg font-semibold transition-colors">
+                        Close
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+
+    card.innerHTML = cardContent;
+    card.classList.add('visible');
+}
+
+// Function to close trail details card
+function closeTrailDetailsCard() {
+    const card = document.getElementById('trail-details-card');
+    card.classList.remove('visible');
+    // Keep the trail selected - don't deselect it
+}
 
 document.addEventListener('DOMContentLoaded', function() {
     document.querySelectorAll('.trail-color-badge').forEach(badge => {
