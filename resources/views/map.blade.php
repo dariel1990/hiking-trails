@@ -1200,9 +1200,10 @@
                     attribution: '© OpenStreetMap contributors',
                     maxZoom: 19
                 }),
-                'satellite': L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-                    attribution: '© Esri, Maxar, Earthstar Geographics',
-                    maxZoom: 18
+                'satellite': L.tileLayer('https://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', {
+                    attribution: '© Google',
+                    maxZoom: 22,
+                    subdomains: ['mt0', 'mt1', 'mt2', 'mt3']
                 }),
                 'terrain': L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
                     attribution: 'Map data: © OpenStreetMap, SRTM | Map style: © OpenTopoMap',

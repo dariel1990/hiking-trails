@@ -253,12 +253,12 @@
                                         <div class="p-2">
                                             <div class="text-xs font-semibold text-gray-500 uppercase tracking-wider px-2 py-1.5">Map Style</div>
                                             <div class="grid grid-cols-2 gap-2">
-                                                <button type="button" class="map-layer-option-card active" data-map-type="outdoors">
+                                                <button type="button" class="map-layer-option-card active" data-map-type="standard">
                                                     <div class="map-layer-preview">
-                                                        <img src="{{ asset('images/map-layers/outdoor.png') }}" 
-                                                            alt="Outdoor" class="w-full h-full object-cover">
+                                                        <img src="{{ asset('images/map-layers/standard.png') }}" 
+                                                            alt="Standard" class="w-full h-full object-cover">
                                                     </div>
-                                                    <span class="map-layer-label">Outdoors</span>
+                                                    <span class="map-layer-label">Standard</span>
                                                     <svg class="map-layer-checkmark" fill="currentColor" viewBox="0 0 20 20">
                                                         <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
                                                     </svg>
@@ -1249,30 +1249,186 @@
                 
                 // Define base layers for map styles
                 this.baseLayers = {
-                    'outdoors': L.tileLayer('https://{s}.tile-cyclosm.openstreetmap.fr/cyclosm/{z}/{x}/{y}.png', {
-                        attribution: '© OpenStreetMap, CyclOSM',
-                        maxZoom: 20
+                    'standard': L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                        attribution: '© OpenStreetMap contributors',
+                        maxZoom: 19
                     }),
-                    'satellite': L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-                        attribution: '© Esri, Maxar, Earthstar Geographics',
-                        maxZoom: 18
+                    'satellite': L.tileLayer('https://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', {
+                        attribution: '© Google',
+                        maxZoom: 22,
+                        subdomains: ['mt0', 'mt1', 'mt2', 'mt3']
                     })
                 };
 
                 // Track current map type
-                this.currentMapType = 'outdoors';
+                this.currentMapType = 'standard';
 
                 // Add default base layer
                 this.baseLayers[this.currentMapType].addTo(this.map);
                 this.routeLayer = L.layerGroup().addTo(this.map);
                 this.highlightsLayer = L.layerGroup().addTo(this.map); 
+                this.existingTrailsLayer = L.layerGroup().addTo(this.map);
                 
                 this.setupEventListeners();
+                this.loadExistingTrails();
                 this.setupMapClicks();
                 this.setupHighlightHandlers();
                 this.initMapSearch();
             } catch (error) {
             }
+        }
+
+        loadExistingTrails() {
+            console.log('🔍 loadExistingTrails() called');
+            
+            // Check if existingTrails data is available
+            @if(isset($existingTrails) && $existingTrails->count() > 0)
+            const existingTrails = @json($existingTrails);
+            
+            console.log('📊 Existing trails data:', existingTrails);
+            console.log('📈 Number of trails:', existingTrails.length);
+            
+            // Color scheme - using green for all existing trails
+            const trailColor = '#10b981';  // Green color for all existing trails
+            
+            let trailsAdded = 0;
+            let trailsSkipped = 0;
+            
+            existingTrails.forEach((trail, index) => {
+                console.log(`\n🗺️ Processing trail ${index + 1}:`, {
+                    id: trail.id,
+                    name: trail.name,
+                    status: trail.status,
+                    hasCoordinates: !!trail.coordinates,
+                    coordinatesLength: trail.coordinates ? trail.coordinates.length : 0
+                });
+                
+                if (trail.coordinates && trail.coordinates.length > 1) {
+                    try {
+                        console.log(`✅ Creating polyline for "${trail.name}" with green color`);
+                        
+                        // SOLID GREEN LINE - no dashes
+                        const trailLine = L.polyline(trail.coordinates, {
+                            color: trailColor,
+                            weight: 3,
+                            opacity: 0.7,
+                            // dashArray removed for solid line
+                            interactive: true,
+                            className: 'existing-trail-line'
+                        }).addTo(this.existingTrailsLayer);
+                        
+                        // Add white outline for better visibility on satellite
+                        const outlineLine = L.polyline(trail.coordinates, {
+                            color: '#ffffff',
+                            weight: 5,
+                            opacity: 0.4,
+                            interactive: false,
+                            className: 'existing-trail-outline'
+                        }).addTo(this.existingTrailsLayer);
+                        
+                        // Make sure outline is behind the main line
+                        outlineLine.bringToBack();
+                        
+                        // Add popup with trail info
+                        trailLine.bindPopup(`
+                            <div class="text-sm">
+                                <strong class="text-base">${trail.name}</strong><br>
+                                <span class="inline-block mt-1 px-2 py-0.5 rounded text-xs font-medium ${
+                                    trail.status === 'active' ? 'bg-green-100 text-green-800' :
+                                    trail.status === 'closed' ? 'bg-red-100 text-red-800' :
+                                    'bg-orange-100 text-orange-800'
+                                }">
+                                    ${trail.status.charAt(0).toUpperCase() + trail.status.slice(1)}
+                                </span>
+                            </div>
+                        `);
+                        
+                        // Hover effects
+                        trailLine.on('mouseover', function() {
+                            this.setStyle({
+                                weight: 5,
+                                opacity: 1.0
+                            });
+                            outlineLine.setStyle({
+                                weight: 7,
+                                opacity: 0.6
+                            });
+                        });
+                        
+                        trailLine.on('mouseout', function() {
+                            this.setStyle({
+                                weight: 3,
+                                opacity: 0.7
+                            });
+                            outlineLine.setStyle({
+                                weight: 5,
+                                opacity: 0.4
+                            });
+                        });
+                        
+                        trailsAdded++;
+                        console.log(`✔️ Trail "${trail.name}" added successfully`);
+                    } catch (error) {
+                        console.error(`❌ Error creating polyline for trail "${trail.name}":`, error);
+                        trailsSkipped++;
+                    }
+                } else {
+                    console.warn(`⚠️ Skipping trail "${trail.name}" - insufficient coordinates`);
+                    trailsSkipped++;
+                }
+            });
+            
+            console.log(`\n📋 Summary:`);
+            console.log(`  ✅ Trails added: ${trailsAdded}`);
+            console.log(`  ⚠️ Trails skipped: ${trailsSkipped}`);
+            
+            // Add toggle button for existing trails
+            this.addExistingTrailsToggle();
+            @else
+            console.warn('⚠️ No existing trails data available');
+            @endif
+        }
+
+        addExistingTrailsToggle() {
+            const mapContainer = document.getElementById('trail-map');
+            
+            // Create toggle button
+            const toggleBtn = document.createElement('button');
+            toggleBtn.type = 'button';
+            toggleBtn.className = 'absolute bottom-6 right-2 z-[999] bg-white rounded-lg shadow-lg px-3 py-2 text-xs font-medium hover:bg-gray-50 transition-colors border border-gray-200 flex items-center gap-2';
+            toggleBtn.innerHTML = `
+                <svg class="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/>
+                </svg>
+                <span>Hide Other Trails</span>
+            `;
+            
+            let trailsVisible = true;
+            
+            toggleBtn.addEventListener('click', () => {
+                trailsVisible = !trailsVisible;
+                
+                if (trailsVisible) {
+                    this.map.addLayer(this.existingTrailsLayer);
+                    toggleBtn.innerHTML = `
+                        <svg class="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/>
+                        </svg>
+                        <span>Hide Other Trails</span>
+                    `;
+                } else {
+                    this.map.removeLayer(this.existingTrailsLayer);
+                    toggleBtn.innerHTML = `
+                        <svg class="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                        </svg>
+                        <span>Show Other Trails</span>
+                    `;
+                }
+            });
+            
+            mapContainer.appendChild(toggleBtn);
         }
 
         switchMapType(mapType) {
@@ -2734,7 +2890,6 @@
                 this.displaySearchResults(results);
                 
             } catch (error) {
-                console.error('Search error:', error);
                 this.displaySearchError();
             } finally {
                 loadingIcon.classList.add('hidden');
@@ -4160,6 +4315,21 @@
     50% {
         opacity: 0.5;
     }
+}
+
+/* Existing trail lines styling for better visibility */
+.existing-trail-line {
+    filter: drop-shadow(0 0 2px rgba(0, 0, 0, 0.8));
+}
+
+.existing-trail-outline {
+    filter: drop-shadow(0 0 3px rgba(255, 255, 255, 0.8));
+}
+
+/* Make existing trails more visible on satellite view */
+.leaflet-tile-pane + .leaflet-overlay-pane .existing-trail-line {
+    filter: drop-shadow(0 0 3px rgba(0, 0, 0, 1)) 
+            drop-shadow(0 0 2px rgba(255, 255, 255, 0.5));
 }
 </style>
 @endpush

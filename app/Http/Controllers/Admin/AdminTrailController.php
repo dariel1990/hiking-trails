@@ -54,9 +54,21 @@ class AdminTrailController extends Controller
             ->orderBy('name')
             ->get();
         $trailNetworks = \App\Models\TrailNetwork::orderBy('network_name')->get();
+        
+        // Fetch all existing trails with their coordinates for map display
+        $existingTrails = Trail::select('id', 'name', 'route_coordinates', 'status')
+            ->whereNotNull('route_coordinates')
+            ->get()
+            ->map(function($trail) {
+                return [
+                    'id' => $trail->id,
+                    'name' => $trail->name,
+                    'coordinates' => $trail->route_coordinates,
+                    'status' => $trail->status,
+                ];
+            });
 
-
-        return view('admin.trails.create', compact('activities', 'trailNetworks'));
+        return view('admin.trails.create', compact('activities', 'trailNetworks', 'existingTrails'));
     }
 
     /**
@@ -364,6 +376,20 @@ class AdminTrailController extends Controller
             ->get();
 
         $trailNetworks = \App\Models\TrailNetwork::orderBy('network_name')->get();
+
+         // Fetch all existing trails with their coordinates for map display
+        $existingTrails = Trail::select('id', 'name', 'route_coordinates', 'status')
+            ->where('id', '!=', $trail->id)  // Exclude the current trail being edited
+            ->whereNotNull('route_coordinates')
+            ->get()
+            ->map(function($trail) {
+                return [
+                    'id' => $trail->id,
+                    'name' => $trail->name,
+                    'coordinates' => $trail->route_coordinates,
+                    'status' => $trail->status,
+                ];
+            });
         
         // Transform media to include full URL
         $trail->media->transform(function($media) {
@@ -391,7 +417,7 @@ class AdminTrailController extends Controller
             $trail->route_coordinates = json_decode($trail->route_coordinates, true);
         }
 
-        return view('admin.trails.edit', compact('trail', 'activities', 'trailOnlyMedia', 'trailNetworks'));
+        return view('admin.trails.edit', compact('trail', 'activities', 'trailOnlyMedia', 'trailNetworks', 'existingTrails'));
     }
 
     /**
