@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\TrailNetwork;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
+use App\Models\TrailFeature;
 
 class TrailNetworkController extends Controller
 {
@@ -35,7 +37,7 @@ class TrailNetworkController extends Controller
                             })
                             ->orderBy('is_featured', 'desc')
                             ->limit(1);
-                    }])
+                    },  'features.media' ])
                     ->where(function($q) {
                         $q->where('status', 'active')
                             ->orWhere('status', 'seasonal');
@@ -61,8 +63,90 @@ class TrailNetworkController extends Controller
                     'caption' => $media->caption
                 ];
             })->toArray();
+
+            // Format features/highlights data
+            if ($trail->features) {
+                $trail->features->each(function($feature) {
+                    // Normalize coordinates
+                    if (is_array($feature->coordinates) && count($feature->coordinates) >= 2) {
+                        $feature->coordinates = [
+                            (float) $feature->coordinates[0],
+                            (float) $feature->coordinates[1]
+                        ];
+                    }
+                    
+                    // Format media for each feature
+                    if ($feature->media) {
+                        $feature->media->each(function($media) {
+                            if ($media->media_type === 'photo') {
+                                $media->url = asset('storage/' . $media->storage_path);
+                            } elseif ($media->media_type === 'video_url') {
+                                $media->url = $media->video_url;
+                            } elseif ($media->media_type === 'video') {
+                                $media->url = asset('storage/' . $media->storage_path);
+                                $media->video_url = asset('storage/' . $media->storage_path);
+                            }
+                        });
+                    }
+                });
+            }
         });
         
         return view('trail-networks.show', compact('network'));
+    }
+
+    public function trailHighlights()
+    {
+        $highlights = TrailFeature::with(['media', 'trail:id,name'])
+            ->get()
+            ->map(function($feature) {
+                // Normalize coordinates
+                $coordinates = null;
+                if (is_array($feature->coordinates) && count($feature->coordinates) >= 2) {
+                    $coordinates = [
+                        (float) $feature->coordinates[0],
+                        (float) $feature->coordinates[1]
+                    ];
+                }
+                
+                // Format media
+                $media = $feature->media->map(function($m) {
+                    $mediaData = [
+                        'id' => $m->id,
+                        'media_type' => $m->media_type,
+                        'caption' => $m->caption,
+                    ];
+                    
+                    if ($m->media_type === 'photo') {
+                        $mediaData['url'] = Storage::url($m->storage_path);
+                    } elseif ($m->media_type === 'video_url') {
+                        $mediaData['url'] = $m->video_url;
+                        $mediaData['video_url'] = $m->video_url;
+                    } elseif ($m->media_type === 'video') {
+                        $mediaData['url'] = Storage::url($m->storage_path);
+                        $mediaData['video_url'] = Storage::url($m->storage_path);
+                    }
+                    
+                    return $mediaData;
+                });
+                
+                return [
+                    'id' => $feature->id,
+                    'name' => $feature->name,
+                    'description' => $feature->description,
+                    'type' => $feature->feature_type,
+                    'feature_type' => $feature->feature_type,
+                    'coordinates' => $coordinates,
+                    'icon' => $feature->icon,
+                    'color' => $feature->color,
+                    'media' => $media,
+                    'trail' => [
+                        'id' => $feature->trail->id,
+                        'name' => $feature->trail->name
+                    ]
+                ];
+            });
+        
+        return response()->json($highlights);
     }
 }

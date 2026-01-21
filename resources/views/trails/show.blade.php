@@ -221,8 +221,71 @@
 @endpush
 
 @section('content')
+@if($trail->trailNetwork->slug === 'hudson-bay-mountain-ski-ride-smithers')
+    <!-- Sponsor Welcome Banner (Trail Network Only) -->
+    <div id="sponsor-banner" class="fixed top-20 left-0 right-0 z-[60] bg-gradient-to-r from-accent-500 to-forest-600 shadow-lg">
+        <div class="max-w-4xl mx-auto px-4 py-3">
+            <div class="flex items-center justify-between">
+                <a href="https://bvliving.ca/" target="_blank" rel="noopener noreferrer" class="flex items-center space-x-4 flex-1 hover:opacity-90 transition-opacity group">
+                    <div class="flex-shrink-0 bg-white rounded-lg p-1.5">
+                        <img src="{{ asset('images/phil-bernier-realtor-logo.png') }}" 
+                            alt="Phil Bernier Realtor Logo" 
+                            class="w-8 h-8 object-contain group-hover:scale-110 transition-transform">
+                    </div>
+                    <div class="flex-1 text-center md:text-left">
+                        <p class="text-white font-medium text-sm md:text-base">
+                            <span class="hidden md:inline">Welcome to Hudson Bay Mountain! </span>
+                            Trail maps proudly sponsored by <span class="font-bold"> <br>Phil Bernier – REALTOR®</span>
+                            <span class="hidden md:inline ml-2 text-white/90">| Click to explore Smithers real estate</span>
+                        </p>
+                    </div>
+                    <div class="hidden md:flex items-center space-x-2 px-4 py-2 bg-white/20 rounded-lg hover:bg-white/30 transition-colors">
+                        <span class="text-white text-sm font-semibold">Visit BVLiving.ca</span>
+                        <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/>
+                        </svg>
+                    </div>
+                </a>
+                <button onclick="document.getElementById('sponsor-banner').style.display='none'; localStorage.setItem('hbm-sponsor-banner-dismissed', 'true');" 
+                        class="flex-shrink-0 ml-4 text-white hover:text-gray-200 transition-colors">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+    </div>
+@endif
 <!-- Hero Section -->
 <div class="relative h-[60vh] bg-gray-900 overflow-hidden">
+   
+    @if($trail->trailNetwork->slug === 'hudson-bay-mountain-ski-ride-smithers')
+        <!-- Sponsor Badge - Floating Corner (Trail Network Only - Mobile & Desktop) -->
+        <a href="https://bvliving.ca/" target="_blank" rel="noopener noreferrer" class="fixed bottom-3 md:bottom-3 right-12 md:right-12 z-[45]">
+            <div class="bg-white rounded-lg shadow-xl border-2 border-accent-500/20 p-3 md:p-4 hover:shadow-2xl hover:scale-105 transition-all duration-300 group">
+                <div class="flex items-center space-x-2 md:space-x-3">
+                    <div class="flex-shrink-0">
+                        <img src="{{ asset('images/phil-bernier-realtor-logo.png') }}" 
+                            alt="Phil Bernier Realtor Logo" 
+                            class="w-10 h-10 md:w-12 md:h-12 object-contain group-hover:scale-110 transition-transform">
+                    </div>
+                    <div class="text-left">
+                        <p class="text-xs text-gray-500 font-medium">Sponsored by</p>
+                        <p class="text-sm font-bold text-gray-900 group-hover:text-accent-600 transition-colors">Phil Bernier</p>
+                        <p class="text-xs text-forest-600 font-semibold">REALTOR®</p>
+                    </div>
+                </div>
+                <div class="mt-2 pt-2 border-t border-gray-100 hidden md:block">
+                    <p class="text-xs text-gray-500 group-hover:text-accent-600 transition-colors flex items-center space-x-1">
+                        <span>Learn more</span>
+                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/>
+                        </svg>
+                    </p>
+                </div>
+            </div>
+        </a>
+    @endif
     @if($trail->media && $trail->media->count() > 0)
         <img src="{{ $trail->media->first()->url }}" 
              alt="{{ $trail->name }}" 

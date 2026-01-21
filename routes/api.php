@@ -5,6 +5,7 @@ use Illuminate\Support\Facades\Route;
 use App\Services\RouteService;
 use App\Http\Controllers\TrailController;
 use App\Models\Facility;
+use App\Http\Controllers\TrailNetworkController;
 
 Route::get('/user', function (Request $request) {
     return $request->user();
@@ -70,3 +71,5 @@ Route::post('/elevation-profile', function (Request $request) {
 Route::get('/facilities', function() {
     return Facility::where('is_active', true)->get();
 });
+
+Route::get('/highlights', [TrailNetworkController::class, 'trailHighlights']);

@@ -4,6 +4,42 @@
 
 @section('content')
 
+@if($trail->trailNetwork->slug === 'hudson-bay-mountain-ski-ride-smithers')
+    <!-- Sponsor Welcome Banner (Trail Network Only) -->
+    <div id="sponsor-banner" class="fixed top-20 left-0 right-0 z-[60] bg-gradient-to-r from-accent-500 to-forest-600 shadow-lg">
+        <div class="max-w-4xl mx-auto px-4 py-3">
+            <div class="flex items-center justify-between">
+                <a href="https://bvliving.ca/" target="_blank" rel="noopener noreferrer" class="flex items-center space-x-4 flex-1 hover:opacity-90 transition-opacity group">
+                    <div class="flex-shrink-0 bg-white rounded-lg p-1.5">
+                        <img src="{{ asset('images/phil-bernier-realtor-logo.png') }}" 
+                            alt="Phil Bernier Realtor Logo" 
+                            class="w-8 h-8 object-contain group-hover:scale-110 transition-transform">
+                    </div>
+                    <div class="flex-1 text-center md:text-left">
+                        <p class="text-white font-medium text-sm md:text-base">
+                            <span class="hidden md:inline">Welcome to Hudson Bay Mountain! </span>
+                            Trail maps proudly sponsored by <span class="font-bold"> <br>Phil Bernier – REALTOR®</span>
+                            <span class="hidden md:inline ml-2 text-white/90">| Click to explore Smithers real estate</span>
+                        </p>
+                    </div>
+                    <div class="hidden md:flex items-center space-x-2 px-4 py-2 bg-white/20 rounded-lg hover:bg-white/30 transition-colors">
+                        <span class="text-white text-sm font-semibold">Visit BVLiving.ca</span>
+                        <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/>
+                        </svg>
+                    </div>
+                </a>
+                <button onclick="document.getElementById('sponsor-banner').style.display='none'; localStorage.setItem('hbm-sponsor-banner-dismissed', 'true');" 
+                        class="flex-shrink-0 ml-4 text-white hover:text-gray-200 transition-colors">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+    </div>
+@endif
+
 <!-- Leaflet CSS -->
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <script src="https://cdn.jsdelivr.net/npm/leaflet-textpath@1.2.3/leaflet.textpath.min.js"></script>
@@ -379,6 +415,33 @@
 </style>
 
 <div class="relative">
+    @if($network->slug === 'hudson-bay-mountain-ski-ride-smithers')
+        <!-- Sponsor Badge - Floating Corner (Trail Network Only - Mobile & Desktop) -->
+        <a href="https://bvliving.ca/" target="_blank" rel="noopener noreferrer" class="fixed bottom-3 md:bottom-3 right-12 md:right-12 z-[45]">
+            <div class="bg-white rounded-lg shadow-xl border-2 border-accent-500/20 p-3 md:p-4 hover:shadow-2xl hover:scale-105 transition-all duration-300 group">
+                <div class="flex items-center space-x-2 md:space-x-3">
+                    <div class="flex-shrink-0">
+                        <img src="{{ asset('images/phil-bernier-realtor-logo.png') }}" 
+                            alt="Phil Bernier Realtor Logo" 
+                            class="w-10 h-10 md:w-12 md:h-12 object-contain group-hover:scale-110 transition-transform">
+                    </div>
+                    <div class="text-left">
+                        <p class="text-xs text-gray-500 font-medium">Sponsored by</p>
+                        <p class="text-sm font-bold text-gray-900 group-hover:text-accent-600 transition-colors">Phil Bernier</p>
+                        <p class="text-xs text-forest-600 font-semibold">REALTOR®</p>
+                    </div>
+                </div>
+                <div class="mt-2 pt-2 border-t border-gray-100 hidden md:block">
+                    <p class="text-xs text-gray-500 group-hover:text-accent-600 transition-colors flex items-center space-x-1">
+                        <span>Learn more</span>
+                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/>
+                        </svg>
+                    </p>
+                </div>
+            </div>
+        </a>
+    @endif
     <!-- Mobile Sidebar Toggle -->
     <button class="sidebar-toggle" id="sidebar-toggle">
         <svg class="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -615,6 +678,29 @@
     </div>
 </div>
 
+<!-- Media Modal for Highlights -->
+<div id="highlight-media-modal" class="hidden fixed inset-0 bg-black bg-opacity-90 z-[9999] flex items-center justify-center p-4">
+    <div class="relative max-w-5xl w-full bg-white rounded-lg shadow-xl">
+        <!-- Close button -->
+        <button onclick="closeHighlightMediaModal()" 
+                class="absolute top-4 right-4 z-10 bg-gray-900 bg-opacity-75 hover:bg-opacity-100 text-white rounded-full p-2 transition-all">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+            </svg>
+        </button>
+        
+        <!-- Content container -->
+        <div id="highlight-modal-content" class="p-4">
+            <!-- Content will be dynamically inserted here -->
+        </div>
+        
+        <!-- Caption -->
+        <div id="highlight-modal-caption" class="px-6 pb-6 text-center text-gray-700">
+            <!-- Caption will be dynamically inserted here -->
+        </div>
+    </div>
+</div>
+
 <!-- Leaflet JS -->
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/leaflet-textpath@1.2.3/leaflet.textpath.min.js"></script>
@@ -796,6 +882,166 @@ fetch('/api/facilities')
         console.log('Facility markers created:', facilityMarkers.length);
     })
     .catch(error => console.error('Error loading facilities:', error));
+    
+// Load and display highlights
+fetch('/api/highlights')
+    .then(response => response.json())
+    .then(highlights => {
+        console.log('Loaded highlights:', highlights);
+        
+        highlights.forEach(highlight => {
+            if (!highlight.coordinates || highlight.coordinates.length < 2) return;
+            
+            const highlightIcon = L.divIcon({
+                className: 'highlight-marker-custom',
+                html: `
+                    <div style="
+                        background-color: ${highlight.color || '#8B5CF6'};
+                        padding: 8px;
+                        border-radius: 50%;
+                        font-size: 20px;
+                        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+                        border: 2px solid white;
+                        width: 40px;
+                        height: 40px;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        cursor: pointer;
+                    ">
+                        ${highlight.icon || '📍'}
+                    </div>
+                `,
+                iconSize: [40, 40],
+                iconAnchor: [20, 20]
+            });
+            
+            const highlightMarker = L.marker(highlight.coordinates, {
+                icon: highlightIcon,
+                zIndexOffset: 600
+            });
+            
+            highlightMarker.highlightData = highlight;
+            highlightMarker.addTo(map);
+            highlightMarkers.push(highlightMarker);
+        });
+    })
+    .catch(error => console.error('Error loading highlights:', error));
+
+// Global handler for highlight marker clicks
+map.on('click', function(e) {
+    let clickedHighlight = null;
+    
+    highlightMarkers.forEach(marker => {
+        const markerLatLng = marker.getLatLng();
+        const distance = map.distance(e.latlng, markerLatLng);
+        
+        if (distance < 25) {
+            clickedHighlight = marker;
+        }
+    });
+    
+    if (clickedHighlight) {
+        showHighlightPopup(clickedHighlight.highlightData, e.latlng);
+    }
+});
+
+// Function to show highlight popup
+function showHighlightPopup(highlight, latlng) {
+    let mediaHTML = '';
+    
+    if (highlight.media && highlight.media.length > 0) {
+        const primaryMedia = highlight.media[0];
+        
+        if (primaryMedia.media_type === 'photo') {
+            mediaHTML = `
+                <img src="${primaryMedia.url}" 
+                     alt="${highlight.name}"
+                     class="w-full h-32 object-cover rounded-lg mb-2 cursor-pointer hover:opacity-90 transition-opacity"
+                     onclick="event.stopPropagation(); openHighlightMediaModal('${primaryMedia.url}', 'photo', '${highlight.name}')">
+            `;
+        } else if (primaryMedia.media_type === 'video_url' || primaryMedia.media_type === 'video') {
+            const videoUrl = primaryMedia.video_url || primaryMedia.url;
+            const thumbnailUrl = getVideoThumbnail(videoUrl);
+            
+            mediaHTML = `
+                <div class="relative w-full h-32 rounded-lg mb-2 cursor-pointer hover:opacity-90 transition-opacity bg-gray-900 overflow-hidden"
+                     onclick="event.stopPropagation(); openHighlightMediaModal('${videoUrl}', 'video', '${highlight.name}')">
+                    ${thumbnailUrl ? `
+                        <img src="${thumbnailUrl}" 
+                             alt="Video thumbnail"
+                             class="w-full h-full object-cover">
+                    ` : `
+                        <div class="w-full h-full flex items-center justify-center">
+                            <svg class="w-8 h-8 text-white opacity-75" fill="currentColor" viewBox="0 0 20 20">
+                                <path d="M2 6a2 2 0 012-2h6a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V6zM14.553 7.106A1 1 0 0014 8v4a1 1 0 00.553.894l2 1A1 1 0 0018 13V7a1 1 0 00-1.447-.894l-2 1z"/>
+                            </svg>
+                        </div>
+                    `}
+                    <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
+                        <div class="bg-white bg-opacity-90 rounded-full p-2">
+                            <svg class="w-5 h-5 text-gray-900" fill="currentColor" viewBox="0 0 20 20">
+                                <path d="M6.3 2.841A1.5 1.5 0 004 4.11V15.89a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z"/>
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+    }
+    
+    const popupContent = `
+        <div style="padding: 12px; min-width: 220px; max-width: 280px;">
+            ${mediaHTML}
+            <div style="display: flex; align-items: center; margin-bottom: 8px;">
+                <span style="font-size: 24px; margin-right: 8px;">${highlight.icon || '📍'}</span>
+                <h3 style="margin: 0; font-size: 16px; font-weight: bold; color: #1f2937;">
+                    ${highlight.name}
+                </h3>
+            </div>
+            <p style="margin: 0 0 8px 0; font-size: 12px; color: #6b7280;">
+                <strong>Type:</strong> ${highlight.type.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+            </p>
+            ${highlight.description ? `
+                <p style="margin: 0 0 8px 0; font-size: 13px; color: #4b5563; line-height: 1.4;">
+                    ${highlight.description}
+                </p>
+            ` : ''}
+            <p style="margin: 0 0 8px 0; font-size: 12px; color: #6b7280;">
+                <strong>Trail:</strong> ${highlight.trail.name}
+            </p>
+            ${highlight.media && highlight.media.length > 1 ? `
+                <p style="margin: 0; font-size: 11px; color: #8B5CF6; cursor: pointer;" 
+                   onclick="showAllHighlightMedia(${JSON.stringify(highlight).replace(/"/g, '&quot;')})">
+                    Click to view ${highlight.media.length} photo${highlight.media.length > 1 ? 's' : ''}
+                </p>
+            ` : ''}
+        </div>
+    `;
+    
+    L.popup({
+        maxWidth: 300,
+        className: 'highlight-popup',
+        closeButton: true
+    })
+    .setLatLng(latlng)
+    .setContent(popupContent)
+    .openOn(map);
+}
+
+// Optional: Function to show all media in a gallery
+function showAllHighlightMedia(highlight) {
+    if (!highlight.media || highlight.media.length === 0) return;
+    
+    // For now, just open the first one
+    // You can enhance this to show a gallery later
+    const firstMedia = highlight.media[0];
+    if (firstMedia.media_type === 'photo') {
+        openHighlightMediaModal(firstMedia.url, 'photo', highlight.name);
+    } else if (firstMedia.media_type === 'video_url' || firstMedia.media_type === 'video') {
+        openHighlightMediaModal(firstMedia.video_url || firstMedia.url, 'video', highlight.name);
+    }
+}
 
 // Global handler for facility marker clicks
 map.on('click', function(e) {
@@ -848,6 +1094,7 @@ const trailLayers = {};
 const trailWaypoints = {};
 let selectedTrailId = null;
 const facilityMarkers = [];
+const highlightMarkers = [];
 
 // Add trails to map
 trails.forEach(trail => {
@@ -1293,6 +1540,94 @@ document.addEventListener('DOMContentLoaded', function() {
                 toggleBtn.classList.add('hidden');
             }
         });
+    }
+});
+
+// Video Thumbnail Generator Functions
+function getVideoThumbnail(videoUrl) {
+    // YouTube
+    const youtubeMatch = videoUrl.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\s]+)/);
+    if (youtubeMatch) {
+        const videoId = youtubeMatch[1];
+        return `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
+    }
+    
+    // Vimeo
+    const vimeoMatch = videoUrl.match(/vimeo\.com\/(\d+)/);
+    if (vimeoMatch) {
+        const videoId = vimeoMatch[1];
+        return `https://vumbnail.com/${videoId}.jpg`;
+    }
+    
+    return null;
+}
+
+function getVideoEmbedUrl(videoUrl) {
+    // YouTube
+    const youtubeMatch = videoUrl.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\s]+)/);
+    if (youtubeMatch) {
+        return `https://www.youtube.com/embed/${youtubeMatch[1]}`;
+    }
+    
+    // Vimeo
+    const vimeoMatch = videoUrl.match(/vimeo\.com\/(\d+)/);
+    if (vimeoMatch) {
+        return `https://player.vimeo.com/video/${vimeoMatch[1]}`;
+    }
+    
+    return null;
+}
+
+// Highlight Media Modal Functions
+function openHighlightMediaModal(url, type, caption) {
+    const modal = document.getElementById('highlight-media-modal');
+    const content = document.getElementById('highlight-modal-content');
+    const captionEl = document.getElementById('highlight-modal-caption');
+    
+    if (type === 'photo') {
+        content.innerHTML = `<img src="${url}" alt="${caption}" class="w-full h-auto max-h-[70vh] object-contain rounded-lg">`;
+    } else if (type === 'video') {
+        const embedUrl = getVideoEmbedUrl(url);
+        
+        if (embedUrl) {
+            content.innerHTML = `
+                <div class="relative" style="padding-bottom: 56.25%; height: 0;">
+                    <iframe src="${embedUrl}" 
+                            frameborder="0" 
+                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                            allowfullscreen
+                            class="absolute top-0 left-0 w-full h-full rounded-lg">
+                    </iframe>
+                </div>
+            `;
+        } else {
+            content.innerHTML = `<p class="text-red-500 text-center p-4">Unable to load video</p>`;
+        }
+    }
+    
+    captionEl.textContent = caption || '';
+    modal.classList.remove('hidden');
+}
+
+function closeHighlightMediaModal() {
+    const modal = document.getElementById('highlight-media-modal');
+    const content = document.getElementById('highlight-modal-content');
+    
+    modal.classList.add('hidden');
+    content.innerHTML = ''; // Clear content to stop video playback
+}
+
+// Close modal when clicking outside
+document.getElementById('highlight-media-modal')?.addEventListener('click', function(e) {
+    if (e.target === this) {
+        closeHighlightMediaModal();
+    }
+});
+
+// Close modal with Escape key
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        closeHighlightMediaModal();
     }
 });
 </script>

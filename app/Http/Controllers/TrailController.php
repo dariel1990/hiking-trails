@@ -122,7 +122,8 @@ class TrailController extends Controller
         $trail = Trail::with([
             'media', 
             'features.media',
-            'highlights.media'
+            'highlights.media',
+            'trailNetwork'
         ])->findOrFail($id);
         
         // Increment view count

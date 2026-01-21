@@ -8,6 +8,7 @@ use App\Http\Controllers\Admin\ActivityTypeController;
 use App\Http\Controllers\Admin\AdminTrailNetworkController;
 use App\Http\Controllers\Admin\FacilityController;
 use App\Http\Controllers\EventsController;
+use App\Http\Controllers\TrailNetworkController;
 
 // PUBLIC ROUTES (No authentication required)
 Route::get('/', [TrailController::class, 'home'])->name('home');
@@ -16,10 +17,10 @@ Route::get('/trails/{trail}', [TrailController::class, 'show'])->name('trails.sh
 Route::get('/map', [TrailController::class, 'map'])->name('map');
 
 // Public Trail Networks Routes
-Route::get('/trail-networks', [App\Http\Controllers\TrailNetworkController::class, 'index'])
+Route::get('/trail-networks', [TrailNetworkController::class, 'index'])
     ->name('trail-networks.index');
 
-Route::get('/trail-networks/{slug}', [App\Http\Controllers\TrailNetworkController::class, 'show'])
+Route::get('/trail-networks/{slug}', [TrailNetworkController::class, 'show'])
     ->name('trail-networks.show');
 
 // ADMIN ROUTES
