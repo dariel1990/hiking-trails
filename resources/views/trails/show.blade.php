@@ -221,7 +221,7 @@
 @endpush
 
 @section('content')
-@if($trail->trailNetwork->slug === 'hudson-bay-mountain-ski-ride-smithers')
+@if($trail->trailNetwork && $trail->trailNetwork->slug === 'hudson-bay-mountain-ski-ride-smithers')
     <!-- Sponsor Welcome Banner (Trail Network Only) -->
     <div id="sponsor-banner" class="fixed top-20 left-0 right-0 z-[60] bg-gradient-to-r from-accent-500 to-forest-600 shadow-lg">
         <div class="max-w-4xl mx-auto px-4 py-3">
@@ -259,7 +259,7 @@
 <!-- Hero Section -->
 <div class="relative h-[60vh] bg-gray-900 overflow-hidden">
    
-    @if($trail->trailNetwork->slug === 'hudson-bay-mountain-ski-ride-smithers')
+    @if($trail->trailNetwork && $trail->trailNetwork->slug === 'hudson-bay-mountain-ski-ride-smithers')
         <!-- Sponsor Badge - Floating Corner (Trail Network Only - Mobile & Desktop) -->
         <a href="https://bvliving.ca/" target="_blank" rel="noopener noreferrer" class="fixed bottom-3 md:bottom-3 right-12 md:right-12 z-[45]">
             <div class="bg-white rounded-lg shadow-xl border-2 border-accent-500/20 p-3 md:p-4 hover:shadow-2xl hover:scale-105 transition-all duration-300 group">
@@ -1108,6 +1108,48 @@
     </div>
 </div>
 
+<!-- 3D Highlight Modal -->
+<div id="highlight-3d-popup" 
+     class="fixed inset-0 bg-black bg-opacity-50 z-[99999] hidden items-center justify-center p-4"
+     style="display: none;">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[85vh] overflow-hidden transform transition-all"
+         onclick="event.stopPropagation()">
+        <!-- Modal Header with Close Button -->
+        <div class="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex justify-between items-center z-10">
+            <h2 class="text-xl font-bold text-gray-900">Trail Highlight</h2>
+            <button id="close-highlight-popup" 
+                    class="bg-gray-100 hover:bg-gray-200 rounded-full p-2 transition-colors">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+            </button>
+        </div>
+        
+        <!-- Modal Content (Scrollable) -->
+        <div id="highlight-popup-content" class="p-6 overflow-y-auto" style="max-height: calc(85vh - 80px);">
+            <!-- Content will be dynamically inserted here -->
+        </div>
+    </div>
+</div>
+
+<style>
+    /* Modal backdrop click-to-close area */
+    #highlight-3d-popup {
+        backdrop-filter: blur(4px);
+    }
+    
+    @media (max-width: 768px) {
+        #highlight-3d-popup > div {
+            max-width: 95%;
+            max-height: 90vh;
+        }
+        
+        #highlight-popup-content {
+            max-height: calc(90vh - 80px) !important;
+        }
+    }
+</style>
+
 @endsection
 
 @push('scripts')
@@ -1173,6 +1215,24 @@ function openMediaModal(url, type, caption) {
     const modal = document.getElementById('media-modal');
     const content = document.getElementById('modal-content');
     const captionEl = document.getElementById('modal-caption');
+    
+    // Check if we're in fullscreen mode
+    const viewer3D = document.getElementById('trail-3d-viewer');
+    const isFullscreen = !!(document.fullscreenElement || document.webkitFullscreenElement);
+    const fullscreenElement = document.fullscreenElement || document.webkitFullscreenElement;
+    const isViewer3DFullscreen = isFullscreen && fullscreenElement === viewer3D;
+
+    if (isViewer3DFullscreen) {
+        // If in fullscreen, append modal to the fullscreen container
+        if (modal.parentElement !== viewer3D) {
+            viewer3D.appendChild(modal);
+        }
+    } else {
+        // Normal mode - ensure it's in body
+        if (modal.parentElement !== document.body) {
+            document.body.appendChild(modal);
+        }
+    }
     
     if (type === 'photo') {
         content.innerHTML = `<img src="${url}" alt="${caption}" class="w-full h-auto max-h-[70vh] object-contain rounded-lg">`;
@@ -1521,7 +1581,7 @@ document.addEventListener('DOMContentLoaded', function() {
         
         setTimeout(() => {
             try {
-                trail3DViewer = new Trail3DViewer('trail-3d-viewer', trail);
+                trail3DViewer = new Trail3DViewer('trail-3d-viewer', trail, trail.highlights || []);
                 document.getElementById('3d-loading').classList.add('hidden');
             } catch (error) {
                 console.error('Failed to load 3D viewer:', error);
@@ -1550,21 +1610,24 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Focus feature function
     window.focusFeature = function(coordinates, name) {
-        // Switch to route tab
-        document.querySelector('[data-tab="route"]').click();
-        
-        setTimeout(() => {
-            map.setView(coordinates, 16, { animate: true });
+        if (currentView === '3d' && trail3DViewer) {
+            trail3DViewer.focusHighlight(name);
+        } else {
+            document.querySelector('[data-tab="route"]').click();
             
-            map.eachLayer(layer => {
-                if (layer instanceof L.Marker) {
-                    const popup = layer.getPopup();
-                    if (popup && popup.getContent().includes(name)) {
-                        layer.openPopup();
+            setTimeout(() => {
+                map.setView(coordinates, 16, { animate: true });
+                
+                map.eachLayer(layer => {
+                    if (layer instanceof L.Marker) {
+                        const popup = layer.getPopup();
+                        if (popup && popup.getContent().includes(name)) {
+                            layer.openPopup();
+                        }
                     }
-                }
-            });
-        }, 300);
+                });
+            }, 300);
+        }
     };
 
     // Elevation Profile Functions
@@ -1909,6 +1972,196 @@ document.addEventListener('DOMContentLoaded', function() {
         const body = encodeURIComponent(emailBody);
         window.location.href = `mailto:?subject=${subject}&body=${body}`;
     };    
+
+    // ===== 3D HIGHLIGHT POPUP HANDLER =====
+    let current3DHighlight = null;
+
+    document.addEventListener('highlightClicked', function(e) {
+        const highlight = e.detail;
+        current3DHighlight = highlight;
+        window.show3DHighlightPopup(highlight);
+    });
+
+    document.addEventListener('closeHighlightPopup', function() {
+        window.close3DHighlightPopup();
+    });
+
+    document.addEventListener('closeHighlightPopup', function() {
+        close3DHighlightPopup();
+    });
+
+    window.show3DHighlightPopup = function(highlight) {
+        const popup = document.getElementById('highlight-3d-popup');
+        const content = document.getElementById('highlight-popup-content');
+        
+        // Set flag to prevent immediate closing
+        modalJustOpened = true;
+        
+        let mediaHTML = '';
+        if (highlight.media && highlight.media.length > 0) {
+            const displayMedia = highlight.media.slice(0, 3);
+            const hasMore = highlight.media.length > 3;
+            
+            mediaHTML = `
+                <div class="mt-4 pt-4 border-t border-gray-100">
+                    <div class="grid grid-cols-3 gap-2">
+                        ${displayMedia.map(media => {
+                            if (media.media_type === 'photo') {
+                                // Construct proper URL - check if it's already a full URL or needs /storage/ prefix
+                                const photoUrl = media.url || (media.storage_path ? `/storage/${media.storage_path}` : '');
+                                return `
+                                    <div class="relative aspect-square rounded overflow-hidden cursor-pointer hover:opacity-90 transition group"
+                                        onclick="event.stopPropagation(); close3DHighlightPopup(); openMediaModal('${photoUrl}', 'photo', '${(media.caption || highlight.name).replace(/'/g, "\\'")}')">
+                                        <img src="${photoUrl}"
+                                            alt="${(media.caption || highlight.name).replace(/"/g, '&quot;')}"
+                                            class="w-full h-full object-cover">
+                                        <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all"></div>
+                                    </div>
+                                `;
+                            } else if (media.media_type === 'video_url') {
+                                return `
+                                    <div class="relative aspect-square rounded overflow-hidden cursor-pointer hover:opacity-90 transition group bg-gray-900"
+                                        onclick="event.stopPropagation(); close3DHighlightPopup(); openMediaModal('${media.video_url || media.url}', 'video', '${(media.caption || highlight.name).replace(/'/g, "\\'")}')">
+                                        <div class="w-full h-full flex items-center justify-center">
+                                            <svg class="w-8 h-8 text-white opacity-75" fill="currentColor" viewBox="0 0 20 20">
+                                                <path d="M2 6a2 2 0 012-2h6a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V6zM14.553 7.106A1 1 0 0014 8v4a1 1 0 00.553.894l2 1A1 1 0 0018 13V7a1 1 0 00-1.447-.894l-2 1z"/>
+                                            </svg>
+                                        </div>
+                                        <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                            <div class="bg-white bg-opacity-90 rounded-full p-2">
+                                                <svg class="w-5 h-5 text-gray-900" fill="currentColor" viewBox="0 0 20 20">
+                                                    <path d="M6.3 2.841A1.5 1.5 0 004 4.11V15.89a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z"/>
+                                                </svg>
+                                            </div>
+                                        </div>
+                                    </div>
+                                `;
+                            }
+                            return '';
+                        }).join('')}
+                    </div>
+                    ${hasMore ? `
+                        <div class="text-center mt-2">
+                            <span class="text-xs text-emerald-600 font-semibold">+${highlight.media.length - 3} more</span>
+                        </div>
+                    ` : ''}
+                </div>
+            `;
+        }
+        
+        content.innerHTML = `
+            <div class="space-y-4">
+                <div class="flex items-start gap-4">
+                    <div style="background-color: ${highlight.color || '#6366f1'};" 
+                        class="w-16 h-16 rounded-xl flex items-center justify-center text-white shadow-lg flex-shrink-0 text-3xl">
+                        ${highlight.icon || '📍'}
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <h3 class="font-bold text-2xl text-gray-900 leading-tight mb-2">
+                            ${highlight.name}
+                        </h3>
+                        <span class="inline-flex items-center px-3 py-1 rounded-md text-sm font-medium bg-emerald-100 text-emerald-700 capitalize">
+                            <span class="w-2 h-2 rounded-full bg-emerald-500 mr-2"></span>
+                            ${(highlight.feature_type || '').replace(/_/g, ' ')}
+                        </span>
+                    </div>
+                </div>
+                
+                ${highlight.description ? `
+                    <p class="text-base text-gray-700 leading-relaxed pt-4 border-t border-gray-100">
+                        ${highlight.description}
+                    </p>
+                ` : ''}
+                
+                ${mediaHTML}
+            </div>
+        `;
+        
+        // Show modal with animation
+        // Check if 3D viewer is in fullscreen mode
+        const viewer3D = document.getElementById('trail-3d-viewer');
+        const isFullscreen = !!(document.fullscreenElement || document.webkitFullscreenElement);
+        const fullscreenElement = document.fullscreenElement || document.webkitFullscreenElement;
+        const isViewer3DFullscreen = isFullscreen && fullscreenElement === viewer3D;
+
+        if (isViewer3DFullscreen) {
+            // If in fullscreen, append modal to the fullscreen container
+            viewer3D.appendChild(popup);
+        } else {
+            // Normal mode - ensure it's in body
+            if (popup.parentElement !== document.body) {
+                document.body.appendChild(popup);
+            }
+        }
+
+        popup.style.display = 'flex';
+        document.body.style.overflow = 'hidden'; // Prevent background scrolling
+        setTimeout(() => {
+            popup.classList.remove('hidden');
+            // Reset the flag after a short delay to allow backdrop clicks to work
+            setTimeout(() => {
+                modalJustOpened = false;
+            }, 300);
+        }, 10);
+    }
+
+    window.close3DHighlightPopup = function() {
+        const popup = document.getElementById('highlight-3d-popup');
+        document.body.style.overflow = ''; // Restore scrolling
+        popup.classList.add('hidden');
+        popup.style.display = 'none';
+    }
+
+    // Handle fullscreen changes - move modal back to body when exiting fullscreen
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+
+    function handleFullscreenChange() {
+        const popup = document.getElementById('highlight-3d-popup');
+        const mediaModal = document.getElementById('media-modal');
+        const isFullscreen = !!(document.fullscreenElement || document.webkitFullscreenElement);
+        
+        // If exiting fullscreen, move modals back to body
+        if (!isFullscreen) {
+            if (popup && popup.parentElement !== document.body) {
+                document.body.appendChild(popup);
+            }
+            if (mediaModal && mediaModal.parentElement !== document.body) {
+                document.body.appendChild(mediaModal);
+            }
+        }
+    }
+
+    document.getElementById('close-highlight-popup')?.addEventListener('click', function() {
+        window.close3DHighlightPopup();
+        if (trail3DViewer) {
+            trail3DViewer.closeHighlightPopup();
+        }
+    });
+
+    // Close when clicking outside modal (on backdrop)
+    let modalJustOpened = false;
+
+    document.getElementById('highlight-3d-popup')?.addEventListener('click', function(e) {
+        // Don't close if modal was just opened (prevents immediate close from same click event)
+        if (modalJustOpened) {
+            modalJustOpened = false;
+            return;
+        }
+        
+        if (e.target === this) {
+            window.close3DHighlightPopup();
+            if (trail3DViewer) {
+                trail3DViewer.closeHighlightPopup();
+            }
+        }
+    });
+
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && !document.getElementById('highlight-3d-popup').classList.contains('hidden')) {
+            window.close3DHighlightPopup();
+        }
+    });
 });
 
 // Admin delete confirmation

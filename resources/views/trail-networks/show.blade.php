@@ -4,7 +4,7 @@
 
 @section('content')
 
-@if($trail->trailNetwork->slug === 'hudson-bay-mountain-ski-ride-smithers')
+@if($network->slug === 'hudson-bay-mountain-ski-ride-smithers')
     <!-- Sponsor Welcome Banner (Trail Network Only) -->
     <div id="sponsor-banner" class="fixed top-20 left-0 right-0 z-[60] bg-gradient-to-r from-accent-500 to-forest-600 shadow-lg">
         <div class="max-w-4xl mx-auto px-4 py-3">

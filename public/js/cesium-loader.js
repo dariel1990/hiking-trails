@@ -1,11 +1,14 @@
 // Simple Cesium loader without complex imports
 class Trail3DViewer {
-    constructor(containerId, trail) {
+    constructor(containerId, trail, highlights = []) {
         this.containerId = containerId;
         this.container = document.getElementById(containerId);
         this.trail = trail;
+        this.highlights = highlights;
         this.viewer = null;
         this.fullscreenBtn = null;
+        this.highlightEntities = [];
+        this.activePopup = null;
         this.loadCesium().then(() => {
             this.init();
         });
@@ -61,6 +64,8 @@ class Trail3DViewer {
 
             this.addTrailRoute();
             this.addTrailMarkers();
+            this.addHighlightMarkers();
+            this.setupClickHandler();
             this.flyToTrail();
             this.addCustomFullscreenButton();
             
@@ -234,6 +239,128 @@ class Trail3DViewer {
                 }
             });
         }
+    }
+
+    addHighlightMarkers() {
+        if (!this.highlights || this.highlights.length === 0) {
+            return;
+        }
+
+        this.highlights.forEach(highlight => {
+            const entity = this.viewer.entities.add({
+                id: `highlight-${highlight.id}`,
+                name: highlight.name,
+                position: Cesium.Cartesian3.fromDegrees(
+                    highlight.coordinates[1],
+                    highlight.coordinates[0],
+                    10
+                ),
+                billboard: {
+                    image: this.createHighlightCanvas(
+                        highlight.icon || '📍', 
+                        highlight.color || '#6366f1'
+                    ),
+                    verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
+                    heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
+                    scale: 1.0,
+                    pixelOffset: new Cesium.Cartesian2(0, -10)
+                },
+                properties: new Cesium.PropertyBag({
+                    highlightId: highlight.id,
+                    highlightData: highlight
+                })
+            });
+
+            this.highlightEntities.push(entity);
+        });
+    }
+
+    createHighlightCanvas(icon, color) {
+        const canvas = document.createElement('canvas');
+        const size = 64;
+        canvas.width = size;
+        canvas.height = size;
+        const ctx = canvas.getContext('2d');
+        
+        const centerX = size / 2;
+        const centerY = size / 2;
+        const radius = size / 2 - 4;
+        
+        // Draw outer white border
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, radius + 2, 0, 2 * Math.PI);
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fill();
+        
+        // Draw colored circle
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
+        ctx.fillStyle = color;
+        ctx.fill();
+        
+        // Draw icon/emoji
+        ctx.font = 'bold 28px Arial';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillText(icon, centerX, centerY);
+        
+        return canvas;
+    }
+
+    setupClickHandler() {
+        const handler = new Cesium.ScreenSpaceEventHandler(this.viewer.scene.canvas);
+        
+        handler.setInputAction((click) => {
+            const pickedObject = this.viewer.scene.pick(click.position);
+            
+            if (Cesium.defined(pickedObject) && pickedObject.id) {
+                const entity = pickedObject.id;
+                
+                if (entity.id && entity.id.toString().startsWith('highlight-')) {
+                    const highlightData = entity.properties.highlightData.getValue();
+                    this.showHighlightPopup(highlightData);
+                }
+            }
+            // Removed the else clause that was auto-closing the popup
+            // Now popup only closes via X button, backdrop click, or Esc key
+        }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
+    }
+
+    showHighlightPopup(highlight) {
+        // Don't call closeHighlightPopup() here - let the blade file handle it
+        
+        const event = new CustomEvent('highlightClicked', { 
+            detail: highlight 
+        });
+        document.dispatchEvent(event);
+    }
+
+    closeHighlightPopup() {
+        const event = new CustomEvent('closeHighlightPopup');
+        document.dispatchEvent(event);
+    }
+
+    focusHighlight(highlightName) {
+        const highlight = this.highlights.find(h => h.name === highlightName);
+        if (!highlight) return;
+        
+        this.viewer.camera.flyTo({
+            destination: Cesium.Cartesian3.fromDegrees(
+                highlight.coordinates[1],
+                highlight.coordinates[0],
+                1500
+            ),
+            orientation: {
+                heading: 0,
+                pitch: Cesium.Math.toRadians(-45),
+                roll: 0.0
+            },
+            duration: 2.0,
+            complete: () => {
+                this.showHighlightPopup(highlight);
+            }
+        });
     }
 
     createMarkerCanvas(text, color) {
