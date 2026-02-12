@@ -35,6 +35,14 @@ class Trail extends Model
         'safety_notes',
         'is_featured',
         'trail_network_id',
+        // Fishing lake fields
+        'geometry_type',
+        'location_type',
+        'fishing_location',
+        'fishing_distance_from_town',
+        'fish_species',
+        'best_fishing_time',
+        'best_fishing_season',
     ];
 
     protected $casts = [
@@ -44,14 +52,8 @@ class Trail extends Model
         'best_seasons' => 'array',
         'gpx_raw_data' => 'array',              // NEW
         'is_featured' => 'boolean',
-        'difficulty_level' => 'decimal:1',
-        'distance_km' => 'decimal:2',
-        'elevation_gain_m' => 'integer',
-        'estimated_time_hours' => 'decimal:2',
-        'gpx_calculated_distance' => 'decimal:2',   // NEW
-        'gpx_calculated_elevation' => 'integer',    // NEW
-        'gpx_calculated_time' => 'decimal:2',       // NEW
         'gpx_uploaded_at' => 'datetime',            // NEW
+        'fish_species' => 'array',
     ];
 
     /**
@@ -93,9 +95,9 @@ class Trail extends Model
     {
         // Only consider photos as featured media
         return $this->hasOne(TrailMedia::class)
-                    ->where('is_featured', true)
-                    ->where('media_type', 'photo')
-                    ->orderBy('sort_order');
+            ->where('is_featured', true)
+            ->where('media_type', 'photo')
+            ->orderBy('sort_order');
     }
 
     /**
@@ -105,16 +107,16 @@ class Trail extends Model
     {
         // Prefer a featured photo
         $media = $this->trailMedia()
-                      ->where('is_featured', true)
-                      ->where('media_type', 'photo')
-                      ->first();
+            ->where('is_featured', true)
+            ->where('media_type', 'photo')
+            ->first();
 
         // Fallback to first photo only (do not return videos)
-        if (!$media) {
+        if (! $media) {
             $media = $this->trailMedia()->where('media_type', 'photo')->first();
         }
 
-        if (!$media) {
+        if (! $media) {
             return null;
         }
 
@@ -132,8 +134,8 @@ class Trail extends Model
     public function generalMedia()
     {
         return $this->hasMany(TrailMedia::class)
-                    ->doesntHave('features')
-                    ->ordered();
+            ->doesntHave('features')
+            ->ordered();
     }
 
     /**
@@ -150,8 +152,8 @@ class Trail extends Model
     public function activities()
     {
         return $this->belongsToMany(ActivityType::class, 'trail_activities')
-                    ->withPivot(['activity_notes', 'activity_specific_data'])
-                    ->withTimestamps();
+            ->withPivot(['activity_notes', 'activity_specific_data'])
+            ->withTimestamps();
     }
 
     /**
@@ -172,7 +174,7 @@ class Trail extends Model
             2 => 'Easy',
             3 => 'Moderate',
             4 => 'Hard',
-            5 => 'Very Hard'
+            5 => 'Very Hard',
         ];
 
         return $levels[intval($this->difficulty_level)] ?? 'Unknown';
@@ -231,7 +233,7 @@ class Trail extends Model
      */
     public function getDataSourceTextAttribute(): string
     {
-        return match($this->data_source) {
+        return match ($this->data_source) {
             'gpx' => 'GPX File',
             'mixed' => 'GPX + Manual',
             'manual' => 'Manual Entry',
@@ -261,6 +263,7 @@ class Trail extends Model
     public function isRecommendedForSeason(string $season): bool
     {
         $seasonalData = $this->getSeasonalData($season);
+
         return $seasonalData ? $seasonalData->recommended : true;
     }
 
@@ -285,10 +288,10 @@ class Trail extends Model
      */
     public function scopeSearch($query, $term)
     {
-        return $query->where(function($q) use ($term) {
+        return $query->where(function ($q) use ($term) {
             $q->where('name', 'like', "%{$term}%")
-              ->orWhere('description', 'like', "%{$term}%")
-              ->orWhere('location', 'like', "%{$term}%");
+                ->orWhere('description', 'like', "%{$term}%")
+                ->orWhere('location', 'like', "%{$term}%");
         });
     }
 
@@ -316,5 +319,29 @@ class Trail extends Model
     public function trailNetwork()
     {
         return $this->belongsTo(TrailNetwork::class);
+    }
+
+    /**
+     * Check if location is a fishing lake
+     */
+    public function isFishingLake(): bool
+    {
+        return $this->location_type === 'fishing_lake';
+    }
+
+    /**
+     * Check if location is a trail
+     */
+    public function isTrail(): bool
+    {
+        return $this->location_type === 'trail';
+    }
+
+    /**
+     * Get list of fish species
+     */
+    public function getFishSpeciesList(): array
+    {
+        return $this->fish_species ?? [];
     }
 }

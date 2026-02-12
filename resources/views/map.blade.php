@@ -967,6 +967,257 @@
 .facility-popup .leaflet-popup-content {
     margin: 0;
 }
+
+/* Facility Popup Gallery Styles */
+.facility-popup-content {
+    padding: 16px;
+    min-width: 280px;
+}
+
+.facility-popup-header {
+    display: flex;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.facility-popup-icon {
+    font-size: 28px;
+    margin-right: 12px;
+}
+
+.facility-popup-title {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 600;
+    color: #111827;
+}
+
+.facility-popup-type {
+    margin: 0 0 8px 0;
+    font-size: 13px;
+    color: #6b7280;
+    text-transform: capitalize;
+}
+
+.facility-popup-description {
+    margin: 0 0 12px 0;
+    font-size: 14px;
+    color: #374151;
+    line-height: 1.5;
+}
+
+.facility-media-gallery {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid #e5e7eb;
+}
+
+.facility-media-count {
+    margin: 0 0 8px 0;
+    font-size: 12px;
+    color: #6b7280;
+    font-weight: 500;
+}
+
+.facility-media-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 6px;
+}
+
+.facility-media-item {
+    position: relative;
+    aspect-ratio: 1;
+    border-radius: 6px;
+    overflow: hidden;
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.facility-media-item:hover {
+    transform: scale(1.02);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.facility-media-thumbnail {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.facility-media-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.facility-video-badge {
+    position: absolute;
+    bottom: 4px;
+    right: 4px;
+    background: rgba(0, 0, 0, 0.7);
+    color: white;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+}
+
+/* Facility Gallery Modal */
+.facility-gallery-modal {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.9);
+    z-index: 99999;
+    display: none;
+    align-items: center;
+    justify-content: center;
+}
+
+.facility-gallery-modal.active {
+    display: flex;
+}
+
+.facility-gallery-container {
+    max-width: 90vw;
+    max-height: 90vh;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    background: #1f2937;
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.facility-gallery-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px;
+    background: #111827;
+    border-bottom: 1px solid #374151;
+}
+
+.facility-gallery-title {
+    color: white;
+    font-size: 16px;
+    font-weight: 600;
+    margin: 0;
+}
+
+.facility-gallery-close {
+    background: none;
+    border: none;
+    color: #9ca3af;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 4px;
+    transition: color 0.2s;
+}
+
+.facility-gallery-close:hover {
+    color: white;
+    background: #374151;
+}
+
+.facility-gallery-content {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    position: relative;
+    min-height: 400px;
+}
+
+.facility-gallery-main {
+    max-width: 100%;
+    max-height: 60vh;
+    border-radius: 8px;
+}
+
+.facility-gallery-nav {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    background: rgba(0, 0, 0, 0.5);
+    border: none;
+    color: white;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s;
+}
+
+.facility-gallery-nav:hover {
+    background: rgba(0, 0, 0, 0.8);
+}
+
+.facility-gallery-prev {
+    left: 20px;
+}
+
+.facility-gallery-next {
+    right: 20px;
+}
+
+.facility-gallery-thumbnails {
+    display: flex;
+    gap: 8px;
+    padding: 16px 20px;
+    background: #111827;
+    overflow-x: auto;
+    border-top: 1px solid #374151;
+}
+
+.facility-gallery-thumb {
+    width: 80px;
+    height: 60px;
+    border-radius: 6px;
+    overflow: hidden;
+    cursor: pointer;
+    opacity: 0.6;
+    transition: opacity 0.2s;
+    flex-shrink: 0;
+}
+
+.facility-gallery-thumb.active {
+    opacity: 1;
+    box-shadow: 0 0 0 2px #3b82f6;
+}
+
+.facility-gallery-thumb:hover {
+    opacity: 1;
+}
+
+.facility-gallery-thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.facility-gallery-caption {
+    padding: 12px 20px;
+    background: #111827;
+    color: #9ca3af;
+    font-size: 14px;
+    text-align: center;
+    border-top: 1px solid #374151;
+}
 </style>
 <script>
 
@@ -2033,12 +2284,27 @@
                 'downhill-skiing': '#6366F1'
             };
 
-            const icon = L.divIcon({
-                html: `<div style="background-color: ${colors[activity.type] || '#6B7280'};" class="w-6 h-6 rounded-full border-2 border-white shadow-lg flex items-center justify-center text-white text-xs font-bold">${activity.icon || '•'}</div>`,
-                className: 'custom-trail-marker',
-                iconSize: [24, 24],
-                iconAnchor: [12, 12]
-            });
+            // Check if this is a fishing lake
+            const isFishingLake = trail.location_type === 'fishing_lake';
+            
+            let icon;
+            if (isFishingLake) {
+                // Fishing lake icon - larger blue marker with fish emoji
+                icon = L.divIcon({
+                    html: `<div style="background-color: #3B82F6;" class="w-8 h-8 rounded-full border-2 border-white shadow-lg flex items-center justify-center text-white text-lg">🐟</div>`,
+                    className: 'custom-fishing-marker',
+                    iconSize: [32, 32],
+                    iconAnchor: [16, 16]
+                });
+            } else {
+                // Trail icon - regular activity-based icon
+                icon = L.divIcon({
+                    html: `<div style="background-color: ${colors[activity.type] || '#6B7280'};" class="w-6 h-6 rounded-full border-2 border-white shadow-lg flex items-center justify-center text-white text-xs font-bold">${activity.icon || '•'}</div>`,
+                    className: 'custom-trail-marker',
+                    iconSize: [24, 24],
+                    iconAnchor: [12, 12]
+                });
+            }
 
             const marker = L.marker(coords, { icon });
                 //.bindPopup(this.createPopupContent(trail));
@@ -2571,28 +2837,64 @@
                         zIndexOffset: 500 // Below network markers but above trails
                     }).addTo(this.map);
                     
-                    // Create popup content
-                    const popupContent = `
-                        <div style="padding: 12px; min-width: 200px;">
-                            <div style="display: flex; align-items: center; margin-bottom: 8px;">
-                                <span style="font-size: 24px; margin-right: 8px;">${facility.icon}</span>
-                                <h3 style="margin: 0; font-size: 16px; font-weight: bold; color: #1f2937;">
-                                    ${facility.name}
-                                </h3>
+                    // Create popup content with media gallery
+                    let popupContent = `
+                        <div class="facility-popup-content">
+                            <div class="facility-popup-header">
+                                <span class="facility-popup-icon">${facility.icon}</span>
+                                <h3 class="facility-popup-title">${facility.name}</h3>
                             </div>
-                            <p style="margin: 0 0 8px 0; font-size: 12px; color: #6b7280;">
-                                <strong>Type:</strong> ${facility.facility_type.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                            <p class="facility-popup-type">
+                                ${facility.facility_type_label}
                             </p>
                             ${facility.description ? `
-                                <p style="margin: 0; font-size: 13px; color: #4b5563; line-height: 1.4;">
-                                    ${facility.description}
-                                </p>
+                                <p class="facility-popup-description">${facility.description}</p>
                             ` : ''}
-                        </div>
                     `;
                     
+                    // Add media gallery if facility has media
+                    if (facility.media && facility.media.length > 0) {
+                        popupContent += `
+                            <div class="facility-media-gallery">
+                                <p class="facility-media-count">${facility.media_count} ${facility.media_count === 1 ? 'photo/video' : 'photos/videos'}</p>
+                                <div class="facility-media-grid">
+                        `;
+                        
+                        // Show up to 4 media items
+                        facility.media.slice(0, 4).forEach((media, index) => {
+                            const isVideo = media.media_type === 'video_url';
+                            const thumbnailUrl = media.thumbnail_url || media.url;
+                            const remainingCount = facility.media.length - 4;
+                            
+                            if (index === 3 && remainingCount > 0) {
+                                // Show "+X more" overlay on the 4th item if there are more
+                                popupContent += `
+                                    <div class="facility-media-item" onclick="window.showFacilityGallery(${facility.id}, ${index})">
+                                        <img src="${thumbnailUrl}" class="facility-media-thumbnail" alt="${media.caption || facility.name}">
+                                        <div class="facility-media-overlay">+${remainingCount} more</div>
+                                        ${isVideo ? '<div class="facility-video-badge">▶</div>' : ''}
+                                    </div>
+                                `;
+                            } else {
+                                popupContent += `
+                                    <div class="facility-media-item" onclick="window.showFacilityGallery(${facility.id}, ${index})">
+                                        <img src="${thumbnailUrl}" class="facility-media-thumbnail" alt="${media.caption || facility.name}">
+                                        ${isVideo ? '<div class="facility-video-badge">▶</div>' : ''}
+                                    </div>
+                                `;
+                            }
+                        });
+                        
+                        popupContent += `
+                                </div>
+                            </div>
+                        `;
+                    }
+                    
+                    popupContent += `</div>`;
+                    
                     facilityMarker.bindPopup(popupContent, {
-                        maxWidth: 300,
+                        maxWidth: 320,
                         className: 'facility-popup'
                     });
                 });
@@ -2918,6 +3220,151 @@
                 }
             }, 1500);
         }
+        
+        // Facility Gallery Modal Functionality
+        window.facilityGalleryData = null;
+        window.currentFacilityMediaIndex = 0;
+        
+        window.showFacilityGallery = function(facilityId, startIndex = 0) {
+            // Find facility data from the map
+            const facility = trailMap.facilitiesData?.find(f => f.id === facilityId);
+            if (!facility || !facility.media || facility.media.length === 0) return;
+            
+            window.facilityGalleryData = facility;
+            window.currentFacilityMediaIndex = startIndex;
+            
+            // Create or get modal
+            let modal = document.getElementById('facility-gallery-modal');
+            if (!modal) {
+                modal = document.createElement('div');
+                modal.id = 'facility-gallery-modal';
+                modal.className = 'facility-gallery-modal';
+                modal.innerHTML = `
+                    <div class="facility-gallery-container">
+                        <div class="facility-gallery-header">
+                            <h3 class="facility-gallery-title"></h3>
+                            <button class="facility-gallery-close" onclick="window.closeFacilityGallery()">
+                                <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                                </svg>
+                            </button>
+                        </div>
+                        <div class="facility-gallery-content">
+                            <button class="facility-gallery-nav facility-gallery-prev" onclick="window.prevFacilityMedia()">‹</button>
+                            <div class="facility-gallery-main-container"></div>
+                            <button class="facility-gallery-nav facility-gallery-next" onclick="window.nextFacilityMedia()">›</button>
+                        </div>
+                        <div class="facility-gallery-thumbnails"></div>
+                        <div class="facility-gallery-caption"></div>
+                    </div>
+                `;
+                document.body.appendChild(modal);
+                
+                // Close on backdrop click
+                modal.addEventListener('click', (e) => {
+                    if (e.target === modal) window.closeFacilityGallery();
+                });
+                
+                // Keyboard navigation
+                document.addEventListener('keydown', (e) => {
+                    if (!modal.classList.contains('active')) return;
+                    if (e.key === 'Escape') window.closeFacilityGallery();
+                    if (e.key === 'ArrowLeft') window.prevFacilityMedia();
+                    if (e.key === 'ArrowRight') window.nextFacilityMedia();
+                });
+            }
+            
+            modal.classList.add('active');
+            document.body.style.overflow = 'hidden';
+            
+            window.updateFacilityGalleryDisplay();
+        };
+        
+        window.closeFacilityGallery = function() {
+            const modal = document.getElementById('facility-gallery-modal');
+            if (modal) {
+                modal.classList.remove('active');
+                document.body.style.overflow = '';
+            }
+        };
+        
+        window.updateFacilityGalleryDisplay = function() {
+            if (!window.facilityGalleryData) return;
+            
+            const facility = window.facilityGalleryData;
+            const media = facility.media[window.currentFacilityMediaIndex];
+            const modal = document.getElementById('facility-gallery-modal');
+            
+            // Update title
+            modal.querySelector('.facility-gallery-title').textContent = facility.name;
+            
+            // Update main content
+            const mainContainer = modal.querySelector('.facility-gallery-main-container');
+            if (media.media_type === 'video_url') {
+                mainContainer.innerHTML = `
+                    <iframe src="${media.embed_url}" 
+                            class="facility-gallery-main" 
+                            style="width: 100%; aspect-ratio: 16/9;"
+                            frameborder="0" 
+                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                            allowfullscreen>
+                    </iframe>
+                `;
+            } else {
+                mainContainer.innerHTML = `
+                    <img src="${media.url}" class="facility-gallery-main" alt="${media.caption || facility.name}">
+                `;
+            }
+            
+            // Update caption
+            modal.querySelector('.facility-gallery-caption').textContent = media.caption || '';
+            
+            // Update thumbnails
+            const thumbnailsContainer = modal.querySelector('.facility-gallery-thumbnails');
+            thumbnailsContainer.innerHTML = facility.media.map((m, i) => `
+                <div class="facility-gallery-thumb ${i === window.currentFacilityMediaIndex ? 'active' : ''}" 
+                     onclick="window.goToFacilityMedia(${i})">
+                    <img src="${m.thumbnail_url || m.url}" alt="">
+                </div>
+            `).join('');
+            
+            // Scroll active thumbnail into view
+            const activeThumb = thumbnailsContainer.querySelector('.active');
+            if (activeThumb) {
+                activeThumb.scrollIntoView({ behavior: 'smooth', inline: 'center' });
+            }
+        };
+        
+        window.nextFacilityMedia = function() {
+            if (!window.facilityGalleryData) return;
+            window.currentFacilityMediaIndex = (window.currentFacilityMediaIndex + 1) % window.facilityGalleryData.media.length;
+            window.updateFacilityGalleryDisplay();
+        };
+        
+        window.prevFacilityMedia = function() {
+            if (!window.facilityGalleryData) return;
+            const len = window.facilityGalleryData.media.length;
+            window.currentFacilityMediaIndex = (window.currentFacilityMediaIndex - 1 + len) % len;
+            window.updateFacilityGalleryDisplay();
+        };
+        
+        window.goToFacilityMedia = function(index) {
+            window.currentFacilityMediaIndex = index;
+            window.updateFacilityGalleryDisplay();
+        };
+        
+        // Store facilities data for gallery access
+        const originalLoadFacilities = trailMap.loadFacilities;
+        trailMap.loadFacilities = async function() {
+            await originalLoadFacilities.call(this);
+            // Store reference to facilities data
+            try {
+                const response = await fetch('/api/facilities');
+                this.facilitiesData = await response.json();
+            } catch (e) {
+                console.error('Error caching facilities data:', e);
+            }
+        };
     });
 </script>
 @endpush

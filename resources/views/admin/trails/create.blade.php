@@ -20,7 +20,7 @@
         </div>
     </div>
 
-    <form action="{{ route('admin.trails.store') }}" method="POST" enctype="multipart/form-data" class="space-y-8" onsubmit="return window.trailBuilder.validateBeforeSubmit()">
+    <form action="{{ route('admin.trails.store') }}" method="POST" enctype="multipart/form-data" class="space-y-8" onsubmit="return window.trailBuilder.validateBeforeSubmit()" x-data="{ locationType: '{{ old('location_type', 'trail') }}', fishSpecies: {{ old('fish_species') ? json_encode(old('fish_species')) : '[]' }}, bestFishingSeason: '{{ old('best_fishing_season') }}', bestSeasons: {{ old('best_seasons') ? json_encode(old('best_seasons')) : json_encode(['Spring', 'Summer', 'Fall']) }} }">
         @csrf
 
         <!-- Validation Errors Display -->
@@ -47,24 +47,53 @@
             <div class="p-6 space-y-6">
                 <div class="space-y-2">
                     <h3 class="text-lg font-semibold">Basic Information</h3>
-                    <p class="text-sm text-muted-foreground">Essential details about the trail</p>
+                    <p class="text-sm text-muted-foreground">Essential details about the location</p>
+                </div>
+                
+                <!-- Location Type Selector -->
+                <div class="rounded-lg border-2 border-blue-200 bg-blue-50 p-4 space-y-3">
+                    <label class="text-sm font-medium text-blue-900">Location Type <span class="text-red-500">*</span></label>
+                    <div class="grid grid-cols-2 gap-4">
+                        <label class="relative flex items-center p-4 rounded-lg border-2 cursor-pointer transition-all"
+                               :class="locationType === 'trail' ? 'border-blue-600 bg-blue-100' : 'border-gray-300 bg-white hover:border-blue-400'">
+                            <input type="radio" name="location_type" value="trail" x-model="locationType" class="sr-only" checked>
+                            <div class="flex items-center gap-3">
+                                <div class="text-2xl">🥾</div>
+                                <div>
+                                    <div class="font-semibold text-sm">Hiking Trail</div>
+                                    <div class="text-xs text-muted-foreground">Route with distance & elevation</div>
+                                </div>
+                            </div>
+                        </label>
+                        <label class="relative flex items-center p-4 rounded-lg border-2 cursor-pointer transition-all"
+                               :class="locationType === 'fishing_lake' ? 'border-blue-600 bg-blue-100' : 'border-gray-300 bg-white hover:border-blue-400'">
+                            <input type="radio" name="location_type" value="fishing_lake" x-model="locationType" class="sr-only">
+                            <div class="flex items-center gap-3">
+                                <div class="text-2xl">🐟</div>
+                                <div>
+                                    <div class="font-semibold text-sm">Fishing Lake</div>
+                                    <div class="text-xs text-muted-foreground">Point location with fish species</div>
+                                </div>
+                            </div>
+                        </label>
+                    </div>
                 </div>
                 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div class="md:col-span-2 space-y-2">
                         <label class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                            Trail Name <span class="text-red-500">*</span>
+                            <span x-text="locationType === 'trail' ? 'Trail Name' : 'Location Name'"></span> <span class="text-red-500">*</span>
                         </label>
                         <input type="text" name="name" required value="{{ old('name') }}"
-                               placeholder="Enter trail name"
+                               :placeholder="locationType === 'trail' ? 'Enter trail name' : 'Enter fishing lake name'"
                                class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 @error('name') border-red-300 @enderror">
                         @error('name')
                             <p class="text-sm text-red-500">{{ $message }}</p>
                         @enderror
                     </div>
                     
-                    <!-- Trail Network -->
-                    <div class="space-y-2">
+                    <!-- Trail Network (Trail Only) -->
+                    <div class="space-y-2" x-show="locationType === 'trail'" x-cloak>
                         <label class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
                             Trail Network <span class="text-gray-400">(Optional)</span>
                         </label>
@@ -83,7 +112,8 @@
                         @enderror
                     </div>
 
-                    <div class="space-y-2">
+                    <!-- Location (Trail Only) -->
+                    <div class="space-y-2" x-show="locationType === 'trail'" x-cloak>
                         <label class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
                             Location
                         </label>
@@ -100,7 +130,7 @@
                             Description <span class="text-red-500">*</span>
                         </label>
                         <textarea name="description" rows="4" required
-                                  placeholder="Describe the trail, its features, and what hikers can expect..."
+                                  :placeholder="locationType === 'trail' ? 'Describe the trail, its features, and what hikers can expect...' : 'Describe the fishing lake, access, and what anglers can expect...'"
                                   class="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 @error('description') border-red-300 @enderror">{{ old('description') }}</textarea>
                         @error('description')
                             <p class="text-sm text-red-500">{{ $message }}</p>
@@ -115,7 +145,7 @@
             <div class="p-6 space-y-6">
                 <div class="space-y-2">
                     <h3 class="text-lg font-semibold">Activities & Features</h3>
-                    <p class="text-sm text-muted-foreground">What activities are available on this trail?</p>
+                    <p class="text-sm text-muted-foreground">What activities are available?</p>
                 </div>
                 
                 <div class="space-y-4">
@@ -186,8 +216,139 @@
             </div>
         </div>
 
-        <!-- Interactive Trail Builder with Tabs -->
-        <div class="rounded-lg border bg-card text-card-foreground shadow-sm">
+        <!-- Fishing Lake Specific Fields -->
+        <div class="rounded-lg border bg-card text-card-foreground shadow-sm" 
+             x-show="locationType === 'fishing_lake'" 
+             x-cloak
+             x-init="$watch('locationType', value => { if (value === 'fishing_lake') { setTimeout(() => initPointPicker(), 150); } })">
+            <div class="p-6 space-y-6">
+                <div class="space-y-2">
+                    <h3 class="text-lg font-semibold">Fishing Lake Details</h3>
+                    <p class="text-sm text-muted-foreground">Specific information about the fishing location</p>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <!-- Point Location Picker -->
+                    <div class="md:col-span-2 space-y-2">
+                        <label class="text-sm font-medium">Lake Location <span class="text-red-500">*</span></label>
+                        <div id="point-picker-map" class="w-full rounded-md border border-input bg-muted relative" style="height: 400px;">
+                            <!-- Search Bar Overlay -->
+                            <div class="absolute top-2 left-2 right-2 z-[1000]">
+                                <div class="relative">
+                                    <div class="bg-white rounded-lg shadow-lg border border-gray-200 flex items-center overflow-hidden transition-all duration-200">
+                                        <div class="pl-3 pr-2 flex items-center text-gray-400">
+                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                                            </svg>
+                                        </div>
+                                        <input 
+                                            type="text" 
+                                            id="point-map-search-input" 
+                                            placeholder="Search for a location..." 
+                                            class="flex-1 py-2.5 px-2 text-sm focus:outline-none bg-transparent"
+                                            autocomplete="off"
+                                        >
+                                        <button type="button" id="point-clear-search-btn" class="hidden px-3 text-gray-400 hover:text-gray-600 transition-colors">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                                            </svg>
+                                        </button>
+                                        <div id="point-search-loading" class="hidden px-3">
+                                            <svg class="animate-spin h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24">
+                                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                            </svg>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Results Dropdown -->
+                                    <div id="point-search-results-dropdown" class="hidden absolute top-full left-0 right-0 mt-2 bg-white rounded-lg shadow-xl border border-gray-200 max-h-80 overflow-y-auto">
+                                        <!-- Results will be inserted here -->
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <input type="hidden" name="point_latitude" id="point_latitude" value="{{ old('point_latitude') }}">
+                        <input type="hidden" name="point_longitude" id="point_longitude" value="{{ old('point_longitude') }}">
+                        <p class="text-xs text-muted-foreground">Click on the map to set the lake location. You can drag the marker to adjust. Use the search to find specific locations.</p>
+                    </div>
+                    
+                    <!-- Fishing Location Description -->
+                    <div class="md:col-span-2 space-y-2">
+                        <label class="text-sm font-medium">Fishing Location Description</label>
+                        <textarea name="fishing_location" rows="2"
+                                  placeholder="e.g., North shore near boat launch, accessible from parking area..."
+                                  class="flex min-h-[60px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">{{ old('fishing_location') }}</textarea>
+                    </div>
+                    
+                    <!-- Distance from Town -->
+                    <div class="space-y-2">
+                        <label class="text-sm font-medium">Distance from Town</label>
+                        <input type="text" name="fishing_distance_from_town" value="{{ old('fishing_distance_from_town') }}"
+                               placeholder="Input text describing distance from nearest town"
+                               class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                    </div>
+                    
+                    <!-- Best Fishing Time -->
+                    <div class="space-y-2">
+                        <label class="text-sm font-medium">Best Fishing Time</label>
+                        <select name="best_fishing_time"
+                                class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                            <option value="">Any time</option>
+                            <option value="dawn" {{ old('best_fishing_time') == 'dawn' ? 'selected' : '' }}>Dawn</option>
+                            <option value="morning" {{ old('best_fishing_time') == 'morning' ? 'selected' : '' }}>Morning</option>
+                            <option value="afternoon" {{ old('best_fishing_time') == 'afternoon' ? 'selected' : '' }}>Afternoon</option>
+                            <option value="dusk" {{ old('best_fishing_time') == 'dusk' ? 'selected' : '' }}>Dusk</option>
+                            <option value="night" {{ old('best_fishing_time') == 'night' ? 'selected' : '' }}>Night</option>
+                        </select>
+                    </div>
+                    
+                    <!-- Best Fishing Season -->
+                    <div class="space-y-2">
+                        <label class="text-sm font-medium">Best Fishing Season</label>
+                        <select name="best_fishing_season" x-model="bestFishingSeason"
+                                class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                            <option value="">Year-round</option>
+                            <option value="spring" {{ old('best_fishing_season') == 'spring' ? 'selected' : '' }}>Spring</option>
+                            <option value="summer" {{ old('best_fishing_season') == 'summer' ? 'selected' : '' }}>Summer</option>
+                            <option value="fall" {{ old('best_fishing_season') == 'fall' ? 'selected' : '' }}>Fall</option>
+                            <option value="winter" {{ old('best_fishing_season') == 'winter' ? 'selected' : '' }}>Winter</option>
+                        </select>
+                    </div>
+                    
+                    <!-- Fish Species (Dynamic) -->
+                    <div class="md:col-span-2 space-y-3">
+                        <label class="text-sm font-medium">Fish Species</label>
+                        <div class="space-y-2">
+                            <template x-for="(species, index) in fishSpecies" :key="index">
+                                <div class="flex items-center gap-2">
+                                    <input type="text" x-model="fishSpecies[index]" 
+                                           :name="'fish_species[]'"
+                                           placeholder="e.g., Rainbow Trout, Bass"
+                                           class="flex h-10 flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                                    <button type="button" @click="fishSpecies.splice(index, 1)"
+                                            class="inline-flex items-center justify-center rounded-md border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 w-10">
+                                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                                        </svg>
+                                    </button>
+                                </div>
+                            </template>
+                            <button type="button" @click="fishSpecies.push('')"
+                                    class="w-full inline-flex items-center justify-center rounded-md border-2 border-dashed border-gray-300 bg-gray-50 hover:bg-gray-100 h-10 px-4 py-2 text-sm font-medium text-gray-600">
+                                <svg class="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                                </svg>
+                                Add Fish Species
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Interactive Trail Builder with Tabs (Trail Only) -->
+        <div class="rounded-lg border bg-card text-card-foreground shadow-sm" x-show="locationType === 'trail'" x-cloak>
             <!-- Header -->
             <div class="p-6 space-y-2 border-b">
                 <h3 class="text-lg font-semibold">Interactive Trail Builder</h3>
@@ -432,7 +593,7 @@
                                 <div class="space-y-4">
                                     <div class="space-y-2">
                                         <label class="text-xs font-medium">Difficulty (1-5) *</label>
-                                        <select name="difficulty_level" required 
+                                        <select name="difficulty_level" :required="locationType === 'trail'"
                                                 class="flex h-9 w-full text-sm rounded-md border border-input bg-background px-3 py-2 ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
                                             <option value="">Auto-detect</option>
                                             <option value="1">1 - Very Easy</option>
@@ -445,7 +606,7 @@
                                     
                                     <div class="space-y-2">
                                         <label class="text-xs font-medium">Trail Type *</label>
-                                        <select name="trail_type" required 
+                                        <select name="trail_type" :required="locationType === 'trail'"
                                                 class="flex h-9 w-full text-sm rounded-md border border-input bg-background px-3 py-2 ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
                                             <option value="">Select type</option>
                                             <option value="loop" selected>Loop</option>
@@ -648,8 +809,8 @@
             </div>
         </div>
 
-        <!-- Seasonal Information -->
-        <div class="rounded-lg border bg-card text-card-foreground shadow-sm">
+        <!-- Seasonal Information (Trail Only) -->
+        <div class="rounded-lg border bg-card text-card-foreground shadow-sm" x-show="locationType === 'trail'" x-cloak>
             <div class="p-6 space-y-6">
                 <div class="space-y-2">
                     <h3 class="text-lg font-semibold">Seasonal Information</h3>
@@ -793,7 +954,7 @@
                 </div>
                 
                 <div class="space-y-6">
-                    <div class="space-y-3">
+                    <div class="space-y-3" x-show="locationType === 'trail'" x-cloak>
                         <label class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
                             Best Seasons
                         </label>
@@ -801,14 +962,18 @@
                             @php $seasons = ['Spring', 'Summer', 'Fall', 'Winter']; @endphp
                             @foreach($seasons as $season)
                                 <label class="flex items-center space-x-2 cursor-pointer">
-                                    <input type="checkbox" name="best_seasons[]" value="{{ $season }}" 
-                                           {{ in_array($season, old('best_seasons', ['Spring', 'Summer', 'Fall'])) ? 'checked' : '' }}
+                                    <input type="checkbox" name="best_seasons[]" value="{{ $season }}"
+                                           :checked="bestSeasons.includes('{{ $season }}')"
+                                           @change="if ($event.target.checked) { bestSeasons.push('{{ $season }}'); } else { bestSeasons = bestSeasons.filter(s => s !== '{{ $season }}'); }"
                                            class="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary">
                                     <span class="text-sm font-medium">{{ $season }}</span>
                                 </label>
                             @endforeach
                         </div>
                     </div>
+                    
+                    <!-- Hidden Best Seasons for Fishing Lakes (synced with Best Fishing Season) -->
+                    <input type="hidden" name="best_seasons[]" :value="bestFishingSeason.charAt(0).toUpperCase() + bestFishingSeason.slice(1)" x-show="locationType === 'fishing_lake' && bestFishingSeason" x-cloak>
 
                     <div class="space-y-2">
                         <label class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
@@ -3602,12 +3767,235 @@
         }
     }
 
+    // Point Picker for Fishing Lakes
+    let pointPickerMap = null;
+    function initPointPicker() {
+        const mapElement = document.getElementById('point-picker-map');
+        if (!mapElement) return;
+        
+        // If map already initialized, just resize it
+        if (pointPickerMap) {
+            setTimeout(() => {
+                pointPickerMap.invalidateSize();
+            }, 100);
+            return;
+        }
+        
+        // Initialize map for point picker
+        pointPickerMap = L.map('point-picker-map', {
+            maxZoom: 20,
+            minZoom: 1,
+            zoomControl: false  // Disable default zoom control
+        }).setView([54.7804, -127.1698], 10);
+        
+        // Add zoom control to bottom left
+        L.control.zoom({
+            position: 'bottomleft'
+        }).addTo(pointPickerMap);
+        
+        // Add tile layer
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors',
+            maxZoom: 19
+        }).addTo(pointPickerMap);
+        
+        // Add marker for point selection
+        let marker = null;
+        const latInput = document.getElementById('point_latitude');
+        const lngInput = document.getElementById('point_longitude');
+        
+        // If coordinates already exist, add marker
+        if (latInput.value && lngInput.value) {
+            const lat = parseFloat(latInput.value);
+            const lng = parseFloat(lngInput.value);
+            marker = L.marker([lat, lng], {
+                draggable: true,
+                icon: L.divIcon({
+                    className: 'fishing-lake-marker',
+                    html: '<div style="width: 40px; height: 40px; background: #3B82F6; border: 3px solid white; border-radius: 50%; box-shadow: 0 2px 8px rgba(0,0,0,0.3); display: flex; align-items: center; justify-content: center; font-size: 20px; cursor: move;">🐟</div>',
+                    iconSize: [40, 40],
+                    iconAnchor: [20, 20]
+                })
+            }).addTo(pointPickerMap);
+            pointPickerMap.setView([lat, lng], 13);
+            
+            // Update on drag
+            marker.on('dragend', function(e) {
+                const pos = e.target.getLatLng();
+                latInput.value = pos.lat.toFixed(6);
+                lngInput.value = pos.lng.toFixed(6);
+            });
+        }
+        
+        // Add click handler to place marker
+        pointPickerMap.on('click', function(e) {
+            const { lat, lng } = e.latlng;
+            
+            // Remove existing marker if any
+            if (marker) {
+                pointPickerMap.removeLayer(marker);
+            }
+            
+            // Create new draggable marker
+            marker = L.marker([lat, lng], {
+                draggable: true,
+                icon: L.divIcon({
+                    className: 'fishing-lake-marker',
+                    html: '<div style="width: 40px; height: 40px; background: #3B82F6; border: 3px solid white; border-radius: 50%; box-shadow: 0 2px 8px rgba(0,0,0,0.3); display: flex; align-items: center; justify-content: center; font-size: 20px; cursor: move;">🐟</div>',
+                    iconSize: [40, 40],
+                    iconAnchor: [20, 20]
+                })
+            }).addTo(pointPickerMap);
+            
+            // Update inputs
+            latInput.value = lat.toFixed(6);
+            lngInput.value = lng.toFixed(6);
+            
+            // Update on drag
+            marker.on('dragend', function(e) {
+                const pos = e.target.getLatLng();
+                latInput.value = pos.lat.toFixed(6);
+                lngInput.value = pos.lng.toFixed(6);
+            });
+            
+            // Pan to marker
+            pointPickerMap.setView([lat, lng], Math.max(pointPickerMap.getZoom(), 13));
+        });
+        
+        // Fix map display after Alpine shows the section
+        setTimeout(() => {
+            pointPickerMap.invalidateSize();
+        }, 100);
+        
+        // Initialize search functionality
+        initPointPickerSearch();
+    }
+    
+    // Search functionality for point picker map
+    let pointSearchTimeout = null;
+    let pointSearchMarker = null;
+    function initPointPickerSearch() {
+        const searchInput = document.getElementById('point-map-search-input');
+        const clearBtn = document.getElementById('point-clear-search-btn');
+        const loadingIndicator = document.getElementById('point-search-loading');
+        const resultsDropdown = document.getElementById('point-search-results-dropdown');
+        
+        if (!searchInput) return;
+        
+        // Show/hide clear button
+        searchInput.addEventListener('input', function() {
+            if (this.value.trim()) {
+                clearBtn.classList.remove('hidden');
+            } else {
+                clearBtn.classList.add('hidden');
+                resultsDropdown.classList.add('hidden');
+            }
+            
+            // Debounced search
+            clearTimeout(pointSearchTimeout);
+            const query = this.value.trim();
+            
+            if (query.length < 3) {
+                resultsDropdown.classList.add('hidden');
+                return;
+            }
+            
+            loadingIndicator.classList.remove('hidden');
+            
+            pointSearchTimeout = setTimeout(() => {
+                performPointSearch(query);
+            }, 500);
+        });
+        
+        // Clear button
+        clearBtn.addEventListener('click', function() {
+            searchInput.value = '';
+            clearBtn.classList.add('hidden');
+            resultsDropdown.classList.add('hidden');
+            loadingIndicator.classList.add('hidden');
+            
+            // Remove search marker if exists
+            if (pointSearchMarker && pointPickerMap) {
+                pointPickerMap.removeLayer(pointSearchMarker);
+                pointSearchMarker = null;
+            }
+        });
+        
+        // Close dropdown when clicking outside
+        document.addEventListener('click', function(e) {
+            if (!searchInput.contains(e.target) && !resultsDropdown.contains(e.target)) {
+                resultsDropdown.classList.add('hidden');
+            }
+        });
+    }
+    
+    function performPointSearch(query) {
+        const loadingIndicator = document.getElementById('point-search-loading');
+        const resultsDropdown = document.getElementById('point-search-results-dropdown');
+        
+        // Nominatim API (OpenStreetMap)
+        const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5&addressdetails=1`;
+        
+        fetch(url)
+            .then(response => response.json())
+            .then(results => {
+                loadingIndicator.classList.add('hidden');
+                
+                if (results.length === 0) {
+                    resultsDropdown.innerHTML = '<div class="p-4 text-center text-sm text-gray-500">No results found</div>';
+                    resultsDropdown.classList.remove('hidden');
+                    return;
+                }
+                
+                // Display results
+                resultsDropdown.innerHTML = results.map((result, index) => `
+                    <div class="search-result-item p-3 hover:bg-gray-50 cursor-pointer border-b last:border-b-0" data-lat="${result.lat}" data-lon="${result.lon}" data-name="${result.display_name}">
+                        <div class="search-result-name">${result.display_name}</div>
+                    </div>
+                `).join('');
+                
+                resultsDropdown.classList.remove('hidden');
+                
+                // Add click handlers
+                resultsDropdown.querySelectorAll('.search-result-item').forEach(item => {
+                    item.addEventListener('click', function() {
+                        const lat = parseFloat(this.dataset.lat);
+                        const lon = parseFloat(this.dataset.lon);
+                        const name = this.dataset.name;
+                        
+                        // Place marker at search result
+                        if (pointPickerMap) {
+                            // Trigger map click to place marker
+                            const e = { latlng: { lat, lng: lon } };
+                            pointPickerMap.fire('click', e);
+                            
+                            // Pan and zoom to location
+                            pointPickerMap.setView([lat, lon], 15);
+                        }
+                        
+                        // Close dropdown
+                        resultsDropdown.classList.add('hidden');
+                        document.getElementById('point-map-search-input').value = name;
+                    });
+                });
+            })
+            .catch(error => {
+                console.error('Search error:', error);
+                loadingIndicator.classList.add('hidden');
+                resultsDropdown.innerHTML = '<div class="p-4 text-center text-sm text-red-500">Search failed. Please try again.</div>';
+                resultsDropdown.classList.remove('hidden');
+            });
+    }
+    
     // Initialize trail builder when DOM is ready
     document.addEventListener('DOMContentLoaded', function() {
         // Initialize photo manager
         window.photoManager = new PhotoUploadManager();
 
         window.trailBuilder = new TrailBuilder();
+        
+        // Initialize Point Picker for fishing lakes
+        initPointPicker();
 
         // ADD THIS: Two-way sync between input fields and display cards
         const distanceInput = document.querySelector('input[name="distance_km"]');

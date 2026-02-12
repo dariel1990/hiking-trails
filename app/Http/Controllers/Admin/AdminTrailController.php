@@ -76,19 +76,12 @@ class AdminTrailController extends Controller
      */
     public function store(Request $request)
     {
-        $request->validate([
+        // Base validation rules
+        $rules = [
             'name' => 'required|string|max:255',
-            'description' => 'required|string',
+            'description' => 'nullable|string',
             'location' => 'nullable|string|max:255',
-            'difficulty_level' => 'required|numeric|between:1,5',
-            'distance_km' => 'required|numeric|min:0',
-            'elevation_gain_m' => 'required|integer|min:0',
-            'estimated_time_hours' => 'required|numeric|min:0',
-            'trail_type' => 'required|in:loop,out-and-back,point-to-point',
-            'start_lat' => 'required|numeric|between:-90,90',
-            'start_lng' => 'required|numeric|between:-180,180',
-            'end_lat' => 'nullable|numeric|between:-90,90',
-            'end_lng' => 'nullable|numeric|between:-180,180',
+            'location_type' => 'required|in:trail,fishing_lake',
             'status' => 'required|in:active,closed,seasonal',
             'best_seasons' => 'nullable|array',
             'best_seasons.*' => 'string|in:Spring,Summer,Fall,Winter',
@@ -96,15 +89,12 @@ class AdminTrailController extends Controller
             'parking_info' => 'nullable|string',
             'safety_notes' => 'nullable|string',
             'is_featured' => 'boolean',
-            'route_coordinates' => 'nullable|string',
-            'waypoints' => 'nullable|string',
             'photos' => 'nullable|array',
             'photos.*' => 'image|mimes:jpeg,png,jpg,gif|max:10240',
             'trail_video_urls' => 'nullable|array',
             'trail_video_urls.*' => 'nullable|url|max:500',
             'highlight_media_*' => 'nullable|file|mimes:jpeg,png,jpg,gif|max:10240',
             'highlight_video_url_*' => 'nullable|url|max:500',
-            'gpx_file' => 'nullable|file|mimes:gpx,xml|max:10240',
             'activities' => 'nullable|array',
             'activities.*' => 'integer|exists:activity_types,id',
             'activity_notes' => 'nullable|string|max:1000',
@@ -113,33 +103,89 @@ class AdminTrailController extends Controller
             'seasonal.*.recommended' => 'nullable',
             'seasonal.*.notes' => 'nullable|string|max:1000',
             'trail_network_id' => 'nullable|exists:trail_networks,id',
-        ]);
+        ];
 
-        // Prepare trail data
-        $data = $request->only([
-            'name', 'description', 'location', 'difficulty_level', 
-            'distance_km', 'elevation_gain_m', 'estimated_time_hours', 
-            'trail_type', 'status', 'best_seasons', 'directions', 
-            'parking_info', 'safety_notes', 'is_featured'
-        ]);
-
-        // Set coordinates
-        $data['start_coordinates'] = [$request->start_lat, $request->start_lng];
-        $data['trail_network_id'] = $request->trail_network_id ?? null;
-        
-        if ($request->end_lat && $request->end_lng) {
-            $data['end_coordinates'] = [$request->end_lat, $request->end_lng];
+        // Conditional validation based on location_type
+        if ($request->input('location_type') === 'trail') {
+            $rules = array_merge($rules, [
+                'difficulty_level' => 'required|numeric|between:1,5',
+                'distance_km' => 'required|numeric|min:0',
+                'elevation_gain_m' => 'required|integer|min:0',
+                'estimated_time_hours' => 'required|numeric|min:0',
+                'trail_type' => 'required|in:loop,out-and-back,point-to-point',
+                'start_lat' => 'required|numeric|between:-90,90',
+                'start_lng' => 'required|numeric|between:-180,180',
+                'end_lat' => 'nullable|numeric|between:-90,90',
+                'end_lng' => 'nullable|numeric|between:-180,180',
+                'route_coordinates' => 'nullable|string',
+                'waypoints' => 'nullable|string',
+                'gpx_file' => 'nullable|file|mimes:gpx,xml|max:10240',
+            ]);
         } else {
-            $data['end_coordinates'] = null;
+            $rules = array_merge($rules, [
+                'fishing_location' => 'nullable|string|max:255',
+                'fishing_distance_from_town' => 'nullable|string|max:255',
+                'fish_species' => 'nullable|array',
+                'fish_species.*' => 'nullable|string|max:100',
+                'best_fishing_time' => 'nullable|string|max:255',
+                'best_fishing_season' => 'nullable|string|max:255',
+                'point_latitude' => 'required|numeric|between:-90,90',
+                'point_longitude' => 'required|numeric|between:-180,180',
+            ]);
         }
 
-        // Handle route coordinates
-        if ($request->has('route_coordinates')) {
-            $data['route_coordinates'] = json_decode($request->route_coordinates);
+        $request->validate($rules);
+
+        // Prepare base data common to both types
+        $data = [
+            'name' => $request->name,
+            'description' => $request->description,
+            'location' => $request->location,
+            'location_type' => $request->location_type,
+            'geometry_type' => $request->location_type === 'fishing_lake' ? 'point' : 'linestring',
+            'status' => $request->status,
+            'best_seasons' => $request->best_seasons,
+            'directions' => $request->directions,
+            'parking_info' => $request->parking_info,
+            'safety_notes' => $request->safety_notes,
+            'is_featured' => $request->has('is_featured'),
+            'trail_network_id' => $request->trail_network_id,
+        ];
+
+        // Add type-specific data
+        if ($request->location_type === 'trail') {
+            $data = array_merge($data, [
+                'difficulty_level' => $request->difficulty_level,
+                'distance_km' => $request->distance_km,
+                'elevation_gain_m' => $request->elevation_gain_m,
+                'estimated_time_hours' => $request->estimated_time_hours,
+                'trail_type' => $request->trail_type,
+                'start_coordinates' => [$request->start_lat, $request->start_lng],
+                'end_coordinates' => ($request->end_lat && $request->end_lng) 
+                    ? [$request->end_lat, $request->end_lng] 
+                    : null,
+            ]);
+
+            // Handle route coordinates
+            if ($request->has('route_coordinates')) {
+                $data['route_coordinates'] = json_decode($request->route_coordinates);
+            }
+        } else {
+            // Fishing lake specific data
+            $data = array_merge($data, [
+                'trail_type' => $request->trail_type,
+                'fishing_location' => $request->fishing_location,
+                'fishing_distance_from_town' => $request->fishing_distance_from_town,
+                'fish_species' => $request->has('fish_species') ? array_filter($request->fish_species) : null,
+                'best_fishing_time' => $request->best_fishing_time,
+                'best_fishing_season' => $request->best_fishing_season,
+                'start_coordinates' => [$request->point_latitude, $request->point_longitude],
+                'route_coordinates' => [[$request->point_latitude, $request->point_longitude]],
+            ]);
         }
 
-        // Handle GPX file upload
-        if ($request->hasFile('gpx_file')) {
+        // Handle GPX file upload (trails only)
+        if ($request->location_type === 'trail' && $request->hasFile('gpx_file')) {
             try {
                 $gpxFile = $request->file('gpx_file');
                 $filename = Str::random(40) . '.gpx';
@@ -425,20 +471,12 @@ class AdminTrailController extends Controller
      */
     public function update(Request $request, Trail $trail)
     {
-        // dd($request->all());
-        $request->validate([
+        // Base validation rules
+        $rules = [
             'name' => 'required|string|max:255',
-            'description' => 'required|string',
+            'description' => 'nullable|string',
             'location' => 'nullable|string|max:255',
-            'difficulty_level' => 'required|numeric|between:1,5',
-            'distance_km' => 'required|numeric|min:0',
-            'elevation_gain_m' => 'required|integer|min:0',
-            'estimated_time_hours' => 'required|numeric|min:0',
-            'trail_type' => 'required|in:loop,out-and-back,point-to-point',
-            'start_lat' => 'required|numeric|between:-90,90',
-            'start_lng' => 'required|numeric|between:-180,180',
-            'end_lat' => 'nullable|numeric|between:-90,90',
-            'end_lng' => 'nullable|numeric|between:-180,180',
+            'location_type' => 'required|in:trail,fishing_lake',
             'status' => 'required|in:active,closed,seasonal',
             'best_seasons' => 'nullable|array',
             'best_seasons.*' => 'string|in:Spring,Summer,Fall,Winter',
@@ -455,8 +493,6 @@ class AdminTrailController extends Controller
             'deleted_photos' => 'nullable|string',
             'deleted_features' => 'nullable|string',
             'featured_photo_id' => 'nullable|integer',
-            'gpx_file' => 'nullable|file|mimes:gpx,xml|max:10240',
-            'gpx_action' => 'nullable|in:keep_manual,use_gpx',
             'activities' => 'nullable|array',
             'activities.*' => 'integer|exists:activity_types,id',
             'activity_notes' => 'nullable|string|max:1000',
@@ -465,35 +501,86 @@ class AdminTrailController extends Controller
             'seasonal.*.recommended' => 'nullable',
             'seasonal.*.notes' => 'nullable|string|max:1000',
             'trail_network_id' => 'nullable|exists:trail_networks,id',
-        ]);
+        ];
 
-        // Prepare trail data
-        $data = $request->only([
-            'name', 'description', 'location', 'difficulty_level', 
-            'distance_km', 'elevation_gain_m', 'estimated_time_hours', 
-            'trail_type', 'status', 'best_seasons', 'directions', 
-            'parking_info', 'safety_notes'
-        ]);
-
-        $data['is_featured'] = $request->has('is_featured');
-        $data['trail_network_id'] = $request->input('trail_network_id');
-
-        // Set coordinates
-        $data['start_coordinates'] = [$request->start_lat, $request->start_lng];
-        if ($request->end_lat && $request->end_lng) {
-            $data['end_coordinates'] = [$request->end_lat, $request->end_lng];
+        // Conditional validation
+        if ($request->input('location_type', $trail->location_type) === 'trail') {
+            $rules = array_merge($rules, [
+                'difficulty_level' => 'required|numeric|between:1,5',
+                'distance_km' => 'required|numeric|min:0',
+                'elevation_gain_m' => 'required|integer|min:0',
+                'estimated_time_hours' => 'required|numeric|min:0',
+                'trail_type' => 'required|in:loop,out-and-back,point-to-point',
+                'start_lat' => 'required|numeric|between:-90,90',
+                'start_lng' => 'required|numeric|between:-180,180',
+                'end_lat' => 'nullable|numeric|between:-90,90',
+                'end_lng' => 'nullable|numeric|between:-180,180',
+                'gpx_file' => 'nullable|file|mimes:gpx,xml|max:10240',
+                'gpx_action' => 'nullable|in:keep_manual,use_gpx',
+            ]);
         } else {
-            $data['end_coordinates'] = null;
+            $rules = array_merge($rules, [
+                'fishing_location' => 'nullable|string|max:255',
+                'fishing_distance_from_town' => 'nullable|string|max:255',
+                'fish_species' => 'nullable|array',
+                'fish_species.*' => 'nullable|string|max:100',
+                'best_fishing_time' => 'nullable|string|max:255',
+                'best_fishing_season' => 'nullable|string|max:255',
+                'point_latitude' => 'required|numeric|between:-90,90',
+                'point_longitude' => 'required|numeric|between:-180,180',
+            ]);
         }
-        
 
-        // Handle route coordinates
-        if ($request->has('route_coordinates')) {
-            $data['route_coordinates'] = json_decode($request->route_coordinates);
+        $request->validate($rules);
+
+        // Prepare base data
+        $data = [
+            'name' => $request->name,
+            'description' => $request->description,
+            'location' => $request->location,
+            'location_type' => $request->location_type,
+            'geometry_type' => $request->location_type === 'fishing_lake' ? 'point' : 'linestring',
+            'status' => $request->status,
+            'best_seasons' => $request->best_seasons,
+            'directions' => $request->directions,
+            'parking_info' => $request->parking_info,
+            'safety_notes' => $request->safety_notes,
+            'is_featured' => $request->has('is_featured'),
+            'trail_network_id' => $request->trail_network_id,
+        ];
+
+        // Type-specific data
+        if ($request->location_type === 'trail') {
+            $data = array_merge($data, [
+                'difficulty_level' => $request->difficulty_level,
+                'distance_km' => $request->distance_km,
+                'elevation_gain_m' => $request->elevation_gain_m,
+                'estimated_time_hours' => $request->estimated_time_hours,
+                'trail_type' => $request->trail_type,
+                'start_coordinates' => [$request->start_lat, $request->start_lng],
+                'end_coordinates' => ($request->end_lat && $request->end_lng) 
+                    ? [$request->end_lat, $request->end_lng] 
+                    : null,
+            ]);
+
+            // Handle route coordinates
+            if ($request->has('route_coordinates')) {
+                $data['route_coordinates'] = json_decode($request->route_coordinates);
+            }
+        } else {
+            $data = array_merge($data, [
+                'fishing_location' => $request->fishing_location,
+                'fishing_distance_from_town' => $request->fishing_distance_from_town,
+                'fish_species' => $request->has('fish_species') ? array_filter($request->fish_species) : null,
+                'best_fishing_time' => $request->best_fishing_time,
+                'best_fishing_season' => $request->best_fishing_season,
+                'start_coordinates' => [$request->point_latitude, $request->point_longitude],
+                'route_coordinates' => [[$request->point_latitude, $request->point_longitude]],
+            ]);
         }
 
-        // Handle GPX file re-upload
-        if ($request->hasFile('gpx_file')) {
+        // Handle GPX file re-upload (trails only)
+        if ($request->location_type === 'trail' && $request->hasFile('gpx_file')) {
             try {
                 // Delete old GPX file if exists
                 if ($trail->gpx_file_path) {

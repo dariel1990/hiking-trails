@@ -2,8 +2,8 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
 class Facility extends Model
 {
@@ -24,6 +24,56 @@ class Facility extends Model
         'longitude' => 'decimal:7',
         'is_active' => 'boolean',
     ];
+
+    protected $appends = ['media_count'];
+
+    /**
+     * Get all media for this facility
+     */
+    public function media()
+    {
+        return $this->hasMany(FacilityMedia::class)->orderBy('sort_order')->orderBy('created_at');
+    }
+
+    /**
+     * Get only photos
+     */
+    public function photos()
+    {
+        return $this->media()->where('media_type', 'photo');
+    }
+
+    /**
+     * Get only videos
+     */
+    public function videos()
+    {
+        return $this->media()->where('media_type', 'video_url');
+    }
+
+    /**
+     * Get primary media
+     */
+    public function primaryMedia()
+    {
+        return $this->media()->where('is_primary', true)->first();
+    }
+
+    /**
+     * Get media count attribute
+     */
+    public function getMediaCountAttribute()
+    {
+        return $this->media()->count();
+    }
+
+    /**
+     * Check if facility has media
+     */
+    public function hasMedia(): bool
+    {
+        return $this->media()->count() > 0;
+    }
 
     /**
      * Get icon based on facility type
@@ -53,9 +103,29 @@ class Facility extends Model
             'picnic' => '🍽️',
             'water' => '💧',
             'shelter' => '⛺',
+            'camping_site' => '🏕️',
         ];
 
         return $icons[$this->facility_type] ?? '📍';
+    }
+
+    /**
+     * Get available facility types
+     */
+    public static function getFacilityTypes(): array
+    {
+        return [
+            'parking' => '🅿️ Parking',
+            'toilets' => '🚻 Toilets',
+            'emergency_kit' => '🏥 Emergency Kit',
+            'lodge' => '🏠 Lodge',
+            'viewpoint' => '👁️ Viewpoint',
+            'info' => 'ℹ️ Information',
+            'picnic' => '🍽️ Picnic Area',
+            'water' => '💧 Water',
+            'shelter' => '⛺ Shelter',
+            'camping_site' => '🏕️ Camping Site',
+        ];
     }
 
     /**

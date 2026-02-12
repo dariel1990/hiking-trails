@@ -47,7 +47,8 @@ class Trail3DViewer {
                 fullscreenButton: false,
                 geocoder: false,
                 infoBox: false,
-                selectionIndicator: false
+                selectionIndicator: false,
+                sceneMode: Cesium.SceneMode.SCENE3D
             });
 
             // Force canvas to fill container
@@ -57,6 +58,9 @@ class Trail3DViewer {
             
             // Force resize
             this.viewer.resize();
+
+            // Ensure we're in 3D mode
+            this.viewer.scene.mode = Cesium.SceneMode.SCENE3D;
 
             if (this.viewer.cesiumWidget.creditContainer) {
                 this.viewer.cesiumWidget.creditContainer.style.display = "none";
@@ -89,8 +93,12 @@ class Trail3DViewer {
                 fullscreenButton: true,
                 geocoder: false,
                 infoBox: false,
-                selectionIndicator: false
+                selectionIndicator: false,
+                sceneMode: Cesium.SceneMode.SCENE3D
             });
+
+            // Ensure we're in 3D mode
+            this.viewer.scene.mode = Cesium.SceneMode.SCENE3D;
 
             // Disable credits
             if (this.viewer.cesiumWidget.creditContainer) {
@@ -178,6 +186,11 @@ class Trail3DViewer {
     }
 
     addTrailRoute() {
+        // Don't show trail route for fishing lakes
+        if (this.trail.location_type === 'fishing_lake') {
+            return;
+        }
+
         if (!this.trail.route_coordinates || this.trail.route_coordinates.length === 0) {
             return;
         }
@@ -204,41 +217,93 @@ class Trail3DViewer {
     }
 
     addTrailMarkers() {
-        // Start marker
-        this.viewer.entities.add({
-            name: 'Trail Start',
-            position: Cesium.Cartesian3.fromDegrees(
-                this.trail.start_coordinates[1], 
-                this.trail.start_coordinates[0],
-                10 // Height offset
-            ),
-            billboard: {
-                image: this.createMarkerCanvas('START', '#10B981'),
-                verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
-                heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
-                scale: 1.0
-            }
-        });
+        const isFishingLake = this.trail.location_type === 'fishing_lake';
 
-        // End marker if different
-        if (this.trail.end_coordinates && 
-            JSON.stringify(this.trail.start_coordinates) !== JSON.stringify(this.trail.end_coordinates)) {
-            
+        if (isFishingLake) {
+            // Fishing lake marker with fish emoji
             this.viewer.entities.add({
-                name: 'Trail End',
+                name: 'Fishing Lake',
                 position: Cesium.Cartesian3.fromDegrees(
-                    this.trail.end_coordinates[1], 
-                    this.trail.end_coordinates[0],
-                    10
+                    this.trail.start_coordinates[1], 
+                    this.trail.start_coordinates[0],
+                    10 // Height offset
                 ),
                 billboard: {
-                    image: this.createMarkerCanvas('END', '#EF4444'),
+                    image: this.createFishingMarkerCanvas(),
                     verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
                     heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
                     scale: 1.0
                 }
             });
+        } else {
+            // Start marker
+            this.viewer.entities.add({
+                name: 'Trail Start',
+                position: Cesium.Cartesian3.fromDegrees(
+                    this.trail.start_coordinates[1], 
+                    this.trail.start_coordinates[0],
+                    10 // Height offset
+                ),
+                billboard: {
+                    image: this.createMarkerCanvas('START', '#10B981'),
+                    verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
+                    heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
+                    scale: 1.0
+                }
+            });
+
+            // End marker if different
+            if (this.trail.end_coordinates && 
+                JSON.stringify(this.trail.start_coordinates) !== JSON.stringify(this.trail.end_coordinates)) {
+                
+                this.viewer.entities.add({
+                    name: 'Trail End',
+                    position: Cesium.Cartesian3.fromDegrees(
+                        this.trail.end_coordinates[1], 
+                        this.trail.end_coordinates[0],
+                        10
+                    ),
+                    billboard: {
+                        image: this.createMarkerCanvas('END', '#EF4444'),
+                        verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
+                        heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
+                        scale: 1.0
+                    }
+                });
+            }
         }
+    }
+
+    createFishingMarkerCanvas() {
+        const canvas = document.createElement('canvas');
+        const size = 64;
+        canvas.width = size;
+        canvas.height = size;
+        const ctx = canvas.getContext('2d');
+        
+        const centerX = size / 2;
+        const centerY = size / 2;
+        const radius = size / 2 - 4;
+        
+        // Draw outer white border
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, radius + 2, 0, 2 * Math.PI);
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fill();
+        
+        // Draw blue circle
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
+        ctx.fillStyle = '#3B82F6';
+        ctx.fill();
+        
+        // Draw fish emoji
+        ctx.font = 'bold 32px Arial';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('🐟', centerX, centerY);
+        
+        return canvas;
     }
 
     addHighlightMarkers() {
@@ -407,9 +472,25 @@ class Trail3DViewer {
     }
 
     flyToTrail() {
+        const isFishingLake = this.trail.location_type === 'fishing_lake';
+        
         // Give the viewer a moment to fully initialize
         setTimeout(() => {
-            if (this.trail.route_coordinates && this.trail.route_coordinates.length > 0) {
+            if (!this.viewer || !this.viewer.camera) {
+                console.error('Viewer not ready');
+                return;
+            }
+
+            // Reset camera to default orientation first
+            this.viewer.camera.setView({
+                orientation: {
+                    heading: 0.0,
+                    pitch: -Cesium.Math.PI_OVER_TWO,
+                    roll: 0.0
+                }
+            });
+
+            if (!isFishingLake && this.trail.route_coordinates && this.trail.route_coordinates.length > 0) {
                 // Calculate bounds from coordinates
                 let west = 999, east = -999, north = -999, south = 999;
                 this.trail.route_coordinates.forEach(coord => {
@@ -425,22 +506,41 @@ class Trail3DViewer {
                     duration: 2.0
                 });
             } else {
-                // Single point view with better positioning
+                // Single point view with better positioning - fishing lakes zoom out more
+                const height = isFishingLake ? 8000 : 3000;
+                
+                // Force camera to look straight down first, then fly
                 this.viewer.camera.flyTo({
                     destination: Cesium.Cartesian3.fromDegrees(
                         this.trail.start_coordinates[1], 
                         this.trail.start_coordinates[0], 
-                        3000
+                        height
                     ),
                     orientation: {
-                        heading: 0,
-                        pitch: Cesium.Math.toRadians(-45),
+                        heading: 0.0,
+                        pitch: -Cesium.Math.PI_OVER_TWO + 0.1, // Almost straight down
                         roll: 0.0
                     },
-                    duration: 2.0
+                    duration: 2.0,
+                    complete: () => {
+                        // After initial fly, adjust to a better viewing angle
+                        this.viewer.camera.flyTo({
+                            destination: Cesium.Cartesian3.fromDegrees(
+                                this.trail.start_coordinates[1], 
+                                this.trail.start_coordinates[0], 
+                                height
+                            ),
+                            orientation: {
+                                heading: 0,
+                                pitch: Cesium.Math.toRadians(-45),
+                                roll: 0.0
+                            },
+                            duration: 1.0
+                        });
+                    }
                 });
             }
-        }, 500);
+        }, 800); // Increased timeout to ensure viewer is fully ready
     }
 
     destroy() {

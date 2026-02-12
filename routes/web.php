@@ -1,14 +1,14 @@
 <?php
 
-use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\TrailController;
+use App\Http\Controllers\Admin\ActivityTypeController;
 use App\Http\Controllers\Admin\AdminController;
 use App\Http\Controllers\Admin\AdminTrailController;
-use App\Http\Controllers\Admin\ActivityTypeController;
 use App\Http\Controllers\Admin\AdminTrailNetworkController;
 use App\Http\Controllers\Admin\FacilityController;
 use App\Http\Controllers\EventsController;
+use App\Http\Controllers\TrailController;
 use App\Http\Controllers\TrailNetworkController;
+use Illuminate\Support\Facades\Route;
 
 // PUBLIC ROUTES (No authentication required)
 Route::get('/', [TrailController::class, 'home'])->name('home');
@@ -30,22 +30,22 @@ Route::prefix('admin')->name('admin.')->group(function () {
     })->name('index');
     Route::get('/login', [AdminController::class, 'loginForm'])->name('login');
     Route::post('/login', [AdminController::class, 'login'])->name('login.post');
-    
+
     // Protected admin routes
     Route::middleware(['auth', 'admin', 'throttle:10,1'])->group(function () {
         Route::post('/logout', [AdminController::class, 'logout'])->name('logout');
         Route::get('/dashboard', [AdminController::class, 'dashboard'])->name('dashboard');
-        
+
         // Trail management
         Route::resource('trails', AdminTrailController::class);
-        Route::resource('activity-types', ActivityTypeController::class); 
+        Route::resource('activity-types', ActivityTypeController::class);
         Route::post('/trails/{trail}/photos', [AdminTrailController::class, 'uploadPhotos'])->name('trails.photos.store');
         Route::delete('/photos/{photo}', [AdminTrailController::class, 'deletePhoto'])->name('photos.delete');
         Route::patch('/trails/{trail}/toggle-featured', [AdminTrailController::class, 'toggleFeatured'])->name('trails.toggle-featured')->middleware('throttle:10,1');
 
         // Add the trail networks routes here
         Route::resource('trail-networks', AdminTrailNetworkController::class)
-        ->names([
+            ->names([
                 'index' => 'trail-networks.index',
                 'create' => 'trail-networks.create',
                 'store' => 'trail-networks.store',
@@ -65,6 +65,16 @@ Route::prefix('admin')->name('admin.')->group(function () {
                 'update' => 'facilities.update',
                 'destroy' => 'facilities.destroy',
             ]);
+
+        // Facility Media Management Routes
+        Route::delete('/facilities/{facility}/media/{media}', [FacilityController::class, 'deleteMedia'])
+            ->name('facilities.media.delete');
+        Route::patch('/facilities/{facility}/media/{media}/primary', [FacilityController::class, 'setPrimaryMedia'])
+            ->name('facilities.media.primary');
+        Route::post('/facilities/{facility}/media/order', [FacilityController::class, 'updateMediaOrder'])
+            ->name('facilities.media.order');
+        Route::patch('/facilities/{facility}/media/{media}/caption', [FacilityController::class, 'updateMediaCaption'])
+            ->name('facilities.media.caption');
         // Media Management Routes
         // Route::get('/trails/{trail}/media', [AdminTrailController::class, 'mediaManagement'])->name('trails.media');
         // Route::post('/trails/{trail}/media/upload', [AdminTrailController::class, 'uploadMedia'])->name('trails.media.upload');
@@ -80,7 +90,6 @@ Route::prefix('admin')->name('admin.')->group(function () {
             ->name('trails.gpx.compare');
     });
 
-   
 });
 
 Route::get('/login', function () {

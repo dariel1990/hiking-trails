@@ -335,24 +335,51 @@
                     
                     <!-- Quick Stats Inline -->
                     <div class="flex flex-wrap gap-4 text-white/90">
-                        <div class="flex items-center">
-                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/>
-                            </svg>
-                            <span class="font-semibold">{{ $trail->distance_km }} km</span>
-                        </div>
-                        <div class="flex items-center">
-                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18"/>
-                            </svg>
-                            <span class="font-semibold">{{ $trail->elevation_gain_m }}m gain</span>
-                        </div>
-                        <div class="flex items-center">
-                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                            </svg>
-                            <span class="font-semibold">{{ $trail->estimated_time_hours }} hours</span>
-                        </div>
+                        @if($trail->isFishingLake())
+                            <!-- Fishing Lake Stats -->
+                            @if($trail->fishing_distance_from_town)
+                            <div class="flex items-center">
+                                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/>
+                                </svg>
+                                <span class="font-semibold">{{ $trail->fishing_distance_from_town }} km from town</span>
+                            </div>
+                            @endif
+                            @if($trail->fish_species && count($trail->fish_species) > 0)
+                            <div class="flex items-center">
+                                <span class="text-xl mr-2">🐟</span>
+                                <span class="font-semibold">{{ count($trail->fish_species) }} fish species</span>
+                            </div>
+                            @endif
+                            @if($trail->best_fishing_time)
+                            <div class="flex items-center">
+                                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                </svg>
+                                <span class="font-semibold">Best: {{ ucfirst($trail->best_fishing_time) }}</span>
+                            </div>
+                            @endif
+                        @else
+                            <!-- Trail Stats -->
+                            <div class="flex items-center">
+                                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/>
+                                </svg>
+                                <span class="font-semibold">{{ $trail->distance_km }} km</span>
+                            </div>
+                            <div class="flex items-center">
+                                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18"/>
+                                </svg>
+                                <span class="font-semibold">{{ $trail->elevation_gain_m }}m gain</span>
+                            </div>
+                            <div class="flex items-center">
+                                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                </svg>
+                                <span class="font-semibold">{{ $trail->estimated_time_hours }} hours</span>
+                            </div>
+                        @endif
                     </div>
                 </div>
                 
@@ -360,13 +387,19 @@
                 <div class="inline-flex items-center gap-3">
                     @if($trail->is_featured)
                         <span class="px-4 py-2 bg-amber-400 text-amber-900 rounded-full font-bold text-sm">
-                            Featured Trail
+                            Featured {{ $trail->isFishingLake() ? 'Location' : 'Trail' }}
                         </span>
                     @endif
                     
-                    <span class="px-6 py-3 bg-white/95 backdrop-blur text-emerald-600 rounded-full font-bold text-lg">
-                        Level {{ $trail->difficulty_level }}/5
-                    </span>
+                    @if($trail->isTrail())
+                        <span class="px-6 py-3 bg-white/95 backdrop-blur text-emerald-600 rounded-full font-bold text-lg">
+                            Level {{ $trail->difficulty_level }}/5
+                        </span>
+                    @else
+                        <span class="px-6 py-3 bg-white/95 backdrop-blur text-blue-600 rounded-full font-bold text-lg flex items-center gap-2">
+                            <span class="text-2xl">🐟</span> Fishing Lake
+                        </span>
+                    @endif
                 </div>
             </div>
         </div>
@@ -378,28 +411,33 @@
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         
         <!-- Stats Cards -->
-        <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-12 -mt-20 relative z-10">
-            <div class="stat-card text-center">
-                <div class="text-4xl font-bold text-emerald-600 mb-2">{{ $trail->difficulty_level }}</div>
-                <div class="text-sm font-medium text-gray-600">Difficulty</div>
-                <div class="text-xs text-gray-500 mt-1">{{ $trail->difficulty_text }}</div>
+        @if($trail->isFishingLake())
+            <!-- Fishing Lake - No stat cards, info shown in sidebar -->
+        @else
+            <!-- Trail Stats -->
+            <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-12 -mt-20 relative z-10">
+                <div class="stat-card text-center">
+                    <div class="text-4xl font-bold text-emerald-600 mb-2">{{ $trail->difficulty_level }}</div>
+                    <div class="text-sm font-medium text-gray-600">Difficulty</div>
+                    <div class="text-xs text-gray-500 mt-1">{{ $trail->difficulty_text }}</div>
+                </div>
+                <div class="stat-card text-center">
+                    <div class="text-4xl font-bold text-blue-600 mb-2">{{ $trail->distance_km }}</div>
+                    <div class="text-sm font-medium text-gray-600">Distance (km)</div>
+                    <div class="text-xs text-gray-500 mt-1">Total Length</div>
+                </div>
+                <div class="stat-card text-center">
+                    <div class="text-4xl font-bold text-orange-600 mb-2">{{ $trail->elevation_gain_m }}</div>
+                    <div class="text-sm font-medium text-gray-600">Elevation (m)</div>
+                    <div class="text-xs text-gray-500 mt-1">Total Gain</div>
+                </div>
+                <div class="stat-card text-center">
+                    <div class="text-4xl font-bold text-purple-600 mb-2">{{ $trail->estimated_time_hours }}</div>
+                    <div class="text-sm font-medium text-gray-600">Time (hrs)</div>
+                    <div class="text-xs text-gray-500 mt-1">Estimated</div>
+                </div>
             </div>
-            <div class="stat-card text-center">
-                <div class="text-4xl font-bold text-blue-600 mb-2">{{ $trail->distance_km }}</div>
-                <div class="text-sm font-medium text-gray-600">Distance (km)</div>
-                <div class="text-xs text-gray-500 mt-1">Total Length</div>
-            </div>
-            <div class="stat-card text-center">
-                <div class="text-4xl font-bold text-orange-600 mb-2">{{ $trail->elevation_gain_m }}</div>
-                <div class="text-sm font-medium text-gray-600">Elevation (m)</div>
-                <div class="text-xs text-gray-500 mt-1">Total Gain</div>
-            </div>
-            <div class="stat-card text-center">
-                <div class="text-4xl font-bold text-purple-600 mb-2">{{ $trail->estimated_time_hours }}</div>
-                <div class="text-sm font-medium text-gray-600">Time (hrs)</div>
-                <div class="text-xs text-gray-500 mt-1">Estimated</div>
-            </div>
-        </div>
+        @endif
         
         <!-- Admin Options Card (NEW - Below Stats) -->
         @auth
@@ -893,6 +931,107 @@
             <aside class="lg:col-span-4 mt-12 lg:mt-0">
                 <div class="sticky-sidebar space-y-6">
 
+                    @if($trail->isFishingLake())
+                    <!-- Fishing Lake Overview -->
+                    <div class="bg-white rounded-xl shadow-lg border border-gray-100">
+                        <div class="p-6">
+                            <!-- Header with Location Type and Status -->
+                            <div class="flex items-center justify-between mb-6">
+                                <h3 class="text-xl font-bold text-gray-900">Fishing Lake</h3>
+                                @php
+                                    $statusConfig = [
+                                        'active' => ['class' => 'bg-green-100 text-green-800 border border-green-200', 'label' => 'Open'],
+                                        'closed' => ['class' => 'bg-red-100 text-red-800 border border-red-200', 'label' => 'Closed'],
+                                        'seasonal' => ['class' => 'bg-amber-100 text-amber-800 border border-amber-200', 'label' => 'Seasonal']
+                                    ];
+                                    $config = $statusConfig[$trail->status] ?? ['class' => 'bg-gray-100 text-gray-800 border border-gray-200', 'label' => ucfirst($trail->status)];
+                                @endphp
+                                <span class="inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold {{ $config['class'] }}">
+                                    {{ $config['label'] }}
+                                </span>
+                            </div>
+
+                            <!-- Location Info Card -->
+                            @if($trail->fishing_location || $trail->fishing_distance_from_town)
+                            <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-5">
+                                @if($trail->fishing_location)
+                                <div class="mb-2">
+                                    <div class="text-xs text-blue-600 font-semibold uppercase tracking-wide mb-1">Location</div>
+                                    <div class="text-sm font-bold text-gray-900">{{ $trail->fishing_location }}</div>
+                                </div>
+                                @endif
+                                @if($trail->fishing_distance_from_town)
+                                <div class="flex items-start gap-2">
+                                    <svg class="w-4 h-4 text-blue-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                    </svg>
+                                    <div class="text-sm text-gray-700">{{ $trail->fishing_distance_from_town }}</div>
+                                </div>
+                                @endif
+                            </div>
+                            @endif
+
+                            <!-- Fish Species -->
+                            @if($trail->fish_species && count($trail->fish_species) > 0)
+                            <div class="mb-5">
+                                <div class="flex items-center gap-2 mb-3">
+                                    <svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                    </svg>
+                                    <span class="text-sm font-medium text-gray-700">Fish Species</span>
+                                </div>
+                                <div class="flex flex-wrap gap-2">
+                                    @foreach($trail->fish_species as $species)
+                                        <span class="inline-flex items-center rounded-md px-2.5 py-1 text-sm font-semibold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                                            {{ $species }}
+                                        </span>
+                                    @endforeach
+                                </div>
+                            </div>
+                            @endif
+
+                            <!-- Best Fishing Info Grid -->
+                            <div class="grid grid-cols-2 gap-3 mb-5">
+                                @if($trail->best_fishing_season)
+                                <div class="bg-amber-50 border border-amber-200 rounded-lg p-3">
+                                    <div class="flex items-center gap-1.5 mb-1">
+                                        <svg class="w-3.5 h-3.5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/>
+                                        </svg>
+                                        <span class="text-xs font-semibold text-amber-700 uppercase tracking-wide">Best Season</span>
+                                    </div>
+                                    <div class="text-sm font-bold text-gray-900 capitalize">{{ $trail->best_fishing_season }}</div>
+                                </div>
+                                @endif
+
+                                <!-- Views - Always show beside Best Season -->
+                                <div class="bg-cyan-50 border border-cyan-200 rounded-lg p-3">
+                                    <div class="flex items-center gap-1.5 mb-1">
+                                        <svg class="w-3.5 h-3.5 text-cyan-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                                        </svg>
+                                        <span class="text-xs font-semibold text-cyan-700 uppercase tracking-wide">Views</span>
+                                    </div>
+                                    <div class="text-sm font-bold text-gray-900">{{ number_format($trail->view_count ?? 0) }}</div>
+                                </div>
+
+                                @if($trail->best_fishing_time)
+                                <div class="bg-indigo-50 border border-indigo-200 rounded-lg p-3">
+                                    <div class="flex items-center gap-1.5 mb-1">
+                                        <svg class="w-3.5 h-3.5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                        </svg>
+                                        <span class="text-xs font-semibold text-indigo-700 uppercase tracking-wide">Best Time</span>
+                                    </div>
+                                    <div class="text-sm font-bold text-gray-900 capitalize">{{ $trail->best_fishing_time }}</div>
+                                </div>
+                                @endif
+                            </div>
+                        </div>
+                    </div>
+                @else
                     <!-- Trail Details Card -->
                     <div class="bg-white rounded-xl shadow-lg p-6 border border-gray-100">
                         <h3 class="text-xl font-bold text-forest-700 mb-4">Trail Details</h3>
@@ -937,6 +1076,7 @@
                             @endif
                         </dl>
                     </div>
+                @endif
                     
                     <!-- Action Buttons -->
                     <div class="bg-white rounded-xl shadow-lg p-6 border border-gray-100">
@@ -1355,16 +1495,20 @@ document.addEventListener('DOMContentLoaded', function() {
     let currentView = '2d';
     let trailRoute = null;
     
-    // Initialize 2D map
-    const map = L.map('trail-detail-map').setView(trail.start_coordinates, 13);
+    // Check if this is a fishing lake
+    const isFishingLake = trail.location_type === 'fishing_lake';
+
+    // Initialize 2D map - fishing lakes zoom out more to see the whole lake
+    const initialZoom = isFishingLake ? 11 : 13;
+    const map = L.map('trail-detail-map').setView(trail.start_coordinates, initialZoom);
     window.trailMap = map;
     
     L.tileLayer('https://{s}.tile-cyclosm.openstreetmap.fr/cyclosm/{z}/{x}/{y}.png', {
         attribution: '© OpenStreetMap, CyclOSM',
     }).addTo(map);
     
-    // Add trail route
-    if (trail.route_coordinates && trail.route_coordinates.length > 0) {
+    // Add trail route (only for trails, not fishing lakes)
+    if (!isFishingLake && trail.route_coordinates && trail.route_coordinates.length > 0) {
         trailRoute = L.polyline(trail.route_coordinates, {
             color: '#10B981',
             weight: 4,
@@ -1376,20 +1520,42 @@ document.addEventListener('DOMContentLoaded', function() {
         map.fitBounds(trailRoute.getBounds(), { padding: [50, 50] });
     }
     
-    // Add start marker
-    const startIcon = L.divIcon({
-        html: '<div class="w-10 h-10 bg-emerald-500 text-white rounded-full flex items-center justify-center font-bold text-lg border-2 border-white shadow-lg">S</div>',
-        className: '',
-        iconSize: [40, 40],
-        iconAnchor: [20, 20]
-    });
+    // Add start marker (for trails) or Lake marker (for fishing lakes)
+    let markerIcon;
+    let popupContent;
+
+    if (isFishingLake) {
+        // Fishing lake marker with fish icon
+        markerIcon = L.divIcon({
+            html: '<div class="w-10 h-10 bg-blue-500 text-white rounded-full flex items-center justify-center border-2 border-white shadow-lg text-2xl">🐟</div>',
+            className: '',
+            iconSize: [40, 40],
+            iconAnchor: [20, 20]
+        });
+
+        // Fishing lake popup with more relevant info
+        const fishSpecies = trail.fish_species ? JSON.parse(JSON.stringify(trail.fish_species)).join(', ') : 'Various species';
+        popupContent = `<div class="font-semibold">${trail.name}</div><div class="text-sm text-gray-600">Fishing Lake</div>` +
+            (trail.fishing_location ? `<div class="text-xs text-gray-500 mt-1">${trail.fishing_location}</div>` : '') +
+            `<div class="text-xs text-blue-600 mt-2 font-medium">${fishSpecies}</div>`;
+    } else {
+        // Trail start marker
+        markerIcon = L.divIcon({
+            html: '<div class="w-10 h-10 bg-emerald-500 text-white rounded-full flex items-center justify-center font-bold text-lg border-2 border-white shadow-lg">S</div>',
+            className: '',
+            iconSize: [40, 40],
+            iconAnchor: [20, 20]
+        });
+
+        popupContent = `<div class="font-semibold">${trail.name}</div><div class="text-sm text-gray-600">Trail Start</div>`;
+    }
     
-    L.marker(trail.start_coordinates, { icon: startIcon })
+    L.marker(trail.start_coordinates, { icon: markerIcon })
         .addTo(map)
-        .bindPopup(`<div class="font-semibold">${trail.name}</div><div class="text-sm text-gray-600">Trail Start</div>`);
+        .bindPopup(popupContent);
     
-    // Add end marker if different
-    if (trail.end_coordinates && 
+    // Add end marker if different (only for trails)
+    if (!isFishingLake && trail.end_coordinates && 
         JSON.stringify(trail.start_coordinates) !== JSON.stringify(trail.end_coordinates)) {
         
         const endIcon = L.divIcon({
