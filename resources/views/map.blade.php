@@ -558,6 +558,29 @@
         </div>
     </div>
 </div>
+
+<!-- Facility Media Modal -->
+<div id="facility-media-modal" class="hidden fixed inset-0 bg-black bg-opacity-90 z-[9999] flex items-center justify-center p-4">
+    <div class="relative max-w-5xl w-full bg-white rounded-lg shadow-xl">
+        <!-- Close button -->
+        <button onclick="closeFacilityMediaModal()" 
+                class="absolute top-4 right-4 z-10 bg-gray-900 bg-opacity-75 hover:bg-opacity-100 text-white rounded-full p-2 transition-all">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+            </svg>
+        </button>
+        
+        <!-- Content container -->
+        <div id="facility-modal-content" class="p-4">
+            <!-- Content will be dynamically inserted here -->
+        </div>
+        
+        <!-- Caption -->
+        <div id="facility-modal-caption" class="px-6 pb-6 text-center text-gray-700">
+            <!-- Caption will be dynamically inserted here -->
+        </div>
+    </div>
+</div>
 @push('scripts')
 <style>
 /* Filter Pills */
@@ -1295,6 +1318,45 @@
         content.innerHTML = ''; // Clear content to stop video playback
     }
 
+    // Facility Media Modal Functions
+    function openFacilityMediaModal(url, type, caption) {
+        const modal = document.getElementById('facility-media-modal');
+        const content = document.getElementById('facility-modal-content');
+        const captionEl = document.getElementById('facility-modal-caption');
+        
+        if (type === 'photo') {
+            content.innerHTML = `<img src="${url}" alt="${caption}" class="w-full h-auto max-h-[70vh] object-contain rounded-lg">`;
+        } else if (type === 'video') {
+            const embedUrl = getVideoEmbedUrl(url);
+            
+            if (embedUrl) {
+                content.innerHTML = `
+                    <div class="relative" style="padding-bottom: 56.25%; height: 0;">
+                        <iframe src="${embedUrl}" 
+                                frameborder="0" 
+                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                                allowfullscreen
+                                class="absolute top-0 left-0 w-full h-full rounded-lg">
+                        </iframe>
+                    </div>
+                `;
+            } else {
+                content.innerHTML = `<p class="text-red-500 text-center p-4">Unable to load video</p>`;
+            }
+        }
+        
+        captionEl.textContent = caption || '';
+        modal.classList.remove('hidden');
+    }
+
+    function closeFacilityMediaModal() {
+        const modal = document.getElementById('facility-media-modal');
+        const content = document.getElementById('facility-modal-content');
+        
+        modal.classList.add('hidden');
+        content.innerHTML = ''; // Clear content to stop video playback
+    }
+
     // Close modal when clicking outside
     document.getElementById('highlight-media-modal')?.addEventListener('click', function(e) {
         if (e.target === this) {
@@ -1302,10 +1364,17 @@
         }
     });
 
+    document.getElementById('facility-media-modal')?.addEventListener('click', function(e) {
+        if (e.target === this) {
+            closeFacilityMediaModal();
+        }
+    });
+
     // Close modal with Escape key
     document.addEventListener('keydown', function(e) {
         if (e.key === 'Escape') {
             closeHighlightMediaModal();
+            closeFacilityMediaModal();
         }
     });
 
@@ -2864,12 +2933,14 @@
                         facility.media.slice(0, 4).forEach((media, index) => {
                             const isVideo = media.media_type === 'video_url';
                             const thumbnailUrl = media.thumbnail_url || media.url;
+                            const fullUrl = isVideo ? media.url : (thumbnailUrl || media.url);
+                            const mediaType = isVideo ? 'video' : 'photo';
                             const remainingCount = facility.media.length - 4;
                             
                             if (index === 3 && remainingCount > 0) {
                                 // Show "+X more" overlay on the 4th item if there are more
                                 popupContent += `
-                                    <div class="facility-media-item" onclick="window.showFacilityGallery(${facility.id}, ${index})">
+                                    <div class="facility-media-item" onclick="openFacilityMediaModal('${fullUrl}', '${mediaType}', '${media.caption || facility.name}')">
                                         <img src="${thumbnailUrl}" class="facility-media-thumbnail" alt="${media.caption || facility.name}">
                                         <div class="facility-media-overlay">+${remainingCount} more</div>
                                         ${isVideo ? '<div class="facility-video-badge">▶</div>' : ''}
@@ -2877,7 +2948,7 @@
                                 `;
                             } else {
                                 popupContent += `
-                                    <div class="facility-media-item" onclick="window.showFacilityGallery(${facility.id}, ${index})">
+                                    <div class="facility-media-item" onclick="openFacilityMediaModal('${fullUrl}', '${mediaType}', '${media.caption || facility.name}')">
                                         <img src="${thumbnailUrl}" class="facility-media-thumbnail" alt="${media.caption || facility.name}">
                                         ${isVideo ? '<div class="facility-video-badge">▶</div>' : ''}
                                     </div>
@@ -3220,151 +3291,6 @@
                 }
             }, 1500);
         }
-        
-        // Facility Gallery Modal Functionality
-        window.facilityGalleryData = null;
-        window.currentFacilityMediaIndex = 0;
-        
-        window.showFacilityGallery = function(facilityId, startIndex = 0) {
-            // Find facility data from the map
-            const facility = trailMap.facilitiesData?.find(f => f.id === facilityId);
-            if (!facility || !facility.media || facility.media.length === 0) return;
-            
-            window.facilityGalleryData = facility;
-            window.currentFacilityMediaIndex = startIndex;
-            
-            // Create or get modal
-            let modal = document.getElementById('facility-gallery-modal');
-            if (!modal) {
-                modal = document.createElement('div');
-                modal.id = 'facility-gallery-modal';
-                modal.className = 'facility-gallery-modal';
-                modal.innerHTML = `
-                    <div class="facility-gallery-container">
-                        <div class="facility-gallery-header">
-                            <h3 class="facility-gallery-title"></h3>
-                            <button class="facility-gallery-close" onclick="window.closeFacilityGallery()">
-                                <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                                </svg>
-                            </button>
-                        </div>
-                        <div class="facility-gallery-content">
-                            <button class="facility-gallery-nav facility-gallery-prev" onclick="window.prevFacilityMedia()">‹</button>
-                            <div class="facility-gallery-main-container"></div>
-                            <button class="facility-gallery-nav facility-gallery-next" onclick="window.nextFacilityMedia()">›</button>
-                        </div>
-                        <div class="facility-gallery-thumbnails"></div>
-                        <div class="facility-gallery-caption"></div>
-                    </div>
-                `;
-                document.body.appendChild(modal);
-                
-                // Close on backdrop click
-                modal.addEventListener('click', (e) => {
-                    if (e.target === modal) window.closeFacilityGallery();
-                });
-                
-                // Keyboard navigation
-                document.addEventListener('keydown', (e) => {
-                    if (!modal.classList.contains('active')) return;
-                    if (e.key === 'Escape') window.closeFacilityGallery();
-                    if (e.key === 'ArrowLeft') window.prevFacilityMedia();
-                    if (e.key === 'ArrowRight') window.nextFacilityMedia();
-                });
-            }
-            
-            modal.classList.add('active');
-            document.body.style.overflow = 'hidden';
-            
-            window.updateFacilityGalleryDisplay();
-        };
-        
-        window.closeFacilityGallery = function() {
-            const modal = document.getElementById('facility-gallery-modal');
-            if (modal) {
-                modal.classList.remove('active');
-                document.body.style.overflow = '';
-            }
-        };
-        
-        window.updateFacilityGalleryDisplay = function() {
-            if (!window.facilityGalleryData) return;
-            
-            const facility = window.facilityGalleryData;
-            const media = facility.media[window.currentFacilityMediaIndex];
-            const modal = document.getElementById('facility-gallery-modal');
-            
-            // Update title
-            modal.querySelector('.facility-gallery-title').textContent = facility.name;
-            
-            // Update main content
-            const mainContainer = modal.querySelector('.facility-gallery-main-container');
-            if (media.media_type === 'video_url') {
-                mainContainer.innerHTML = `
-                    <iframe src="${media.embed_url}" 
-                            class="facility-gallery-main" 
-                            style="width: 100%; aspect-ratio: 16/9;"
-                            frameborder="0" 
-                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
-                            allowfullscreen>
-                    </iframe>
-                `;
-            } else {
-                mainContainer.innerHTML = `
-                    <img src="${media.url}" class="facility-gallery-main" alt="${media.caption || facility.name}">
-                `;
-            }
-            
-            // Update caption
-            modal.querySelector('.facility-gallery-caption').textContent = media.caption || '';
-            
-            // Update thumbnails
-            const thumbnailsContainer = modal.querySelector('.facility-gallery-thumbnails');
-            thumbnailsContainer.innerHTML = facility.media.map((m, i) => `
-                <div class="facility-gallery-thumb ${i === window.currentFacilityMediaIndex ? 'active' : ''}" 
-                     onclick="window.goToFacilityMedia(${i})">
-                    <img src="${m.thumbnail_url || m.url}" alt="">
-                </div>
-            `).join('');
-            
-            // Scroll active thumbnail into view
-            const activeThumb = thumbnailsContainer.querySelector('.active');
-            if (activeThumb) {
-                activeThumb.scrollIntoView({ behavior: 'smooth', inline: 'center' });
-            }
-        };
-        
-        window.nextFacilityMedia = function() {
-            if (!window.facilityGalleryData) return;
-            window.currentFacilityMediaIndex = (window.currentFacilityMediaIndex + 1) % window.facilityGalleryData.media.length;
-            window.updateFacilityGalleryDisplay();
-        };
-        
-        window.prevFacilityMedia = function() {
-            if (!window.facilityGalleryData) return;
-            const len = window.facilityGalleryData.media.length;
-            window.currentFacilityMediaIndex = (window.currentFacilityMediaIndex - 1 + len) % len;
-            window.updateFacilityGalleryDisplay();
-        };
-        
-        window.goToFacilityMedia = function(index) {
-            window.currentFacilityMediaIndex = index;
-            window.updateFacilityGalleryDisplay();
-        };
-        
-        // Store facilities data for gallery access
-        const originalLoadFacilities = trailMap.loadFacilities;
-        trailMap.loadFacilities = async function() {
-            await originalLoadFacilities.call(this);
-            // Store reference to facilities data
-            try {
-                const response = await fetch('/api/facilities');
-                this.facilitiesData = await response.json();
-            } catch (e) {
-                console.error('Error caching facilities data:', e);
-            }
-        };
     });
 </script>
 @endpush

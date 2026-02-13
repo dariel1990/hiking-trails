@@ -89,11 +89,17 @@ Route::get('/facilities', function () {
             'icon' => $facility->icon,
             'media_count' => $facility->media_count,
             'media' => $facility->media->map(function ($media) {
+                // For photos: use file_path directly with asset() like admin blade
+                $photoUrl = $media->file_path ? asset('storage/' . $media->file_path) : ($media->url ?? null);
+                
+                // For videos: use url field directly
+                $videoUrl = $media->url ?? null;
+                
                 return [
                     'id' => $media->id,
                     'media_type' => $media->media_type,
-                    'url' => $media->url,
-                    'thumbnail_url' => $media->thumbnail_url,
+                    'url' => $media->media_type === 'photo' ? $photoUrl : $videoUrl,
+                    'thumbnail_url' => $media->media_type === 'photo' ? $photoUrl : $media->thumbnail_url,
                     'embed_url' => $media->embed_url,
                     'caption' => $media->caption,
                     'is_primary' => $media->is_primary,

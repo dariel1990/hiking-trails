@@ -28,6 +28,8 @@ class FacilityMedia extends Model
         'sort_order' => 'integer',
     ];
 
+    protected $appends = ['url', 'thumbnail_url', 'embed_url'];
+
     /**
      * Get the facility that owns this media
      */
