@@ -272,8 +272,13 @@
                     <h4 class="font-semibold text-base mb-3">Activities</h4>
                     <div class="grid grid-cols-2 gap-2">
                         @foreach($activities as $activity)
-                        <label class="flex items-center cursor-pointer hover:bg-gray-50 p-3 rounded-lg">
-                            <input type="checkbox" value="{{ $activity->slug }}" class="activity-checkbox w-5 h-5">
+                        <label class="flex items-center cursor-pointer hover:bg-gray-50 p-3 rounded-lg" data-activity-label>
+                            <input 
+                                type="checkbox" 
+                                value="{{ $activity->slug }}" 
+                                class="activity-checkbox w-5 h-5"
+                                data-season-applicable="{{ $activity->season_applicable ?? 'both' }}"
+                            >
                             <span class="ml-3 text-sm">
                                 @if($activity->icon)
                                     {{ $activity->icon }} 
@@ -1557,6 +1562,10 @@
             this.baseLayers[this.currentMapType].addTo(this.map);
 
             this.setupEventListeners();
+
+            // Ensure activity filter options match the default season on initial load
+            this.updateActivityFilters(this.currentSeason);
+
             this.loadTrails();
             this.loadFacilities();
         }
@@ -1868,27 +1877,61 @@
         }
 
         updateActivityFilters(season) {
-            // Define which activities are available for each season
+            // Define which activities are available for each season (map overlays)
             const seasonalActivities = {
-                'summer': ['hiking', 'fishing', 'camping', 'viewpoint', 'highlights'],
-                'winter': ['snowshoeing', 'ice-fishing', 'cross-country-skiing', 'downhill-skiing', 'viewpoint', 'highlights']
+                summer: ['hiking', 'fishing', 'camping', 'viewpoint', 'highlights'],
+                winter: ['snowshoeing', 'ice-fishing', 'cross-country-skiing', 'downhill-skiing', 'viewpoint', 'highlights'],
             };
-            
+
             // Get valid activities for this season
-            const validActivities = seasonalActivities[season] || seasonalActivities['summer'];
-            
+            const validActivities = seasonalActivities[season] || seasonalActivities.summer;
+
             // Ensure overlay layers exist for all valid activities
             validActivities.forEach(activityType => {
                 if (!this.overlayLayers[activityType]) {
                     this.overlayLayers[activityType] = L.layerGroup();
                 }
             });
-            
-            // Filter current active filters to only include valid ones for this season
-            const currentActivityFilters = this.activeFilters.filter(f => f !== 'highlights');
-            const validCurrentFilters = currentActivityFilters.filter(f => validActivities.includes(f));
-            
-           this.activeFilters = ['highlights', ...validActivities];
+
+            // Update the map overlay activity filters list
+            this.activeFilters = ['highlights', ...validActivities];
+
+            // Update the Advanced Filters (modal) activity options to match season_applicable
+            // Rules:
+            // - summer season shows activities where season_applicable is summer or both
+            // - winter season shows activities where season_applicable is winter or both
+            const allowedSeasonValues = new Set([season, 'both']);
+
+            document.querySelectorAll('.activity-checkbox').forEach(cb => {
+                const applicable = (cb.dataset.seasonApplicable || 'both').toLowerCase();
+                const shouldShow = allowedSeasonValues.has(applicable);
+
+                const label = cb.closest('label');
+                if (label) {
+                    label.classList.toggle('hidden', !shouldShow);
+                }
+
+                if (!shouldShow) {
+                    cb.checked = false;
+                    cb.disabled = true;
+                } else {
+                    cb.disabled = false;
+                }
+            });
+
+            // If the user had previously selected activities that are no longer valid for the season,
+            // remove them from the active advanced filters state.
+            if (typeof advancedFilters !== 'undefined' && advancedFilters?.activities) {
+                advancedFilters.activities = advancedFilters.activities.filter(activitySlug => {
+                    const input = document.querySelector(`.activity-checkbox[value="${CSS.escape(activitySlug)}"]`);
+                    return input && !input.disabled;
+                });
+
+                // Keep the UI badge accurate
+                if (typeof updateFilterCountBadge === 'function') {
+                    updateFilterCountBadge();
+                }
+            }
         }
 
         async performGeocodeSearch(query) {
