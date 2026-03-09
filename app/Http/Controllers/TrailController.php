@@ -319,6 +319,7 @@ class TrailController extends Controller
                 'name' => $trail->name,
                 'description' => substr($trail->description, 0, 150) . '...',
                 'location' => $trail->location,
+                'location_type' => $trail->location_type,
                 'coordinates' => $coordinates,
                 'difficulty' => $trail->difficulty_level,
                 'distance' => $trail->distance_km,
@@ -331,6 +332,12 @@ class TrailController extends Controller
                 'photos' => $photos,
                 'highlights' => $highlights,
                 'activities' => $activities,
+                'fishing_location' => $trail->fishing_location,
+                'fishing_distance_from_town' => $trail->fishing_distance_from_town,
+                'fish_species' => $trail->fish_species,
+                'best_fishing_season' => $trail->best_fishing_season,
+                'best_fishing_time' => $trail->best_fishing_time,
+                'view_count' => $trail->view_count,
             ];
         });
 

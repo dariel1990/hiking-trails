@@ -2675,6 +2675,80 @@
         
             // Format highlights with media - NOW USING features with their own media
             let highlightsHTML = '';
+
+            // Build stats section based on location type
+            let statsHTML = '';
+            if (trail.location_type === 'fishing_lake') {
+                const statusColor = trail.status === 'active' ? 'bg-green-100 text-green-800 border-green-200' : (trail.status === 'closed' ? 'bg-red-100 text-red-800 border-red-200' : 'bg-yellow-100 text-yellow-800 border-yellow-200');
+                const statusLabel = trail.status === 'active' ? 'Open' : (trail.status === 'closed' ? 'Closed' : 'Seasonal');
+                const fishSpeciesHTML = trail.fish_species && trail.fish_species.length > 0
+                    ? `<div class="mb-5">
+                        <div class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Fish Species</div>
+                        <div class="flex flex-wrap gap-1.5">
+                            ${trail.fish_species.map(s => `<span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium bg-blue-100 text-blue-800">${s}</span>`).join('')}
+                        </div>
+                    </div>`
+                    : '';
+                const distanceText = trail.fishing_distance_from_town
+                    ? trail.fishing_distance_from_town
+                    : 'Distance varies by access point';
+                statsHTML = `<div class="pt-0">
+                    ${trail.fishing_location ? `<div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+                        <div class="mb-2">
+                            <div class="text-xs text-blue-600 font-semibold uppercase tracking-wide mb-1">Location</div>
+                            <div class="text-sm font-bold text-gray-900">${trail.fishing_location}</div>
+                        </div>
+                        <div class="flex items-start gap-2">
+                            <svg class="w-4 h-4 text-blue-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                            </svg>
+                            <div class="text-sm text-gray-700">${distanceText}</div>
+                        </div>
+                    </div>` : ''}
+                    ${fishSpeciesHTML}
+                    <div class="grid grid-cols-2 gap-3">
+                        ${trail.best_fishing_season ? `<div class="bg-amber-50 border border-amber-200 rounded-lg p-3">
+                            <div class="flex items-center gap-1.5 mb-1">
+                                <svg class="w-3.5 h-3.5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path>
+                                </svg>
+                                <span class="text-xs font-semibold text-amber-700 uppercase tracking-wide">Best Season</span>
+                            </div>
+                            <div class="text-sm font-bold text-gray-900 capitalize">${trail.best_fishing_season}</div>
+                        </div>` : ''}
+                        <div class="bg-cyan-50 border border-cyan-200 rounded-lg p-3">
+                            <div class="flex items-center gap-1.5 mb-1">
+                                <svg class="w-3.5 h-3.5 text-cyan-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                                </svg>
+                                <span class="text-xs font-semibold text-cyan-700 uppercase tracking-wide">Views</span>
+                            </div>
+                            <div class="text-sm font-bold text-gray-900">${trail.view_count || 0}</div>
+                        </div>
+                    </div>
+                </div>`;
+            } else {
+                statsHTML = `<div class="grid grid-cols-2 gap-3 mb-4">
+                    <div class="bg-blue-50 p-3 rounded text-center">
+                        <div class="text-2xl font-bold text-blue-600">${trail.distance}</div>
+                        <div class="text-xs text-gray-600">km</div>
+                    </div>
+                    <div class="bg-green-50 p-3 rounded text-center">
+                        <div class="text-2xl font-bold text-green-600">${trail.elevation_gain || 0}</div>
+                        <div class="text-xs text-gray-600">meters</div>
+                    </div>
+                    <div class="bg-yellow-50 p-3 rounded text-center">
+                        <div class="text-2xl font-bold text-yellow-600">${trail.estimated_time || 'N/A'}</div>
+                        <div class="text-xs text-gray-600">hours</div>
+                    </div>
+                    <div class="bg-purple-50 p-3 rounded text-center">
+                        <div class="text-2xl font-bold text-purple-600">${trail.difficulty}</div>
+                        <div class="text-xs text-gray-600">difficulty</div>
+                    </div>
+                </div>`;
+            }
             if (trail.highlights && trail.highlights.length > 0) {
                 highlightsHTML = `
                     <div class="mt-4 pt-4 border-t">
@@ -2727,24 +2801,7 @@
                 <div class="panel-content mb-4">
                     ${photosHTML}
                     
-                    <div class="grid grid-cols-2 gap-3 mb-4">
-                        <div class="bg-blue-50 p-3 rounded text-center">
-                            <div class="text-2xl font-bold text-blue-600">${trail.distance}</div>
-                            <div class="text-xs text-gray-600">km</div>
-                        </div>
-                        <div class="bg-green-50 p-3 rounded text-center">
-                            <div class="text-2xl font-bold text-green-600">${trail.elevation_gain || 0}</div>
-                            <div class="text-xs text-gray-600">meters</div>
-                        </div>
-                        <div class="bg-yellow-50 p-3 rounded text-center">
-                            <div class="text-2xl font-bold text-yellow-600">${trail.estimated_time || 'N/A'}</div>
-                            <div class="text-xs text-gray-600">hours</div>
-                        </div>
-                        <div class="bg-purple-50 p-3 rounded text-center">
-                            <div class="text-2xl font-bold text-purple-600">${trail.difficulty}</div>
-                            <div class="text-xs text-gray-600">difficulty</div>
-                        </div>
-                    </div>
+                    ${statsHTML}
                     
                     <div class="mt-4">
                         <p class="text-sm text-gray-600 leading-relaxed">${trail.description}</p>
