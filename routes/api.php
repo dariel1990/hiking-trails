@@ -2,8 +2,11 @@
 
 use App\Http\Controllers\TrailController;
 use App\Http\Controllers\TrailNetworkController;
-use App\Models\Facility;
+use App\Services\ActivityService;
+use App\Services\FacilityService;
 use App\Services\RouteService;
+use App\Services\TrailNetworkService;
+use App\Services\TrailService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -14,9 +17,14 @@ Route::get('/user', function (Request $request) {
 // API Routes for map data
 Route::get('/trails', [TrailController::class, 'apiIndex']);
 Route::get('/trails/{trail}', [TrailController::class, 'apiShow']);
+
 // Trail Networks API
-Route::get('/trail-networks', function () {
-    return \App\Models\TrailNetwork::where('is_always_visible', true)->get();
+Route::get('/trail-networks', function (TrailNetworkService $service) {
+    return $service->getVisibleNetworks();
+});
+
+Route::get('/trail-networks/{slug}', function (string $slug, TrailNetworkService $service) {
+    return response()->json($service->getNetworkDetail($slug));
 });
 
 Route::post('/calculate-route', function (Request $request) {
@@ -27,7 +35,6 @@ Route::post('/calculate-route', function (Request $request) {
         'end_lng' => 'required|numeric',
     ]);
 
-    // Add debugging
     \Log::info('Route calculation request:', $request->all());
 
     $routeService = new RouteService;
@@ -54,6 +61,7 @@ Route::post('/calculate-route', function (Request $request) {
 
     return response()->json($route);
 });
+
 Route::post('/elevation-profile', function (Request $request) {
     $request->validate([
         'coordinates' => 'required|array',
@@ -70,44 +78,56 @@ Route::post('/elevation-profile', function (Request $request) {
     return response()->json($elevation);
 });
 
-Route::get('/facilities', function () {
-    $facilities = Facility::where('is_active', true)
-        ->with(['media' => function ($query) {
-            $query->orderBy('sort_order')->orderBy('created_at');
-        }])
-        ->get();
-
-    return $facilities->map(function ($facility) {
-        return [
-            'id' => $facility->id,
-            'name' => $facility->name,
-            'facility_type' => $facility->facility_type,
-            'facility_type_label' => $facility->facility_type_label,
-            'description' => $facility->description,
-            'latitude' => $facility->latitude,
-            'longitude' => $facility->longitude,
-            'icon' => $facility->icon,
-            'media_count' => $facility->media_count,
-            'media' => $facility->media->map(function ($media) {
-                // For photos: use file_path directly with asset() like admin blade
-                $photoUrl = $media->file_path ? asset('storage/' . $media->file_path) : ($media->url ?? null);
-                
-                // For videos: use url field directly
-                $videoUrl = $media->url ?? null;
-                
-                return [
-                    'id' => $media->id,
-                    'media_type' => $media->media_type,
-                    'url' => $media->media_type === 'photo' ? $photoUrl : $videoUrl,
-                    'thumbnail_url' => $media->media_type === 'photo' ? $photoUrl : $media->thumbnail_url,
-                    'embed_url' => $media->embed_url,
-                    'caption' => $media->caption,
-                    'is_primary' => $media->is_primary,
-                    'video_provider' => $media->video_provider,
-                ];
-            }),
-        ];
-    });
+Route::get('/facilities', function (FacilityService $service) {
+    return response()->json($service->getActiveFacilities());
 });
 
 Route::get('/highlights', [TrailNetworkController::class, 'trailHighlights']);
+
+// New endpoints for mobile
+Route::get('/featured-trails', function (TrailService $service) {
+    $data = $service->getFeaturedTrails();
+
+    $trails = $data['featuredTrails']->map(function ($trail) {
+        $trailArray = $trail->toArray();
+        $trailArray['featured_media_url'] = $trail->featured_media_url;
+        $trailArray['trail_media'] = $trail->trailMedia?->toArray() ?? [];
+
+        return $trailArray;
+    });
+
+    return response()->json([
+        'featured_trails' => $trails,
+        'stats' => $data['stats'],
+        'activities' => $data['activities'],
+    ]);
+});
+
+Route::get('/trail-detail/{id}', function (int $id) {
+    $trail = \App\Models\Trail::with([
+        'media',
+        'features.media',
+        'highlights.media',
+        'trailNetwork',
+    ])->findOrFail($id);
+
+    $generalMedia = $trail->generalMedia->map(function ($media) {
+        $item = $media->toArray();
+        $item['storage_path_url'] = asset('storage/'.$media->storage_path);
+
+        return $item;
+    });
+
+    return response()->json([
+        'trail' => $trail->append(['featured_media_url', 'difficulty_text']),
+        'general_media' => $generalMedia,
+    ]);
+});
+
+Route::get('/trail-stats', function (TrailService $service) {
+    return response()->json($service->getTrailStats());
+});
+
+Route::get('/activities', function (ActivityService $service) {
+    return response()->json($service->getActiveActivities());
+});
