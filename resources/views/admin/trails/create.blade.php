@@ -20,7 +20,7 @@
         </div>
     </div>
 
-    <form action="{{ route('admin.trails.store') }}" method="POST" enctype="multipart/form-data" class="space-y-8" onsubmit="return window.trailBuilder.validateBeforeSubmit()" x-data="{ locationType: '{{ old('location_type', 'trail') }}', fishSpecies: {{ old('fish_species') ? json_encode(old('fish_species')) : '[]' }}, bestFishingSeason: '{{ old('best_fishing_season') }}', bestSeasons: {{ old('best_seasons') ? json_encode(old('best_seasons')) : json_encode(['Spring', 'Summer', 'Fall']) }} }">
+    <form action="{{ route('admin.trails.store') }}" method="POST" enctype="multipart/form-data" class="space-y-8" x-data="{ locationType: '{{ old('location_type', 'trail') }}', fishSpecies: {{ old('fish_species') ? json_encode(old('fish_species')) : '[]' }}, bestFishingSeason: '{{ old('best_fishing_season') }}', bestSeasons: {{ old('best_seasons') ? json_encode(old('best_seasons')) : json_encode(['Spring', 'Summer', 'Fall']) }} }">
         @csrf
 
         <!-- Validation Errors Display -->
@@ -129,9 +129,10 @@
                         <label class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
                             Description <span class="text-red-500">*</span>
                         </label>
-                        <textarea name="description" rows="4" required
-                                  :placeholder="locationType === 'trail' ? 'Describe the trail, its features, and what hikers can expect...' : 'Describe the fishing lake, access, and what anglers can expect...'"
-                                  class="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 @error('description') border-red-300 @enderror">{{ old('description') }}</textarea>
+                        <div class="quill-editor @error('description') border-red-300 @enderror">
+                            <div id="quill-description"></div>
+                        </div>
+                        <textarea id="description-input" name="description" class="hidden" required>{{ old('description') }}</textarea>
                         @error('description')
                             <p class="text-sm text-red-500">{{ $message }}</p>
                         @enderror
@@ -491,7 +492,7 @@
                             </svg>
                         </button>
                         
-                        <button type="button" class="trail-tab" data-tab="gpx" title="Import GPX">
+                        <button type="button" class="trail-tab" data-tab="gpx" title="Import GPX" style="display:none">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
                             </svg>
@@ -639,8 +640,8 @@
                             </div>
                         </div>
                         
-                        <!-- TAB 3: GPX Import -->
-                        <div class="tab-content" id="tab-gpx">
+                        <!-- TAB 3: GPX Import (disabled) -->
+                        <div class="tab-content hidden" id="tab-gpx">
                             <div class="p-6 space-y-4">
                                 <h4 class="font-medium">Import from GPX</h4>
                                 <p class="text-xs text-muted-foreground">Upload a GPX file to automatically create the trail route</p>
@@ -648,7 +649,7 @@
                                 <input type="file" id="gpx-import" accept=".gpx"
                                     class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
                                 
-                                <input type="hidden" id="use_gpx_calculations" name="use_gpx_calculations" value="false">
+                                <input type="hidden" id="use_gpx_calculations" name="use_gpx_calculations" value="0">
                                 
                                 <div class="rounded-lg border border-blue-200 bg-blue-50 p-4 space-y-2 mt-4">
                                     <h5 class="font-medium text-blue-800 text-sm">📍 GPX File Info</h5>
@@ -812,135 +813,241 @@
         <!-- Seasonal Information (Trail Only) -->
         <div class="rounded-lg border bg-card text-card-foreground shadow-sm" x-show="locationType === 'trail'" x-cloak>
             <div class="p-6 space-y-6">
-                <div class="space-y-2">
+                <div class="space-y-1">
                     <h3 class="text-lg font-semibold">Seasonal Information</h3>
-                    <p class="text-sm text-muted-foreground">Trail conditions and recommendations throughout the year</p>
+                    <p class="text-sm text-muted-foreground">Trail conditions and recommendations throughout the year. Leave fields blank if not applicable.</p>
                 </div>
-                
+
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+
                     <!-- Spring -->
-                    <div class="rounded-lg border border-input p-4 space-y-4">
-                        <div class="flex items-center gap-2">
-                            <span class="text-lg">Spring</span>
+                    <div class="rounded-lg border-2 border-green-200 bg-green-50 overflow-hidden">
+                        <div class="flex items-center justify-between px-4 py-3 bg-green-100 border-b border-green-200">
+                            <div class="flex items-center gap-2">
+                                <span class="text-xl">🌱</span>
+                                <span class="font-semibold text-green-800">Spring</span>
+                            </div>
+                            <label class="flex items-center gap-2 cursor-pointer">
+                                <input type="checkbox" name="seasonal[spring][recommended]" value="1"
+                                       {{ old('seasonal.spring.recommended', true) ? 'checked' : '' }}
+                                       class="h-4 w-4 rounded border-green-400 text-green-600 focus:ring-green-500">
+                                <span class="text-xs font-medium text-green-700">Recommended</span>
+                            </label>
                         </div>
-                        
-                        <div class="space-y-3">
-                            <div class="space-y-2">
-                                <label class="text-sm font-medium">Trail Conditions</label>
-                                <input type="text" name="seasonal[spring][conditions]" 
+                        <div class="p-4 space-y-3">
+                            <div class="space-y-1">
+                                <label class="text-xs font-semibold uppercase tracking-wide text-green-700 flex items-center gap-1">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-4.724A1 1 0 013 14.382V5a1 1 0 011-1h4.586a1 1 0 01.707.293l.707.707A1 1 0 0010.586 5H20a1 1 0 011 1v9a1 1 0 01-.553.894L15 18"/></svg>
+                                    Trail Conditions
+                                </label>
+                                <input type="text" name="seasonal[spring][conditions]"
                                        placeholder="e.g., Muddy, Snow patches"
                                        value="{{ old('seasonal.spring.conditions') }}"
-                                       class="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">
+                                       class="flex h-9 w-full rounded-md border border-green-200 bg-white px-3 py-1 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-green-400">
                             </div>
-                            
-                            <div class="flex items-center space-x-2">
-                                <input type="checkbox" name="seasonal[spring][recommended]" value="1" 
-                                       {{ old('seasonal.spring.recommended', true) ? 'checked' : '' }}
-                                       class="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary">
-                                <label class="text-sm font-medium">Recommended in Spring</label>
-                            </div>
-                            
-                            <div class="space-y-2">
-                                <label class="text-sm font-medium">Notes</label>
-                                <textarea name="seasonal[spring][notes]" rows="2" 
+                            <div class="space-y-1">
+                                <label class="text-xs font-semibold uppercase tracking-wide text-green-700 flex items-center gap-1">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                                    Notes
+                                </label>
+                                <textarea name="seasonal[spring][notes]" rows="2"
                                           placeholder="Special spring considerations..."
-                                          class="flex min-h-[60px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">{{ old('seasonal.spring.notes') }}</textarea>
+                                          class="flex min-h-[60px] w-full rounded-md border border-green-200 bg-white px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-green-400">{{ old('seasonal.spring.notes') }}</textarea>
+                            </div>
+                            <div class="space-y-1">
+                                <label class="text-xs font-semibold uppercase tracking-wide text-green-700 flex items-center gap-1">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"/></svg>
+                                    Highlights
+                                </label>
+                                <input type="text" name="seasonal[spring][features]"
+                                       placeholder="e.g., Wildflower bloom, Wildlife sightings"
+                                       value="{{ old('seasonal.spring.features') }}"
+                                       class="flex h-9 w-full rounded-md border border-green-200 bg-white px-3 py-1 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-green-400">
+                            </div>
+                            <div class="space-y-1">
+                                <label class="text-xs font-semibold uppercase tracking-wide text-green-700 flex items-center gap-1">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                    Accessibility Changes
+                                </label>
+                                <input type="text" name="seasonal[spring][accessibility]"
+                                       placeholder="e.g., Upper section requires snowshoes"
+                                       value="{{ old('seasonal.spring.accessibility') }}"
+                                       class="flex h-9 w-full rounded-md border border-green-200 bg-white px-3 py-1 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-green-400">
                             </div>
                         </div>
                     </div>
 
                     <!-- Summer -->
-                    <div class="rounded-lg border border-input p-4 space-y-4">
-                        <div class="flex items-center gap-2">
-                            <span class="text-lg">Summer</span>
+                    <div class="rounded-lg border-2 border-yellow-200 bg-yellow-50 overflow-hidden">
+                        <div class="flex items-center justify-between px-4 py-3 bg-yellow-100 border-b border-yellow-200">
+                            <div class="flex items-center gap-2">
+                                <span class="text-xl">☀️</span>
+                                <span class="font-semibold text-yellow-800">Summer</span>
+                            </div>
+                            <label class="flex items-center gap-2 cursor-pointer">
+                                <input type="checkbox" name="seasonal[summer][recommended]" value="1"
+                                       {{ old('seasonal.summer.recommended', true) ? 'checked' : '' }}
+                                       class="h-4 w-4 rounded border-yellow-400 text-yellow-600 focus:ring-yellow-500">
+                                <span class="text-xs font-medium text-yellow-700">Recommended</span>
+                            </label>
                         </div>
-                        
-                        <div class="space-y-3">
-                            <div class="space-y-2">
-                                <label class="text-sm font-medium">Trail Conditions</label>
-                                <input type="text" name="seasonal[summer][conditions]" 
+                        <div class="p-4 space-y-3">
+                            <div class="space-y-1">
+                                <label class="text-xs font-semibold uppercase tracking-wide text-yellow-700 flex items-center gap-1">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-4.724A1 1 0 013 14.382V5a1 1 0 011-1h4.586a1 1 0 01.707.293l.707.707A1 1 0 0010.586 5H20a1 1 0 011 1v9a1 1 0 01-.553.894L15 18"/></svg>
+                                    Trail Conditions
+                                </label>
+                                <input type="text" name="seasonal[summer][conditions]"
                                        placeholder="e.g., Dry, Clear"
                                        value="{{ old('seasonal.summer.conditions') }}"
-                                       class="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">
+                                       class="flex h-9 w-full rounded-md border border-yellow-200 bg-white px-3 py-1 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-yellow-400">
                             </div>
-                            
-                            <div class="flex items-center space-x-2">
-                                <input type="checkbox" name="seasonal[summer][recommended]" value="1" 
-                                       {{ old('seasonal.summer.recommended', true) ? 'checked' : '' }}
-                                       class="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary">
-                                <label class="text-sm font-medium">Recommended in Summer</label>
-                            </div>
-                            
-                            <div class="space-y-2">
-                                <label class="text-sm font-medium">Notes</label>
-                                <textarea name="seasonal[summer][notes]" rows="2" 
+                            <div class="space-y-1">
+                                <label class="text-xs font-semibold uppercase tracking-wide text-yellow-700 flex items-center gap-1">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                                    Notes
+                                </label>
+                                <textarea name="seasonal[summer][notes]" rows="2"
                                           placeholder="Special summer considerations..."
-                                          class="flex min-h-[60px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">{{ old('seasonal.summer.notes') }}</textarea>
+                                          class="flex min-h-[60px] w-full rounded-md border border-yellow-200 bg-white px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-yellow-400">{{ old('seasonal.summer.notes') }}</textarea>
+                            </div>
+                            <div class="space-y-1">
+                                <label class="text-xs font-semibold uppercase tracking-wide text-yellow-700 flex items-center gap-1">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"/></svg>
+                                    Highlights
+                                </label>
+                                <input type="text" name="seasonal[summer][features]"
+                                       placeholder="e.g., Wildflower bloom, Wildlife sightings"
+                                       value="{{ old('seasonal.summer.features') }}"
+                                       class="flex h-9 w-full rounded-md border border-yellow-200 bg-white px-3 py-1 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-yellow-400">
+                            </div>
+                            <div class="space-y-1">
+                                <label class="text-xs font-semibold uppercase tracking-wide text-yellow-700 flex items-center gap-1">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                    Accessibility Changes
+                                </label>
+                                <input type="text" name="seasonal[summer][accessibility]"
+                                       placeholder="e.g., Fully accessible"
+                                       value="{{ old('seasonal.summer.accessibility') }}"
+                                       class="flex h-9 w-full rounded-md border border-yellow-200 bg-white px-3 py-1 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-yellow-400">
                             </div>
                         </div>
                     </div>
 
                     <!-- Fall -->
-                    <div class="rounded-lg border border-input p-4 space-y-4">
-                        <div class="flex items-center gap-2">
-                            <span class="text-lg">Fall</span>
+                    <div class="rounded-lg border-2 border-orange-200 bg-orange-50 overflow-hidden">
+                        <div class="flex items-center justify-between px-4 py-3 bg-orange-100 border-b border-orange-200">
+                            <div class="flex items-center gap-2">
+                                <span class="text-xl">🍂</span>
+                                <span class="font-semibold text-orange-800">Fall</span>
+                            </div>
+                            <label class="flex items-center gap-2 cursor-pointer">
+                                <input type="checkbox" name="seasonal[fall][recommended]" value="1"
+                                       {{ old('seasonal.fall.recommended', true) ? 'checked' : '' }}
+                                       class="h-4 w-4 rounded border-orange-400 text-orange-600 focus:ring-orange-500">
+                                <span class="text-xs font-medium text-orange-700">Recommended</span>
+                            </label>
                         </div>
-                        
-                        <div class="space-y-3">
-                            <div class="space-y-2">
-                                <label class="text-sm font-medium">Trail Conditions</label>
-                                <input type="text" name="seasonal[fall][conditions]" 
+                        <div class="p-4 space-y-3">
+                            <div class="space-y-1">
+                                <label class="text-xs font-semibold uppercase tracking-wide text-orange-700 flex items-center gap-1">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-4.724A1 1 0 013 14.382V5a1 1 0 011-1h4.586a1 1 0 01.707.293l.707.707A1 1 0 0010.586 5H20a1 1 0 011 1v9a1 1 0 01-.553.894L15 18"/></svg>
+                                    Trail Conditions
+                                </label>
+                                <input type="text" name="seasonal[fall][conditions]"
                                        placeholder="e.g., Wet leaves, Early snow"
                                        value="{{ old('seasonal.fall.conditions') }}"
-                                       class="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">
+                                       class="flex h-9 w-full rounded-md border border-orange-200 bg-white px-3 py-1 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-orange-400">
                             </div>
-                            
-                            <div class="flex items-center space-x-2">
-                                <input type="checkbox" name="seasonal[fall][recommended]" value="1" 
-                                       {{ old('seasonal.fall.recommended', true) ? 'checked' : '' }}
-                                       class="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary">
-                                <label class="text-sm font-medium">Recommended in Fall</label>
-                            </div>
-                            
-                            <div class="space-y-2">
-                                <label class="text-sm font-medium">Notes</label>
-                                <textarea name="seasonal[fall][notes]" rows="2" 
+                            <div class="space-y-1">
+                                <label class="text-xs font-semibold uppercase tracking-wide text-orange-700 flex items-center gap-1">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                                    Notes
+                                </label>
+                                <textarea name="seasonal[fall][notes]" rows="2"
                                           placeholder="Special fall considerations..."
-                                          class="flex min-h-[60px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">{{ old('seasonal.fall.notes') }}</textarea>
+                                          class="flex min-h-[60px] w-full rounded-md border border-orange-200 bg-white px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-orange-400">{{ old('seasonal.fall.notes') }}</textarea>
+                            </div>
+                            <div class="space-y-1">
+                                <label class="text-xs font-semibold uppercase tracking-wide text-orange-700 flex items-center gap-1">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"/></svg>
+                                    Highlights
+                                </label>
+                                <input type="text" name="seasonal[fall][features]"
+                                       placeholder="e.g., Fall foliage, Berry picking"
+                                       value="{{ old('seasonal.fall.features') }}"
+                                       class="flex h-9 w-full rounded-md border border-orange-200 bg-white px-3 py-1 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-orange-400">
+                            </div>
+                            <div class="space-y-1">
+                                <label class="text-xs font-semibold uppercase tracking-wide text-orange-700 flex items-center gap-1">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                    Accessibility Changes
+                                </label>
+                                <input type="text" name="seasonal[fall][accessibility]"
+                                       placeholder="e.g., Summit may require microspikes"
+                                       value="{{ old('seasonal.fall.accessibility') }}"
+                                       class="flex h-9 w-full rounded-md border border-orange-200 bg-white px-3 py-1 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-orange-400">
                             </div>
                         </div>
                     </div>
 
                     <!-- Winter -->
-                    <div class="rounded-lg border border-input p-4 space-y-4">
-                        <div class="flex items-center gap-2">
-                            <span class="text-lg">Winter</span>
+                    <div class="rounded-lg border-2 border-blue-200 bg-blue-50 overflow-hidden">
+                        <div class="flex items-center justify-between px-4 py-3 bg-blue-100 border-b border-blue-200">
+                            <div class="flex items-center gap-2">
+                                <span class="text-xl">❄️</span>
+                                <span class="font-semibold text-blue-800">Winter</span>
+                            </div>
+                            <label class="flex items-center gap-2 cursor-pointer">
+                                <input type="checkbox" name="seasonal[winter][recommended]" value="1"
+                                       {{ old('seasonal.winter.recommended', false) ? 'checked' : '' }}
+                                       class="h-4 w-4 rounded border-blue-400 text-blue-600 focus:ring-blue-500">
+                                <span class="text-xs font-medium text-blue-700">Recommended</span>
+                            </label>
                         </div>
-                        
-                        <div class="space-y-3">
-                            <div class="space-y-2">
-                                <label class="text-sm font-medium">Trail Conditions</label>
-                                <input type="text" name="seasonal[winter][conditions]" 
+                        <div class="p-4 space-y-3">
+                            <div class="space-y-1">
+                                <label class="text-xs font-semibold uppercase tracking-wide text-blue-700 flex items-center gap-1">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-4.724A1 1 0 013 14.382V5a1 1 0 011-1h4.586a1 1 0 01.707.293l.707.707A1 1 0 0010.586 5H20a1 1 0 011 1v9a1 1 0 01-.553.894L15 18"/></svg>
+                                    Trail Conditions
+                                </label>
+                                <input type="text" name="seasonal[winter][conditions]"
                                        placeholder="e.g., Snow, Ice, Closed"
                                        value="{{ old('seasonal.winter.conditions') }}"
-                                       class="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">
+                                       class="flex h-9 w-full rounded-md border border-blue-200 bg-white px-3 py-1 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-blue-400">
                             </div>
-                            
-                            <div class="flex items-center space-x-2">
-                                <input type="checkbox" name="seasonal[winter][recommended]" value="1" 
-                                       {{ old('seasonal.winter.recommended', false) ? 'checked' : '' }}
-                                       class="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary">
-                                <label class="text-sm font-medium">Recommended in Winter</label>
-                            </div>
-                            
-                            <div class="space-y-2">
-                                <label class="text-sm font-medium">Notes</label>
-                                <textarea name="seasonal[winter][notes]" rows="2" 
+                            <div class="space-y-1">
+                                <label class="text-xs font-semibold uppercase tracking-wide text-blue-700 flex items-center gap-1">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                                    Notes
+                                </label>
+                                <textarea name="seasonal[winter][notes]" rows="2"
                                           placeholder="Special winter considerations..."
-                                          class="flex min-h-[60px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">{{ old('seasonal.winter.notes') }}</textarea>
+                                          class="flex min-h-[60px] w-full rounded-md border border-blue-200 bg-white px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-blue-400">{{ old('seasonal.winter.notes') }}</textarea>
+                            </div>
+                            <div class="space-y-1">
+                                <label class="text-xs font-semibold uppercase tracking-wide text-blue-700 flex items-center gap-1">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"/></svg>
+                                    Highlights
+                                </label>
+                                <input type="text" name="seasonal[winter][features]"
+                                       placeholder="e.g., Snowshoeing, Winter wildlife tracking"
+                                       value="{{ old('seasonal.winter.features') }}"
+                                       class="flex h-9 w-full rounded-md border border-blue-200 bg-white px-3 py-1 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-blue-400">
+                            </div>
+                            <div class="space-y-1">
+                                <label class="text-xs font-semibold uppercase tracking-wide text-blue-700 flex items-center gap-1">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                    Accessibility Changes
+                                </label>
+                                <input type="text" name="seasonal[winter][accessibility]"
+                                       placeholder="e.g., Trail inaccessible, snow equipment required"
+                                       value="{{ old('seasonal.winter.accessibility') }}"
+                                       class="flex h-9 w-full rounded-md border border-blue-200 bg-white px-3 py-1 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-blue-400">
                             </div>
                         </div>
                     </div>
+
                 </div>
             </div>
         </div>
@@ -973,33 +1080,39 @@
                     </div>
                     
                     <!-- Hidden Best Seasons for Fishing Lakes (synced with Best Fishing Season) -->
-                    <input type="hidden" name="best_seasons[]" :value="bestFishingSeason.charAt(0).toUpperCase() + bestFishingSeason.slice(1)" x-show="locationType === 'fishing_lake' && bestFishingSeason" x-cloak>
+                    <!-- Use x-if so the input is removed from the DOM entirely when not applicable, preventing it from submitting empty/invalid values for hiking trails -->
+                    <template x-if="locationType === 'fishing_lake' && bestFishingSeason">
+                        <input type="hidden" name="best_seasons[]" :value="bestFishingSeason.charAt(0).toUpperCase() + bestFishingSeason.slice(1)">
+                    </template>
 
                     <div class="space-y-2">
                         <label class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
                             Directions to Trailhead
                         </label>
-                        <textarea name="directions" rows="3" 
-                                  placeholder="Detailed directions on how to reach the trailhead..."
-                                  class="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50">{{ old('directions') }}</textarea>
+                        <div class="quill-editor">
+                            <div id="quill-directions"></div>
+                        </div>
+                        <textarea id="directions-input" name="directions" class="hidden">{{ old('directions') }}</textarea>
                     </div>
 
                     <div class="space-y-2">
                         <label class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
                             Parking Information
                         </label>
-                        <textarea name="parking_info" rows="3" 
-                                  placeholder="Parking availability, fees, restrictions, and tips..."
-                                  class="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50">{{ old('parking_info') }}</textarea>
+                        <div class="quill-editor">
+                            <div id="quill-parking_info"></div>
+                        </div>
+                        <textarea id="parking_info-input" name="parking_info" class="hidden">{{ old('parking_info') }}</textarea>
                     </div>
 
                     <div class="space-y-2">
                         <label class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
                             Safety Notes & Warnings
                         </label>
-                        <textarea name="safety_notes" rows="3" 
-                                  placeholder="Important safety information, hazards, equipment recommendations..."
-                                  class="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50">{{ old('safety_notes') }}</textarea>
+                        <div class="quill-editor">
+                            <div id="quill-safety_notes"></div>
+                        </div>
+                        <textarea id="safety_notes-input" name="safety_notes" class="hidden">{{ old('safety_notes') }}</textarea>
                     </div>
 
                     <div class="flex items-center space-x-2">
@@ -1114,6 +1227,18 @@
 </div>
 
 @push('scripts')
+<link href="https://cdn.quilljs.com/1.3.7/quill.snow.css" rel="stylesheet">
+<script src="https://cdn.quilljs.com/1.3.7/quill.min.js"></script>
+<style>
+    .quill-editor { background: #fff; border: 1px solid hsl(var(--input)); border-radius: 0.375rem; overflow: hidden; }
+    .quill-editor .ql-toolbar { border: none; border-bottom: 1px solid hsl(var(--input)); border-radius: 0.375rem 0.375rem 0 0; }
+    .quill-editor .ql-container { border: none; border-radius: 0 0 0.375rem 0.375rem; font-size: 0.875rem; height: auto !important; }
+    .quill-editor .ql-editor { height: auto !important; min-height: 100px; padding: 0.625rem 0.75rem; }
+    .quill-editor .ql-editor.ql-blank::before { color: hsl(var(--muted-foreground)); font-style: normal; }
+    .quill-editor.border-red-300 { border-color: #fca5a5; }
+    .ql-toolbar .ql-picker-options { z-index: 100; }
+    .ql-tooltip { z-index: 100; }
+</style>
 <script>
     // Add this if you haven't already from Day 9
     function showNotification(title, message, type = 'info') {
@@ -1315,7 +1440,7 @@
                 videoUrlInput.addEventListener('input', function() {
                     const url = this.value.trim();
                     if (url) {
-                        const embedUrl = window.trailBuilder.getVideoEmbedUrl(url);
+                        const embedUrl = window.photoManager ? window.photoManager.getVideoEmbedUrl(url) : null;
                         if (embedUrl) {
                             videoIframe.src = embedUrl;
                             videoPreview.classList.remove('hidden');
@@ -1327,22 +1452,6 @@
                     }
                 });
             }
-        }
-
-        getVideoEmbedUrl(url) {
-            // YouTube
-            let match = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\s]+)/);
-            if (match) {
-                return `https://www.youtube.com/embed/${match[1]}`;
-            }
-            
-            // Vimeo
-            match = url.match(/vimeo\.com\/(\d+)/);
-            if (match) {
-                return `https://player.vimeo.com/video/${match[1]}`;
-            }
-            
-            return null;
         }
 
         // Decode Google's polyline algorithm
@@ -1444,34 +1553,18 @@
         }
 
         loadExistingTrails() {
-            console.log('🔍 loadExistingTrails() called');
-            
-            // Check if existingTrails data is available
             @if(isset($existingTrails) && $existingTrails->count() > 0)
             const existingTrails = @json($existingTrails);
-            
-            console.log('📊 Existing trails data:', existingTrails);
-            console.log('📈 Number of trails:', existingTrails.length);
-            
+
             // Color scheme - using green for all existing trails
-            const trailColor = '#10b981';  // Green color for all existing trails
-            
+            const trailColor = '#10b981';
+
             let trailsAdded = 0;
             let trailsSkipped = 0;
-            
+
             existingTrails.forEach((trail, index) => {
-                console.log(`\n🗺️ Processing trail ${index + 1}:`, {
-                    id: trail.id,
-                    name: trail.name,
-                    status: trail.status,
-                    hasCoordinates: !!trail.coordinates,
-                    coordinatesLength: trail.coordinates ? trail.coordinates.length : 0
-                });
-                
                 if (trail.coordinates && trail.coordinates.length > 1) {
                     try {
-                        console.log(`✅ Creating polyline for "${trail.name}" with green color`);
-                        
                         // SOLID GREEN LINE - no dashes
                         const trailLine = L.polyline(trail.coordinates, {
                             color: trailColor,
@@ -1532,25 +1625,15 @@
                         });
                         
                         trailsAdded++;
-                        console.log(`✔️ Trail "${trail.name}" added successfully`);
                     } catch (error) {
-                        console.error(`❌ Error creating polyline for trail "${trail.name}":`, error);
                         trailsSkipped++;
                     }
                 } else {
-                    console.warn(`⚠️ Skipping trail "${trail.name}" - insufficient coordinates`);
                     trailsSkipped++;
                 }
             });
-            
-            console.log(`\n📋 Summary:`);
-            console.log(`  ✅ Trails added: ${trailsAdded}`);
-            console.log(`  ⚠️ Trails skipped: ${trailsSkipped}`);
-            
-            // Add toggle button for existing trails
+
             this.addExistingTrailsToggle();
-            @else
-            console.warn('⚠️ No existing trails data available');
             @endif
         }
 
@@ -1725,10 +1808,10 @@
         addClearButton() {
             const mapContainer = document.getElementById('trail-map');
             const clearBtn = document.createElement('button');
+            clearBtn.type = 'button';
             clearBtn.innerHTML = 'Clear Route';
-            clearBtn.className = 'absolute top-2 right-2 z-10 bg-red-500 text-white px-3 py-1 rounded text-sm hover:bg-red-600';
-            clearBtn.onclick = () => this.clearRoute();
-            mapContainer.style.position = 'relative';
+            clearBtn.className = 'absolute bottom-16 right-2 z-[999] bg-red-500 text-white px-3 py-1 rounded text-sm hover:bg-red-600 shadow border border-red-600';
+            clearBtn.addEventListener('click', () => this.clearRoute());
             mapContainer.appendChild(clearBtn);
         }
 
@@ -1880,27 +1963,25 @@
                     this.displayElevationProfile(data);
                 } else {
                     // Hide elevation section if it fails
-                    const chart = document.getElementById('elevation-chart');
-                    const stats = document.getElementById('elevation-stats');
-                    if (chart) chart.classList.add('hidden');
-                    if (stats) stats.classList.add('hidden');
+                    const container = document.getElementById('elevation-profile-container');
+                    if (container) container.classList.add('hidden');
                 }
             } catch (error) {
             }
         }
 
         displayElevationProfile(elevationData) {
-            const chart = document.getElementById('elevation-chart');
-            const stats = document.getElementById('elevation-stats');
-            const canvas = document.getElementById('elevation-canvas');
-            
+            const container = document.getElementById('elevation-profile-container');
+            const canvas = document.getElementById('elevation-chart');
+
             if (!canvas || !elevationData.geometry) {
                 return;
             }
 
-            // Show chart and stats
-            chart.classList.remove('hidden');
-            stats.classList.remove('hidden');
+            // Show elevation container
+            if (container) {
+                container.classList.remove('hidden');
+            }
 
             const coordinates = elevationData.geometry.coordinates;
 
@@ -1919,6 +2000,7 @@
 
             // Draw the elevation chart
             this.drawElevationChart(canvas, coordinates);
+
 
             // Add this at the end of displayElevationProfile method:
             const elevationGainInput = document.querySelector('input[name="elevation_gain_m"]');
@@ -2232,16 +2314,13 @@
         toggleRouting() {
             this.smartRouting = !this.smartRouting;
             const button = document.getElementById('toggle-routing');
-            const status = document.getElementById('routing-status');
-            
+
             if (this.smartRouting) {
                 button.innerHTML = '<svg class="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>Smart Routing: ON';
                 button.className = 'w-full inline-flex items-center justify-center rounded-md bg-blue-600 text-white hover:bg-blue-700 h-10 px-4 py-2 text-sm font-medium';
-                status.textContent = 'Smart';
             } else {
                 button.innerHTML = '<svg class="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>Smart Routing: OFF';
                 button.className = 'w-full inline-flex items-center justify-center rounded-md border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2 text-sm font-medium';
-                status.textContent = 'Direct';
             }
         }
 
@@ -2300,38 +2379,16 @@
         }
 
         prepareMediaFilesForSubmission() {
-            // Files and videos are already transferred when highlights are added
-            // Just update the highlights data JSON to include the indices
             this.updateHighlightsInput();
-            
-            // Log for debugging
-            const form = document.querySelector('form[action*="trails"]');
-            const highlightMediaInputs = form.querySelectorAll('.highlight-media-input');
-            const highlightVideoInputs = form.querySelectorAll('.highlight-video-input');
         }
 
         validateBeforeSubmit() {
             this.prepareMediaFilesForSubmission();
-            
-            // IMPORTANT: Update video URLs right before validation
+
             if (window.photoManager) {
                 window.photoManager.updateVideoUrlInputs();
-                
-                // Double-check the inputs are there
-                const form = document.querySelector('form[action*="trails"]');
-                const videoInputs = form.querySelectorAll('input[name="trail_video_urls[]"]');
             }
-            
-            const issues = this.validateRoute();
-            
-            if (issues.length > 0) {
-                const message = 'Route validation issues:\n' + issues.map(issue => '• ' + issue).join('\n') + 
-                            '\n\nDo you want to submit anyway?';
-                
-                if (!confirm(message)) {
-                    return false;
-                }
-            }
+
             return true;
         }
 
@@ -2595,22 +2652,7 @@
             if (addBtn) {
                 addBtn.addEventListener('click', () => this.addHighlightToList());
             }
-
-            // Map click for highlights - override when in highlight mode
-            const originalMapClick = this.map._events.click[0].fn;
-            this.map.off('click');
-            
-            this.map.on('click', (e) => {
-                const highlightType = document.getElementById('highlight-type-select').value;
-                
-                if (highlightType) {
-                    // Highlight mode - place highlight marker
-                    this.placeHighlightMarker(e.latlng.lat, e.latlng.lng);
-                } else {
-                    // Normal mode - add waypoint
-                    originalMapClick.call(this, e);
-                }
-            });
+            // Map click routing is handled in setupMapClicks() via this.highlightModeEnabled
         }
 
         placeHighlightMarker(lat, lng) {
@@ -2772,6 +2814,7 @@
         }
 
         removeHighlight(id) {
+            const highlight = this.highlights.find(h => h.id === id);
             this.highlights = this.highlights.filter(h => h.id !== id);
 
             if (highlight) {
@@ -3987,85 +4030,6 @@
             });
     }
     
-    // Initialize trail builder when DOM is ready
-    document.addEventListener('DOMContentLoaded', function() {
-        // Initialize photo manager
-        window.photoManager = new PhotoUploadManager();
-
-        window.trailBuilder = new TrailBuilder();
-        
-        // Initialize Point Picker for fishing lakes
-        initPointPicker();
-
-        // ADD THIS: Two-way sync between input fields and display cards
-        const distanceInput = document.querySelector('input[name="distance_km"]');
-        const timeInput = document.querySelector('input[name="estimated_time_hours"]');
-        const elevationInput = document.querySelector('input[name="elevation_gain_m"]');
-        
-        // When user manually edits distance input, update display card
-        if (distanceInput) {
-            distanceInput.addEventListener('input', function() {
-                const distanceDisplay = document.getElementById('route-distance');
-                if (distanceDisplay) {
-                    distanceDisplay.textContent = `${parseFloat(this.value || 0).toFixed(2)} km`;
-                }
-            });
-        }
-        
-        // When user manually edits time input, update display card
-        if (timeInput) {
-            timeInput.addEventListener('input', function() {
-                const timeDisplay = document.getElementById('route-time');
-                if (timeDisplay) {
-                    timeDisplay.textContent = `${parseFloat(this.value || 0).toFixed(1)} hrs`;
-                }
-            });
-        }
-        
-        // When user manually edits elevation input, update display card
-        if (elevationInput) {
-            elevationInput.addEventListener('input', function() {
-                const elevationDisplay = document.getElementById('route-elevation');
-                if (elevationDisplay) {
-                    elevationDisplay.textContent = `${parseInt(this.value || 0)} m`;
-                }
-            });
-        }
-    });
-
-    // Waypoint Mode Toggle
-    let waypointModeEnabled = false;
-    const toggleWaypointBtn = document.getElementById('toggle-waypoint-mode');
-    const waypointModeText = document.getElementById('waypoint-mode-text');
-    const trailMap = document.getElementById('trail-map');
-
-    if (toggleWaypointBtn) {
-        toggleWaypointBtn.addEventListener('click', function() {
-            if (!window.trailBuilder) {
-                showToast('Trail builder not initialized', 'error');
-                return;
-            }
-            
-            // Toggle the mode
-            window.trailBuilder.waypointModeEnabled = !window.trailBuilder.waypointModeEnabled;
-            
-            if (window.trailBuilder.waypointModeEnabled) {
-                // Enable waypoint mode
-                this.classList.add('active');
-                waypointModeText.textContent = 'Stop Adding Waypoints';
-                window.trailBuilder.enableWaypointMode();
-                showToast('Click on the map to add waypoints', 'success');
-                
-            } else {
-                // Disable waypoint mode
-                this.classList.remove('active');
-                waypointModeText.textContent = 'Start Adding Waypoints';
-                window.trailBuilder.disableWaypointMode();
-                showToast('Waypoint mode disabled', 'info');
-            }
-        });
-    }
-
     // Simple toast notification function
     function showToast(message, type = 'info') {
         const colors = {
@@ -4074,13 +4038,13 @@
             warning: 'bg-amber-500',
             error: 'bg-red-500'
         };
-        
+
         const toast = document.createElement('div');
         toast.className = `fixed bottom-4 right-4 ${colors[type]} text-white px-6 py-3 rounded-lg shadow-lg text-sm font-medium z-50 animate-slide-up`;
         toast.textContent = message;
-        
+
         document.body.appendChild(toast);
-        
+
         setTimeout(() => {
             toast.style.opacity = '0';
             toast.style.transform = 'translateY(20px)';
@@ -4088,235 +4052,263 @@
         }, 3000);
     }
 
-    // Enhanced form validation before submit
-    document.querySelector('form').addEventListener('submit', function(e) {
-        const distanceInput = document.querySelector('input[name="distance_km"]');
-        const elevationInput = document.querySelector('input[name="elevation_gain_m"]');
-        const timeInput = document.querySelector('input[name="estimated_time_hours"]');
-        const difficultySelect = document.querySelector('select[name="difficulty_level"]');
-        const trailTypeSelect = document.querySelector('select[name="trail_type"]');
-        
-        // Check if required route data exists
-        if (!distanceInput.value || parseFloat(distanceInput.value) === 0) {
-            e.preventDefault();
-            
-            validationModal.show({
-                type: 'warning',
-                title: 'Route Required',
-                message: 'Please create a trail route or upload a GPX file before submitting.\n\nYou need to either:\n• Click on the map to create waypoints\n• Upload a GPX file',
-                buttons: [
-                    {
-                        label: 'Got it',
-                        variant: 'primary',
-                        action: 'confirm',
-                        handler: () => {
-                            document.getElementById('trail-map').scrollIntoView({ behavior: 'smooth', block: 'center' });
-                        }
-                    }
-                ]
-            });
-            
-            return false;
-        }
+    // Quill WYSIWYG editors
+    const quillToolbar = [
+        ['bold', 'italic'],
+        [{ 'header': 2 }, { 'header': 3 }],
+        [{ 'list': 'bullet' }, { 'list': 'ordered' }],
+        ['link', 'clean'],
+    ];
 
-        // Check if difficulty is selected
-        if (!difficultySelect.value) {
-            e.preventDefault();
-            
-            validationModal.show({
-                type: 'warning',
-                title: 'Trail Difficulty Required',
-                message: 'Please select a difficulty level for the trail (1-5).',
-                buttons: [
-                    {
-                        label: 'Got it',
-                        variant: 'primary',
-                        action: 'confirm',
-                        handler: () => {
-                            // Switch to specifications tab
-                            document.querySelector('[data-tab="specifications"]').click();
-                            difficultySelect.focus();
-                        }
-                    }
-                ]
-            });
-            
-            return false;
-        }
+    const quillFields = ['description', 'directions', 'parking_info', 'safety_notes'];
+    const quillInstances = {};
 
-        // Check if trail type is selected
-        if (!trailTypeSelect.value) {
-            e.preventDefault();
-            
-            validationModal.show({
-                type: 'warning',
-                title: 'Trail Type Required',
-                message: 'Please select a trail type (Loop, Out and Back, or Point to Point).',
-                buttons: [
-                    {
-                        label: 'Got it',
-                        variant: 'primary',
-                        action: 'confirm',
-                        handler: () => {
-                            // Switch to specifications tab
-                            document.querySelector('[data-tab="specifications"]').click();
-                            trailTypeSelect.focus();
-                        }
-                    }
-                ]
-            });
-            
-            return false;
-        }
+    function initQuillEditors() {
+        quillFields.forEach(field => {
+            const container = document.getElementById(`quill-${field}`);
+            const textarea = document.getElementById(`${field}-input`);
+            if (!container || !textarea) { return; }
 
-        // Validate elevation if distance exists
-        if (distanceInput.value && (!elevationInput.value || parseFloat(elevationInput.value) === 0)) {
-            e.preventDefault();
-            
-            validationModal.show({
-                type: 'warning',
-                title: 'Unusual Elevation',
-                message: 'Elevation gain is 0 meters. This is unusual for most trails.\n\nDo you want to continue anyway?',
-                buttons: [
-                    {
-                        label: 'Cancel',
-                        variant: 'secondary',
-                        action: 'cancel',
-                        handler: () => {
-                            elevationInput.focus();
-                        }
-                    },
-                    {
-                        label: 'Continue Anyway',
-                        variant: 'primary',
-                        action: 'continue',
-                        handler: () => {
-        
-                            // Make sure video URLs are updated BEFORE cloning
-                            if (window.photoManager) {
-                                window.photoManager.updateVideoUrlInputs();
-                            }
-                            
-                            // Bypass validation and submit directly
-                            const form = document.querySelector('form[action*="trails"]');
-                            if (form) {
-                                // Remove onsubmit validation temporarily
-                                const originalOnSubmit = form.onsubmit;
-                                form.onsubmit = null;
-                                
-                                // Submit the form directly (no cloning!)
-                                form.submit();
-                            }
-                        }
-                    }
-                ]
-            });
-            
-            return false;
-        }
-    });
+            const q = new Quill(container, { theme: 'snow', modules: { toolbar: quillToolbar } });
 
-    // Tab Switching Logic
+            // Load existing content
+            if (textarea.value.trim()) {
+                q.root.innerHTML = textarea.value;
+            }
+
+            quillInstances[field] = q;
+        });
+    }
+
+    function syncQuillToInputs() {
+        quillFields.forEach(field => {
+            const q = quillInstances[field];
+            const textarea = document.getElementById(`${field}-input`);
+            if (q && textarea) {
+                const html = q.root.innerHTML;
+                textarea.value = (html === '<p><br></p>') ? '' : html;
+            }
+        });
+    }
+
+    // Single DOMContentLoaded block — initializes everything
     document.addEventListener('DOMContentLoaded', function() {
+        // Initialize managers
+        window.photoManager = new PhotoUploadManager();
+        window.trailBuilder = new TrailBuilder();
+        window.validationModal = new ValidationModal();
+
+        // Initialize Quill editors
+        initQuillEditors();
+
+        // Initialize Point Picker for fishing lakes
+        initPointPicker();
+
+        // Two-way sync between input fields and display cards
+        const distanceInput = document.querySelector('input[name="distance_km"]');
+        const timeInput = document.querySelector('input[name="estimated_time_hours"]');
+        const elevationInput = document.querySelector('input[name="elevation_gain_m"]');
+
+        if (distanceInput) {
+            distanceInput.addEventListener('input', function() {
+                const distanceDisplay = document.getElementById('route-distance');
+                if (distanceDisplay) {
+                    distanceDisplay.textContent = `${parseFloat(this.value || 0).toFixed(2)} km`;
+                }
+            });
+        }
+
+        if (timeInput) {
+            timeInput.addEventListener('input', function() {
+                const timeDisplay = document.getElementById('route-time');
+                if (timeDisplay) {
+                    timeDisplay.textContent = `${parseFloat(this.value || 0).toFixed(1)} hrs`;
+                }
+            });
+        }
+
+        if (elevationInput) {
+            elevationInput.addEventListener('input', function() {
+                const elevationDisplay = document.getElementById('route-elevation');
+                if (elevationDisplay) {
+                    elevationDisplay.textContent = `${parseInt(this.value || 0)} m`;
+                }
+            });
+        }
+
+        // Tab Switching Logic
         const tabButtons = document.querySelectorAll('.trail-tab');
         const tabContents = document.querySelectorAll('.tab-content');
-        
+
         tabButtons.forEach(button => {
             button.addEventListener('click', function() {
                 const tabId = this.getAttribute('data-tab');
-                
-                // Remove active class from all tabs and contents
                 tabButtons.forEach(btn => btn.classList.remove('active'));
                 tabContents.forEach(content => content.classList.remove('active'));
-                
-                // Add active class to clicked tab and corresponding content
                 this.classList.add('active');
                 document.getElementById('tab-' + tabId).classList.add('active');
             });
         });
-    });
 
-    // Highlight Mode Toggle
-    const toggleHighlightBtn = document.getElementById('toggle-highlight-mode');
-    const highlightModeText = document.getElementById('highlight-mode-text');
-    let highlightModeEnabled = false;
+        // Waypoint Mode Toggle
+        const toggleWaypointBtn = document.getElementById('toggle-waypoint-mode');
+        const waypointModeText = document.getElementById('waypoint-mode-text');
 
-    if (toggleHighlightBtn) {
-        toggleHighlightBtn.addEventListener('click', function() {
-            if (!window.trailBuilder) {
-                showToast('Trail builder not initialized', 'error');
-                return;
-            }
-            
-            highlightModeEnabled = !highlightModeEnabled;
-            
-            if (highlightModeEnabled) {
-                // Enable highlight mode
-                this.classList.add('active');
-                highlightModeText.textContent = 'Stop Adding Highlights';
-                
-                // Disable waypoint mode if active
+        if (toggleWaypointBtn) {
+            toggleWaypointBtn.addEventListener('click', function() {
+                if (!window.trailBuilder) {
+                    showToast('Trail builder not initialized', 'error');
+                    return;
+                }
+
+                window.trailBuilder.waypointModeEnabled = !window.trailBuilder.waypointModeEnabled;
+
                 if (window.trailBuilder.waypointModeEnabled) {
-                    document.getElementById('toggle-waypoint-mode')?.click();
+                    this.classList.add('active');
+                    waypointModeText.textContent = 'Stop Adding Waypoints';
+                    window.trailBuilder.enableWaypointMode();
+                    showToast('Click on the map to add waypoints', 'success');
+                } else {
+                    this.classList.remove('active');
+                    waypointModeText.textContent = 'Start Adding Waypoints';
+                    window.trailBuilder.disableWaypointMode();
+                    showToast('Waypoint mode disabled', 'info');
                 }
-                
-                window.trailBuilder.highlightModeEnabled = true;
-                const mapElement = document.getElementById('trail-map');
-                if (mapElement) {
-                    mapElement.classList.add('highlight-mode');
-                    mapElement.classList.remove('waypoint-mode', 'waypoint-disabled');
-                }
-                
-                showToast('Click on the map to place highlight markers', 'success');
-                
-            } else {
-                // Disable highlight mode
-                this.classList.remove('active');
-                highlightModeText.textContent = 'Start Adding Highlights';
-                
-                window.trailBuilder.highlightModeEnabled = false;
-                const mapElement = document.getElementById('trail-map');
-                if (mapElement) {
-                    mapElement.classList.remove('highlight-mode');
-                }
-                
-                // Clear pending highlight if exists
-                if (window.trailBuilder.pendingHighlight) {
-                    window.trailBuilder.highlightsLayer.removeLayer(window.trailBuilder.pendingHighlight);
-                    window.trailBuilder.pendingHighlight = null;
-                }
-                
-                showToast('Highlight mode disabled', 'info');
-            }
-        });
-    }
+            });
+        }
 
-    // Type selector updates icon and color
-    const highlightTypeSelect = document.getElementById('highlight-type-select');
-    if (highlightTypeSelect) {
-        highlightTypeSelect.addEventListener('change', (e) => {
-            const selectedOption = e.target.options[e.target.selectedIndex];
-            const icon = selectedOption.dataset.icon;
-            const color = selectedOption.dataset.color;
-            
-            if (icon) document.getElementById('highlight-icon-input').value = icon;
-            if (color) document.getElementById('highlight-color-input').value = color;
-        });
-    }
+        // Highlight Mode Toggle
+        const toggleHighlightBtn = document.getElementById('toggle-highlight-mode');
+        const highlightModeText = document.getElementById('highlight-mode-text');
 
-    // Ensure video URLs are added right before ANY form submission
-    document.addEventListener('DOMContentLoaded', function() {
+        if (toggleHighlightBtn) {
+            toggleHighlightBtn.addEventListener('click', function() {
+                if (!window.trailBuilder) {
+                    showToast('Trail builder not initialized', 'error');
+                    return;
+                }
+
+                window.trailBuilder.highlightModeEnabled = !window.trailBuilder.highlightModeEnabled;
+
+                if (window.trailBuilder.highlightModeEnabled) {
+                    this.classList.add('active');
+                    highlightModeText.textContent = 'Stop Adding Highlights';
+
+                    if (window.trailBuilder.waypointModeEnabled) {
+                        document.getElementById('toggle-waypoint-mode')?.click();
+                    }
+
+                    const mapElement = document.getElementById('trail-map');
+                    if (mapElement) {
+                        mapElement.classList.add('highlight-mode');
+                        mapElement.classList.remove('waypoint-mode', 'waypoint-disabled');
+                    }
+
+                    showToast('Click on the map to place highlight markers', 'success');
+                } else {
+                    this.classList.remove('active');
+                    highlightModeText.textContent = 'Start Adding Highlights';
+
+                    window.trailBuilder.highlightModeEnabled = false;
+                    const mapElement = document.getElementById('trail-map');
+                    if (mapElement) {
+                        mapElement.classList.remove('highlight-mode');
+                    }
+
+                    if (window.trailBuilder.pendingHighlight) {
+                        window.trailBuilder.highlightsLayer.removeLayer(window.trailBuilder.pendingHighlight);
+                        window.trailBuilder.pendingHighlight = null;
+                    }
+
+                    showToast('Highlight mode disabled', 'info');
+                }
+            });
+        }
+
+        // Form submit: ensure media and video URLs are prepared, then validate
         const form = document.querySelector('form[action*="trails"]');
         if (form) {
-            form.addEventListener('submit', function(e) {                
-                // Always update video URLs on every submit attempt
+            // Capture phase: sync Quill + update video URLs before any validation
+            form.addEventListener('submit', function() {
+                syncQuillToInputs();
                 if (window.photoManager) {
                     window.photoManager.updateVideoUrlInputs();
-                    
-                    // Log to confirm
-                    const videoInputs = this.querySelectorAll('input[name="trail_video_urls[]"]');
                 }
-            }, true); // Use capture phase
+                if (window.trailBuilder) {
+                    window.trailBuilder.prepareMediaFilesForSubmission();
+                }
+            }, true);
+
+            // Bubble phase: run validation
+            form.addEventListener('submit', function(e) {
+                const locationType = document.querySelector('input[name="location_type"]:checked')?.value;
+
+                // Skip trail-specific validation for fishing lakes
+                if (locationType === 'fishing_lake') {
+                    return;
+                }
+
+                const distanceVal = document.querySelector('input[name="distance_km"]');
+                const elevationVal = document.querySelector('input[name="elevation_gain_m"]');
+                const difficultySelect = document.querySelector('select[name="difficulty_level"]');
+                const trailTypeSelect = document.querySelector('select[name="trail_type"]');
+
+                if (!distanceVal.value || parseFloat(distanceVal.value) === 0) {
+                    e.preventDefault();
+                    window.validationModal.show({
+                        type: 'warning',
+                        title: 'Route Required',
+                        message: 'Please create a trail route or upload a GPX file before submitting.\n\nYou need to either:\n• Click on the map to create waypoints\n• Upload a GPX file',
+                        buttons: [{
+                            label: 'Got it', variant: 'primary', action: 'confirm',
+                            handler: () => { document.getElementById('trail-map')?.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
+                        }]
+                    });
+                    return false;
+                }
+
+                if (!difficultySelect.value) {
+                    e.preventDefault();
+                    window.validationModal.show({
+                        type: 'warning',
+                        title: 'Trail Difficulty Required',
+                        message: 'Please select a difficulty level for the trail (1-5).',
+                        buttons: [{
+                            label: 'Got it', variant: 'primary', action: 'confirm',
+                            handler: () => { document.querySelector('[data-tab="specifications"]')?.click(); difficultySelect.focus(); }
+                        }]
+                    });
+                    return false;
+                }
+
+                if (!trailTypeSelect.value) {
+                    e.preventDefault();
+                    window.validationModal.show({
+                        type: 'warning',
+                        title: 'Trail Type Required',
+                        message: 'Please select a trail type (Loop, Out and Back, or Point to Point).',
+                        buttons: [{
+                            label: 'Got it', variant: 'primary', action: 'confirm',
+                            handler: () => { document.querySelector('[data-tab="specifications"]')?.click(); trailTypeSelect.focus(); }
+                        }]
+                    });
+                    return false;
+                }
+
+                if (distanceVal.value && (!elevationVal.value || parseFloat(elevationVal.value) === 0)) {
+                    e.preventDefault();
+                    window.validationModal.show({
+                        type: 'warning',
+                        title: 'Unusual Elevation',
+                        message: 'Elevation gain is 0 meters. This is unusual for most trails.\n\nDo you want to continue anyway?',
+                        buttons: [
+                            { label: 'Cancel', variant: 'secondary', action: 'cancel', handler: () => { elevationVal.focus(); } },
+                            { label: 'Continue Anyway', variant: 'primary', action: 'continue', handler: () => { form.submit(); } }
+                        ]
+                    });
+                    return false;
+                }
+            });
         }
     });
 </script>

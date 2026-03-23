@@ -16,7 +16,7 @@
         <!-- Badge -->
         <div class="mb-8 fade-in">
             <span class="inline-flex items-center px-6 py-3 bg-white/25 backdrop-blur-sm rounded-full text-white text-sm font-semibold border border-white/30 shadow-lg">
-                🌲 {{ $trails->total() }} Ethical Adventures Await
+                🌲 {{ $hikingTrails->total() + $fishingLakes->total() }} Ethical Adventures Await
             </span>
         </div>
         
@@ -33,7 +33,7 @@
         <!-- Subtitle -->
         <div class="slide-in-up mb-12" style="animation-delay: 0.2s;">
             <p class="text-xl md:text-2xl text-white leading-relaxed max-w-4xl mx-auto text-shadow-md">
-                Explore {{ $trails->total() }} carefully curated hiking trails with detailed information, photos, and maps. 
+                Explore {{ $hikingTrails->total() + $fishingLakes->total() }} carefully curated adventures with detailed information, photos, and maps.
                 Every adventure supports sustainable tourism and local communities.
             </p>
         </div>
@@ -114,7 +114,7 @@
                     @if(request()->hasAny(['search', 'difficulty', 'distance', 'activity', 'season']))
                         <div class="flex flex-col md:flex-row items-center justify-between bg-white/10 rounded-lg p-4 border border-white/20 mt-4">
                             <span class="text-white text-sm font-medium mb-2 md:mb-0">
-                                {{ $trails->total() }} sustainable adventures found
+                                {{ $hikingTrails->total() + $fishingLakes->total() }} sustainable adventures found
                             </span>
                             <a href="{{ route('trails.index') }}" 
                             class="text-emerald-300 hover:text-emerald-200 text-sm font-medium transition-colors flex items-center">
@@ -135,8 +135,12 @@
 <section class="section bg-white">
     <div class="max-w-7xl mx-auto px-4">
         
+        @php
+            $hasResults = $hikingTrails->total() > 0 || $fishingLakes->total() > 0;
+        @endphp
+
         <!-- Section Header -->
-        @if($trails->count() > 0)
+        @if($hasResults)
         <div class="text-center mb-12">
             <h2 class="section-title text-forest-600">Ethical Trail Adventures</h2>
             <p class="section-subtitle">
@@ -145,171 +149,246 @@
         </div>
         @endif
 
-        <!-- Enhanced Trail Cards Grid -->
-        <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8 mb-12">
-            @forelse($trails as $trail)
-            <div class="trail-card group cursor-pointer hover-lift" 
-                 onclick="window.location.href='{{ route('trails.show', $trail->id) }}'">
-                
-                <!-- Enhanced Trail Image -->
-                <div class="trail-card-image group-hover:scale-105 transition-transform duration-500">
-                    @php
-                        // Prefer the model accessor which only returns photos
-                        $featuredUrl = $trail->featured_media_url;
-                        // If not present, try the first photo on the trailMedia collection
-                        if (!$featuredUrl) {
-                            $firstPhoto = $trail->trailMedia->where('media_type', 'photo')->first();
-                            $featuredUrl = $firstPhoto ? $firstPhoto->getThumbnail() ?? $firstPhoto->getUrl() : null;
-                        }
-                    @endphp
-                    @if($featuredUrl)
-                        <img src="{{ $featuredUrl }}" 
-                             alt="{{ $trail->name }}" 
-                             class="w-full h-full object-cover">
-                    @else
-                        <div class="absolute inset-0 flex items-center justify-center">
-                            <img src="{{ asset('images/no-image.png') }}" 
-                            alt="Trail Finder Logo" 
-                            class="w-24 h-24 object-contain transition-all duration-300 group-hover:scale-105">
-                        </div>
-                    @endif
-                    
-                    <!-- Enhanced Badges -->
-                    @if($trail->is_featured)
-                        <div class="absolute top-3 left-3">
-                            <span class="badge bg-amber-400 text-amber-900 font-bold shadow-lg">
-                                ⭐ Featured
-                            </span>
-                        </div>
-                    @endif
-                    
-                    <div class="absolute top-3 right-3">
-                        <span class="difficulty-badge difficulty-{{ intval($trail->difficulty_level) }} shadow-lg">
-                            {{ $trail->difficulty_level }}/5
-                        </span>
-                    </div>
-                    
-                    <!-- Hover Overlay -->
-                    <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all duration-300 flex items-center justify-center">
-                        <div class="transform scale-0 group-hover:scale-100 transition-transform duration-300">
-                            <span class="bg-white text-gray-900 px-6 py-3 rounded-lg font-semibold shadow-lg">
-                                Explore Trail
-                            </span>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Enhanced Trail Info -->
-                <div class="trail-card-body">
-                    <div class="mb-4">
-                        <h3 class="text-xl font-bold text-gray-900 mb-2 group-hover:text-accent-600 transition-colors">
-                            {{ $trail->name }}
-                        </h3>
-                        @if($trail->location)
-                            <p class="text-sm text-gray-500 flex items-center">
-                                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
-                                </svg>
-                                {{ $trail->location }}
-                            </p>
-                        @endif
-                    </div>
-                    
-                    <p class="text-gray-600 text-sm mb-4 line-clamp-2 leading-relaxed">
-                        {{ Str::limit($trail->description, 120) }}
-                    </p>
-
-                    <!-- Enhanced Trail Stats -->
-                    <div class="grid grid-cols-3 gap-3 mb-4">
-                        <div class="text-center p-3 bg-blue-50 rounded-lg">
-                            <div class="text-lg font-bold text-blue-600">{{ $trail->distance_km }}</div>
-                            <div class="text-xs text-gray-500">km</div>
-                        </div>
-                        <div class="text-center p-3 bg-green-50 rounded-lg">
-                            <div class="text-lg font-bold text-green-600">{{ $trail->elevation_gain_m }}</div>
-                            <div class="text-xs text-gray-500">meters</div>
-                        </div>
-                        <div class="text-center p-3 bg-amber-50 rounded-lg">
-                            <div class="text-lg font-bold text-amber-600">{{ $trail->estimated_time_hours }}</div>
-                            <div class="text-xs text-gray-500">hours</div>
-                        </div>
-                    </div>
-
-                    <!-- Trail Type and Views -->
-                    <div class="flex items-center justify-between mb-4">
-                        <span class="badge-secondary">
-                            {{ ucwords(str_replace('-', ' ', $trail->trail_type)) }}
-                        </span>
-                        <div class="flex items-center text-xs text-gray-500">
-                            <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
-                            </svg>
-                            {{ $trail->view_count }} adventurers
-                        </div>
-                    </div>
-
-                    <!-- Action and Seasons -->
-                    <div class="flex items-center justify-between">
-                        <a href="{{ route('trails.show', $trail->id) }}" 
-                           class="text-emerald-600 hover:text-emerald-700 font-semibold text-sm group-hover:text-emerald-700 flex items-center">
-                            Start Adventure
-                            <svg class="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
-                            </svg>
-                        </a>
-                        
-                        @if($trail->best_seasons)
-                            <div class="flex flex-wrap gap-1">
-                                @foreach(array_slice($trail->best_seasons, 0, 2) as $season)
-                                    <span class="season-{{ strtolower($season) }} text-xs px-2 py-1 rounded border">
-                                        {{ $season }}
-                                    </span>
-                                @endforeach
-                            </div>
-                        @endif
-                    </div>
-                </div>
-            </div>
-            @empty
-            <!-- Enhanced Empty State -->
-            <div class="col-span-full text-center py-20">
+        @if(!$hasResults)
+            <!-- Empty State -->
+            <div class="text-center py-20">
                 <div class="max-w-md mx-auto">
                     <div class="w-24 h-24 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-6">
                         <svg class="w-12 h-12 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
                         </svg>
                     </div>
-                    <h3 class="text-2xl font-bold text-gray-900 mb-4">No Trail Adventures Found</h3>
+                    <h3 class="text-2xl font-bold text-gray-900 mb-4">No Adventures Found</h3>
                     <p class="text-gray-600 mb-8">
                         @if(request()->hasAny(['search', 'difficulty', 'distance', 'activity', 'season']))
-                            We couldn't find trails matching your criteria. Try adjusting your search filters to discover more adventures.
+                            We couldn't find trails matching your criteria. Try adjusting your search filters.
                         @else
-                            We're curating amazing trail adventures for you. Check back soon for new sustainable tourism opportunities.
+                            We're curating amazing trail adventures for you. Check back soon!
                         @endif
                     </p>
                     @if(request()->hasAny(['search', 'difficulty', 'distance', 'activity', 'season']))
-                        <a href="{{ route('trails.index') }}" class="btn-primary">
-                            View All Adventures
-                        </a>
+                        <a href="{{ route('trails.index') }}" class="btn-primary">View All Adventures</a>
                     @endif
                 </div>
             </div>
-            @endforelse
-        </div>
+        @else
 
-        <!-- Enhanced Pagination -->
-        @if($trails->hasPages())
-            <div class="flex justify-center">
-                <div class="bg-white rounded-lg shadow-md p-2">
-                    {{ $trails->appends(request()->query())->links() }}
+            {{-- ── Hiking Trails ── --}}
+            @if($hikingTrails->total() > 0)
+                <div class="flex items-center gap-3 mb-6">
+                    <span class="text-2xl">🥾</span>
+                    <h3 class="text-2xl font-bold text-gray-800">Hiking Trails</h3>
+                    <span class="text-sm text-gray-500 font-medium">({{ $hikingTrails->total() }})</span>
+                    <div class="flex-1 h-px bg-gray-200"></div>
                 </div>
-            </div>
+
+                <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8 mb-6">
+                    @foreach($hikingTrails as $trail)
+                    @php
+                        $featuredUrl = $trail->featured_media_url;
+                        if (!$featuredUrl) {
+                            $firstPhoto = $trail->trailMedia->where('media_type', 'photo')->first();
+                            $featuredUrl = $firstPhoto ? $firstPhoto->getThumbnail() ?? $firstPhoto->getUrl() : null;
+                        }
+                    @endphp
+                    <div class="trail-card group cursor-pointer hover-lift"
+                         onclick="window.location.href='{{ route('trails.show', $trail->id) }}'">
+                        <div class="trail-card-image group-hover:scale-105 transition-transform duration-500">
+                            @if($featuredUrl)
+                                <img src="{{ $featuredUrl }}" alt="{{ $trail->name }}" class="w-full h-full object-cover">
+                            @else
+                                <div class="absolute inset-0 flex items-center justify-center">
+                                    <img src="{{ asset('images/no-image.png') }}" alt="No image" class="w-24 h-24 object-contain">
+                                </div>
+                            @endif
+                            @if($trail->is_featured)
+                                <div class="absolute top-3 left-3">
+                                    <span class="badge bg-amber-400 text-amber-900 font-bold shadow-lg">⭐ Featured</span>
+                                </div>
+                            @endif
+                            <div class="absolute top-3 right-3">
+                                <span class="difficulty-badge difficulty-{{ intval($trail->difficulty_level) }} shadow-lg">
+                                    {{ $trail->difficulty_level }}/5
+                                </span>
+                            </div>
+                            <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all duration-300 flex items-center justify-center">
+                                <div class="transform scale-0 group-hover:scale-100 transition-transform duration-300">
+                                    <span class="bg-white text-gray-900 px-6 py-3 rounded-lg font-semibold shadow-lg">Explore Trail</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="trail-card-body">
+                            <div class="mb-4">
+                                <h3 class="text-xl font-bold text-gray-900 mb-2 group-hover:text-accent-600 transition-colors">{{ $trail->name }}</h3>
+                                @if($trail->location)
+                                    <p class="text-sm text-gray-500 flex items-center">
+                                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/></svg>
+                                        {{ $trail->location }}
+                                    </p>
+                                @endif
+                            </div>
+                            <p class="text-gray-600 text-sm mb-4 line-clamp-2 leading-relaxed">
+                                {{ Str::limit(strip_tags($trail->description), 120) }}
+                            </p>
+                            <div class="grid grid-cols-3 gap-3 mb-4">
+                                <div class="text-center p-3 bg-blue-50 rounded-lg">
+                                    <div class="text-lg font-bold text-blue-600">{{ $trail->distance_km }}</div>
+                                    <div class="text-xs text-gray-500">km</div>
+                                </div>
+                                <div class="text-center p-3 bg-green-50 rounded-lg">
+                                    <div class="text-lg font-bold text-green-600">{{ $trail->elevation_gain_m }}</div>
+                                    <div class="text-xs text-gray-500">meters</div>
+                                </div>
+                                <div class="text-center p-3 bg-amber-50 rounded-lg">
+                                    <div class="text-lg font-bold text-amber-600">{{ $trail->estimated_time_hours }}</div>
+                                    <div class="text-xs text-gray-500">hours</div>
+                                </div>
+                            </div>
+                            <div class="flex items-center justify-between mb-4">
+                                <span class="badge-secondary">{{ ucwords(str_replace('-', ' ', $trail->trail_type)) }}</span>
+                                <div class="flex items-center text-xs text-gray-500">
+                                    <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+                                    {{ $trail->view_count }} adventurers
+                                </div>
+                            </div>
+                            <div class="flex items-center justify-between">
+                                <a href="{{ route('trails.show', $trail->id) }}" class="text-emerald-600 hover:text-emerald-700 font-semibold text-sm flex items-center">
+                                    Start Adventure
+                                    <svg class="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                                </a>
+                                @if($trail->best_seasons)
+                                    <div class="flex flex-wrap gap-1">
+                                        @foreach(array_slice($trail->best_seasons, 0, 2) as $season)
+                                            <span class="season-{{ strtolower($season) }} text-xs px-2 py-1 rounded border">{{ $season }}</span>
+                                        @endforeach
+                                    </div>
+                                @endif
+                            </div>
+                        </div>
+                    </div>
+                    @endforeach
+                </div>
+
+                @if($hikingTrails->hasPages())
+                    <div class="flex justify-center mb-14">
+                        <div class="bg-white rounded-lg shadow-md p-2">
+                            {{ $hikingTrails->appends(request()->query())->links() }}
+                        </div>
+                    </div>
+                @else
+                    <div class="mb-14"></div>
+                @endif
+            @endif
+
+            {{-- ── Fishing Lakes ── --}}
+            @if($fishingLakes->total() > 0)
+                <div class="flex items-center gap-3 mb-6">
+                    <span class="text-2xl">🐟</span>
+                    <h3 class="text-2xl font-bold text-gray-800">Fishing Lakes</h3>
+                    <span class="text-sm text-gray-500 font-medium">({{ $fishingLakes->total() }})</span>
+                    <div class="flex-1 h-px bg-gray-200"></div>
+                </div>
+
+                <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8 mb-6">
+                    @foreach($fishingLakes as $trail)
+                    @php
+                        $featuredUrl = $trail->featured_media_url;
+                        if (!$featuredUrl) {
+                            $firstPhoto = $trail->trailMedia->where('media_type', 'photo')->first();
+                            $featuredUrl = $firstPhoto ? $firstPhoto->getThumbnail() ?? $firstPhoto->getUrl() : null;
+                        }
+                    @endphp
+                    <div class="trail-card group cursor-pointer hover-lift"
+                         onclick="window.location.href='{{ route('trails.show', $trail->id) }}'">
+                        <div class="trail-card-image group-hover:scale-105 transition-transform duration-500">
+                            @if($featuredUrl)
+                                <img src="{{ $featuredUrl }}" alt="{{ $trail->name }}" class="w-full h-full object-cover">
+                            @else
+                                <div class="absolute inset-0 flex items-center justify-center">
+                                    <img src="{{ asset('images/no-image.png') }}" alt="No image" class="w-24 h-24 object-contain">
+                                </div>
+                            @endif
+                            @if($trail->is_featured)
+                                <div class="absolute top-3 left-3">
+                                    <span class="badge bg-amber-400 text-amber-900 font-bold shadow-lg">⭐ Featured</span>
+                                </div>
+                            @endif
+                            <div class="absolute top-3 right-3">
+                                <span class="badge bg-blue-500 text-white font-semibold shadow-lg">🐟 Fishing</span>
+                            </div>
+                            <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all duration-300 flex items-center justify-center">
+                                <div class="transform scale-0 group-hover:scale-100 transition-transform duration-300">
+                                    <span class="bg-white text-gray-900 px-6 py-3 rounded-lg font-semibold shadow-lg">View Lake</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="trail-card-body">
+                            <div class="mb-4">
+                                <h3 class="text-xl font-bold text-gray-900 mb-2 group-hover:text-accent-600 transition-colors">{{ $trail->name }}</h3>
+                                @if($trail->location)
+                                    <p class="text-sm text-gray-500 flex items-center">
+                                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/></svg>
+                                        {{ $trail->location }}
+                                    </p>
+                                @endif
+                            </div>
+                            <p class="text-gray-600 text-sm mb-4 line-clamp-2 leading-relaxed">
+                                {{ Str::limit(strip_tags($trail->description), 120) }}
+                            </p>
+                            <div class="grid grid-cols-3 gap-3 mb-4">
+                                <div class="text-center p-3 bg-emerald-50 rounded-lg">
+                                    <div class="text-lg font-bold text-emerald-600">{{ count($trail->fish_species ?? []) }}</div>
+                                    <div class="text-xs text-gray-500">species</div>
+                                </div>
+                                <div class="text-center p-3 bg-blue-50 rounded-lg">
+                                    <div class="text-lg font-bold text-blue-600 capitalize">{{ $trail->best_fishing_season ?? '—' }}</div>
+                                    <div class="text-xs text-gray-500">best season</div>
+                                </div>
+                                <div class="text-center p-3 bg-amber-50 rounded-lg">
+                                    <div class="text-lg font-bold text-amber-600">{{ number_format($trail->view_count ?? 0) }}</div>
+                                    <div class="text-xs text-gray-500">views</div>
+                                </div>
+                            </div>
+                            <div class="flex items-center justify-between mb-4">
+                                <span class="badge-secondary">Fishing Lake</span>
+                                <div class="flex items-center text-xs text-gray-500">
+                                    <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+                                    {{ $trail->view_count }} views
+                                </div>
+                            </div>
+                            <div class="flex items-center justify-between">
+                                <a href="{{ route('trails.show', $trail->id) }}" class="text-blue-600 hover:text-blue-700 font-semibold text-sm flex items-center">
+                                    View Lake
+                                    <svg class="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                                </a>
+                                @if($trail->best_seasons)
+                                    <div class="flex flex-wrap gap-1">
+                                        @foreach(array_slice($trail->best_seasons, 0, 2) as $season)
+                                            <span class="season-{{ strtolower($season) }} text-xs px-2 py-1 rounded border">{{ $season }}</span>
+                                        @endforeach
+                                    </div>
+                                @endif
+                            </div>
+                        </div>
+                    </div>
+                    @endforeach
+                </div>
+
+                @if($fishingLakes->hasPages())
+                    <div class="flex justify-center mb-12">
+                        <div class="bg-white rounded-lg shadow-md p-2">
+                            {{ $fishingLakes->appends(request()->query())->links() }}
+                        </div>
+                    </div>
+                @endif
+            @endif
+
         @endif
     </div>
 </section>
 
 <!-- Call-to-Action Section -->
-@if($trails->count() > 0)
+@if($hikingTrails->total() + $fishingLakes->total() > 0)
 <section class="section cta-section">
     <div class="max-w-4xl mx-auto px-4 text-center">
         <h2 class="text-4xl font-bold text-white mb-6">Ready for Your Next Adventure?</h2>

@@ -1790,81 +1790,82 @@
                     }, 300);
                 });
 
-                // Mobile filter dropdowns
-                const distanceBtnMobile = document.getElementById('distance-filter-btn-mobile');
-                const distanceDropdownMobile = document.getElementById('distance-dropdown-mobile');
-                const difficultyBtnMobile = document.getElementById('difficulty-filter-btn-mobile');
-                const difficultyDropdownMobile = document.getElementById('difficulty-dropdown-mobile');
+            }
 
-                if (distanceBtnMobile && distanceDropdownMobile) {
-                    distanceBtnMobile.addEventListener('click', (e) => {
-                        e.stopPropagation();
-                        distanceDropdownMobile.classList.toggle('hidden');
-                        if (difficultyDropdownMobile) difficultyDropdownMobile.classList.add('hidden');
-                    });
-                }
+            // Mobile filter dropdowns
+            const distanceBtnMobile = document.getElementById('distance-filter-btn-mobile');
+            const distanceDropdownMobile = document.getElementById('distance-dropdown-mobile');
+            const difficultyBtnMobile = document.getElementById('difficulty-filter-btn-mobile');
+            const difficultyDropdownMobile = document.getElementById('difficulty-dropdown-mobile');
 
-                if (difficultyBtnMobile && difficultyDropdownMobile) {
-                    difficultyBtnMobile.addEventListener('click', (e) => {
-                        e.stopPropagation();
-                        difficultyDropdownMobile.classList.toggle('hidden');
-                        if (distanceDropdownMobile) distanceDropdownMobile.classList.add('hidden');
-                    });
-                }
-
-                // Handle mobile filter selections
-                document.querySelectorAll('.distance-radio-mobile').forEach(radio => {
-                    radio.addEventListener('change', (e) => {
-                        this.currentDistance = e.target.value;
-                        this.applyFilters();
-                        if (distanceDropdownMobile) distanceDropdownMobile.classList.add('hidden');
-                    });
-                });
-
-                document.querySelectorAll('.trail-type-radio').forEach(radio => {
-                    radio.addEventListener('change', () => {
-                        updateFilterCountBadge();
-                    });
-                });
-
-                document.querySelectorAll('.duration-radio').forEach(radio => {
-                    radio.addEventListener('change', () => {
-                        updateFilterCountBadge();
-                    });
-                });
-
-                document.querySelectorAll('.elevation-radio').forEach(radio => {
-                    radio.addEventListener('change', () => {
-                        updateFilterCountBadge();
-                    });
-                });
-
-                document.querySelectorAll('.feature-checkbox').forEach(checkbox => {
-                    checkbox.addEventListener('change', () => {
-                        updateFilterCountBadge();
-                    });
-                });
-
-                document.querySelectorAll('.activity-checkbox').forEach(checkbox => {
-                    checkbox.addEventListener('change', () => {
-                        updateFilterCountBadge();
-                    });
-                });
-
-                document.querySelectorAll('.difficulty-radio-mobile').forEach(radio => {
-                    radio.addEventListener('change', (e) => {
-                        this.currentDifficulty = e.target.value;
-                        this.applyFilters();
-                        if (difficultyDropdownMobile) difficultyDropdownMobile.classList.add('hidden');
-                    });
-                });
-
-                // Close mobile dropdowns when clicking outside
-                document.addEventListener('click', () => {
-                    if (distanceDropdownMobile) distanceDropdownMobile.classList.add('hidden');
+            if (distanceBtnMobile && distanceDropdownMobile) {
+                distanceBtnMobile.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    distanceDropdownMobile.classList.toggle('hidden');
                     if (difficultyDropdownMobile) difficultyDropdownMobile.classList.add('hidden');
                 });
             }
+
+            if (difficultyBtnMobile && difficultyDropdownMobile) {
+                difficultyBtnMobile.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    difficultyDropdownMobile.classList.toggle('hidden');
+                    if (distanceDropdownMobile) distanceDropdownMobile.classList.add('hidden');
+                });
+            }
+
+            // Handle mobile filter selections
+            document.querySelectorAll('.distance-radio-mobile').forEach(radio => {
+                radio.addEventListener('change', (e) => {
+                    this.currentDistance = e.target.value;
+                    this.applyFilters();
+                    if (distanceDropdownMobile) distanceDropdownMobile.classList.add('hidden');
+                });
+            });
+
+            document.querySelectorAll('.trail-type-radio').forEach(radio => {
+                radio.addEventListener('change', () => {
+                    updateFilterCountBadge();
+                });
+            });
+
+            document.querySelectorAll('.duration-radio').forEach(radio => {
+                radio.addEventListener('change', () => {
+                    updateFilterCountBadge();
+                });
+            });
+
+            document.querySelectorAll('.elevation-radio').forEach(radio => {
+                radio.addEventListener('change', () => {
+                    updateFilterCountBadge();
+                });
+            });
+
+            document.querySelectorAll('.feature-checkbox').forEach(checkbox => {
+                checkbox.addEventListener('change', () => {
+                    updateFilterCountBadge();
+                });
+            });
+
+            document.querySelectorAll('.activity-checkbox').forEach(checkbox => {
+                checkbox.addEventListener('change', () => {
+                    updateFilterCountBadge();
+                });
+            });
+
+            document.querySelectorAll('.difficulty-radio-mobile').forEach(radio => {
+                radio.addEventListener('change', (e) => {
+                    this.currentDifficulty = e.target.value;
+                    this.applyFilters();
+                    if (difficultyDropdownMobile) difficultyDropdownMobile.classList.add('hidden');
+                });
+            });
+
+            // Close mobile dropdowns when clicking outside
+            document.addEventListener('click', () => {
+                if (distanceDropdownMobile) distanceDropdownMobile.classList.add('hidden');
+                if (difficultyDropdownMobile) difficultyDropdownMobile.classList.add('hidden');
+            });
 
             // Close suggestions when clicking outside
             document.addEventListener('click', (e) => {
@@ -1960,17 +1961,36 @@
                 
                 // Trail results
                 if (matchingTrails.length > 0) {
-                    html += '<div class="p-2 bg-gray-50 text-xs font-semibold text-gray-500 uppercase">Trails</div>';
-                    matchingTrails.slice(0, 5).forEach(trail => {
-                        html += `
-                            <div class="px-4 py-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 suggestion-item" 
-                                data-type="trail" 
-                                data-id="${trail.id}">
-                                <div class="font-medium text-gray-900">${trail.name}</div>
-                                <div class="text-sm text-gray-600">${trail.location || ''} · ${trail.distance}km</div>
-                            </div>
-                        `;
-                    });
+                    const hikingResults = matchingTrails.filter(t => t.location_type !== 'fishing_lake');
+                    const lakeResults = matchingTrails.filter(t => t.location_type === 'fishing_lake');
+
+                    if (hikingResults.length > 0) {
+                        html += '<div class="p-2 bg-gray-50 text-xs font-semibold text-gray-500 uppercase">Trails</div>';
+                        hikingResults.slice(0, 5).forEach(trail => {
+                            html += `
+                                <div class="px-4 py-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 suggestion-item"
+                                    data-type="trail"
+                                    data-id="${trail.id}">
+                                    <div class="font-medium text-gray-900">${trail.name}</div>
+                                    <div class="text-sm text-gray-600">${trail.location || ''} · ${trail.distance}km</div>
+                                </div>
+                            `;
+                        });
+                    }
+
+                    if (lakeResults.length > 0) {
+                        html += '<div class="p-2 bg-gray-50 text-xs font-semibold text-gray-500 uppercase">🐟 Fishing Lakes</div>';
+                        lakeResults.slice(0, 5).forEach(trail => {
+                            html += `
+                                <div class="px-4 py-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 suggestion-item"
+                                    data-type="trail"
+                                    data-id="${trail.id}">
+                                    <div class="font-medium text-gray-900">${trail.name}</div>
+                                    <div class="text-sm text-gray-600">${trail.location || 'Fishing Lake'}</div>
+                                </div>
+                            `;
+                        });
+                    }
                 }
                 
                 // Place results
@@ -2050,12 +2070,6 @@
 
         filterTrails(trails) {
             return trails.filter(trail => {
-                // Check if trail has activities for current season (MOST IMPORTANT CHECK)
-                const hasSeasonalActivities = trail.activities && trail.activities.length > 0;
-                if (!hasSeasonalActivities) {
-                    return false; // Hide trails with no activities for selected season
-                }
-
                 // Apply difficulty filter
                 if (this.currentDifficulty && trail.difficulty != this.currentDifficulty) {
                     return false;
@@ -2172,8 +2186,9 @@
                 }
                 
                 const routeColor = this.getDistanceColor(trail.distance);
-                
-                const route = L.polyline(sanitizedRoute, {
+                const smoothedRoute = this.smoothCoordinates(sanitizedRoute);
+
+                const route = L.polyline(smoothedRoute, {
                     color: routeColor,
                     weight: 4,
                     opacity: 0.8,
@@ -2206,7 +2221,7 @@
             this.updateActivityFilters(season);
             
             // Reload trails with new season
-            this.loadTrails();
+            this.loadTrails(season);
         }
 
         switchMapType(mapType) {
@@ -2327,19 +2342,14 @@
             console.log('Filtered trails:', allFilteredTrails);
             
             allFilteredTrails.forEach(trail => {
-                // Check if trail has activities for current season
-                const hasSeasonalActivities = trail.activities && trail.activities.length > 0;
-                
-                // Only render trail if it has activities for the selected season
-                if (!hasSeasonalActivities) {
-                    console.log('Skipping trail (no seasonal activities):', trail.name);
-                    return; // Skip this trail entirely
-                }
+                const isFishingLake = trail.location_type === 'fishing_lake';
 
-                // Add trail route
-                const route = this.addTrailRoute(trail);
-                if (route) {
-                    this.routeLayer.addLayer(route);
+                // Add trail route (fishing lakes have a single-point route — skip polyline)
+                if (!isFishingLake) {
+                    const route = this.addTrailRoute(trail);
+                    if (route) {
+                        this.routeLayer.addLayer(route);
+                    }
                 }
 
                 // Add highlights if enabled
@@ -2347,15 +2357,29 @@
                     this.createHighlightMarkers(trail);
                 }
 
-                // Add markers for active activity types
-                trail.activities.forEach(activity => {
-                    if (this.activeFilters.includes(activity.type)) {
-                        const marker = this.createTrailMarker(trail, activity);
-                        if (marker) {
-                            this.overlayLayers[activity.type].addLayer(marker);
-                        }
+                if (isFishingLake) {
+                    // Fishing lakes always appear on the fishing layer regardless of assigned activities
+                    if (!this.overlayLayers['fishing']) {
+                        this.overlayLayers['fishing'] = L.layerGroup();
                     }
-                });
+                    const marker = this.createTrailMarker(trail, { type: 'fishing', icon: '🐟', color: '#3B82F6' });
+                    if (marker) {
+                        this.overlayLayers['fishing'].addLayer(marker);
+                    }
+                } else {
+                    // Add markers for active activity types
+                    trail.activities.forEach(activity => {
+                        if (this.activeFilters.includes(activity.type)) {
+                            if (!this.overlayLayers[activity.type]) {
+                                this.overlayLayers[activity.type] = L.layerGroup();
+                            }
+                            const marker = this.createTrailMarker(trail, activity);
+                            if (marker) {
+                                this.overlayLayers[activity.type].addLayer(marker);
+                            }
+                        }
+                    });
+                }
             });
 
             // Only add layers that exist and are in active filters
@@ -2630,7 +2654,7 @@
             }
 
             // Create highlighted route
-            this.highlightedRoute = L.polyline(trail.route_coordinates, {
+            this.highlightedRoute = L.polyline(this.smoothCoordinates(trail.route_coordinates), {
                 color: '#FF0000',
                 weight: 6,
                 opacity: 0.9,
@@ -2829,6 +2853,43 @@
             panel.classList.remove('hidden');
         }
 
+        /**
+         * Smooth a coordinate array using a moving average.
+         * Preserves the first and last point so trail endpoints stay accurate.
+         * @param {Array} coords  - Array of [lat, lng] pairs
+         * @param {number} window - Averaging window size (odd number recommended)
+         * @param {number} passes - Number of smoothing passes
+         */
+        smoothCoordinates(coords, window = 3, passes = 2) {
+            if (!coords || coords.length < 3) return coords;
+
+            let result = coords;
+            const half = Math.floor(window / 2);
+
+            for (let p = 0; p < passes; p++) {
+                const smoothed = [result[0]]; // keep first point
+
+                for (let i = 1; i < result.length - 1; i++) {
+                    const start = Math.max(0, i - half);
+                    const end = Math.min(result.length - 1, i + half);
+                    let sumLat = 0, sumLng = 0, count = 0;
+
+                    for (let j = start; j <= end; j++) {
+                        sumLat += result[j][0];
+                        sumLng += result[j][1];
+                        count++;
+                    }
+
+                    smoothed.push([sumLat / count, sumLng / count]);
+                }
+
+                smoothed.push(result[result.length - 1]); // keep last point
+                result = smoothed;
+            }
+
+            return result;
+        }
+
         sanitizeCoordinates(coords) {
             if (!coords) return null;
             
@@ -2857,7 +2918,9 @@
             this.showTrailInfo(trail);
             
             // If trail has route, display it highlighted and fit to bounds
-            if (trail.route_coordinates && trail.route_coordinates.length > 0) {
+            // Fishing lakes only have a single-point route — skip polyline for them
+            const isFishingLake = trail.location_type === 'fishing_lake';
+            if (!isFishingLake && trail.route_coordinates && trail.route_coordinates.length > 1) {
                 // Clear existing highlighted route
                 if (this.highlightedRoute) {
                     this.map.removeLayer(this.highlightedRoute);
@@ -2865,7 +2928,7 @@
                 
                 try {
                     // Create highlighted route
-                    this.highlightedRoute = L.polyline(trail.route_coordinates, {
+                    this.highlightedRoute = L.polyline(this.smoothCoordinates(trail.route_coordinates), {
                         color: '#FF0000',
                         weight: 6,
                         opacity: 0.9,
@@ -2924,10 +2987,11 @@
             }, 3000);
         }
 
-        async loadTrails() {
+        async loadTrails(seasonFilter = null) {
             try {
+                const season = seasonFilter || this.currentSeason;
                 const params = new URLSearchParams({
-                    season: this.currentSeason,
+                    season,
                     filters: this.activeFilters.join(',')
                 });
 
@@ -2942,6 +3006,9 @@
                 console.log('Loading trails with params:', params.toString());
                 
                 const response = await fetch(`/api/trails?${params}`);
+                if (!response.ok) {
+                    throw new Error(`API returned ${response.status}: ${response.statusText}`);
+                }
                 this.allTrails = await response.json();
                 
                 console.log('Loaded trails:', this.allTrails.length);
@@ -3092,7 +3159,7 @@
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
                         </svg>
                         <p class="font-medium">No trails found in this area</p>
-                        <p class="text-sm mt-2">Try zooming out or adjusting your filters</p6
+                        <p class="text-sm mt-2">Try zooming out or adjusting your filters</p>
                     </div>
                 `;
                 return;
@@ -3106,10 +3173,13 @@
                     <div class="trail-list-card" onclick="window.trailMap.focusOnTrailById(${trail.id})">
                         ${imageUrl ? 
                             `<img src="${imageUrl}" alt="${trail.name}" class="trail-list-image">` :
-                            `<div class="trail-list-image-placeholder">
-                                <svg class="w-12 h-12 text-white opacity-75" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"/>
-                                </svg>
+                            `<div class="trail-list-image-placeholder" style="${trail.location_type === 'fishing_lake' ? 'background: linear-gradient(135deg, #1d4ed8, #2563eb);' : ''}">
+                                ${trail.location_type === 'fishing_lake'
+                                    ? '<span style="font-size: 2rem;">🐟</span>'
+                                    : `<svg class="w-12 h-12 text-white opacity-75" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"/>
+                                    </svg>`
+                                }
                             </div>`
                         }
                         <div class="flex-1 min-w-0">
@@ -3117,18 +3187,28 @@
                             <p class="text-xs text-gray-600 mb-2">${trail.location || 'Location not specified'}</p>
                             
                             <div class="flex items-center gap-2 text-xs text-gray-600 mb-2">
-                                <span class="flex items-center">
-                                    <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
-                                    </svg>
-                                    ${trail.distance} km
-                                </span>
-                                <span class="flex items-center">
-                                    <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
-                                    </svg>
-                                    Level ${trail.difficulty}
-                                </span>
+                                ${trail.location_type === 'fishing_lake' ? `
+                                    <span class="flex items-center">
+                                        🐟 ${trail.fish_species && trail.fish_species.length > 0 ? trail.fish_species.length + ' species' : 'Various species'}
+                                    </span>
+                                    ${trail.best_fishing_season ? `
+                                    <span class="flex items-center">
+                                        🗓️ Best: <span class="capitalize ml-1">${trail.best_fishing_season}</span>
+                                    </span>` : ''}
+                                ` : `
+                                    <span class="flex items-center">
+                                        <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
+                                        </svg>
+                                        ${trail.distance ? trail.distance + ' km' : 'Distance N/A'}
+                                    </span>
+                                    <span class="flex items-center">
+                                        <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                                        </svg>
+                                        ${trail.difficulty ? 'Level ' + trail.difficulty : 'Any level'}
+                                    </span>
+                                `}
                             </div>
                             
                             <div class="flex gap-1.5 flex-wrap">
@@ -3158,11 +3238,13 @@
             });
 
             // Reset selects
-            document.getElementById('difficulty-filter').value = '';
-            document.getElementById('distance-filter').value = '';
+            const difficultyFilterEl = document.getElementById('difficulty-filter');
+            const distanceFilterEl = document.getElementById('distance-filter');
+            if (difficultyFilterEl) difficultyFilterEl.value = '';
+            if (distanceFilterEl) distanceFilterEl.value = '';
 
             // Update filters
-            this.activeFilters = ['hiking', 'highlights'];
+            this.activeFilters = ['hiking', 'fishing', 'highlights'];
             this.applyFilters();
         }
 

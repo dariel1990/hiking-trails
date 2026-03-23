@@ -637,7 +637,7 @@
                 });
 
                 // Fishing lake popup with more relevant info
-                const fishSpecies = trail.fish_species ? JSON.parse(trail.fish_species).join(', ') : 'Various species';
+                const fishSpecies = Array.isArray(trail.fish_species) && trail.fish_species.length > 0 ? trail.fish_species.join(', ') : 'Various species';
                 popupContent = '<div class="text-center min-w-[140px]"><b>' + trail.name + '</b><div class="text-sm text-gray-600 mt-1">Fishing Lake</div>' +
                     (trail.fishing_location ? '<div class="text-xs text-gray-500 mt-1">' + trail.fishing_location + '</div>' : '') +
                     '<div class="text-xs text-blue-600 mt-2 font-medium">' + fishSpecies + '</div></div>';

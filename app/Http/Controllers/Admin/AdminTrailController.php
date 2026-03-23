@@ -3,17 +3,16 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\ActivityType;
 use App\Models\Trail;
+use App\Models\TrailFeature;
 use App\Models\TrailMedia;
 use App\Services\GpxService;
+use Exception;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
-use App\Models\TrailFeature;
-use App\Models\ActivityType;
-use Illuminate\Support\Facades\Log;
-
-use Exception;
 
 class AdminTrailController extends Controller
 {
@@ -54,12 +53,12 @@ class AdminTrailController extends Controller
             ->orderBy('name')
             ->get();
         $trailNetworks = \App\Models\TrailNetwork::orderBy('network_name')->get();
-        
+
         // Fetch all existing trails with their coordinates for map display
         $existingTrails = Trail::select('id', 'name', 'route_coordinates', 'status')
             ->whereNotNull('route_coordinates')
             ->get()
-            ->map(function($trail) {
+            ->map(function ($trail) {
                 return [
                     'id' => $trail->id,
                     'name' => $trail->name,
@@ -84,7 +83,7 @@ class AdminTrailController extends Controller
             'location_type' => 'required|in:trail,fishing_lake',
             'status' => 'required|in:active,closed,seasonal',
             'best_seasons' => 'nullable|array',
-            'best_seasons.*' => 'string|in:Spring,Summer,Fall,Winter',
+            'best_seasons.*' => 'nullable|string|in:Spring,Summer,Fall,Winter',
             'directions' => 'nullable|string',
             'parking_info' => 'nullable|string',
             'safety_notes' => 'nullable|string',
@@ -102,6 +101,8 @@ class AdminTrailController extends Controller
             'seasonal.*.conditions' => 'nullable|string|max:255',
             'seasonal.*.recommended' => 'nullable',
             'seasonal.*.notes' => 'nullable|string|max:1000',
+            'seasonal.*.features' => 'nullable|string|max:500',
+            'seasonal.*.accessibility' => 'nullable|string|max:500',
             'trail_network_id' => 'nullable|exists:trail_networks,id',
         ];
 
@@ -134,7 +135,42 @@ class AdminTrailController extends Controller
             ]);
         }
 
-        $request->validate($rules);
+        $attributes = [
+            'name' => 'Trail Name',
+            'description' => 'Description',
+            'location' => 'Location',
+            'location_type' => 'Location Type',
+            'status' => 'Trail Status',
+            'best_seasons' => 'Best Seasons',
+            'best_seasons.*' => 'Best Season',
+            'directions' => 'Directions to Trailhead',
+            'parking_info' => 'Parking Information',
+            'safety_notes' => 'Safety Notes',
+            'photos.*' => 'Photo',
+            'activities.*' => 'Activity',
+            'activity_notes' => 'Activity Notes',
+            'trail_network_id' => 'Trail Network',
+            // Trail-specific
+            'difficulty_level' => 'Difficulty Level',
+            'distance_km' => 'Distance (km)',
+            'elevation_gain_m' => 'Elevation Gain (m)',
+            'estimated_time_hours' => 'Estimated Time (hours)',
+            'trail_type' => 'Trail Type',
+            'start_lat' => 'Starting Latitude',
+            'start_lng' => 'Starting Longitude',
+            'end_lat' => 'Ending Latitude',
+            'end_lng' => 'Ending Longitude',
+            // Fishing lake-specific
+            'fishing_location' => 'Fishing Location Description',
+            'fishing_distance_from_town' => 'Distance from Town',
+            'fish_species.*' => 'Fish Species',
+            'best_fishing_time' => 'Best Fishing Time',
+            'best_fishing_season' => 'Best Fishing Season',
+            'point_latitude' => 'Lake Latitude',
+            'point_longitude' => 'Lake Longitude',
+        ];
+
+        $request->validate($rules, [], $attributes);
 
         // Prepare base data common to both types
         $data = [
@@ -161,8 +197,8 @@ class AdminTrailController extends Controller
                 'estimated_time_hours' => $request->estimated_time_hours,
                 'trail_type' => $request->trail_type,
                 'start_coordinates' => [$request->start_lat, $request->start_lng],
-                'end_coordinates' => ($request->end_lat && $request->end_lng) 
-                    ? [$request->end_lat, $request->end_lng] 
+                'end_coordinates' => ($request->end_lat && $request->end_lng)
+                    ? [$request->end_lat, $request->end_lng]
                     : null,
             ]);
 
@@ -188,21 +224,21 @@ class AdminTrailController extends Controller
         if ($request->location_type === 'trail' && $request->hasFile('gpx_file')) {
             try {
                 $gpxFile = $request->file('gpx_file');
-                $filename = Str::random(40) . '.gpx';
+                $filename = Str::random(40).'.gpx';
                 $path = $gpxFile->storeAs('gpx', $filename, 'public');
                 $data['gpx_file_path'] = $path;
 
                 // If user wants to use GPX calculations
                 if ($request->input('use_gpx_calculations') === 'true') {
-                    $fullPath = storage_path('app/public/' . $path);
+                    $fullPath = storage_path('app/public/'.$path);
                     $gpxData = $this->gpxService->calculateAllFromGpx($fullPath, $request->difficulty_level);
-                    
+
                     // Override form values with GPX calculations
                     $data['distance_km'] = $gpxData['distance'];
                     $data['elevation_gain_m'] = $gpxData['elevation'];
                     $data['estimated_time_hours'] = $gpxData['time'];
                     $data['route_coordinates'] = $gpxData['coordinates'];
-                    
+
                     // Store GPX calculated values
                     $data['gpx_calculated_distance'] = $gpxData['distance'];
                     $data['gpx_calculated_elevation'] = $gpxData['elevation'];
@@ -213,7 +249,7 @@ class AdminTrailController extends Controller
             } catch (Exception $e) {
                 return back()
                     ->withInput()
-                    ->withErrors(['gpx_file' => 'Error processing GPX file: ' . $e->getMessage()]);
+                    ->withErrors(['gpx_file' => 'Error processing GPX file: '.$e->getMessage()]);
             }
         }
 
@@ -236,13 +272,15 @@ class AdminTrailController extends Controller
         if ($request->has('seasonal') && is_array($request->seasonal)) {
             foreach ($request->seasonal as $season => $seasonData) {
                 // Save if there's any content OR if recommended checkbox was explicitly set
-                if (!empty($seasonData['conditions']) || !empty($seasonData['notes']) || isset($seasonData['recommended'])) {
+                if (! empty($seasonData['conditions']) || ! empty($seasonData['notes']) || isset($seasonData['recommended'])) {
                     \App\Models\SeasonalTrailData::create([
                         'trail_id' => $trail->id,
                         'season' => $season,
-                        'conditions' => $seasonData['conditions'] ?? null,
+                        'trail_conditions' => $seasonData['conditions'] ?? null,
                         'recommended' => isset($seasonData['recommended']) && $seasonData['recommended'] == '1',
-                        'notes' => $seasonData['notes'] ?? null,
+                        'seasonal_notes' => $seasonData['notes'] ?? null,
+                        'seasonal_features' => $seasonData['features'] ?? null,
+                        'accessibility_changes' => $seasonData['accessibility'] ?? null,
                     ]);
                 }
             }
@@ -251,9 +289,9 @@ class AdminTrailController extends Controller
         // Handle photos (Trail-level media)
         if ($request->hasFile('photos')) {
             $featuredPhotoIndex = (int) $request->input('featured_photo_index', 0);
-            
+
             foreach ($request->file('photos') as $index => $photo) {
-                $filename = Str::random(40) . '.' . $photo->getClientOriginalExtension();
+                $filename = Str::random(40).'.'.$photo->getClientOriginalExtension();
                 $path = $photo->storeAs('trail-photos', $filename, 'public');
 
                 TrailMedia::create([
@@ -275,7 +313,7 @@ class AdminTrailController extends Controller
         $videoUrls = null;
 
         // Try JSON format first (from permanent hidden input)
-        if ($request->has('trail_video_urls_json') && !empty($request->input('trail_video_urls_json'))) {
+        if ($request->has('trail_video_urls_json') && ! empty($request->input('trail_video_urls_json'))) {
             $videoUrls = json_decode($request->input('trail_video_urls_json'), true);
             // \Log::info('Video URLs from JSON:', ['urls' => $videoUrls]);
         }
@@ -287,14 +325,14 @@ class AdminTrailController extends Controller
         }
 
         // Save video URLs to TrailMedia table
-        if (!empty($videoUrls) && is_array($videoUrls)) {
+        if (! empty($videoUrls) && is_array($videoUrls)) {
             $photoCount = $request->hasFile('photos') ? count($request->file('photos')) : 0;
             $featuredPhotoIndex = (int) $request->input('featured_photo_index', 0);
-            
+
             foreach ($videoUrls as $index => $videoUrl) {
-                if (!empty($videoUrl)) {
+                if (! empty($videoUrl)) {
                     $sortOrder = $photoCount + $index;
-                    
+
                     TrailMedia::create([
                         'trail_id' => $trail->id,
                         'media_type' => 'video_url',
@@ -304,7 +342,7 @@ class AdminTrailController extends Controller
                         'is_featured' => $sortOrder === $featuredPhotoIndex,
                         'uploaded_by' => auth()->id(),
                     ]);
-                    
+
                     // \Log::info('Video URL saved:', [
                     //     'trail_id' => $trail->id,
                     //     'url' => $videoUrl,
@@ -317,7 +355,7 @@ class AdminTrailController extends Controller
         // Handle features/highlights with optional media
         if ($request->has('highlights_data')) {
             $highlightsData = json_decode($request->highlights_data, true);
-            
+
             if (is_array($highlightsData)) {
                 foreach ($highlightsData as $index => $highlightData) {
                     // Create the feature
@@ -329,15 +367,15 @@ class AdminTrailController extends Controller
                         'icon' => $highlightData['icon'] ?? null,      // NEW
                         'color' => $highlightData['color'] ?? null,    // NEW
                     ]);
-                    
+
                     // Handle photo file if exists for this highlight
                     if (isset($highlightData['mediaIndex']) && $request->hasFile("highlight_media_{$highlightData['mediaIndex']}")) {
                         $mediaFile = $request->file("highlight_media_{$highlightData['mediaIndex']}");
-                        
+
                         // Generate filename and store (photos only)
-                        $filename = Str::random(40) . '.' . $mediaFile->getClientOriginalExtension();
+                        $filename = Str::random(40).'.'.$mediaFile->getClientOriginalExtension();
                         $path = $mediaFile->storeAs('trail-photos', $filename, 'public');
-                        
+
                         // Create media record
                         $media = TrailMedia::create([
                             'trail_id' => $trail->id,
@@ -351,22 +389,22 @@ class AdminTrailController extends Controller
                             'is_featured' => false,
                             'uploaded_by' => auth()->id(),
                         ]);
-                        
+
                         // Link media to feature
                         $feature->media()->attach($media->id, [
                             'is_primary' => true,
                             'sort_order' => 0,
                         ]);
-                        
+
                         // Update cached count
                         $feature->updateMediaCount();
                     }
-                    
+
                     // Handle video URL if exists for this highlight
                     if (isset($highlightData['videoIndex']) && isset($highlightData['videoUrl'])) {
                         $videoUrl = $highlightData['videoUrl'];
-                        
-                        if (!empty($videoUrl)) {
+
+                        if (! empty($videoUrl)) {
                             // Create media record for video URL
                             $media = TrailMedia::create([
                                 'trail_id' => $trail->id,
@@ -377,13 +415,13 @@ class AdminTrailController extends Controller
                                 'is_featured' => false,
                                 'uploaded_by' => auth()->id(),
                             ]);
-                            
+
                             // Link media to feature
                             $feature->media()->attach($media->id, [
                                 'is_primary' => true,
                                 'sort_order' => 0,
                             ]);
-                            
+
                             // Update cached count
                             $feature->updateMediaCount();
                         }
@@ -395,12 +433,14 @@ class AdminTrailController extends Controller
         return redirect()->route('admin.trails.show', $trail)
             ->with('success', 'Trail created successfully!');
     }
+
     /**
      * Display the specified trail
      */
     public function show(Trail $trail)
     {
         $trail->load(['media', 'features.media']);
+
         return view('admin.trails.show', compact('trail'));
     }
 
@@ -412,10 +452,10 @@ class AdminTrailController extends Controller
         // dd($trail->load(['features' => function($query) {
         //     $query->with('media'); // Ensure media is loaded
         // }, 'media', 'seasonalData', 'activities']));
-        $trail->load(['features' => function($query) {
+        $trail->load(['features' => function ($query) {
             $query->with('media'); // Ensure media is loaded
         }, 'media', 'seasonalData', 'activities']);
-        
+
         // Fetch all active activities for the form
         $activities = \App\Models\ActivityType::where('is_active', true)
             ->orderBy('name')
@@ -423,12 +463,12 @@ class AdminTrailController extends Controller
 
         $trailNetworks = \App\Models\TrailNetwork::orderBy('network_name')->get();
 
-         // Fetch all existing trails with their coordinates for map display
+        // Fetch all existing trails with their coordinates for map display
         $existingTrails = Trail::select('id', 'name', 'route_coordinates', 'status')
             ->where('id', '!=', $trail->id)  // Exclude the current trail being edited
             ->whereNotNull('route_coordinates')
             ->get()
-            ->map(function($trail) {
+            ->map(function ($trail) {
                 return [
                     'id' => $trail->id,
                     'name' => $trail->name,
@@ -436,12 +476,13 @@ class AdminTrailController extends Controller
                     'status' => $trail->status,
                 ];
             });
-        
+
         // Transform media to include full URL
-        $trail->media->transform(function($media) {
+        $trail->media->transform(function ($media) {
             if ($media->storage_path) {
                 $media->url = Storage::url($media->storage_path);
             }
+
             return $media;
         });
 
@@ -449,15 +490,16 @@ class AdminTrailController extends Controller
 
         foreach ($trail->features as $feature) {
             if ($feature->media) {
-                $feature->media->transform(function($media) {
+                $feature->media->transform(function ($media) {
                     if ($media->storage_path) {
                         $media->url = Storage::url($media->storage_path);
                     }
+
                     return $media;
                 });
             }
         }
-        
+
         // Ensure route_coordinates is an array
         if ($trail->route_coordinates && is_string($trail->route_coordinates)) {
             $trail->route_coordinates = json_decode($trail->route_coordinates, true);
@@ -479,7 +521,7 @@ class AdminTrailController extends Controller
             'location_type' => 'required|in:trail,fishing_lake',
             'status' => 'required|in:active,closed,seasonal',
             'best_seasons' => 'nullable|array',
-            'best_seasons.*' => 'string|in:Spring,Summer,Fall,Winter',
+            'best_seasons.*' => 'nullable|string|in:Spring,Summer,Fall,Winter',
             'directions' => 'nullable|string',
             'parking_info' => 'nullable|string',
             'safety_notes' => 'nullable|string',
@@ -500,6 +542,8 @@ class AdminTrailController extends Controller
             'seasonal.*.conditions' => 'nullable|string|max:255',
             'seasonal.*.recommended' => 'nullable',
             'seasonal.*.notes' => 'nullable|string|max:1000',
+            'seasonal.*.features' => 'nullable|string|max:500',
+            'seasonal.*.accessibility' => 'nullable|string|max:500',
             'trail_network_id' => 'nullable|exists:trail_networks,id',
         ];
 
@@ -531,7 +575,42 @@ class AdminTrailController extends Controller
             ]);
         }
 
-        $request->validate($rules);
+        $attributes = [
+            'name' => 'Trail Name',
+            'description' => 'Description',
+            'location' => 'Location',
+            'location_type' => 'Location Type',
+            'status' => 'Trail Status',
+            'best_seasons' => 'Best Seasons',
+            'best_seasons.*' => 'Best Season',
+            'directions' => 'Directions to Trailhead',
+            'parking_info' => 'Parking Information',
+            'safety_notes' => 'Safety Notes',
+            'photos.*' => 'Photo',
+            'activities.*' => 'Activity',
+            'activity_notes' => 'Activity Notes',
+            'trail_network_id' => 'Trail Network',
+            // Trail-specific
+            'difficulty_level' => 'Difficulty Level',
+            'distance_km' => 'Distance (km)',
+            'elevation_gain_m' => 'Elevation Gain (m)',
+            'estimated_time_hours' => 'Estimated Time (hours)',
+            'trail_type' => 'Trail Type',
+            'start_lat' => 'Starting Latitude',
+            'start_lng' => 'Starting Longitude',
+            'end_lat' => 'Ending Latitude',
+            'end_lng' => 'Ending Longitude',
+            // Fishing lake-specific
+            'fishing_location' => 'Fishing Location Description',
+            'fishing_distance_from_town' => 'Distance from Town',
+            'fish_species.*' => 'Fish Species',
+            'best_fishing_time' => 'Best Fishing Time',
+            'best_fishing_season' => 'Best Fishing Season',
+            'point_latitude' => 'Lake Latitude',
+            'point_longitude' => 'Lake Longitude',
+        ];
+
+        $request->validate($rules, [], $attributes);
 
         // Prepare base data
         $data = [
@@ -558,8 +637,8 @@ class AdminTrailController extends Controller
                 'estimated_time_hours' => $request->estimated_time_hours,
                 'trail_type' => $request->trail_type,
                 'start_coordinates' => [$request->start_lat, $request->start_lng],
-                'end_coordinates' => ($request->end_lat && $request->end_lng) 
-                    ? [$request->end_lat, $request->end_lng] 
+                'end_coordinates' => ($request->end_lat && $request->end_lng)
+                    ? [$request->end_lat, $request->end_lng]
                     : null,
             ]);
 
@@ -588,11 +667,11 @@ class AdminTrailController extends Controller
                 }
 
                 $gpxFile = $request->file('gpx_file');
-                $filename = Str::random(40) . '.gpx';
+                $filename = Str::random(40).'.gpx';
                 $path = $gpxFile->storeAs('gpx', $filename, 'public');
                 $data['gpx_file_path'] = $path;
 
-                $fullPath = storage_path('app/public/' . $path);
+                $fullPath = storage_path('app/public/'.$path);
                 $gpxData = $this->gpxService->calculateAllFromGpx($fullPath, $request->difficulty_level);
 
                 // Check user's choice: keep manual values or use new GPX
@@ -611,11 +690,11 @@ class AdminTrailController extends Controller
                 $data['gpx_calculated_elevation'] = $gpxData['elevation'];
                 $data['gpx_calculated_time'] = $gpxData['time'];
                 $data['gpx_uploaded_at'] = now();
-                
+
             } catch (Exception $e) {
                 return back()
                     ->withInput()
-                    ->withErrors(['gpx_file' => 'Error processing GPX file: ' . $e->getMessage()]);
+                    ->withErrors(['gpx_file' => 'Error processing GPX file: '.$e->getMessage()]);
             }
         }
 
@@ -640,29 +719,31 @@ class AdminTrailController extends Controller
 
         // Update Seasonal Data
         $trail->seasonalData()->delete(); // Remove all existing
-        
+
         if ($request->has('seasonal') && is_array($request->seasonal)) {
             foreach ($request->seasonal as $season => $seasonData) {
                 // Save if there's any content OR if recommended checkbox was explicitly set
-                if (!empty($seasonData['conditions']) || !empty($seasonData['notes']) || isset($seasonData['recommended'])) {
+                if (! empty($seasonData['conditions']) || ! empty($seasonData['notes']) || isset($seasonData['recommended'])) {
                     \App\Models\SeasonalTrailData::create([
                         'trail_id' => $trail->id,
                         'season' => $season,
                         'trail_conditions' => $seasonData['conditions'] ?? null,
                         'recommended' => isset($seasonData['recommended']) && $seasonData['recommended'] == '1',
                         'seasonal_notes' => $seasonData['notes'] ?? null,
+                        'seasonal_features' => $seasonData['features'] ?? null,
+                        'accessibility_changes' => $seasonData['accessibility'] ?? null,
                     ]);
                 }
             }
         }
 
-        if ($request->has('edited_highlights') && ($editedHighlights = json_decode($request->edited_highlights, true)) && !empty(array_filter($editedHighlights))) {
+        if ($request->has('edited_highlights') && ($editedHighlights = json_decode($request->edited_highlights, true)) && ! empty(array_filter($editedHighlights))) {
             $editedHighlights = json_decode($request->edited_highlights, true);
-            
+
             if (is_array($editedHighlights)) {
                 foreach ($editedHighlights as $highlightId => $highlightData) {
                     $feature = TrailFeature::find($highlightId);
-                    
+
                     if ($feature && $feature->trail_id === $trail->id) {
                         // Update basic feature data
                         $feature->update([
@@ -673,20 +754,20 @@ class AdminTrailController extends Controller
                             'icon' => $highlightData['icon'] ?? null,
                             'color' => $highlightData['color'] ?? null,
                         ]);
-                        
+
                         // FIX: Handle NEW photo file upload for existing highlight
                         if (isset($highlightData['mediaIndex']) && $request->hasFile("highlight_media_{$highlightData['mediaIndex']}")) {
                             $mediaFile = $request->file("highlight_media_{$highlightData['mediaIndex']}");
-                            
+
                             // STEP 1: Remove old photo media linked to this feature
                             $oldPhotos = $feature->media()->where('media_type', 'photo')->get();
                             foreach ($oldPhotos as $oldPhoto) {
                                 // Check if media is only linked to this feature
                                 $linkCount = $oldPhoto->features()->count();
-                                
+
                                 if ($linkCount <= 1) {
                                     // Delete physical file
-                                    if (!empty($oldPhoto->storage_path)) {
+                                    if (! empty($oldPhoto->storage_path)) {
                                         Storage::disk('public')->delete($oldPhoto->storage_path);
                                     }
                                     // Delete database record
@@ -696,11 +777,11 @@ class AdminTrailController extends Controller
                                     $feature->media()->detach($oldPhoto->id);
                                 }
                             }
-                            
+
                             // STEP 2: Upload and attach new photo
-                            $filename = Str::random(40) . '.' . $mediaFile->getClientOriginalExtension();
+                            $filename = Str::random(40).'.'.$mediaFile->getClientOriginalExtension();
                             $path = $mediaFile->storeAs('trail-photos', $filename, 'public');
-                            
+
                             // Create media record
                             $media = TrailMedia::create([
                                 'trail_id' => $trail->id,
@@ -714,28 +795,28 @@ class AdminTrailController extends Controller
                                 'is_featured' => false,
                                 'uploaded_by' => auth()->id(),
                             ]);
-                            
+
                             // Link media to feature
                             $feature->media()->attach($media->id, [
                                 'is_primary' => true,
                                 'sort_order' => 0,
                             ]);
-                            
+
                             // Update cached count
                             $feature->updateMediaCount();
                         }
-                        
+
                         // FIX: Handle NEW video URL for existing highlight
                         if (isset($highlightData['videoIndex'])) {
                             $videoUrl = $highlightData['videoUrl'];
-                            
-                            if (!empty($videoUrl)) {
+
+                            if (! empty($videoUrl)) {
                                 // STEP 1: Remove old video URLs linked to this feature
                                 $oldVideos = $feature->media()->where('media_type', 'video_url')->get();
                                 foreach ($oldVideos as $oldVideo) {
                                     // Check if media is only linked to this feature
                                     $linkCount = $oldVideo->features()->count();
-                                    
+
                                     if ($linkCount <= 1) {
                                         // Delete database record (no physical file for URLs)
                                         $oldVideo->delete();
@@ -744,7 +825,7 @@ class AdminTrailController extends Controller
                                         $feature->media()->detach($oldVideo->id);
                                     }
                                 }
-                                
+
                                 // STEP 2: Create and attach new video URL
                                 $media = TrailMedia::create([
                                     'trail_id' => $trail->id,
@@ -755,13 +836,13 @@ class AdminTrailController extends Controller
                                     'is_featured' => false,
                                     'uploaded_by' => auth()->id(),
                                 ]);
-                                
+
                                 // Link media to feature
                                 $feature->media()->attach($media->id, [
                                     'is_primary' => false,
                                     'sort_order' => 1,
                                 ]);
-                                
+
                                 // Update cached count
                                 $feature->updateMediaCount();
                             }
@@ -775,7 +856,7 @@ class AdminTrailController extends Controller
         if ($request->has('highlights_data')) {
             // dd($request->all());
             $newHighlights = json_decode($request->highlights_data, true);
-            
+
             if (is_array($newHighlights)) {
                 foreach ($newHighlights as $index => $highlightData) {
                     // Create the feature
@@ -787,15 +868,15 @@ class AdminTrailController extends Controller
                         'icon' => $highlightData['icon'] ?? null,      // NEW
                         'color' => $highlightData['color'] ?? null,    // NEW
                     ]);
-                    
+
                     // Handle photo file if exists for this highlight
                     if (isset($highlightData['mediaIndex']) && $request->hasFile("highlight_media_{$highlightData['mediaIndex']}")) {
                         $mediaFile = $request->file("highlight_media_{$highlightData['mediaIndex']}");
-                        
+
                         // Generate filename and store (photos only)
-                        $filename = Str::random(40) . '.' . $mediaFile->getClientOriginalExtension();
+                        $filename = Str::random(40).'.'.$mediaFile->getClientOriginalExtension();
                         $path = $mediaFile->storeAs('trail-photos', $filename, 'public');
-                        
+
                         // Create media record
                         $media = TrailMedia::create([
                             'trail_id' => $trail->id,
@@ -809,22 +890,22 @@ class AdminTrailController extends Controller
                             'is_featured' => false,
                             'uploaded_by' => auth()->id(),
                         ]);
-                        
+
                         // Link media to feature
                         $feature->media()->attach($media->id, [
                             'is_primary' => true,
                             'sort_order' => 0,
                         ]);
-                        
+
                         // Update cached count
                         $feature->updateMediaCount();
                     }
-                    
+
                     // Handle video URL if exists for this highlight
                     if (isset($highlightData['videoIndex'])) {
                         $videoUrl = $highlightData['videoUrl'];
-                        
-                        if (!empty($videoUrl)) {
+
+                        if (! empty($videoUrl)) {
                             // Create media record for video URL
                             $media = TrailMedia::create([
                                 'trail_id' => $trail->id,
@@ -835,13 +916,13 @@ class AdminTrailController extends Controller
                                 'is_featured' => false,
                                 'uploaded_by' => auth()->id(),
                             ]);
-                            
+
                             // Link media to feature
                             $feature->media()->attach($media->id, [
                                 'is_primary' => true,
                                 'sort_order' => 0,
                             ]);
-                            
+
                             // Update cached count
                             $feature->updateMediaCount();
                         }
@@ -853,27 +934,27 @@ class AdminTrailController extends Controller
         // Handle deleted features
         if ($request->has('deleted_features')) {
             $deletedIds = json_decode($request->deleted_features, true);
-            
+
             if (is_array($deletedIds)) {
                 foreach ($deletedIds as $featureId) {
                     $feature = TrailFeature::find($featureId);
-                    
+
                     if ($feature && $feature->trail_id === $trail->id) {
                         // Get all media linked to this feature
                         $featureMedia = $feature->media()->get();
-                        
+
                         foreach ($featureMedia as $media) {
                             // Check if this media is ONLY linked to this feature
                             $linkCount = $media->features()->count();
-                            
+
                             if ($linkCount <= 1) {
                                 // This media is only used by this feature, safe to delete completely
-                                
+
                                 // Delete physical file from storage (if it's a photo)
-                                if ($media->media_type === 'photo' && !empty($media->storage_path)) {
+                                if ($media->media_type === 'photo' && ! empty($media->storage_path)) {
                                     Storage::disk('public')->delete($media->storage_path);
                                 }
-                                
+
                                 // Delete the TrailMedia record
                                 $media->delete();
                             } else {
@@ -881,7 +962,7 @@ class AdminTrailController extends Controller
                                 $feature->media()->detach($media->id);
                             }
                         }
-                        
+
                         // Finally, delete the feature itself
                         $feature->delete();
                     }
@@ -892,13 +973,13 @@ class AdminTrailController extends Controller
         // Handle deleted photos
         if ($request->has('deleted_photos')) {
             $deletedIds = json_decode($request->deleted_photos, true);
-            
+
             if (is_array($deletedIds)) {
                 foreach ($deletedIds as $photoId) {
                     $photo = TrailMedia::find($photoId);
                     if ($photo && $photo->trail_id === $trail->id) {
                         // Delete from storage if a storage path exists (photos only)
-                        if (!empty($photo->storage_path)) {
+                        if (! empty($photo->storage_path)) {
                             Storage::disk('public')->delete($photo->storage_path);
                         }
 
@@ -913,9 +994,9 @@ class AdminTrailController extends Controller
         if ($request->hasFile('photos')) {
             // Get the current max sort order
             $maxSortOrder = $trail->media()->max('sort_order') ?? -1;
-            
+
             foreach ($request->file('photos') as $index => $photo) {
-                $filename = Str::random(40) . '.' . $photo->getClientOriginalExtension();
+                $filename = Str::random(40).'.'.$photo->getClientOriginalExtension();
                 $path = $photo->storeAs('trail-photos', $filename, 'public');
 
                 TrailMedia::create([
@@ -937,7 +1018,7 @@ class AdminTrailController extends Controller
         $videoUrls = null;
 
         // Try JSON format first (from permanent hidden input)
-        if ($request->has('trail_video_urls_json') && !empty($request->input('trail_video_urls_json'))) {
+        if ($request->has('trail_video_urls_json') && ! empty($request->input('trail_video_urls_json'))) {
             $videoUrls = json_decode($request->input('trail_video_urls_json'), true);
             // \Log::info('Video URLs from JSON (update):', ['urls' => $videoUrls]);
         }
@@ -949,12 +1030,12 @@ class AdminTrailController extends Controller
         }
 
         // Save new video URLs to TrailMedia table
-        if (!empty($videoUrls) && is_array($videoUrls)) {
+        if (! empty($videoUrls) && is_array($videoUrls)) {
             $maxSortOrder = $trail->media()->max('sort_order') ?? -1;
             $photoCount = $request->hasFile('photos') ? count($request->file('photos')) : 0;
-            
+
             foreach ($videoUrls as $index => $videoUrl) {
-                if (!empty($videoUrl)) {
+                if (! empty($videoUrl)) {
                     TrailMedia::create([
                         'trail_id' => $trail->id,
                         'media_type' => 'video_url',
@@ -964,7 +1045,7 @@ class AdminTrailController extends Controller
                         'is_featured' => false,
                         'uploaded_by' => auth()->id(),
                     ]);
-                    
+
                     // \Log::info('Video URL saved (update):', [
                     //     'trail_id' => $trail->id,
                     //     'url' => $videoUrl,
@@ -978,7 +1059,7 @@ class AdminTrailController extends Controller
         if ($request->has('featured_photo_id') && $request->featured_photo_id) {
             // Remove featured status from all photos
             $trail->media()->update(['is_featured' => false]);
-            
+
             // Set new featured photo
             $trail->media()->where('id', $request->featured_photo_id)->update(['is_featured' => true]);
         }
@@ -987,7 +1068,7 @@ class AdminTrailController extends Controller
         if ($request->has('featured_photo_id') && $request->featured_photo_id) {
             // Remove featured status from all photos
             $trail->media()->update(['is_featured' => false]);
-            
+
             // Set new featured photo
             $trail->media()->where('id', $request->featured_photo_id)->update(['is_featured' => true]);
         }
@@ -1025,8 +1106,7 @@ class AdminTrailController extends Controller
 
     /**
      * Preview GPX calculations before saving
-     * 
-     * @param Request $request
+     *
      * @return \Illuminate\Http\JsonResponse
      */
     public function previewGpx(Request $request)
@@ -1038,14 +1118,14 @@ class AdminTrailController extends Controller
 
         try {
             $gpxFile = $request->file('gpx_file');
-            
+
             // Use public storage path which is guaranteed to work
-            $filename = 'temp_' . uniqid() . '.gpx';
+            $filename = 'temp_'.uniqid().'.gpx';
             $gpxFile->storeAs('gpx/temp', $filename, 'public');
-            $fullPath = storage_path('app/public/gpx/temp/' . $filename);
-            
+            $fullPath = storage_path('app/public/gpx/temp/'.$filename);
+
             // Debug: Check if file exists
-            if (!file_exists($fullPath)) {
+            if (! file_exists($fullPath)) {
                 // \Log::error('GPX file not found at: ' . $fullPath);
                 throw new Exception('Failed to save GPX file. Please check storage permissions.');
             }
@@ -1053,11 +1133,11 @@ class AdminTrailController extends Controller
             // Calculate values
             $gpxData = $this->gpxService->calculateAllFromGpx($fullPath, $request->difficulty_level);
 
-            // Get statistics  
+            // Get statistics
             $stats = $this->gpxService->getGpxStatistics($fullPath);
 
             // Clean up temp file
-            Storage::disk('public')->delete('gpx/temp/' . $filename);
+            Storage::disk('public')->delete('gpx/temp/'.$filename);
 
             return response()->json([
                 'success' => true,
@@ -1072,10 +1152,10 @@ class AdminTrailController extends Controller
             ]);
         } catch (Exception $e) {
             // \Log::error('GPX Preview Error: ' . $e->getMessage());
-            
+
             // Provide user-friendly error messages
             $userMessage = $e->getMessage();
-            
+
             if (str_contains($userMessage, 'No tracks found')) {
                 $userMessage = 'No valid GPS tracks found in this GPX file. Please ensure your GPX file contains track data.';
             } elseif (str_contains($userMessage, 'Failed to save')) {
@@ -1083,7 +1163,7 @@ class AdminTrailController extends Controller
             } elseif (str_contains($userMessage, 'parse')) {
                 $userMessage = 'Unable to read this GPX file. Please ensure it\'s a valid GPX format.';
             }
-            
+
             return response()->json([
                 'success' => false,
                 'message' => $userMessage,
@@ -1093,9 +1173,7 @@ class AdminTrailController extends Controller
 
     /**
      * Compare new GPX with existing trail data
-     * 
-     * @param Request $request
-     * @param Trail $trail
+     *
      * @return \Illuminate\Http\JsonResponse
      */
     public function compareGpx(Request $request, Trail $trail)
@@ -1106,13 +1184,13 @@ class AdminTrailController extends Controller
 
         try {
             $gpxFile = $request->file('gpx_file');
-            
+
             // Use public storage path
-            $filename = 'temp_' . uniqid() . '.gpx';
+            $filename = 'temp_'.uniqid().'.gpx';
             $gpxFile->storeAs('gpx/temp', $filename, 'public');
-            $fullPath = storage_path('app/public/gpx/temp/' . $filename);
-            
-            if (!file_exists($fullPath)) {
+            $fullPath = storage_path('app/public/gpx/temp/'.$filename);
+
+            if (! file_exists($fullPath)) {
                 throw new Exception('Failed to save GPX file. Please check storage permissions.');
             }
 
@@ -1120,7 +1198,7 @@ class AdminTrailController extends Controller
             $newGpxData = $this->gpxService->calculateAllFromGpx($fullPath, $trail->difficulty_level);
 
             // Clean up temp file
-            Storage::disk('public')->delete('gpx/temp/' . $filename);
+            Storage::disk('public')->delete('gpx/temp/'.$filename);
 
             // Rest of the comparison logic...
             $currentData = [
@@ -1134,7 +1212,7 @@ class AdminTrailController extends Controller
                     'old' => $currentData['distance'],
                     'new' => $newGpxData['distance'],
                     'diff' => round($newGpxData['distance'] - $currentData['distance'], 2),
-                    'diff_percent' => $currentData['distance'] > 0 
+                    'diff_percent' => $currentData['distance'] > 0
                         ? round((($newGpxData['distance'] - $currentData['distance']) / $currentData['distance']) * 100, 1)
                         : 0,
                 ],
@@ -1182,6 +1260,7 @@ class AdminTrailController extends Controller
         if (str_contains($url, 'vimeo.com')) {
             return 'vimeo';
         }
+
         return 'other';
     }
 
@@ -1192,12 +1271,12 @@ class AdminTrailController extends Controller
     {
         try {
             // Toggle the is_featured status
-            $trail->is_featured = !$trail->is_featured;
+            $trail->is_featured = ! $trail->is_featured;
             $trail->save();
 
             // Prepare success message
-            $message = $trail->is_featured 
-                ? "Trail '{$trail->name}' has been marked as featured!" 
+            $message = $trail->is_featured
+                ? "Trail '{$trail->name}' has been marked as featured!"
                 : "Trail '{$trail->name}' has been removed from featured trails.";
 
             // Return with success message
@@ -1205,9 +1284,9 @@ class AdminTrailController extends Controller
 
         } catch (\Exception $e) {
             // Log the error
-            \Log::error('Failed to toggle featured status for trail: ' . $trail->id, [
+            \Log::error('Failed to toggle featured status for trail: '.$trail->id, [
                 'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
+                'trace' => $e->getTraceAsString(),
             ]);
 
             // Return with error message

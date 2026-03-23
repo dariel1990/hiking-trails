@@ -212,115 +212,192 @@
             </p>
         </div>
 
-        <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-            @foreach($featuredTrails as $trail)
-            <div class="trail-card group hover-lift">
-                <!-- Trail Image -->
-                <div class="trail-card-image group-hover:scale-105 transition-transform duration-500" onclick="window.location.href='{{ route('trails.show', $trail->id) }}'">
-                    @php
-                        // Prefer the model accessor which only returns photos
-                        $featuredUrl = $trail->featured_media_url;
-                        // If not present, try the first photo on the trailMedia collection
-                        if (!$featuredUrl) {
-                            $firstPhoto = $trail->trailMedia->where('media_type', 'photo')->first();
-                            $featuredUrl = $firstPhoto ? $firstPhoto->getThumbnail() ?? $firstPhoto->getUrl() : null;
-                        }
-                    @endphp
-                    @if($featuredUrl)
-                        <img src="{{ $featuredUrl }}" 
-                             alt="{{ $trail->name }}" 
-                             class="w-full h-full object-cover">
-                    @else
-                        <div class="absolute inset-0 flex items-center justify-center">
-                            <img src="{{ asset('images/no-image.png') }}" 
-                            alt="Trail Finder Logo" 
-                            class="w-24 h-24 object-contain transition-all duration-300 group-hover:scale-105">
-                        </div>
-                    @endif
-                    
-                    <!-- Badges -->
-                    @if($trail->is_featured)
-                        <div class="absolute top-3 left-3">
-                            <span class="badge bg-amber-400 text-amber-900 font-bold">
-                                ⭐ Featured
+        @php
+            $hikingTrails = $featuredTrails->filter(fn($t) => $t->isTrail());
+            $fishingLakes = $featuredTrails->filter(fn($t) => $t->isFishingLake());
+        @endphp
+
+        {{-- Hiking Trails --}}
+        @if($hikingTrails->isNotEmpty())
+            <div class="flex items-center gap-3 mb-6">
+                <span class="text-2xl">🥾</span>
+                <h3 class="text-2xl font-bold text-gray-800">Hiking Trails</h3>
+                <div class="flex-1 h-px bg-gray-200"></div>
+            </div>
+            <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8 mb-14">
+                @foreach($hikingTrails as $trail)
+                @php
+                    $featuredUrl = $trail->featured_media_url;
+                    if (!$featuredUrl) {
+                        $firstPhoto = $trail->trailMedia->where('media_type', 'photo')->first();
+                        $featuredUrl = $firstPhoto ? $firstPhoto->getThumbnail() ?? $firstPhoto->getUrl() : null;
+                    }
+                @endphp
+                <div class="trail-card group hover-lift">
+                    <div class="trail-card-image group-hover:scale-105 transition-transform duration-500" onclick="window.location.href='{{ route('trails.show', $trail->id) }}'">
+                        @if($featuredUrl)
+                            <img src="{{ $featuredUrl }}" alt="{{ $trail->name }}" class="w-full h-full object-cover">
+                        @else
+                            <div class="absolute inset-0 flex items-center justify-center">
+                                <img src="{{ asset('images/no-image.png') }}" alt="Trail Finder Logo" class="w-24 h-24 object-contain">
+                            </div>
+                        @endif
+                        @if($trail->is_featured)
+                            <div class="absolute top-3 left-3">
+                                <span class="badge bg-amber-400 text-amber-900 font-bold">⭐ Featured</span>
+                            </div>
+                        @endif
+                        <div class="absolute top-3 right-3">
+                            <span class="difficulty-badge difficulty-{{ intval($trail->difficulty_level) }}">
+                                {{ $trail->difficulty_level }}/5
                             </span>
                         </div>
-                    @endif
-                    
-                    <div class="absolute top-3 right-3">
-                        <span class="difficulty-badge difficulty-{{ intval($trail->difficulty_level) }}">
-                            {{ $trail->difficulty_level }}/5
-                        </span>
                     </div>
-                </div>
-                
-                <!-- Trail Info -->
-                <div class="trail-card-body">
-                    <div class="mb-3">
-                        <h3 class="text-xl font-bold text-gray-900 mb-2 group-hover:text-accent-600 transition-colors">
-                            <a href="{{ route('trails.show', $trail->id) }}">{{ $trail->name }}</a>
-                        </h3>
-                        @if($trail->location)
-                            <p class="text-sm text-gray-500 flex items-center">
-                                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
-                                </svg>
-                                {{ $trail->location }}
-                            </p>
-                        @endif
-                    </div>
-                    
-                    <p class="text-gray-600 text-sm mb-4 line-clamp-2 leading-relaxed">
-                        {{ Str::limit($trail->description, 120) }}
-                    </p>
-
-                    <!-- Trail Stats -->
-                    <div class="grid grid-cols-3 gap-3 mb-4">
-                        <div class="text-center p-3 bg-blue-50 rounded-lg">
-                            <div class="text-lg font-bold text-blue-600">{{ $trail->distance_km }}</div>
-                            <div class="text-xs text-gray-500">km</div>
+                    <div class="trail-card-body">
+                        <div class="mb-3">
+                            <h3 class="text-xl font-bold text-gray-900 mb-2 group-hover:text-accent-600 transition-colors">
+                                <a href="{{ route('trails.show', $trail->id) }}">{{ $trail->name }}</a>
+                            </h3>
+                            @if($trail->location)
+                                <p class="text-sm text-gray-500 flex items-center">
+                                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
+                                    </svg>
+                                    {{ $trail->location }}
+                                </p>
+                            @endif
                         </div>
-                        <div class="text-center p-3 bg-green-50 rounded-lg">
-                            <div class="text-lg font-bold text-green-600">{{ $trail->elevation_gain_m }}</div>
-                            <div class="text-xs text-gray-500">meters</div>
-                        </div>
-                        <div class="text-center p-3 bg-amber-50 rounded-lg">
-                            <div class="text-lg font-bold text-amber-600">{{ $trail->estimated_time_hours }}</div>
-                            <div class="text-xs text-gray-500">hours</div>
-                        </div>
-                    </div>
-
-                    <!-- Trail Type and Action -->
-                    <div class="flex items-center justify-between">
-                        <span class="badge-secondary">
-                            {{ ucwords(str_replace('-', ' ', $trail->trail_type)) }}
-                        </span>
-                        
-                        <a href="{{ route('trails.show', $trail->id) }}" 
-                           class="text-emerald-600 hover:text-emerald-700 font-semibold text-sm group-hover:text-emerald-700 flex items-center">
-                            Explore Trail
-                            <svg class="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
-                            </svg>
-                        </a>
-                    </div>
-
-                    @if($trail->best_seasons)
-                        <div class="mt-3 pt-3 border-t border-gray-100">
-                            <p class="text-xs text-gray-500 mb-1">Best seasons:</p>
-                            <div class="flex flex-wrap gap-1">
-                                @foreach(array_slice($trail->best_seasons, 0, 3) as $season)
-                                    <span class="season-{{ strtolower($season) }} text-xs px-2 py-1 rounded border">
-                                        {{ $season }}
-                                    </span>
-                                @endforeach
+                        <p class="text-gray-600 text-sm mb-4 line-clamp-2 leading-relaxed">
+                            {{ Str::limit(strip_tags($trail->description), 120) }}
+                        </p>
+                        <div class="grid grid-cols-3 gap-3 mb-4">
+                            <div class="text-center p-3 bg-blue-50 rounded-lg">
+                                <div class="text-lg font-bold text-blue-600">{{ $trail->distance_km }}</div>
+                                <div class="text-xs text-gray-500">km</div>
+                            </div>
+                            <div class="text-center p-3 bg-green-50 rounded-lg">
+                                <div class="text-lg font-bold text-green-600">{{ $trail->elevation_gain_m }}</div>
+                                <div class="text-xs text-gray-500">meters</div>
+                            </div>
+                            <div class="text-center p-3 bg-amber-50 rounded-lg">
+                                <div class="text-lg font-bold text-amber-600">{{ $trail->estimated_time_hours }}</div>
+                                <div class="text-xs text-gray-500">hours</div>
                             </div>
                         </div>
-                    @endif
+                        <div class="flex items-center justify-between">
+                            <span class="badge-secondary">{{ ucwords(str_replace('-', ' ', $trail->trail_type)) }}</span>
+                            <a href="{{ route('trails.show', $trail->id) }}" class="text-emerald-600 hover:text-emerald-700 font-semibold text-sm flex items-center">
+                                Explore Trail
+                                <svg class="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                                </svg>
+                            </a>
+                        </div>
+                        @if($trail->best_seasons)
+                            <div class="mt-3 pt-3 border-t border-gray-100">
+                                <p class="text-xs text-gray-500 mb-1">Best seasons:</p>
+                                <div class="flex flex-wrap gap-1">
+                                    @foreach(array_slice($trail->best_seasons, 0, 3) as $season)
+                                        <span class="season-{{ strtolower($season) }} text-xs px-2 py-1 rounded border">{{ $season }}</span>
+                                    @endforeach
+                                </div>
+                            </div>
+                        @endif
+                    </div>
                 </div>
+                @endforeach
             </div>
-            @endforeach
-        </div>
+        @endif
+
+        {{-- Fishing Lakes --}}
+        @if($fishingLakes->isNotEmpty())
+            <div class="flex items-center gap-3 mb-6">
+                <span class="text-2xl">🐟</span>
+                <h3 class="text-2xl font-bold text-gray-800">Fishing Lakes</h3>
+                <div class="flex-1 h-px bg-gray-200"></div>
+            </div>
+            <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+                @foreach($fishingLakes as $trail)
+                @php
+                    $featuredUrl = $trail->featured_media_url;
+                    if (!$featuredUrl) {
+                        $firstPhoto = $trail->trailMedia->where('media_type', 'photo')->first();
+                        $featuredUrl = $firstPhoto ? $firstPhoto->getThumbnail() ?? $firstPhoto->getUrl() : null;
+                    }
+                @endphp
+                <div class="trail-card group hover-lift">
+                    <div class="trail-card-image group-hover:scale-105 transition-transform duration-500" onclick="window.location.href='{{ route('trails.show', $trail->id) }}'">
+                        @if($featuredUrl)
+                            <img src="{{ $featuredUrl }}" alt="{{ $trail->name }}" class="w-full h-full object-cover">
+                        @else
+                            <div class="absolute inset-0 flex items-center justify-center">
+                                <img src="{{ asset('images/no-image.png') }}" alt="Trail Finder Logo" class="w-24 h-24 object-contain">
+                            </div>
+                        @endif
+                        @if($trail->is_featured)
+                            <div class="absolute top-3 left-3">
+                                <span class="badge bg-amber-400 text-amber-900 font-bold">⭐ Featured</span>
+                            </div>
+                        @endif
+                        <div class="absolute top-3 right-3">
+                            <span class="badge bg-blue-500 text-white font-semibold">🐟 Fishing</span>
+                        </div>
+                    </div>
+                    <div class="trail-card-body">
+                        <div class="mb-3">
+                            <h3 class="text-xl font-bold text-gray-900 mb-2 group-hover:text-accent-600 transition-colors">
+                                <a href="{{ route('trails.show', $trail->id) }}">{{ $trail->name }}</a>
+                            </h3>
+                            @if($trail->location)
+                                <p class="text-sm text-gray-500 flex items-center">
+                                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
+                                    </svg>
+                                    {{ $trail->location }}
+                                </p>
+                            @endif
+                        </div>
+                        <p class="text-gray-600 text-sm mb-4 line-clamp-2 leading-relaxed">
+                            {{ Str::limit(strip_tags($trail->description), 120) }}
+                        </p>
+                        <div class="grid grid-cols-3 gap-3 mb-4">
+                            <div class="text-center p-3 bg-emerald-50 rounded-lg">
+                                <div class="text-lg font-bold text-emerald-600">{{ count($trail->fish_species ?? []) }}</div>
+                                <div class="text-xs text-gray-500">species</div>
+                            </div>
+                            <div class="text-center p-3 bg-blue-50 rounded-lg">
+                                <div class="text-lg font-bold text-blue-600 capitalize">{{ $trail->best_fishing_season ?? '—' }}</div>
+                                <div class="text-xs text-gray-500">best season</div>
+                            </div>
+                            <div class="text-center p-3 bg-amber-50 rounded-lg">
+                                <div class="text-lg font-bold text-amber-600">{{ number_format($trail->view_count ?? 0) }}</div>
+                                <div class="text-xs text-gray-500">views</div>
+                            </div>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <span class="badge-secondary">Fishing Lake</span>
+                            <a href="{{ route('trails.show', $trail->id) }}" class="text-blue-600 hover:text-blue-700 font-semibold text-sm flex items-center">
+                                View Lake
+                                <svg class="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                                </svg>
+                            </a>
+                        </div>
+                        @if($trail->best_seasons)
+                            <div class="mt-3 pt-3 border-t border-gray-100">
+                                <p class="text-xs text-gray-500 mb-1">Best seasons:</p>
+                                <div class="flex flex-wrap gap-1">
+                                    @foreach(array_slice($trail->best_seasons, 0, 3) as $season)
+                                        <span class="season-{{ strtolower($season) }} text-xs px-2 py-1 rounded border">{{ $season }}</span>
+                                    @endforeach
+                                </div>
+                            </div>
+                        @endif
+                    </div>
+                </div>
+                @endforeach
+            </div>
+        @endif
 
         <div class="text-center mt-12">
             <a href="{{ route('trails.index') }}" class="btn-primary text-lg px-10 py-4 hover-glow">

@@ -194,6 +194,18 @@
         height: 250px;
     }
     
+    /* Rich content from Quill editor */
+    .trail-description p, .rich-content p { margin-bottom: 1rem; line-height: 1.75; }
+    .trail-description p:last-child, .rich-content p:last-child { margin-bottom: 0; }
+    .trail-description h2, .rich-content h2 { font-size: 1.25rem; font-weight: 700; margin: 1.5rem 0 0.5rem; }
+    .trail-description h3, .rich-content h3 { font-size: 1.1rem; font-weight: 600; margin: 1.25rem 0 0.5rem; }
+    .trail-description strong, .rich-content strong { font-weight: 600; }
+    .trail-description em, .rich-content em { font-style: italic; }
+    .trail-description ul, .rich-content ul { list-style: disc; padding-left: 1.5rem; margin-bottom: 1rem; }
+    .trail-description ol, .rich-content ol { list-style: decimal; padding-left: 1.5rem; margin-bottom: 1rem; }
+    .trail-description li, .rich-content li { margin-bottom: 0.25rem; }
+    .trail-description a, .rich-content a { color: #059669; text-decoration: underline; }
+
     /* Print Styles */
     @media print {
         .sticky-sidebar, .tab-nav, #trail-detail-map, #trail-3d-viewer {
@@ -336,29 +348,7 @@
                     <!-- Quick Stats Inline -->
                     <div class="flex flex-wrap gap-4 text-white/90">
                         @if($trail->isFishingLake())
-                            <!-- Fishing Lake Stats -->
-                            @if($trail->fishing_distance_from_town)
-                            <div class="flex items-center">
-                                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/>
-                                </svg>
-                                <span class="font-semibold">{{ $trail->fishing_distance_from_town }} km from town</span>
-                            </div>
-                            @endif
-                            @if($trail->fish_species && count($trail->fish_species) > 0)
-                            <div class="flex items-center">
-                                <span class="text-xl mr-2">🐟</span>
-                                <span class="font-semibold">{{ count($trail->fish_species) }} fish species</span>
-                            </div>
-                            @endif
-                            @if($trail->best_fishing_time)
-                            <div class="flex items-center">
-                                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                                </svg>
-                                <span class="font-semibold">Best: {{ ucfirst($trail->best_fishing_time) }}</span>
-                            </div>
-                            @endif
+                            {{-- Fishing lake details are shown in the sidebar info card --}}
                         @else
                             <!-- Trail Stats -->
                             <div class="flex items-center">
@@ -412,29 +402,55 @@
         
         <!-- Stats Cards -->
         @if($trail->isFishingLake())
-            <!-- Fishing Lake - No stat cards, info shown in sidebar -->
+            <!-- Fishing Lake Stat Cards -->
+            <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-12 -mt-20 relative z-10">
+                <div class="stat-card text-center">
+                    <div class="text-3xl mb-2">🐟</div>
+                    <div class="text-sm font-medium text-gray-600">Fish Species</div>
+                    <div class="text-xs text-gray-500 mt-1">{{ $trail->fish_species ? count($trail->fish_species) . ' species' : '—' }}</div>
+                </div>
+                <div class="stat-card text-center">
+                    <div class="text-3xl mb-2">🌤️</div>
+                    <div class="text-sm font-medium text-gray-600">Best Season</div>
+                    <div class="text-xs text-gray-500 mt-1 capitalize">{{ $trail->best_fishing_season ?? '—' }}</div>
+                </div>
+                <div class="stat-card text-center">
+                    <div class="text-3xl mb-2">📍</div>
+                    <div class="text-sm font-medium text-gray-600">Distance from Town</div>
+                    <div class="text-xs text-gray-500 mt-1">{{ $trail->fishing_distance_from_town ? Str::before($trail->fishing_distance_from_town, ' ') . ' km' : '—' }}</div>
+                </div>
+                <div class="stat-card text-center">
+                    <div class="text-3xl mb-2">👁️</div>
+                    <div class="text-sm font-medium text-gray-600">Views</div>
+                    <div class="text-xs text-gray-500 mt-1">{{ number_format($trail->view_count ?? 0) }}</div>
+                </div>
+            </div>
         @else
             <!-- Trail Stats -->
             <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-12 -mt-20 relative z-10">
                 <div class="stat-card text-center">
-                    <div class="text-4xl font-bold text-emerald-600 mb-2">{{ $trail->difficulty_level }}</div>
+                    @php
+                        $difficultyColors = [1=>'text-green-600',2=>'text-lime-600',3=>'text-yellow-600',4=>'text-orange-600',5=>'text-red-600'];
+                        $difficultyColor = $difficultyColors[$trail->difficulty_level] ?? 'text-gray-600';
+                    @endphp
+                    <div class="text-4xl font-bold {{ $difficultyColor }} mb-1">{{ $trail->difficulty_level }}/5</div>
                     <div class="text-sm font-medium text-gray-600">Difficulty</div>
-                    <div class="text-xs text-gray-500 mt-1">{{ $trail->difficulty_text }}</div>
+                    <div class="text-xs font-semibold {{ $difficultyColor }} mt-1">{{ $trail->difficulty_text }}</div>
                 </div>
                 <div class="stat-card text-center">
-                    <div class="text-4xl font-bold text-blue-600 mb-2">{{ $trail->distance_km }}</div>
-                    <div class="text-sm font-medium text-gray-600">Distance (km)</div>
-                    <div class="text-xs text-gray-500 mt-1">Total Length</div>
+                    <div class="text-4xl font-bold text-blue-600 mb-1">{{ $trail->distance_km }}</div>
+                    <div class="text-sm font-medium text-gray-600">Distance</div>
+                    <div class="text-xs text-gray-500 mt-1">kilometres</div>
                 </div>
                 <div class="stat-card text-center">
-                    <div class="text-4xl font-bold text-orange-600 mb-2">{{ $trail->elevation_gain_m }}</div>
-                    <div class="text-sm font-medium text-gray-600">Elevation (m)</div>
-                    <div class="text-xs text-gray-500 mt-1">Total Gain</div>
+                    <div class="text-4xl font-bold text-orange-600 mb-1">{{ number_format($trail->elevation_gain_m) }}</div>
+                    <div class="text-sm font-medium text-gray-600">Elevation Gain</div>
+                    <div class="text-xs text-gray-500 mt-1">metres</div>
                 </div>
                 <div class="stat-card text-center">
-                    <div class="text-4xl font-bold text-purple-600 mb-2">{{ $trail->estimated_time_hours }}</div>
-                    <div class="text-sm font-medium text-gray-600">Time (hrs)</div>
-                    <div class="text-xs text-gray-500 mt-1">Estimated</div>
+                    <div class="text-4xl font-bold text-purple-600 mb-1">{{ $trail->estimated_time_hours }}</div>
+                    <div class="text-sm font-medium text-gray-600">Est. Time</div>
+                    <div class="text-xs text-gray-500 mt-1">hours</div>
                 </div>
             </div>
         @endif
@@ -541,28 +557,48 @@
                 <div class="tab-nav overflow-x-auto flex space-x-1">
                     <button class="tab-button active" data-tab="overview">Overview</button>
                     <button class="tab-button whitespace-nowrap" data-tab="route">Route & Map</button>
-                    <button class="tab-button whitespace-nowrap" data-tab="photos">Videos & Photos</button>
-                    <button class="tab-button" data-tab="planning">Planning</button>
+                    <button class="tab-button whitespace-nowrap" data-tab="photos">Gallery</button>
+                    <button class="tab-button whitespace-nowrap" data-tab="planning">Getting There</button>
+                    @if($trail->seasonalData && $trail->seasonalData->count() > 0)
+                    <button class="tab-button whitespace-nowrap" data-tab="seasons">Seasonal Info</button>
+                    @endif
                 </div>
                 
                 <!-- Overview Tab -->
                 <div id="overview-tab" class="tab-content active">
                     <div class="prose prose-lg max-w-none">
-                        <h2 class="text-forest-700">About This Trail</h2>
-                        <p class="lead text-xl text-gray-700 leading-relaxed">{{ $trail->description }}</p>
-                        
-                        <!-- Ethical Tourism Callout -->
+                        <h2 class="text-forest-700">{{ $trail->isFishingLake() ? 'About This Lake' : 'About This Trail' }}</h2>
+                        <div class="trail-description text-gray-700 leading-relaxed">{!! $trail->description !!}</div>
+
+                        @if($trail->isTrail())
+                        <!-- Leave No Trace callout — hiking trails only -->
                         <div class="bg-emerald-50 border-l-4 border-emerald-500 p-6 rounded-r-lg my-8">
                             <div class="flex items-start">
-                                <svg class="w-6 h-6 text-emerald-600 mt-1 mr-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <svg class="w-6 h-6 text-emerald-600 mt-1 mr-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/>
                                 </svg>
                                 <div>
-                                    <h3 class="font-bold text-emerald-900 mb-2">Responsible Adventure</h3>
-                                    <p class="text-emerald-800 mb-0">This trail supports sustainable tourism and local communities. Please follow Leave No Trace principles and respect the natural environment.</p>
+                                    <h3 class="font-bold text-emerald-900 mb-2">Leave No Trace</h3>
+                                    <p class="text-emerald-800 mb-0">Please follow Leave No Trace principles: pack out all waste, stay on designated trails, respect wildlife, and be considerate of other visitors.</p>
                                 </div>
                             </div>
                         </div>
+                        @endif
+
+                        @if($trail->isFishingLake())
+                        <!-- Fishing regulations callout -->
+                        <div class="bg-blue-50 border-l-4 border-blue-500 p-6 rounded-r-lg my-8">
+                            <div class="flex items-start">
+                                <svg class="w-6 h-6 text-blue-600 mt-1 mr-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                </svg>
+                                <div>
+                                    <h3 class="font-bold text-blue-900 mb-2">Fishing Regulations</h3>
+                                    <p class="text-blue-800 mb-0">A valid BC freshwater fishing licence is required. Check current regulations at the BC Freshwater Fishing Regulations Synopsis before your visit.</p>
+                                </div>
+                            </div>
+                        </div>
+                        @endif
                         
                         @if($trail->highlights && $trail->highlights->count() > 0)
                             <h2 class="text-forest-700">Trail Highlights</h2>
@@ -784,9 +820,9 @@
                                         {{-- Photo Display --}}
                                         <div class="relative group overflow-hidden rounded-lg border border-input cursor-pointer"
                                             onclick="openMediaModal('{{ asset('storage/' . $media->storage_path) }}', 'photo', '{{ $media->caption ?? $trail->name }}')">
-                                            <img src="{{ asset('storage/' . $media->storage_path) }}" 
-                                                alt="{{ $media->caption ?? $trail->name }}" 
-                                                class="w-full h-32 object-cover transition-transform group-hover:scale-105">
+                                            <img src="{{ asset('storage/' . $media->storage_path) }}"
+                                                alt="{{ $media->caption ?? $trail->name }}"
+                                                class="w-full h-48 object-cover transition-transform group-hover:scale-105">
                                             @if($media->is_featured)
                                                 <div class="absolute top-2 left-2">
                                                     <span class="bg-yellow-400 text-yellow-900 px-2 py-1 rounded text-xs font-medium">
@@ -881,50 +917,116 @@
                     @endif
                 </div>
                 
-                <!-- Planning Tab -->
+                <!-- Getting There Tab -->
                 <div id="planning-tab" class="tab-content">
-                    <div class="prose prose-lg max-w-none">
-                        <h2 class="text-forest-700">Trip Planning Information</h2>
-                        
+                    <div class="prose prose-lg max-w-none space-y-0">
+                        <h2 class="text-forest-700">Getting There</h2>
+
                         @if($trail->directions)
                         <div class="bg-blue-50 border-l-4 border-blue-500 p-6 rounded-r-lg mb-6">
-                            <h3 class="flex items-center text-blue-900 mb-3">
-                                <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                            <h3 class="flex items-center text-blue-900 mb-3 font-semibold">
+                                <svg class="w-5 h-5 mr-2 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                                     <path fill-rule="evenodd" d="M10.293 15.707a1 1 0 010-1.414L14.586 10l-4.293-4.293a1 1 0 111.414-1.414l5 5a1 1 0 010 1.414l-5 5a1 1 0 01-1.414 0z" clip-rule="evenodd" />
                                 </svg>
-                                Getting There
+                                Directions
                             </h3>
-                            <p class="text-blue-900 mb-0">{{ $trail->directions }}</p>
+                            <div class="text-blue-900 rich-content">{!! $trail->directions !!}</div>
                         </div>
                         @endif
 
                         @if($trail->parking_info)
                         <div class="bg-green-50 border-l-4 border-green-500 p-6 rounded-r-lg mb-6">
-                            <h3 class="flex items-center text-green-900 mb-3">
-                                <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                            <h3 class="flex items-center text-green-900 mb-3 font-semibold">
+                                <svg class="w-5 h-5 mr-2 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                                     <path d="M8 16.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zM15 16.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0z"/>
                                     <path d="M3 4a1 1 0 00-1 1v10a1 1 0 001 1h1.05a2.5 2.5 0 014.9 0H10a1 1 0 001-1V5a1 1 0 00-1-1H3zM14 7a1 1 0 00-1 1v6.05A2.5 2.5 0 0115.95 16H17a1 1 0 001-1V8a1 1 0 00-1-1h-3z"/>
                                 </svg>
                                 Parking
                             </h3>
-                            <p class="text-green-900 mb-0">{{ $trail->parking_info }}</p>
+                            <div class="text-green-900 rich-content">{!! $trail->parking_info !!}</div>
                         </div>
                         @endif
 
                         @if($trail->safety_notes)
                         <div class="bg-red-50 border-l-4 border-red-500 p-6 rounded-r-lg mb-6">
-                            <h3 class="flex items-center text-red-900 mb-3">
-                                <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                            <h3 class="flex items-center text-red-900 mb-3 font-semibold">
+                                <svg class="w-5 h-5 mr-2 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                                     <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
                                 </svg>
                                 Safety & Preparation
                             </h3>
-                            <p class="text-red-900 mb-0">{{ $trail->safety_notes }}</p>
+                            <div class="text-red-900 rich-content">{!! $trail->safety_notes !!}</div>
                         </div>
                         @endif
                     </div>
                 </div>
-                
+
+                <!-- Seasonal Info Tab -->
+                @if($trail->seasonalData && $trail->seasonalData->count() > 0)
+                <div id="seasons-tab" class="tab-content">
+                    <h2 class="text-2xl font-bold text-forest-700 mb-6">Seasonal Conditions</h2>
+                    @php
+                        $seasonConfig = [
+                            'spring' => ['emoji' => '🌱', 'label' => 'Spring', 'bg' => 'bg-green-50', 'border' => 'border-green-300', 'head' => 'bg-green-100', 'text' => 'text-green-800'],
+                            'summer' => ['emoji' => '☀️', 'label' => 'Summer', 'bg' => 'bg-amber-50', 'border' => 'border-amber-300', 'head' => 'bg-amber-100', 'text' => 'text-amber-800'],
+                            'fall'   => ['emoji' => '🍂', 'label' => 'Fall',   'bg' => 'bg-orange-50', 'border' => 'border-orange-300', 'head' => 'bg-orange-100', 'text' => 'text-orange-800'],
+                            'winter' => ['emoji' => '❄️', 'label' => 'Winter', 'bg' => 'bg-blue-50', 'border' => 'border-blue-300', 'head' => 'bg-blue-100', 'text' => 'text-blue-800'],
+                        ];
+                    @endphp
+                    <div class="grid grid-cols-1 gap-5">
+                        @foreach($trail->seasonalData->sortBy(fn($s) => array_search($s->season, ['spring','summer','fall','winter'])) as $season)
+                        @php $cfg = $seasonConfig[$season->season] ?? $seasonConfig['summer']; @endphp
+                        <div class="rounded-xl border-2 {{ $cfg['border'] }} {{ $cfg['bg'] }} overflow-hidden">
+                            <!-- Season Header -->
+                            <div class="{{ $cfg['head'] }} px-5 py-3 flex items-center justify-between">
+                                <div class="flex items-center gap-2">
+                                    <span class="text-2xl">{{ $cfg['emoji'] }}</span>
+                                    <h3 class="text-lg font-bold {{ $cfg['text'] }}">{{ $cfg['label'] }}</h3>
+                                </div>
+                                @if($season->recommended)
+                                    <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                                        <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+                                        Recommended
+                                    </span>
+                                @else
+                                    <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-600 border border-gray-300">
+                                        Not Recommended
+                                    </span>
+                                @endif
+                            </div>
+                            <!-- Season Details -->
+                            <div class="px-5 py-4 space-y-3">
+                                @if($season->trail_conditions)
+                                <div>
+                                    <div class="text-xs font-semibold uppercase tracking-wide {{ $cfg['text'] }} mb-1">Trail Conditions</div>
+                                    <p class="text-sm text-gray-700 leading-relaxed">{{ $season->trail_conditions }}</p>
+                                </div>
+                                @endif
+                                @if($season->seasonal_notes)
+                                <div>
+                                    <div class="text-xs font-semibold uppercase tracking-wide {{ $cfg['text'] }} mb-1">Notes</div>
+                                    <p class="text-sm text-gray-700 leading-relaxed">{{ $season->seasonal_notes }}</p>
+                                </div>
+                                @endif
+                                @if($season->seasonal_features)
+                                <div>
+                                    <div class="text-xs font-semibold uppercase tracking-wide {{ $cfg['text'] }} mb-1">Highlights</div>
+                                    <p class="text-sm text-gray-700 leading-relaxed">{{ $season->seasonal_features }}</p>
+                                </div>
+                                @endif
+                                @if($season->accessibility_changes)
+                                <div class="pt-2 border-t border-gray-200">
+                                    <div class="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-1">Accessibility</div>
+                                    <p class="text-sm text-gray-600 leading-relaxed">{{ $season->accessibility_changes }}</p>
+                                </div>
+                                @endif
+                            </div>
+                        </div>
+                        @endforeach
+                    </div>
+                </div>
+                @endif
+
             </div>
             
             <!-- Sidebar -->
@@ -1018,14 +1120,14 @@
                                 </div>
 
                                 @if($trail->best_fishing_time)
-                                <div class="bg-indigo-50 border border-indigo-200 rounded-lg p-3">
-                                    <div class="flex items-center gap-1.5 mb-1">
-                                        <svg class="w-3.5 h-3.5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <div class="col-span-2 bg-indigo-50 border border-indigo-200 rounded-lg p-3">
+                                    <div class="flex items-center gap-1.5 mb-1.5">
+                                        <svg class="w-3.5 h-3.5 text-indigo-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
                                         </svg>
-                                        <span class="text-xs font-semibold text-indigo-700 uppercase tracking-wide">Best Time</span>
+                                        <span class="text-xs font-semibold text-indigo-700 uppercase tracking-wide">Best Time to Fish</span>
                                     </div>
-                                    <div class="text-sm font-bold text-gray-900 capitalize">{{ $trail->best_fishing_time }}</div>
+                                    <div class="text-sm text-gray-700 leading-relaxed">{{ $trail->best_fishing_time }}</div>
                                 </div>
                                 @endif
                             </div>
