@@ -132,7 +132,7 @@
                         <div class="quill-editor @error('description') border-red-300 @enderror">
                             <div id="quill-description"></div>
                         </div>
-                        <textarea id="description-input" name="description" class="hidden" required>{{ old('description') }}</textarea>
+                        <textarea id="description-input" name="description" class="hidden">{{ old('description') }}</textarea>
                         @error('description')
                             <p class="text-sm text-red-500">{{ $message }}</p>
                         @enderror
@@ -492,7 +492,7 @@
                             </svg>
                         </button>
                         
-                        <button type="button" class="trail-tab" data-tab="gpx" title="Import GPX" style="display:none">
+                        <button type="button" class="trail-tab" data-tab="gpx" title="Import GPX">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
                             </svg>
@@ -640,8 +640,8 @@
                             </div>
                         </div>
                         
-                        <!-- TAB 3: GPX Import (disabled) -->
-                        <div class="tab-content hidden" id="tab-gpx">
+                        <!-- TAB 3: GPX Import -->
+                        <div class="tab-content" id="tab-gpx">
                             <div class="p-6 space-y-4">
                                 <h4 class="font-medium">Import from GPX</h4>
                                 <p class="text-xs text-muted-foreground">Upload a GPX file to automatically create the trail route</p>
@@ -4076,17 +4076,31 @@
                 q.root.innerHTML = textarea.value;
             }
 
+            // Sync textarea on every change so submit always has the latest value
+            q.on('text-change', function() {
+                const html = q.root.innerHTML;
+                textarea.value = (html === '<p><br></p>') ? '' : html;
+            });
+
             quillInstances[field] = q;
         });
     }
 
     function syncQuillToInputs() {
         quillFields.forEach(field => {
-            const q = quillInstances[field];
             const textarea = document.getElementById(`${field}-input`);
-            if (q && textarea) {
+            if (!textarea) { return; }
+            const q = quillInstances[field];
+            if (q) {
                 const html = q.root.innerHTML;
                 textarea.value = (html === '<p><br></p>') ? '' : html;
+            } else {
+                // Fallback: read directly from the Quill editor DOM if instance not found
+                const editorEl = document.querySelector(`#quill-${field} .ql-editor`);
+                if (editorEl) {
+                    const html = editorEl.innerHTML;
+                    textarea.value = (html === '<p><br></p>') ? '' : html;
+                }
             }
         });
     }
@@ -4303,7 +4317,7 @@
                         message: 'Elevation gain is 0 meters. This is unusual for most trails.\n\nDo you want to continue anyway?',
                         buttons: [
                             { label: 'Cancel', variant: 'secondary', action: 'cancel', handler: () => { elevationVal.focus(); } },
-                            { label: 'Continue Anyway', variant: 'primary', action: 'continue', handler: () => { form.submit(); } }
+                            { label: 'Continue Anyway', variant: 'primary', action: 'continue', handler: () => { syncQuillToInputs(); form.submit(); } }
                         ]
                     });
                     return false;

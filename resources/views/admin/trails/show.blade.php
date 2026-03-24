@@ -79,7 +79,7 @@
                 <div class="p-6">
                     <h3 class="text-lg font-semibold mb-4">Description</h3>
                     @if($trail->description)
-                        <p class="text-muted-foreground leading-relaxed">{{ $trail->description }}</p>
+                        <div class="text-muted-foreground leading-relaxed prose prose-sm max-w-none">{!! $trail->description !!}</div>
                     @else
                         <div class="text-center py-8 text-muted-foreground">
                             <svg class="w-12 h-12 mx-auto mb-3 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -106,7 +106,7 @@
                                 </svg>
                                 Directions
                             </h4>
-                            <p class="text-muted-foreground">{{ $trail->directions }}</p>
+                            <div class="text-muted-foreground prose prose-sm max-w-none">{!! $trail->directions !!}</div>
                         </div>
                         @endif
 
@@ -119,7 +119,7 @@
                                 </svg>
                                 Parking
                             </h4>
-                            <p class="text-muted-foreground">{{ $trail->parking_info }}</p>
+                            <div class="text-muted-foreground prose prose-sm max-w-none">{!! $trail->parking_info !!}</div>
                         </div>
                         @endif
 
@@ -131,7 +131,7 @@
                                 </svg>
                                 Safety Notes
                             </h4>
-                            <p class="text-muted-foreground">{{ $trail->safety_notes }}</p>
+                            <div class="text-muted-foreground prose prose-sm max-w-none">{!! $trail->safety_notes !!}</div>
                         </div>
                         @endif
                     </div>

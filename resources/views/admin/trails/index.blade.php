@@ -10,7 +10,7 @@
         <div class="space-y-1">
             <h2 class="text-2xl font-semibold tracking-tight">Trails</h2>
             <p class="text-sm text-muted-foreground">
-                Manage and organize your hiking trails
+                Manage and organize your hiking trails and fishing lakes
             </p>
         </div>
         <a href="{{ route('admin.trails.create') }}" 
@@ -44,9 +44,21 @@
                 
                 <div class="grid gap-2 min-w-[160px]">
                     <label class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                        Type
+                    </label>
+                    <select name="location_type"
+                            class="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50">
+                        <option value="">All Types</option>
+                        <option value="trail" {{ request('location_type') === 'trail' ? 'selected' : '' }}>🥾 Hiking Trail</option>
+                        <option value="fishing_lake" {{ request('location_type') === 'fishing_lake' ? 'selected' : '' }}>🐟 Fishing Lake</option>
+                    </select>
+                </div>
+
+                <div class="grid gap-2 min-w-[160px]">
+                    <label class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
                         Status
                     </label>
-                    <select name="status" 
+                    <select name="status"
                             class="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50">
                         <option value="">All Status</option>
                         <option value="active" {{ request('status') === 'active' ? 'selected' : '' }}>Active</option>
@@ -54,14 +66,14 @@
                         <option value="seasonal" {{ request('status') === 'seasonal' ? 'selected' : '' }}>Seasonal</option>
                     </select>
                 </div>
-                
+
                 <div class="flex gap-2">
-                    <button type="submit" 
+                    <button type="submit"
                             class="inline-flex items-center justify-center rounded-md bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2 text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50">
                         Filter
                     </button>
-                    @if(request('search') || request('status'))
-                        <a href="{{ route('admin.trails.index') }}" 
+                    @if(request('search') || request('status') || request('location_type'))
+                        <a href="{{ route('admin.trails.index') }}"
                            class="inline-flex items-center justify-center rounded-md border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2 text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50">
                             Clear
                         </a>
@@ -81,19 +93,13 @@
                             Trail
                         </th>
                         <th class="h-12 px-4 text-left align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0">
-                            Location
+                            Type
                         </th>
                         <th class="h-12 px-4 text-left align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0">
-                            Difficulty
-                        </th>
-                        <th class="h-12 px-4 text-left align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0">
-                            Distance
+                            Details
                         </th>
                         <th class="h-12 px-4 text-left align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0">
                             Status
-                        </th>
-                        <th class="h-12 px-4 text-left align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0">
-                            Photos
                         </th>
                         <th class="h-12 px-4 text-left align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0">
                             Actions
@@ -127,18 +133,36 @@
                             </div>
                         </td>
                         <td class="p-4 align-middle [&:has([role=checkbox])]:pr-0">
-                            <div class="text-sm text-muted-foreground">
-                                {{ $trail->location ?? 'Not specified' }}
-                            </div>
+                            @if($trail->location_type === 'fishing_lake')
+                                <span class="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold bg-blue-100 text-blue-800 border-transparent">
+                                    🐟 Fishing Lake
+                                </span>
+                            @else
+                                <span class="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold bg-green-100 text-green-800 border-transparent">
+                                    🥾 Hiking Trail
+                                </span>
+                            @endif
                         </td>
                         <td class="p-4 align-middle [&:has([role=checkbox])]:pr-0">
-                            <div class="space-y-1">
-                                <div class="font-medium">{{ $trail->difficulty_level }}/5</div>
-                                <div class="text-xs text-muted-foreground">{{ $trail->difficulty_text }}</div>
-                            </div>
-                        </td>
-                        <td class="p-4 align-middle [&:has([role=checkbox])]:pr-0">
-                            <div class="font-medium">{{ $trail->distance_km }} km</div>
+                            @if($trail->location_type === 'fishing_lake')
+                                <div class="space-y-1">
+                                    @if($trail->fish_species && count($trail->fish_species) > 0)
+                                        <div class="text-sm font-medium">{{ count($trail->fish_species) }} species</div>
+                                    @endif
+                                    @if($trail->best_fishing_season)
+                                        <div class="text-xs text-muted-foreground capitalize">Best: {{ $trail->best_fishing_season }}</div>
+                                    @endif
+                                </div>
+                            @else
+                                <div class="space-y-1">
+                                    @if($trail->difficulty_level)
+                                        <div class="font-medium">{{ $trail->difficulty_level }}/5 — {{ $trail->difficulty_text }}</div>
+                                    @endif
+                                    @if($trail->distance_km)
+                                        <div class="text-xs text-muted-foreground">{{ $trail->distance_km }} km</div>
+                                    @endif
+                                </div>
+                            @endif
                         </td>
                         <td class="p-4 align-middle [&:has([role=checkbox])]:pr-0">
                             @php
@@ -152,14 +176,6 @@
                             <div class="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 {{ $config['class'] }}">
                                 <span class="mr-1">{{ $config['icon'] }}</span>
                                 {{ ucfirst($trail->status) }}
-                            </div>
-                        </td>
-                        <td class="p-4 align-middle [&:has([role=checkbox])]:pr-0">
-                            <div class="flex items-center gap-1">
-                                <svg class="h-4 w-4 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
-                                </svg>
-                                <span class="text-sm">{{ $trail->media->count() }}</span>
                             </div>
                         </td>
                         <td class="p-4 align-middle [&:has([role=checkbox])]:pr-0">
@@ -218,7 +234,7 @@
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="7" class="p-12 text-center">
+                        <td colspan="5" class="p-12 text-center">
                             <div class="flex flex-col items-center justify-center space-y-4">
                                 <div class="rounded-full bg-muted p-3">
                                     <svg class="h-8 w-8 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">

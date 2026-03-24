@@ -145,7 +145,7 @@
                         <div class="quill-editor @error('description') border-red-300 @enderror">
                             <div id="quill-description"></div>
                         </div>
-                        <textarea id="description-input" name="description" class="hidden" required>{{ old('description', $trail->description) }}</textarea>
+                        <textarea id="description-input" name="description" class="hidden">{{ old('description', $trail->description) }}</textarea>
                         @error('description')
                             <p class="text-sm text-red-500">{{ $message }}</p>
                         @enderror
@@ -491,7 +491,7 @@
                             </svg>
                         </button>
                         
-                        <button type="button" class="trail-tab" data-tab="gpx" title="Import GPX" style="display:none">
+                        <button type="button" class="trail-tab" data-tab="gpx" title="Import GPX">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
                             </svg>
@@ -511,37 +511,18 @@
                         <!-- TAB 1: Trail Controls -->
                         <div class="tab-content active" id="tab-controls">
                             <div class="p-6 space-y-4">
-                                <h4 class="font-medium">Trail Creation Controls</h4>
+                                <h4 class="font-medium">Route Statistics</h4>
 
-                                <!-- Waypoint Toggle Button -->
-                                <button type="button" id="toggle-waypoint-mode" 
-                                        class="w-full inline-flex items-center justify-center rounded-md border-2 border-gray-300 bg-gray-50 text-gray-600 hover:bg-gray-100 h-12 px-4 py-2 text-sm font-semibold transition-all">
-                                    <svg class="mr-2 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122"/>
-                                    </svg>
-                                    <span id="waypoint-mode-text">Start Adding Waypoints</span>
-                                </button>
-                                
-                                <button type="button" id="toggle-routing" 
-                                        class="w-full inline-flex items-center justify-center rounded-md bg-blue-600 text-white hover:bg-blue-700 h-10 px-4 py-2 text-sm font-medium">
-                                    <svg class="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
-                                    </svg>
-                                    Smart Routing: ON
-                                </button>
-                                
-                                <button type="button" id="undo-waypoint" 
-                                        class="w-full inline-flex items-center justify-center rounded-md border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2 text-sm font-medium">
-                                    <svg class="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/>
-                                    </svg>
-                                    Undo Last Point
-                                </button>
+                                <!-- Waypoint controls hidden on edit — only available during creation -->
+                                <div style="display:none">
+                                    <button type="button" id="toggle-waypoint-mode"><span id="waypoint-mode-text">Start Adding Waypoints</span></button>
+                                    <button type="button" id="toggle-routing">Smart Routing: ON</button>
+                                    <button type="button" id="undo-waypoint">Undo Last Point</button>
+                                </div>
                                 
                                 <!-- Route Statistics Section -->
-                                <div class="border-t pt-6 mt-6 space-y-4">
-                                    <h4 class="font-medium">Route Statistics</h4>
-                                    <p class="text-xs text-muted-foreground">These values update automatically when you edit waypoints</p>
+                                <div class="space-y-4">
+                                    <p class="text-xs text-muted-foreground">Import a new GPX file above to update these values</p>
                                     
                                     <div class="grid grid-cols-2 gap-3">
                                         <div class="rounded-lg bg-blue-50 border border-blue-200 p-3 space-y-1">
@@ -638,8 +619,8 @@
                             </div>
                         </div>
                         
-                        <!-- TAB 3: GPX Import (disabled) -->
-                        <div class="tab-content hidden" id="tab-gpx">
+                        <!-- TAB 3: GPX Import -->
+                        <div class="tab-content" id="tab-gpx">
                             <div class="p-6 space-y-4">
                                 <h4 class="font-medium">Import from GPX</h4>
                                 <p class="text-xs text-muted-foreground">Upload a GPX file to automatically create the trail route</p>
@@ -4735,6 +4716,12 @@
                 q.root.innerHTML = textarea.value;
             }
 
+            // Sync textarea on every change so submit always has the latest value
+            q.on('text-change', function() {
+                const html = q.root.innerHTML;
+                textarea.value = (html === '<p><br></p>') ? '' : html;
+            });
+
             quillInstances[field] = q;
         });
     }
@@ -4765,15 +4752,33 @@
             const existingRoute = @json($trail->route_coordinates);
 
             if (existingRoute && existingRoute.length > 1) {
-                // Display the route on the map
-                window.trailBuilder.displayGPXRoute(existingRoute);
-                
-                // Create waypoints from the route
-                window.trailBuilder.createWaypointsFromGPX(existingRoute);
-                
-                // Fit map to route bounds
-                const bounds = L.latLngBounds(existingRoute);
-                window.trailBuilder.map.fitBounds(bounds, { padding: [50, 50] });
+                const tb = window.trailBuilder;
+
+                // Draw the route as a polyline (no per-point markers — avoids freezing on large GPX)
+                tb.displayGPXRoute(existingRoute);
+
+                // Create only start and end waypoints for editing
+                const startCoord = existingRoute[0];
+                const endCoord = existingRoute[existingRoute.length - 1];
+                [startCoord, endCoord].forEach((coord, i) => {
+                    const waypoint = { lat: coord[0], lng: coord[1], id: Date.now() + i };
+                    tb.waypoints.push(waypoint);
+                    const marker = L.marker([coord[0], coord[1]], {
+                        icon: tb.createWaypointIcon(i + 1),
+                        draggable: true
+                    }).addTo(tb.routeLayer);
+                    marker.waypointId = waypoint.id;
+                    marker.on('dragend', (e) => tb.updateWaypoint(waypoint.id, e.target.getLatLng()));
+                });
+
+                // Update waypoint count display
+                const countEl = document.getElementById('waypoint-count-display');
+                if (countEl) { countEl.textContent = tb.waypoints.length; }
+
+                // Fit map to route
+                tb.map.fitBounds(L.latLngBounds(existingRoute), { padding: [50, 50] });
+
+                tb.loadExistingStats();
             }
         @endif
 

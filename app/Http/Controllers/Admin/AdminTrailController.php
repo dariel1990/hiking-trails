@@ -38,6 +38,10 @@ class AdminTrailController extends Controller
             $query->where('status', $request->status);
         }
 
+        if ($request->location_type) {
+            $query->where('location_type', $request->location_type);
+        }
+
         $trails = $query->latest()->paginate(15);
 
         return view('admin.trails.index', compact('trails'));
