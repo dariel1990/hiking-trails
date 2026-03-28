@@ -2987,28 +2987,41 @@
         }
 
         createWaypointsFromGPX(coordinates) {
-            // Create a waypoint for EVERY coordinate point
-            coordinates.forEach((coord, i) => {
-                const waypoint = { 
-                    lat: coord[0], 
-                    lng: coord[1], 
-                    id: Date.now() + i 
-                };
+            // Sample waypoints from the GPX track (max 20 waypoints)
+            const sampleRate = Math.max(1, Math.floor(coordinates.length / 20));
+
+            for (let i = 0; i < coordinates.length; i += sampleRate) {
+                const coord = coordinates[i];
+                const waypoint = { lat: coord[0], lng: coord[1], id: Date.now() + i };
                 this.waypoints.push(waypoint);
-                
-                // Add DRAGGABLE waypoint marker with proper event handler
+
                 const marker = L.marker([coord[0], coord[1]], {
                     icon: this.createWaypointIcon(this.waypoints.length),
                     draggable: true
                 }).addTo(this.routeLayer);
-                
+
                 marker.waypointId = waypoint.id;
-                
-                // Add drag event handler
                 marker.on('dragend', (e) => {
                     this.updateWaypoint(waypoint.id, e.target.getLatLng());
                 });
-            });
+            }
+
+            // Always include the last point
+            if (coordinates.length > 1) {
+                const lastCoord = coordinates[coordinates.length - 1];
+                const lastWaypoint = { lat: lastCoord[0], lng: lastCoord[1], id: Date.now() + coordinates.length };
+                this.waypoints.push(lastWaypoint);
+
+                const marker = L.marker([lastCoord[0], lastCoord[1]], {
+                    icon: this.createWaypointIcon(this.waypoints.length),
+                    draggable: true
+                }).addTo(this.routeLayer);
+
+                marker.waypointId = lastWaypoint.id;
+                marker.on('dragend', (e) => {
+                    this.updateWaypoint(lastWaypoint.id, e.target.getLatLng());
+                });
+            }
         }
 
         displayGPXRoute(coordinates) {

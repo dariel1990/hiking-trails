@@ -42,7 +42,6 @@
 
 <!-- Leaflet CSS -->
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-<script src="https://cdn.jsdelivr.net/npm/leaflet-textpath@1.2.3/leaflet.textpath.min.js"></script>
 
 <style>
     #network-map {
@@ -204,6 +203,24 @@
 
     .facility-popup .leaflet-popup-content {
         margin: 0;
+    }
+
+    /* Trail center dot (replaces circleMarker for reliable clicking) */
+    .trail-center-dot {
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        border: 3px solid white;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.35);
+        cursor: pointer;
+        transition: transform 0.15s ease, box-shadow 0.15s ease;
+        /* transparent padding expands click area without affecting visuals */
+        outline: 8px solid transparent;
+    }
+
+    .trail-center-dot:hover {
+        transform: scale(1.25);
+        box-shadow: 0 4px 14px rgba(0,0,0,0.45);
     }
 
     /* Waypoint markers */
@@ -1107,10 +1124,10 @@ trails.forEach(trail => {
     // Create trail route with white outline
     const whiteOutline = L.polyline(trail.route_coordinates, {
         color: 'white',
-        weight: 7,
-        opacity: 1,
+        weight: 12,
+        opacity: 0,
         className: `trail-outline-${trail.id}`,
-        interactive: false
+        interactive: true
     }).addTo(map);
 
     const route = L.polyline(trail.route_coordinates, {
@@ -1211,14 +1228,16 @@ trails.forEach(trail => {
     const midPoint = Math.floor(trail.route_coordinates.length / 2);
     const iconPosition = trail.route_coordinates[midPoint];
 
-    const trailIcon = L.circleMarker(iconPosition, {
-        radius: 8,
-        fillColor: color,
-        color: 'white',
-        weight: 3,
-        opacity: 1,
-        fillOpacity: 1,
-        zIndexOffset: 100
+    const trailIcon = L.marker(iconPosition, {
+        icon: L.divIcon({
+            className: '',
+            html: `<div class="trail-center-dot" style="background:${color};" data-trail-id="${trail.id}"></div>`,
+            iconSize: [28, 28],
+            iconAnchor: [14, 14],
+            tooltipAnchor: [0, -14]
+        }),
+        zIndexOffset: 500,
+        interactive: true
     }).addTo(map);
 
     // Make the icon clickable
@@ -1232,7 +1251,7 @@ trails.forEach(trail => {
         permanent: false,
         direction: 'top',
         className: 'trail-icon-tooltip',
-        offset: [0, -10]
+        offset: [0, -14]
     });
 
     // Store the icon reference with the trail layers
@@ -1253,6 +1272,26 @@ if (trails.length > 0 && trails.some(t => t.route_coordinates && t.route_coordin
     }
 }
 
+// Scale hit-area polyline weight with zoom so paths are always easy to click
+function getHitWeight(zoom) {
+    if (zoom >= 16) return 14;
+    if (zoom >= 14) return 18;
+    if (zoom >= 12) return 24;
+    return 30;
+}
+
+map.on('zoomend', function() {
+    const w = getHitWeight(map.getZoom());
+    Object.values(trailLayers).forEach(function(layers) {
+        if (layers && layers.outline) {
+            // Only update weight if not currently highlighted (selected trail shows yellow)
+            if (layers.outline.options.opacity === 0) {
+                layers.outline.setStyle({ weight: w });
+            }
+        }
+    });
+});
+
 // Focus on trail when clicked in sidebar
 window.focusTrail = function(trailId) {
     // Close sidebar on mobile when trail is clicked
@@ -1270,15 +1309,19 @@ window.focusTrail = function(trailId) {
         const prevLayers = trailLayers[selectedTrailId];
         if (prevLayers) {
             // Reset route to original size
-            prevLayers.route.setStyle({ 
+            prevLayers.route.setStyle({
                 weight: 3
             });
-            
-            // Reset outline to white with normal size
+
+            // Hide the outline again (restore as invisible hit area)
             prevLayers.outline.setStyle({
                 color: 'white',
-                weight: 7
+                weight: getHitWeight(map.getZoom()),
+                opacity: 0
             });
+            if (prevLayers.icon) {
+                prevLayers.icon.setZIndexOffset(500);
+            }
         }
         
         // Reset waypoint opacity
@@ -1293,19 +1336,23 @@ window.focusTrail = function(trailId) {
     const layers = trailLayers[trailId];
     if (layers) {
         // Make the route slightly thicker
-        layers.route.setStyle({ 
+        layers.route.setStyle({
             weight: 3
         });
-        
+
         // Change outline to yellow and make it thicker
         layers.outline.setStyle({
             color: '#f3fd44', // Yellow
-            weight: 15  // Thicker yellow stroke
+            weight: 15,
+            opacity: 1
         });
-        
-        // Bring layers to front
+
+        // Bring layers to front, icon last so it stays on top
         layers.outline.bringToFront();
         layers.route.bringToFront();
+        if (layers.icon) {
+            layers.icon.setZIndexOffset(1000);
+        }
         
         // Highlight all waypoints
         if (trailWaypoints[trailId]) {

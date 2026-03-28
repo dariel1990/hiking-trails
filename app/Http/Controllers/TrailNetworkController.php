@@ -2,10 +2,9 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\TrailNetwork;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
 use App\Models\TrailFeature;
+use App\Models\TrailNetwork;
+use Illuminate\Support\Facades\Storage;
 
 class TrailNetworkController extends Controller
 {
@@ -17,7 +16,7 @@ class TrailNetworkController extends Controller
         $networks = TrailNetwork::withCount('trails')
             ->orderBy('network_name')
             ->get();
-        
+
         return view('trail-networks.index', compact('networks'));
     }
 
@@ -27,71 +26,71 @@ class TrailNetworkController extends Controller
     public function show($slug)
     {
         $network = TrailNetwork::where('slug', $slug)
-            ->with(['trails' => function($query) {
+            ->with(['trails' => function ($query) {
                 $query->select('id', 'trail_network_id', 'name', 'description', 'difficulty_level', 'distance_km', 'elevation_gain_m', 'estimated_time_hours', 'trail_type', 'route_coordinates', 'status')
-                    ->with(['trailMedia' => function($q) {
+                    ->with(['trailMedia' => function ($q) {
                         $q->where('media_type', 'photo')
-                            ->where(function($q2) {
+                            ->where(function ($q2) {
                                 $q2->where('is_featured', true)
-                                ->orWhereRaw('id IN (SELECT MIN(id) FROM trail_media WHERE trail_id = trail_media.trail_id AND media_type = "photo")');
+                                    ->orWhereRaw('id IN (SELECT MIN(id) FROM trail_media WHERE trail_id = trail_media.trail_id AND media_type = "photo")');
                             })
                             ->orderBy('is_featured', 'desc')
                             ->limit(1);
-                    },  'features.media' ])
-                    ->where(function($q) {
+                    },  'features.media'])
+                    ->where(function ($q) {
                         $q->where('status', 'active')
                             ->orWhere('status', 'seasonal');
                     });
             }])
             ->firstOrFail();
-        
+
         // Add preview_photo and photos to each trail
-        $network->trails->each(function($trail) {
+        $network->trails->each(function ($trail) {
             $media = $trail->trailMedia->first();
-            
+
             if ($media) {
                 // Build full URL for the image
-                $trail->preview_photo = asset('storage/' . $media->storage_path);
+                $trail->preview_photo = asset('storage/'.$media->storage_path);
             } else {
                 $trail->preview_photo = null;
             }
-            
+
             // Also add photos array for compatibility
-            $trail->photos = $trail->trailMedia->map(function($media) {
+            $trail->photos = $trail->trailMedia->map(function ($media) {
                 return [
-                    'url' => asset('storage/' . $media->storage_path),
-                    'caption' => $media->caption
+                    'url' => asset('storage/'.$media->storage_path),
+                    'caption' => $media->caption,
                 ];
             })->toArray();
 
             // Format features/highlights data
             if ($trail->features) {
-                $trail->features->each(function($feature) {
+                $trail->features->each(function ($feature) {
                     // Normalize coordinates
                     if (is_array($feature->coordinates) && count($feature->coordinates) >= 2) {
                         $feature->coordinates = [
                             (float) $feature->coordinates[0],
-                            (float) $feature->coordinates[1]
+                            (float) $feature->coordinates[1],
                         ];
                     }
-                    
+
                     // Format media for each feature
                     if ($feature->media) {
-                        $feature->media->each(function($media) {
+                        $feature->media->each(function ($media) {
                             if ($media->media_type === 'photo') {
-                                $media->url = asset('storage/' . $media->storage_path);
+                                $media->url = asset('storage/'.$media->storage_path);
                             } elseif ($media->media_type === 'video_url') {
                                 $media->url = $media->video_url;
                             } elseif ($media->media_type === 'video') {
-                                $media->url = asset('storage/' . $media->storage_path);
-                                $media->video_url = asset('storage/' . $media->storage_path);
+                                $media->url = asset('storage/'.$media->storage_path);
+                                $media->video_url = asset('storage/'.$media->storage_path);
                             }
                         });
                     }
                 });
             }
         });
-        
+
         return view('trail-networks.show', compact('network'));
     }
 
@@ -99,24 +98,26 @@ class TrailNetworkController extends Controller
     {
         $highlights = TrailFeature::with(['media', 'trail:id,name'])
             ->get()
-            ->map(function($feature) {
-                // Normalize coordinates
+            ->map(function ($feature) {
+                // Normalize coordinates — stored as {lat,lng} object or [lat,lng] array
                 $coordinates = null;
-                if (is_array($feature->coordinates) && count($feature->coordinates) >= 2) {
-                    $coordinates = [
-                        (float) $feature->coordinates[0],
-                        (float) $feature->coordinates[1]
-                    ];
+                $raw = $feature->coordinates;
+                if (is_array($raw)) {
+                    if (isset($raw['lat'], $raw['lng'])) {
+                        $coordinates = [(float) $raw['lat'], (float) $raw['lng']];
+                    } elseif (isset($raw[0], $raw[1])) {
+                        $coordinates = [(float) $raw[0], (float) $raw[1]];
+                    }
                 }
-                
+
                 // Format media
-                $media = $feature->media->map(function($m) {
+                $media = $feature->media->map(function ($m) {
                     $mediaData = [
                         'id' => $m->id,
                         'media_type' => $m->media_type,
                         'caption' => $m->caption,
                     ];
-                    
+
                     if ($m->media_type === 'photo') {
                         $mediaData['url'] = Storage::url($m->storage_path);
                     } elseif ($m->media_type === 'video_url') {
@@ -126,10 +127,10 @@ class TrailNetworkController extends Controller
                         $mediaData['url'] = Storage::url($m->storage_path);
                         $mediaData['video_url'] = Storage::url($m->storage_path);
                     }
-                    
+
                     return $mediaData;
                 });
-                
+
                 return [
                     'id' => $feature->id,
                     'name' => $feature->name,
@@ -142,11 +143,11 @@ class TrailNetworkController extends Controller
                     'media' => $media,
                     'trail' => [
                         'id' => $feature->trail->id,
-                        'name' => $feature->trail->name
-                    ]
+                        'name' => $feature->trail->name,
+                    ],
                 ];
             });
-        
+
         return response()->json($highlights);
     }
 }
