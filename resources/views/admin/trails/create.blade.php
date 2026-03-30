@@ -650,7 +650,11 @@
                                     class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
                                 
                                 <input type="hidden" id="use_gpx_calculations" name="use_gpx_calculations" value="0">
-                                
+
+                                <div id="out-and-back-notice" class="hidden rounded-lg border border-amber-200 bg-amber-50 p-3 mt-3">
+                                    <p class="text-xs text-amber-800 font-medium">⟲ Out-and-back trail detected — showing outbound route only. Distance reflects the full round-trip.</p>
+                                </div>
+
                                 <div class="rounded-lg border border-blue-200 bg-blue-50 p-4 space-y-2 mt-4">
                                     <h5 class="font-medium text-blue-800 text-sm">📍 GPX File Info</h5>
                                     <ul class="text-xs text-blue-700 space-y-1">
@@ -2488,101 +2492,241 @@
             return duplicates;
         }
 
-        createWaypointsFromGPX(coordinates) {
-            // Sample waypoints from the GPX track (take every 10th point or so)
-            const sampleRate = Math.max(1, Math.floor(coordinates.length / 20)); // Max 20 waypoints
-            
-            for (let i = 0; i < coordinates.length; i += sampleRate) {
-                const coord = coordinates[i];
-                const waypoint = { lat: coord[0], lng: coord[1], id: Date.now() + i };
+        /**
+         * Ramer-Douglas-Peucker simplification (client-side).
+         * Reduces thousands of raw GPX points to a manageable set while
+         * preserving all geometrically significant corners and direction changes.
+         */
+        rdpSimplify(points, epsilon) {
+            if (points.length < 3) return points;
+
+            let maxDist = 0, maxIndex = 0;
+            const start = points[0], end = points[points.length - 1];
+
+            for (let i = 1; i < points.length - 1; i++) {
+                const dist = this._perpendicularDist(points[i], start, end);
+                if (dist > maxDist) { maxDist = dist; maxIndex = i; }
+            }
+
+            if (maxDist > epsilon) {
+                const left  = this.rdpSimplify(points.slice(0, maxIndex + 1), epsilon);
+                const right = this.rdpSimplify(points.slice(maxIndex), epsilon);
+                return [...left.slice(0, -1), ...right];
+            }
+
+            return [start, end];
+        }
+
+        _perpendicularDist(pt, a, b) {
+            const dx = b[1] - a[1], dy = b[0] - a[0];
+            if (dx === 0 && dy === 0) {
+                return Math.sqrt((pt[1]-a[1])**2 + (pt[0]-a[0])**2);
+            }
+            const t = Math.max(0, Math.min(1,
+                ((pt[1]-a[1])*dx + (pt[0]-a[0])*dy) / (dx*dx + dy*dy)
+            ));
+            return Math.sqrt((pt[1]-(a[1]+t*dx))**2 + (pt[0]-(a[0]+t*dy))**2);
+        }
+
+        /**
+         * Auto-tune RDP epsilon until we're at or below targetCount points.
+         */
+        simplifyCoordinates(coordinates, targetCount = 500) {
+            if (coordinates.length <= targetCount) return coordinates;
+            let epsilon = 0.00001;
+            let result = this.rdpSimplify(coordinates, epsilon);
+            while (result.length > targetCount && epsilon < 1.0) {
+                epsilon *= 1.5;
+                result = this.rdpSimplify(coordinates, epsilon);
+            }
+            return result;
+        }
+
+        /**
+         * Remove repeated passes through the same ~80m grid cell.
+         * Eliminates circling/looping artifacts from Strava recordings.
+         */
+        removeLoopingSegments(coordinates, cellMetres = 80) {
+            if (coordinates.length < 10) return coordinates;
+            const cellDeg = cellMetres / 111000;
+            const getCell = pt => `${Math.round(pt[0]/cellDeg)},${Math.round(pt[1]/cellDeg)}`;
+
+            const result = [coordinates[0]];
+            const cellVisits = {};
+            let lastCell = getCell(coordinates[0]);
+            cellVisits[lastCell] = 1;
+
+            for (let i = 1; i < coordinates.length; i++) {
+                const pt = coordinates[i];
+                const cell = getCell(pt);
+                if (cell !== lastCell) {
+                    const visits = cellVisits[cell] || 0;
+                    if (visits < 2) {
+                        result.push(pt);
+                        cellVisits[cell] = visits + 1;
+                        lastCell = cell;
+                    }
+                }
+            }
+
+            const last = coordinates[coordinates.length - 1];
+            if (result[result.length - 1] !== last) result.push(last);
+            return result;
+        }
+
+        /**
+         * Detect out-and-back trails using three conditions:
+         *   1. End within 150 m of start
+         *   2. Middle section (30–70%) spread ≥ 150 m (excludes ski/circling)
+         *   3. Return path avg retrace < 120 m (reuses outbound path, unlike loops)
+         */
+        detectOutAndBack(coordinates) {
+            if (coordinates.length < 10) return false;
+            const start = coordinates[0];
+            const end   = coordinates[coordinates.length - 1];
+            if (this._haversineMetres(start, end) >= 150) return false;
+
+            // Middle spread check: excludes tight circling/ski patterns
+            const n = coordinates.length;
+            const middle = coordinates.slice(Math.floor(n*0.3), Math.floor(n*0.7));
+            const cx = middle.reduce((s,p) => s+p[0], 0) / middle.length;
+            const cy = middle.reduce((s,p) => s+p[1], 0) / middle.length;
+            const avgSpread = middle.reduce((s,p) => s + this._haversineMetres([cx,cy], p), 0) / middle.length;
+            if (avgSpread < 150) return false;
+
+            // Retrace check: second half must closely follow the first half
+            const halfIdx = Math.floor(n / 2);
+            const firstHalf  = coordinates.slice(0, halfIdx);
+            const secondHalf = coordinates.slice(halfIdx);
+
+            const sampleSize = 60;
+            const step1 = Math.max(1, Math.floor(firstHalf.length / sampleSize));
+            const step2 = Math.max(1, Math.floor(secondHalf.length / sampleSize));
+
+            const sampledFirst = [];
+            for (let i = 0; i < firstHalf.length; i += step1) sampledFirst.push(firstHalf[i]);
+
+            let totalRetrace = 0, retraceCount = 0;
+            for (let i = 0; i < secondHalf.length; i += step2) {
+                const pt = secondHalf[i];
+                let minDist = Infinity;
+                for (const fp of sampledFirst) {
+                    const d = this._haversineMetres(pt, fp);
+                    if (d < minDist) minDist = d;
+                }
+                totalRetrace += minDist;
+                retraceCount++;
+            }
+
+            if (retraceCount === 0) return false;
+            return (totalRetrace / retraceCount) < 130;
+        }
+
+        /**
+         * Return the outbound half: slice up to the point farthest from start.
+         * Returns { coordinates, turnaroundIndex }.
+         */
+        extractOutboundHalf(coordinates) {
+            const start = coordinates[0];
+            const n = coordinates.length;
+            let maxDist = 0, turnaroundIndex = Math.floor(n / 2);
+            const searchStart = Math.floor(n * 0.2);
+            const searchEnd   = Math.floor(n * 0.8);
+            for (let i = searchStart; i <= searchEnd; i++) {
+                const d = this._haversineMetres(start, coordinates[i]);
+                if (d > maxDist) { maxDist = d; turnaroundIndex = i; }
+            }
+            return {
+                coordinates: coordinates.slice(0, turnaroundIndex + 1),
+                turnaroundIndex,
+            };
+        }
+
+        _haversineMetres(a, b) {
+            const R = 6371000;
+            const dLat = (b[0]-a[0]) * Math.PI/180;
+            const dLon = (b[1]-a[1]) * Math.PI/180;
+            const x = Math.sin(dLat/2)**2 +
+                      Math.cos(a[0]*Math.PI/180) * Math.cos(b[0]*Math.PI/180) *
+                      Math.sin(dLon/2)**2;
+            return R * 2 * Math.atan2(Math.sqrt(x), Math.sqrt(1-x));
+        }
+
+        /**
+         * Place a fixed number of evenly-spaced draggable waypoint markers.
+         * The coordinates passed in should already be the display set
+         * (outbound-only for out-and-back trails).
+         */
+        createWaypointsFromGPX(coordinates, waypointCount = 10) {
+            const total = coordinates.length;
+            if (total === 0) return;
+
+            // Build the key indices: start, evenly-spaced intermediates, end
+            const indices = [0];
+            for (let i = 1; i < waypointCount - 1; i++) {
+                indices.push(Math.round(i * (total - 1) / (waypointCount - 1)));
+            }
+            indices.push(total - 1);
+
+            // Deduplicate in case total < waypointCount
+            const unique = [...new Set(indices)];
+
+            unique.forEach((idx, order) => {
+                const coord = coordinates[idx];
+                const waypoint = { lat: coord[0], lng: coord[1], id: Date.now() + order };
                 this.waypoints.push(waypoint);
-                
-                // Add waypoint marker
+
                 const marker = L.marker([coord[0], coord[1]], {
                     icon: this.createWaypointIcon(this.waypoints.length),
-                    draggable: true
+                    draggable: true,
                 }).addTo(this.routeLayer);
-                
+
                 marker.waypointId = waypoint.id;
                 marker.on('dragend', (e) => {
                     this.updateWaypoint(waypoint.id, e.target.getLatLng());
                 });
-            }
-            
-            // Always include the last point
-            if (coordinates.length > 1) {
-                const lastCoord = coordinates[coordinates.length - 1];
-                const lastWaypoint = { lat: lastCoord[0], lng: lastCoord[1], id: Date.now() + coordinates.length };
-                this.waypoints.push(lastWaypoint);
-                
-                const marker = L.marker([lastCoord[0], lastCoord[1]], {
-                    icon: this.createWaypointIcon(this.waypoints.length),
-                    draggable: true
-                }).addTo(this.routeLayer);
-                
-                marker.waypointId = lastWaypoint.id;
-                marker.on('dragend', (e) => {
-                    this.updateWaypoint(lastWaypoint.id, e.target.getLatLng());
-                });
-            }
+            });
         }
 
         displayGPXRoute(coordinates) {
-            // Display the full GPX route as one segment
             const routeLine = L.polyline(coordinates, {
-                color: '#10B981',  // Green color 
+                color: '#10B981',
                 weight: 4,
-                opacity: 0.8
+                opacity: 0.8,
             }).addTo(this.routeLayer);
-            
-            // Calculate distance
+
             let distance = 0;
             for (let i = 1; i < coordinates.length; i++) {
                 distance += L.latLng(coordinates[i-1]).distanceTo(L.latLng(coordinates[i]));
             }
-            
-            // Store as one large segment
+
             this.routeSegments.push({
                 startId: this.waypoints[0]?.id,
                 endId: this.waypoints[this.waypoints.length - 1]?.id,
                 line: routeLine,
                 coordinates: coordinates,
-                distance: distance
+                distance: distance,
             });
-            
-            // Fit map to route
+
             this.map.fitBounds(routeLine.getBounds(), { padding: [20, 20] });
-            
-            // Update stats
             this.updateStats();
         }
 
-        displayGPXFromBackend(coordinates) {
-            // Method specifically for backend GPX data
-            // Coordinates come from backend in [lat, lng] format
-            
-            if (!coordinates || coordinates.length < 2) {
-                return;
-            }
-            
-            // Create waypoints from coordinates (sample key points)
+        displayGPXFromBackend(coordinates, isOutAndBack = false) {
+            if (!coordinates || coordinates.length < 2) return;
+
             this.createWaypointsFromGPX(coordinates);
-            
-            // Display the full route
             this.displayGPXRoute(coordinates);
-            
-            // Update form inputs
             this.updateFormInputs();
-            
-            // Update map status
+
             const mapStatus = document.getElementById('map-status');
             if (mapStatus) {
-                mapStatus.textContent = `GPX loaded: ${coordinates.length} points`;
-                mapStatus.className = 'text-xs text-green-600';
+                const label = isOutAndBack ? 'Out-and-back detected — showing outbound route' : `GPX loaded: ${coordinates.length} points`;
+                mapStatus.textContent = label;
+                mapStatus.className = isOutAndBack ? 'text-xs text-amber-600 font-medium' : 'text-xs text-green-600';
             }
         }
 
-        // Keep existing GPX import method
         async importGPX(file) {
             if (!file) return;
 
@@ -2590,47 +2734,59 @@
                 const text = await file.text();
                 const parser = new DOMParser();
                 const gpx = parser.parseFromString(text, 'text/xml');
-                
-                // Extract full track (not just waypoints)
+
                 const tracks = gpx.querySelectorAll('trk');
                 if (tracks.length === 0) {
                     alert('No tracks found in GPX file');
                     return;
                 }
 
-                // Clear existing route first
                 this.clearRoute();
-                
-                // Process all track segments
+
                 tracks.forEach(track => {
-                    const segments = track.querySelectorAll('trkseg');
-                    segments.forEach(segment => {
-                        const points = segment.querySelectorAll('trkpt');
-                        const coordinates = [];
-                        
-                        points.forEach(point => {
+                    track.querySelectorAll('trkseg').forEach(segment => {
+                        let rawCoordinates = [];
+                        segment.querySelectorAll('trkpt').forEach(point => {
                             const lat = parseFloat(point.getAttribute('lat'));
                             const lon = parseFloat(point.getAttribute('lon'));
                             if (!isNaN(lat) && !isNaN(lon)) {
-                                coordinates.push([lat, lon]);
+                                rawCoordinates.push([lat, lon]);
                             }
                         });
 
-                        if (coordinates.length > 1) {
-                            // Create waypoints from GPX coordinates (sample key points)
-                            this.createWaypointsFromGPX(coordinates);
-                            
-                            // Display the full route directly
-                            this.displayGPXRoute(coordinates);
+                        if (rawCoordinates.length < 2) return;
+
+                        // Detect on raw coords BEFORE cleanup — circling pattern must be visible
+                        const isOutAndBack = this.detectOutAndBack(rawCoordinates);
+                        // Now clean: remove looping artifacts, then RDP
+                        const deduplicated = this.removeLoopingSegments(rawCoordinates);
+                        const simplified = this.simplifyCoordinates(deduplicated, 500);
+                        let displayCoords = simplified;
+
+                        if (isOutAndBack) {
+                            const outbound = this.extractOutboundHalf(simplified);
+                            displayCoords = outbound.coordinates;
+                            this._showOutAndBackNotice(true);
+                        } else {
+                            this._showOutAndBackNotice(false);
                         }
+
+                        this.createWaypointsFromGPX(displayCoords);
+                        this.displayGPXRoute(displayCoords);
                     });
                 });
 
                 this.updateFormInputs();
-                
+
             } catch (error) {
                 alert('Error importing GPX file. Please check the file format.');
             }
+        }
+
+        _showOutAndBackNotice(show) {
+            let notice = document.getElementById('out-and-back-notice');
+            if (!notice) return;
+            notice.classList.toggle('hidden', !show);
         }
 
         setupHighlightHandlers() {

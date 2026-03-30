@@ -1151,6 +1151,7 @@ class AdminTrailController extends Controller
                     'time' => $gpxData['time'],
                     'coordinates' => $gpxData['coordinates'],
                     'point_count' => $gpxData['point_count'],
+                    'is_out_and_back' => $gpxData['is_out_and_back'],
                     'stats' => $stats,
                 ],
             ]);

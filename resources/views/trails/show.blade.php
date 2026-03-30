@@ -1591,6 +1591,18 @@ document.addEventListener('DOMContentLoaded', function() {
         if (e.key === 'Escape') closeLightbox();
     });
     
+    // Load leaflet-polylinedecorator after Leaflet (Vite bundle) is ready
+    (function loadDecoratorThenMap() {
+        const s = document.createElement('script');
+        s.src = 'https://unpkg.com/leaflet-polylinedecorator@1.6.0/dist/leaflet.polylineDecorator.js';
+        s.onload = initTrailMap;
+        s.onerror = initTrailMap;
+        document.head.appendChild(s);
+    })();
+});
+
+function initTrailMap() {
+
     // Trail Map and 3D Functionality
     const trail = @json($trail);
     let trail3DViewer = null;
@@ -1610,14 +1622,92 @@ document.addEventListener('DOMContentLoaded', function() {
     }).addTo(map);
     
     // Add trail route (only for trails, not fishing lakes)
+    function rdpSimplify(points, epsilon) {
+        if (points.length < 3) return points;
+        let maxDist = 0, maxIndex = 0;
+        const start = points[0], end = points[points.length - 1];
+        for (let i = 1; i < points.length - 1; i++) {
+            const dx = end[1] - start[1], dy = end[0] - start[0];
+            let dist;
+            if (dx === 0 && dy === 0) {
+                dist = Math.sqrt((points[i][1]-start[1])**2 + (points[i][0]-start[0])**2);
+            } else {
+                const t = Math.max(0, Math.min(1, ((points[i][1]-start[1])*dx + (points[i][0]-start[0])*dy) / (dx*dx + dy*dy)));
+                dist = Math.sqrt((points[i][1]-(start[1]+t*dx))**2 + (points[i][0]-(start[0]+t*dy))**2);
+            }
+            if (dist > maxDist) { maxDist = dist; maxIndex = i; }
+        }
+        if (maxDist > epsilon) {
+            const left = rdpSimplify(points.slice(0, maxIndex + 1), epsilon);
+            const right = rdpSimplify(points.slice(maxIndex), epsilon);
+            return [...left.slice(0, -1), ...right];
+        }
+        return [start, end];
+    }
+
+    function simplifyRoute(coords, target = 500) {
+        if (coords.length <= target) return coords;
+        let epsilon = 0.00001, result = rdpSimplify(coords, epsilon);
+        while (result.length > target && epsilon < 1.0) { epsilon *= 1.5; result = rdpSimplify(coords, epsilon); }
+        return result;
+    }
+
+    function smoothCoordinates(coords, win = 3, passes = 2) {
+        if (!coords || coords.length < 3) return coords;
+        let result = coords;
+        const half = Math.floor(win / 2);
+        for (let p = 0; p < passes; p++) {
+            const smoothed = [result[0]];
+            for (let i = 1; i < result.length - 1; i++) {
+                const s = Math.max(0, i - half), e = Math.min(result.length - 1, i + half);
+                let sumLat = 0, sumLng = 0, count = 0;
+                for (let j = s; j <= e; j++) { sumLat += result[j][0]; sumLng += result[j][1]; count++; }
+                smoothed.push([sumLat / count, sumLng / count]);
+            }
+            smoothed.push(result[result.length - 1]);
+            result = smoothed;
+        }
+        return result;
+    }
+
     if (!isFishingLake && trail.route_coordinates && trail.route_coordinates.length > 0) {
-        trailRoute = L.polyline(trail.route_coordinates, {
-            color: '#10B981',
-            weight: 4,
-            opacity: 0.8,
-            lineJoin: 'round',
-            lineCap: 'round'
+        const routeColor = '#10B981';
+        const displayCoords = smoothCoordinates(simplifyRoute(trail.route_coordinates));
+
+        const routeOutline = L.polyline(displayCoords, {
+            color: 'white',
+            weight: 12,
+            opacity: 0,
+            interactive: false,
         }).addTo(map);
+
+        trailRoute = L.polyline(displayCoords, {
+            color: routeColor,
+            weight: 3,
+            opacity: 1,
+            lineJoin: 'round',
+            lineCap: 'round',
+        }).addTo(map);
+
+        if (window.L.polylineDecorator && window.L.Symbol) {
+            L.polylineDecorator(trailRoute, {
+                patterns: [
+                    {
+                        offset: 20,
+                        repeat: 80,
+                        symbol: L.Symbol.arrowHead({
+                            pixelSize: 10,
+                            headAngle: 40,
+                            pathOptions: {
+                                color: 'white',
+                                fillOpacity: 1,
+                                weight: 0,
+                            },
+                        }),
+                    },
+                ],
+            }).addTo(map);
+        }
 
         map.fitBounds(trailRoute.getBounds(), { padding: [50, 50] });
     }
@@ -2430,7 +2520,8 @@ document.addEventListener('DOMContentLoaded', function() {
             window.close3DHighlightPopup();
         }
     });
-});
+
+} // end initTrailMap
 
 // Admin delete confirmation
 function confirmDelete() {

@@ -587,6 +587,7 @@
     </div>
 </div>
 @push('scripts')
+{{-- leaflet-polylinedecorator is loaded dynamically below after Leaflet (Vite bundle) is ready --}}
 <style>
 /* Filter Pills */
 .filter-pill {
@@ -1761,6 +1762,10 @@
             //     this.updateVisibleTrails();
             // });
 
+            this.map.on('zoomend', () => {
+                this._updateArrowDensity();
+            });
+
             // Geocoding search with debouncing
             const globalSearch = document.getElementById('global-trail-search');
             if (globalSearch) {
@@ -2173,32 +2178,142 @@
             if (!trail.route_coordinates || trail.route_coordinates.length === 0) {
                 return null;
             }
-            
+
             try {
-                // Sanitize all route coordinates
                 const sanitizedRoute = trail.route_coordinates
                     .map(coord => this.sanitizeCoordinates(coord))
                     .filter(coord => coord !== null);
-                
+
                 if (sanitizedRoute.length === 0) {
                     console.warn('No valid coordinates in route for trail:', trail.name);
                     return null;
                 }
-                
+
                 const routeColor = this.getDistanceColor(trail.distance);
                 const smoothedRoute = this.smoothCoordinates(sanitizedRoute);
 
+                // Invisible thick outline — wide hit area + yellow highlight on select
+                const outline = L.polyline(smoothedRoute, {
+                    color: 'white',
+                    weight: 12,
+                    opacity: 0,
+                    interactive: true,
+                });
+
+                // Visible coloured route on top
                 const route = L.polyline(smoothedRoute, {
                     color: routeColor,
-                    weight: 4,
-                    opacity: 0.8,
-                    dashArray: trail.status === 'seasonal' ? '10, 5' : null
+                    weight: 3,
+                    opacity: 1,
+                    dashArray: trail.status === 'seasonal' ? '10, 5' : null,
                 });
-                
-                return route;
+
+                // Directional arrowheads — white, zoom-responsive density
+                let arrowDecorator = null;
+                if (window.L.polylineDecorator && window.L.Symbol) {
+                    arrowDecorator = this._buildArrowDecorator(route);
+                }
+
+                const layers = arrowDecorator
+                    ? L.layerGroup([outline, route, arrowDecorator])
+                    : L.layerGroup([outline, route]);
+
+                // Store refs for highlight/reset and zoom updates
+                layers._outline = outline;
+                layers._route = route;
+                layers._arrowDecorator = arrowDecorator;
+                layers._routeColor = routeColor;
+                layers._smoothedRoute = smoothedRoute;
+                layers._trailId = trail.id;
+
+                // Click handler on both outline and route
+                const onClick = () => this.highlightTrailRoute(trail.id);
+                outline.on('click', onClick);
+                route.on('click', onClick);
+
+                return layers;
             } catch (error) {
                 console.error('Error creating route for trail:', trail.name, error);
                 return null;
+            }
+        }
+
+        _arrowRepeatForZoom(zoom) {
+            if (zoom >= 16) return 40;
+            if (zoom >= 14) return 70;
+            if (zoom >= 12) return 120;
+            return 200;
+        }
+
+        _buildArrowDecorator(routePolyline) {
+            const zoom = this.map ? this.map.getZoom() : 13;
+            return L.polylineDecorator(routePolyline, {
+                patterns: [
+                    {
+                        offset: 20,
+                        repeat: this._arrowRepeatForZoom(zoom),
+                        symbol: L.Symbol.arrowHead({
+                            pixelSize: 10,
+                            headAngle: 40,
+                            pathOptions: {
+                                color: 'white',
+                                fillOpacity: 1,
+                                weight: 0,
+                            },
+                        }),
+                    },
+                ],
+            });
+        }
+
+        _updateArrowDensity() {
+            if (!window.L.polylineDecorator || !window.L.Symbol) return;
+            this.routeLayer.eachLayer(layerGroup => {
+                if (!layerGroup._route || !layerGroup._arrowDecorator) return;
+                // Remove old decorator and add a new one with updated repeat
+                layerGroup.removeLayer(layerGroup._arrowDecorator);
+                layerGroup._arrowDecorator = this._buildArrowDecorator(layerGroup._route);
+                layerGroup.addLayer(layerGroup._arrowDecorator);
+                // Keep highlighted trail arrows on top
+                if (this._selectedRouteLayer && this._selectedRouteLayer._trailId === layerGroup._trailId) {
+                    layerGroup._arrowDecorator.bringToFront();
+                }
+            });
+        }
+
+        highlightTrailRoute(trailId) {
+            // Reset previously selected route
+            if (this._selectedRouteLayer) {
+                const prev = this._selectedRouteLayer;
+                prev._outline.setStyle({ color: 'white', weight: 12, opacity: 0 });
+                prev._route.setStyle({ weight: 3, opacity: 1 });
+            }
+
+            // Find the layer group for this trail
+            let targetLayer = null;
+            this.routeLayer.eachLayer(layer => {
+                if (layer._trailId === trailId) {
+                    targetLayer = layer;
+                }
+            });
+
+            if (!targetLayer) return;
+
+            // Yellow glow BEHIND the route: outline first, route on top
+            targetLayer._outline.setStyle({ color: '#f3fd44', weight: 15, opacity: 1 });
+            targetLayer._outline.bringToFront();
+            targetLayer._route.bringToFront();  // route sits above the yellow glow
+            targetLayer._route.setStyle({ weight: 4, opacity: 1 });
+            if (targetLayer._arrowDecorator) {
+                targetLayer._arrowDecorator.bringToFront();
+            }
+
+            this._selectedRouteLayer = targetLayer;
+
+            // Also show the trail info panel
+            const trail = this.allTrails.find(t => t.id == trailId);
+            if (trail) {
+                this.showTrailInfo(trail);
             }
         }
 
@@ -2446,7 +2561,7 @@
                 //.bindPopup(this.createPopupContent(trail));
 
             marker.on('click', () => {
-                this.showTrailInfo(trail);
+                this.focusOnTrail(trail);
             });
 
             return marker;
@@ -2917,36 +3032,21 @@
             // Show trail info panel
             this.showTrailInfo(trail);
             
-            // If trail has route, display it highlighted and fit to bounds
-            // Fishing lakes only have a single-point route — skip polyline for them
+            // If trail has route, highlight it and fit to bounds
             const isFishingLake = trail.location_type === 'fishing_lake';
             if (!isFishingLake && trail.route_coordinates && trail.route_coordinates.length > 1) {
-                // Clear existing highlighted route
-                if (this.highlightedRoute) {
-                    this.map.removeLayer(this.highlightedRoute);
-                }
-                
                 try {
-                    // Create highlighted route
-                    this.highlightedRoute = L.polyline(this.smoothCoordinates(trail.route_coordinates), {
-                        color: '#FF0000',
-                        weight: 6,
-                        opacity: 0.9,
-                        dashArray: '10, 5'
-                    }).addTo(this.map);
-                    
-                    // Fit map to route with maximum zoom
-                    this.map.fitBounds(this.highlightedRoute.getBounds(), { 
+                    this.highlightTrailRoute(trail.id);
+
+                    // Fit map to route bounds
+                    const coords = this.smoothCoordinates(trail.route_coordinates);
+                    this.map.fitBounds(L.latLngBounds(coords), {
                         padding: [50, 50],
-                        maxZoom: 18
+                        maxZoom: 18,
                     });
                 } catch (error) {
-                    console.error('Error creating trail route:', error);
-                    // Fallback to coordinates
-                    this.map.setView(trail.coordinates, 15, {
-                        animate: true,
-                        duration: 1
-                    });
+                    console.error('Error highlighting trail route:', error);
+                    this.map.setView(trail.coordinates, 15, { animate: true, duration: 1 });
                 }
             } else {
                 // If no route, just zoom to trail start coordinates
@@ -3284,6 +3384,15 @@
 
     // Initialize map when DOM is loaded
     document.addEventListener('DOMContentLoaded', function() {
+        // Load leaflet-polylinedecorator after Leaflet (bundled via Vite) is ready
+        const decoratorScript = document.createElement('script');
+        decoratorScript.src = 'https://unpkg.com/leaflet-polylinedecorator@1.6.0/dist/leaflet.polylineDecorator.js';
+        decoratorScript.onload = () => initMap();
+        decoratorScript.onerror = () => initMap(); // still init map if CDN fails
+        document.head.appendChild(decoratorScript);
+    });
+
+    function initMap() {
         window.trailMap = new EnhancedTrailMap();
         const trailMap = window.trailMap;
 
@@ -3473,7 +3582,7 @@
                 }
             }, 1500);
         }
-    });
+    }
 </script>
 @endpush
 @endsection
