@@ -316,39 +316,37 @@
                                   class="flex min-h-[60px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">{{ old('fishing_location', $trail->fishing_location) }}</textarea>
                     </div>
                     
-                    <!-- Distance from Town -->
-                    <div class="space-y-2">
-                        <label class="text-sm font-medium">Distance from Town (km)</label>
-                        <input type="text" name="fishing_distance_from_town" value="{{ old('fishing_distance_from_town', $trail->fishing_distance_from_town) }}"
-                               placeholder="Describe distance from nearest town"
-                               class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-                    </div>
-                    
-                    <!-- Best Fishing Time -->
-                    <div class="space-y-2">
-                        <label class="text-sm font-medium">Best Fishing Time</label>
-                        <select name="best_fishing_time"
-                                class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-                            <option value="">Any time</option>
-                            <option value="dawn" {{ old('best_fishing_time', $trail->best_fishing_time) == 'dawn' ? 'selected' : '' }}>Dawn</option>
-                            <option value="morning" {{ old('best_fishing_time', $trail->best_fishing_time) == 'morning' ? 'selected' : '' }}>Morning</option>
-                            <option value="afternoon" {{ old('best_fishing_time', $trail->best_fishing_time) == 'afternoon' ? 'selected' : '' }}>Afternoon</option>
-                            <option value="dusk" {{ old('best_fishing_time', $trail->best_fishing_time) == 'dusk' ? 'selected' : '' }}>Dusk</option>
-                            <option value="night" {{ old('best_fishing_time', $trail->best_fishing_time) == 'night' ? 'selected' : '' }}>Night</option>
-                        </select>
-                    </div>
-                    
-                    <!-- Best Fishing Season -->
-                    <div class="space-y-2">
-                        <label class="text-sm font-medium">Best Fishing Season</label>
-                        <select name="best_fishing_season" x-model="bestFishingSeason"
-                                class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-                            <option value="">Year-round</option>
-                            <option value="spring" {{ old('best_fishing_season', $trail->best_fishing_season) == 'spring' ? 'selected' : '' }}>Spring</option>
-                            <option value="summer" {{ old('best_fishing_season', $trail->best_fishing_season) == 'summer' ? 'selected' : '' }}>Summer</option>
-                            <option value="fall" {{ old('best_fishing_season', $trail->best_fishing_season) == 'fall' ? 'selected' : '' }}>Fall</option>
-                            <option value="winter" {{ old('best_fishing_season', $trail->best_fishing_season) == 'winter' ? 'selected' : '' }}>Winter</option>
-                        </select>
+                    <!-- Distance from Town / Best Fishing Time / Best Fishing Season -->
+                    <div class="md:col-span-2 grid grid-cols-[200px_1fr_1fr] gap-4">
+                        <div class="space-y-2">
+                            <label class="text-sm font-medium">Distance from Town (km)</label>
+                            <input type="number" name="fishing_distance_from_town" value="{{ old('fishing_distance_from_town', $trail->fishing_distance_from_town) }}"
+                                   placeholder="0.0" step="0.1" min="0"
+                                   class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                        </div>
+                        <div class="space-y-2">
+                            <label class="text-sm font-medium">Best Fishing Time</label>
+                            <select name="best_fishing_time"
+                                    class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                                <option value="">Any time</option>
+                                <option value="dawn" {{ old('best_fishing_time', $trail->best_fishing_time) == 'dawn' ? 'selected' : '' }}>Dawn</option>
+                                <option value="morning" {{ old('best_fishing_time', $trail->best_fishing_time) == 'morning' ? 'selected' : '' }}>Morning</option>
+                                <option value="afternoon" {{ old('best_fishing_time', $trail->best_fishing_time) == 'afternoon' ? 'selected' : '' }}>Afternoon</option>
+                                <option value="dusk" {{ old('best_fishing_time', $trail->best_fishing_time) == 'dusk' ? 'selected' : '' }}>Dusk</option>
+                                <option value="night" {{ old('best_fishing_time', $trail->best_fishing_time) == 'night' ? 'selected' : '' }}>Night</option>
+                            </select>
+                        </div>
+                        <div class="space-y-2">
+                            <label class="text-sm font-medium">Best Fishing Season</label>
+                            <select name="best_fishing_season" x-model="bestFishingSeason"
+                                    class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                                <option value="">Year-round</option>
+                                <option value="spring" {{ old('best_fishing_season', $trail->best_fishing_season) == 'spring' ? 'selected' : '' }}>Spring</option>
+                                <option value="summer" {{ old('best_fishing_season', $trail->best_fishing_season) == 'summer' ? 'selected' : '' }}>Summer</option>
+                                <option value="fall" {{ old('best_fishing_season', $trail->best_fishing_season) == 'fall' ? 'selected' : '' }}>Fall</option>
+                                <option value="winter" {{ old('best_fishing_season', $trail->best_fishing_season) == 'winter' ? 'selected' : '' }}>Winter</option>
+                            </select>
+                        </div>
                     </div>
                     
                     <!-- Fish Species (Dynamic) -->

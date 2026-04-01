@@ -417,7 +417,7 @@
                 <div class="stat-card text-center">
                     <div class="text-3xl mb-2">📍</div>
                     <div class="text-sm font-medium text-gray-600">Distance from Town</div>
-                    <div class="text-xs text-gray-500 mt-1">{{ $trail->fishing_distance_from_town ? Str::before($trail->fishing_distance_from_town, ' ') . ' km' : '—' }}</div>
+                    <div class="text-xs text-gray-500 mt-1">{{ $trail->fishing_distance_from_town ? $trail->fishing_distance_from_town . ' KM' : '—' }}</div>
                 </div>
                 <div class="stat-card text-center">
                     <div class="text-3xl mb-2">👁️</div>
@@ -1068,7 +1068,7 @@
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
                                     </svg>
-                                    <div class="text-sm text-gray-700">{{ $trail->fishing_distance_from_town }}</div>
+                                    <div class="text-sm text-gray-700">{{ $trail->fishing_distance_from_town }} KM from the Smithers town</div>
                                 </div>
                                 @endif
                             </div>
@@ -1712,39 +1712,35 @@ function initTrailMap() {
         map.fitBounds(trailRoute.getBounds(), { padding: [50, 50] });
     }
     
-    // Add start marker (for trails) or Lake marker (for fishing lakes)
-    let markerIcon;
-    let popupContent;
-
-    if (isFishingLake) {
-        // Fishing lake marker with fish icon
-        markerIcon = L.divIcon({
+    // Fishing lake location marker
+    if (isFishingLake && trail.start_coordinates) {
+        const fishSpecies = trail.fish_species ? JSON.parse(JSON.stringify(trail.fish_species)).join(', ') : 'Various species';
+        const lakeIcon = L.divIcon({
             html: '<div class="w-10 h-10 bg-blue-500 text-white rounded-full flex items-center justify-center border-2 border-white shadow-lg text-2xl">🐟</div>',
             className: '',
             iconSize: [40, 40],
             iconAnchor: [20, 20]
         });
+        L.marker(trail.start_coordinates, { icon: lakeIcon })
+            .addTo(map)
+            .bindPopup(`<div class="font-semibold">${trail.name}</div><div class="text-sm text-gray-600">Fishing Lake</div>` +
+                (trail.fishing_location ? `<div class="text-xs text-gray-500 mt-1">${trail.fishing_location}</div>` : '') +
+                `<div class="text-xs text-blue-600 mt-2 font-medium">${fishSpecies}</div>`);
+    }
 
-        // Fishing lake popup with more relevant info
-        const fishSpecies = trail.fish_species ? JSON.parse(JSON.stringify(trail.fish_species)).join(', ') : 'Various species';
-        popupContent = `<div class="font-semibold">${trail.name}</div><div class="text-sm text-gray-600">Fishing Lake</div>` +
-            (trail.fishing_location ? `<div class="text-xs text-gray-500 mt-1">${trail.fishing_location}</div>` : '') +
-            `<div class="text-xs text-blue-600 mt-2 font-medium">${fishSpecies}</div>`;
-    } else {
-        // Trail start marker
-        markerIcon = L.divIcon({
+    // Start marker (trails only)
+    if (!isFishingLake && trail.start_coordinates) {
+        const startIcon = L.divIcon({
             html: '<div class="w-10 h-10 bg-emerald-500 text-white rounded-full flex items-center justify-center font-bold text-lg border-2 border-white shadow-lg">S</div>',
             className: '',
             iconSize: [40, 40],
             iconAnchor: [20, 20]
         });
 
-        popupContent = `<div class="font-semibold">${trail.name}</div><div class="text-sm text-gray-600">Trail Start</div>`;
+        L.marker(trail.start_coordinates, { icon: startIcon })
+            .addTo(map)
+            .bindPopup(`<div class="font-semibold">${trail.name}</div><div class="text-sm text-gray-600">Trail Start</div>`);
     }
-    
-    L.marker(trail.start_coordinates, { icon: markerIcon })
-        .addTo(map)
-        .bindPopup(popupContent);
     
     // Add end marker if different (only for trails)
     if (!isFishingLake && trail.end_coordinates && 

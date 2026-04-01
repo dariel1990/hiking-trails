@@ -404,6 +404,18 @@
                 <div class="py-0 px-2 text-sm text-gray-600 mt-2">
                     <span id="trail-count">0</span> trails found
                 </div>
+                <!-- Location Type Filter -->
+                <div class="flex gap-2 mt-2 px-2">
+                    <button data-location-filter="all" class="location-filter-btn flex-1 py-1.5 text-xs font-medium rounded-md border border-gray-300 bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors active-filter">
+                        All
+                    </button>
+                    <button data-location-filter="trail" class="location-filter-btn flex-1 py-1.5 text-xs font-medium rounded-md border border-gray-300 bg-white text-gray-600 hover:bg-gray-50 transition-colors">
+                        🥾 Hiking Trails
+                    </button>
+                    <button data-location-filter="fishing_lake" class="location-filter-btn flex-1 py-1.5 text-xs font-medium rounded-md border border-gray-300 bg-white text-gray-600 hover:bg-gray-50 transition-colors">
+                        🎣 Fishing Lakes
+                    </button>
+                </div>
             </div>
         </div>
         
@@ -729,6 +741,11 @@
     background: #1F2937;
     color: white;
     border-color: #1F2937;
+}
+
+/* Location filter active state */
+.location-filter-btn.active-filter {
+    border-color: #2563EB;
 }
 
 /* Trail card in list */
@@ -2829,7 +2846,7 @@
                     </div>`
                     : '';
                 const distanceText = trail.fishing_distance_from_town
-                    ? trail.fishing_distance_from_town
+                    ? `${trail.fishing_distance_from_town} KM from the Smithers town`
                     : 'Distance varies by access point';
                 statsHTML = `<div class="pt-0">
                     ${trail.fishing_location ? `<div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
@@ -2838,10 +2855,7 @@
                             <div class="text-sm font-bold text-gray-900">${trail.fishing_location}</div>
                         </div>
                         <div class="flex items-start gap-2">
-                            <svg class="w-4 h-4 text-blue-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                            </svg>
+                            <span class="flex-shrink-0 mt-0.5">🐟</span>
                             <div class="text-sm text-gray-700">${distanceText}</div>
                         </div>
                     </div>` : ''}
@@ -3270,7 +3284,7 @@
                 const imageUrl = trail.preview_photo || (trail.photos && trail.photos.length > 0 ? trail.photos[0].url : null);
                 
                 return `
-                    <div class="trail-list-card" onclick="window.trailMap.focusOnTrailById(${trail.id})">
+                    <div class="trail-list-card" data-location-type="${trail.location_type}" onclick="window.trailMap.focusOnTrailById(${trail.id})">
                         ${imageUrl ? 
                             `<img src="${imageUrl}" alt="${trail.name}" class="trail-list-image">` :
                             `<div class="trail-list-image-placeholder" style="${trail.location_type === 'fishing_lake' ? 'background: linear-gradient(135deg, #1d4ed8, #2563eb);' : ''}">
@@ -3398,58 +3412,67 @@
 
         const searchInput = document.getElementById('trail-list-search');
         const clearSearchBtn = document.getElementById('clear-trail-search-btn');
-        
+        let activeLocationFilter = 'all';
+
+        function applyTrailListFilters() {
+            const searchTerm = searchInput ? searchInput.value.toLowerCase().trim() : '';
+            const trailCards = document.querySelectorAll('.trail-list-card');
+            let visibleCount = 0;
+
+            trailCards.forEach(card => {
+                const trailName = card.querySelector('h3')?.textContent.toLowerCase() || '';
+                const locationType = card.dataset.locationType || '';
+                const matchesSearch = !searchTerm || trailName.includes(searchTerm);
+                const matchesFilter = activeLocationFilter === 'all' || locationType === activeLocationFilter;
+
+                if (matchesSearch && matchesFilter) {
+                    card.style.display = '';
+                    visibleCount++;
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+
+            const countElement = document.getElementById('trail-count');
+            if (countElement) {
+                countElement.textContent = visibleCount;
+            }
+        }
+
         if (searchInput) {
             searchInput.addEventListener('input', function(e) {
-                const searchTerm = e.target.value.toLowerCase().trim();
-                
-                // Show/hide clear button
-                if (searchTerm) {
+                if (e.target.value) {
                     clearSearchBtn.classList.remove('hidden');
                 } else {
                     clearSearchBtn.classList.add('hidden');
                 }
-                
-                // Filter trail cards using the correct class
-                const trailCards = document.querySelectorAll('.trail-list-card');
-                let visibleCount = 0;
-                
-                trailCards.forEach(card => {
-                    // Get trail name from h3 element
-                    const trailName = card.querySelector('h3')?.textContent.toLowerCase() || '';
-                    
-                    if (trailName.includes(searchTerm)) {
-                        card.style.display = '';
-                        visibleCount++;
-                    } else {
-                        card.style.display = 'none';
-                    }
-                });
-                
-                // Update count
-                const countElement = document.getElementById('trail-count');
-                if (countElement) {
-                    countElement.textContent = visibleCount;
-                }
+                applyTrailListFilters();
             });
-            
-            // Clear search button
+
             if (clearSearchBtn) {
                 clearSearchBtn.addEventListener('click', function() {
                     searchInput.value = '';
                     clearSearchBtn.classList.add('hidden');
-                    
-                    // Show all trail cards
-                    const trailCards = document.querySelectorAll('.trail-list-card');
-                    trailCards.forEach(card => {
-                        card.style.display = '';
-                    });
-                    
-                    // Reset count to all visible trails
-                    trailMap.updateVisibleTrails();
+                    applyTrailListFilters();
                 });
             }
         }
+
+        // Location type filter buttons
+        document.querySelectorAll('.location-filter-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                activeLocationFilter = this.dataset.locationFilter;
+
+                document.querySelectorAll('.location-filter-btn').forEach(b => {
+                    b.classList.remove('active-filter', 'bg-gray-100', 'text-gray-700');
+                    b.classList.add('bg-white', 'text-gray-600');
+                });
+                this.classList.add('active-filter', 'bg-gray-100', 'text-gray-700');
+                this.classList.remove('bg-white', 'text-gray-600');
+
+                applyTrailListFilters();
+            });
+        });
 
         // Initialize mobile state
         function initializeMobileState() {
