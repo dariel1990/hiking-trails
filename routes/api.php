@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\TrailController;
 use App\Http\Controllers\TrailNetworkController;
+use App\Models\Business;
 use App\Models\Facility;
 use App\Services\RouteService;
 use Illuminate\Http\Request;
@@ -90,11 +91,11 @@ Route::get('/facilities', function () {
             'media_count' => $facility->media_count,
             'media' => $facility->media->map(function ($media) {
                 // For photos: use file_path directly with asset() like admin blade
-                $photoUrl = $media->file_path ? asset('storage/' . $media->file_path) : ($media->url ?? null);
-                
+                $photoUrl = $media->file_path ? asset('storage/'.$media->file_path) : ($media->url ?? null);
+
                 // For videos: use url field directly
                 $videoUrl = $media->url ?? null;
-                
+
                 return [
                     'id' => $media->id,
                     'media_type' => $media->media_type,
@@ -111,3 +112,44 @@ Route::get('/facilities', function () {
 });
 
 Route::get('/highlights', [TrailNetworkController::class, 'trailHighlights']);
+
+Route::get('/businesses', function () {
+    $type = request('type');
+
+    $businesses = Business::active()
+        ->with(['media' => function ($query) {
+            $query->where('is_primary', true)->orderBy('sort_order');
+        }])
+        ->when($type, fn ($q) => $q->where('business_type', $type))
+        ->orderBy('name')
+        ->get();
+
+    return $businesses->map(function (Business $business) {
+        $primaryMedia = $business->media->first();
+        $photoUrl = $primaryMedia && $primaryMedia->file_path
+            ? asset('storage/'.$primaryMedia->file_path)
+            : null;
+
+        return [
+            'id' => $business->id,
+            'name' => $business->name,
+            'slug' => $business->slug,
+            'business_type' => $business->business_type,
+            'business_type_label' => $business->business_type_label,
+            'description' => $business->description,
+            'tagline' => $business->tagline,
+            'address' => $business->address,
+            'latitude' => $business->latitude,
+            'longitude' => $business->longitude,
+            'phone' => $business->phone,
+            'email' => $business->email,
+            'website' => $business->website,
+            'price_range' => $business->price_range,
+            'is_seasonal' => $business->is_seasonal,
+            'season_open' => $business->season_open,
+            'icon' => $business->icon,
+            'is_featured' => $business->is_featured,
+            'photo_url' => $photoUrl,
+        ];
+    });
+});

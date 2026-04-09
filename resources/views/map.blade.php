@@ -521,6 +521,21 @@
             </div>
         </div>
 
+        <!-- Businesses Toggle -->
+        <label class="filter-pill bg-white hover:bg-gray-50 border border-gray-300 rounded-full px-4 py-2 text-sm font-medium text-gray-700 flex items-center gap-2 shadow-sm cursor-pointer select-none">
+            <input type="checkbox" id="business-layer-toggle" checked class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+            <span>🏪 Businesses</span>
+        </label>
+
+        <!-- My Location Button -->
+        <button id="my-location-btn" class="filter-pill bg-white hover:bg-gray-50 border border-gray-300 rounded-full px-4 py-2 text-sm font-medium text-gray-700 flex items-center gap-2 shadow-sm" title="Show my location">
+            <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
+            </svg>
+            <span>My Location</span>
+        </button>
+
         <!-- All Filters Button -->
         <button id="all-filters-btn" class="filter-pill bg-white hover:bg-gray-50 border border-gray-300 rounded-full px-4 py-2 text-sm font-medium text-gray-700 flex items-center gap-2 shadow-sm">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -547,10 +562,15 @@
     </button>
 
     <!-- Trail Info Panel (Hidden by default) -->
-    <div id="trail-info-panel" class="hidden absolute top-16 left-[26rem] md:top-16 md:left-[26rem] max-md:inset-4 max-md:top-auto max-md:bottom-4 z-40 bg-white rounded-lg shadow-xl w-80 max-md:w-auto max-h-[calc(100vh-9rem)] md:max-h-[calc(100vh-5rem)] overflow-y-auto">
-        <div id="trail-info-content" class="p-6">
+    <div id="trail-info-panel" class="hidden absolute top-16 bottom-4 left-[26rem] md:top-16 md:bottom-4 md:left-[26rem] max-md:inset-x-4 max-md:bottom-4 max-md:top-auto z-40 bg-white rounded-lg shadow-xl w-80 max-md:w-auto flex flex-col overflow-hidden">
+        <div id="trail-info-content" class="p-6 flex flex-col flex-1 overflow-y-auto">
             <!-- Dynamic content will be loaded here -->
         </div>
+    </div>
+
+    <!-- Business Detail Panel -->
+    <div id="business-panel" class="biz-panel hidden absolute top-16 bottom-4 left-[26rem] md:top-16 md:bottom-4 md:left-[26rem] max-md:inset-x-4 max-md:bottom-4 max-md:top-auto z-40 bg-white rounded-lg shadow-xl w-80 max-md:w-auto flex flex-col overflow-hidden">
+        <div id="business-panel-content" class="flex flex-col flex-1 overflow-y-auto"></div>
     </div>
 </div>
 <!-- Media Modal for Highlights -->
@@ -993,9 +1013,45 @@
     box-shadow: 0 2px 4px rgba(59, 130, 246, 0.3);
 }
 
-#trail-info-panel .panel-content {
-    height: 300px;
-    overflow-y: auto;
+
+/* My Location marker */
+.my-location-marker {
+    background: transparent !important;
+    border: none !important;
+}
+
+.my-location-dot {
+    width: 18px;
+    height: 18px;
+    background: #2563EB;
+    border: 3px solid white;
+    border-radius: 50%;
+    box-shadow: 0 0 0 2px #2563EB;
+    position: relative;
+}
+
+.my-location-dot::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 18px;
+    height: 18px;
+    background: rgba(37, 99, 235, 0.25);
+    border-radius: 50%;
+    animation: location-pulse 1.8s ease-out infinite;
+}
+
+@keyframes location-pulse {
+    0%   { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+    100% { transform: translate(-50%, -50%) scale(3.5); opacity: 0; }
+}
+
+#my-location-btn.active {
+    background: #EFF6FF;
+    border-color: #2563EB;
+    color: #2563EB;
 }
 
 /* Facility marker styling */
@@ -1051,6 +1107,237 @@
     color: #374151;
     line-height: 1.5;
 }
+
+/* ── Business slide panel ────────────────────────────────── */
+.biz-panel {
+    font-family: 'Inter', system-ui, sans-serif;
+}
+
+@media (max-width: 768px) {
+    .biz-panel {
+        max-height: calc(100vh - 2rem);
+        position: fixed !important;
+        z-index: 50 !important;
+        left: 1rem !important;
+        right: 1rem !important;
+        top: auto !important;
+        bottom: 1rem !important;
+        width: auto !important;
+    }
+
+    .biz-panel:not(.hidden)::before {
+        content: '';
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: -1;
+        pointer-events: none;
+    }
+
+    #business-panel-content {
+        position: relative;
+        z-index: 1;
+        background: white;
+        border-radius: 0.5rem;
+    }
+}
+
+.biz-panel-close {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    z-index: 10;
+    background: rgba(255,255,255,0.9);
+    border: none;
+    border-radius: 50%;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: #374151;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    transition: background 0.15s;
+}
+
+.biz-panel-close:hover {
+    background: #f3f4f6;
+}
+
+.biz-panel-hero {
+    width: 100%;
+    height: 200px;
+    overflow: hidden;
+    background: linear-gradient(135deg, #1e40af, #3b82f6);
+    position: relative;
+    flex-shrink: 0;
+}
+
+.biz-panel-hero img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+.biz-panel-hero-placeholder {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 64px;
+}
+
+.biz-panel-body {
+    padding: 20px 20px 28px;
+}
+
+.biz-panel-name {
+    font-size: 22px;
+    font-weight: 800;
+    color: #111827;
+    margin: 0 0 4px;
+    line-height: 1.2;
+    padding-right: 32px;
+}
+
+.biz-panel-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 14px;
+}
+
+.biz-panel-type {
+    font-size: 13px;
+    font-weight: 600;
+    color: #2563EB;
+}
+
+.biz-panel-dot {
+    color: #d1d5db;
+    font-size: 16px;
+    line-height: 1;
+}
+
+.biz-panel-price-badge {
+    font-size: 12px;
+    font-weight: 700;
+    background: #dbeafe;
+    color: #1d4ed8;
+    padding: 2px 8px;
+    border-radius: 999px;
+}
+
+.biz-panel-seasonal-badge {
+    font-size: 12px;
+    font-weight: 600;
+    background: #fef3c7;
+    color: #92400e;
+    padding: 2px 8px;
+    border-radius: 999px;
+}
+
+.biz-panel-tagline {
+    font-size: 14px;
+    color: #4b5563;
+    font-style: italic;
+    line-height: 1.5;
+    margin: 0 0 18px;
+}
+
+.biz-panel-actions {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+.biz-panel-action-btn {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 8px;
+    border-radius: 12px;
+    background: #eff6ff;
+    border: none;
+    cursor: pointer;
+    text-decoration: none;
+    transition: background 0.15s;
+    font-family: inherit;
+}
+
+.biz-panel-action-btn:hover {
+    background: #dbeafe;
+}
+
+.biz-panel-action-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: #2563EB;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    flex-shrink: 0;
+}
+
+.biz-panel-action-icon svg {
+    width: 18px;
+    height: 18px;
+}
+
+.biz-panel-action-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: #1d4ed8;
+    text-align: center;
+    line-height: 1.2;
+}
+
+.biz-panel-divider {
+    border: none;
+    border-top: 1px solid #f3f4f6;
+    margin: 0 0 16px;
+}
+
+.biz-panel-info-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 8px 0;
+    font-size: 13px;
+    color: #374151;
+    border-bottom: 1px solid #f9fafb;
+}
+
+.biz-panel-info-row:last-child {
+    border-bottom: none;
+}
+
+.biz-panel-info-icon {
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+    color: #6b7280;
+    margin-top: 1px;
+}
+
+.biz-panel-info-link {
+    color: #2563EB;
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.biz-panel-info-link:hover {
+    text-decoration: underline;
+}
+/* ── /Business slide panel ────────────────────────────────── */
 
 .facility-media-gallery {
     margin-top: 12px;
@@ -1576,6 +1863,10 @@
                 'downhill-skiing': L.layerGroup()
             };
 
+            // Business overlay layer (separate from activity layers)
+            this.businessLayer = L.layerGroup();
+            this.showBusinesses = true;
+
             // Add default base layer
             this.baseLayers[this.currentMapType].addTo(this.map);
 
@@ -1586,6 +1877,7 @@
 
             this.loadTrails();
             this.loadFacilities();
+            this.loadBusinesses();
         }
 
         setupEventListeners() {
@@ -1623,6 +1915,25 @@
                     this.updateFilters();
                 });
             });
+
+            // Close business panel when clicking map
+            this.map.on('click', () => this.closeBusinessPanel());
+
+            // My Location button
+            document.getElementById('my-location-btn')?.addEventListener('click', () => this.locateMe());
+
+            // Business toggle
+            const businessToggle = document.getElementById('business-layer-toggle');
+            if (businessToggle) {
+                businessToggle.addEventListener('change', () => {
+                    this.showBusinesses = businessToggle.checked;
+                    if (this.showBusinesses) {
+                        this.businessLayer.addTo(this.map);
+                    } else {
+                        this.map.removeLayer(this.businessLayer);
+                    }
+                });
+            }
 
             // Other filters - Check if elements exist first
             const difficultyFilter = document.getElementById('difficulty-filter');
@@ -2285,6 +2596,7 @@
 
         _updateArrowDensity() {
             if (!window.L.polylineDecorator || !window.L.Symbol) return;
+            if (!this.routeLayer) return;
             this.routeLayer.eachLayer(layerGroup => {
                 if (!layerGroup._route || !layerGroup._arrowDecorator) return;
                 // Remove old decorator and add a new one with updated repeat
@@ -2427,22 +2739,27 @@
 
         searchTrails(searchTerm) {
             if (!searchTerm) {
-                // If search is empty, show visible trails with filters
                 this.updateVisibleTrails();
                 return;
             }
-            
-            // Search within visible trails
+
+            // Search trails
             const visibleTrails = this.getVisibleTrails();
-            
-            const matchedTrails = visibleTrails.filter(trail => {
-                // Search in name, location, and description
-                return trail.name.toLowerCase().includes(searchTerm) ||
-                    (trail.location && trail.location.toLowerCase().includes(searchTerm)) ||
-                    (trail.description && trail.description.toLowerCase().includes(searchTerm));
-            });
-            
-            this.renderTrailList(matchedTrails);
+            const matchedTrails = visibleTrails.filter(trail =>
+                trail.name.toLowerCase().includes(searchTerm) ||
+                (trail.location && trail.location.toLowerCase().includes(searchTerm)) ||
+                (trail.description && trail.description.toLowerCase().includes(searchTerm))
+            );
+
+            // Search businesses
+            const matchedBusinesses = (this.businessData || []).filter(b =>
+                b.name.toLowerCase().includes(searchTerm) ||
+                (b.address && b.address.toLowerCase().includes(searchTerm)) ||
+                (b.tagline && b.tagline.toLowerCase().includes(searchTerm)) ||
+                (b.business_type_label && b.business_type_label.toLowerCase().includes(searchTerm))
+            );
+
+            this.renderTrailList(matchedTrails, matchedBusinesses);
         }
 
         updateFilters() {
@@ -2498,8 +2815,19 @@
                     if (marker) {
                         this.overlayLayers['fishing'].addLayer(marker);
                     }
+                } else if (this.currentSeason === 'summer') {
+                    // Summer trails always use the hiking icon regardless of assigned activities
+                    if (this.activeFilters.includes('hiking')) {
+                        if (!this.overlayLayers['hiking']) {
+                            this.overlayLayers['hiking'] = L.layerGroup();
+                        }
+                        const marker = this.createTrailMarker(trail, { type: 'hiking', icon: '🥾', color: '#10B981' });
+                        if (marker) {
+                            this.overlayLayers['hiking'].addLayer(marker);
+                        }
+                    }
                 } else {
-                    // Add markers for active activity types
+                    // Winter: keep activity-based marker logic
                     trail.activities.forEach(activity => {
                         if (this.activeFilters.includes(activity.type)) {
                             if (!this.overlayLayers[activity.type]) {
@@ -2823,8 +3151,11 @@
         showTrailInfo(trail) {
             const panel = document.getElementById('trail-info-panel');
             const content = document.getElementById('trail-info-content');
-            
+
             if (!trail) return;
+
+            // Close business panel if open
+            document.getElementById('business-panel')?.classList.add('hidden');
             
             // Format photos gallery - NOW USING trail.photos from trail_media
             let photosHTML = '';
@@ -2939,33 +3270,30 @@
             }
             
             content.innerHTML = `
-                <!-- Fixed Header -->
-                <div class="flex items-start justify-between mb-4">
+                <!-- Header (sticky) -->
+                <div class="flex items-start justify-between mb-4 flex-shrink-0">
                     <h3 class="text-xl font-bold pr-8">${trail.name}</h3>
-                    <button onclick="closeTrailInfoPanel()" 
+                    <button onclick="closeTrailInfoPanel()"
                             class="text-gray-400 hover:text-gray-600 transition flex-shrink-0">
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                         </svg>
                     </button>
                 </div>
-                
-                <!-- Scrollable Content with Fixed 100px Height -->
-                <div class="panel-content mb-4">
+
+                <!-- Scrollable middle -->
+                <div class="flex-1 overflow-y-auto min-h-0 mb-4">
                     ${photosHTML}
-                    
                     ${statsHTML}
-                    
                     <div class="mt-4">
                         <p class="text-sm text-gray-600 leading-relaxed">${trail.description}</p>
                     </div>
-                    
                     ${highlightsHTML}
                 </div>
-                
-                <!-- Fixed Footer Buttons -->
-                <div class="space-y-2">
-                    <button onclick="window.trailMap.viewRoute(${trail.id})" 
+
+                <!-- Footer (sticky) -->
+                <div class="space-y-2 flex-shrink-0 pt-2 border-t border-gray-100">
+                    <button onclick="window.trailMap.viewRoute(${trail.id})"
                             class="w-full bg-primary-500 hover:bg-primary-600 text-white font-medium py-2.5 px-4 rounded transition flex items-center justify-center">
                         <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-1.447-.894L15 9m0 8V9m0 0V7"/>
@@ -2973,7 +3301,7 @@
                         View Full Route
                     </button>
                     <a href="/trails/${trail.id}" target="_blank"
-                    class="block w-full bg-white border-2 border-gray-300 hover:bg-gray-50 text-gray-700 font-medium py-2.5 px-4 rounded transition text-center">
+                       class="block w-full bg-white border-2 border-gray-300 hover:bg-gray-50 text-gray-700 font-medium py-2.5 px-4 rounded transition text-center">
                         View Trail Details
                     </a>
                 </div>
@@ -3078,6 +3406,195 @@
             if (trail) {
                 this.focusOnTrail(trail);
             }
+        }
+
+        focusOnBusiness(businessId) {
+            const business = (this.businessData || []).find(b => b.id == businessId);
+            if (business) {
+                this.openBusinessPanel(business);
+            }
+        }
+
+        openBusinessPanel(business) {
+            const panel = document.getElementById('business-panel');
+            const content = document.getElementById('business-panel-content');
+            if (!panel || !content) { return; }
+
+            const hero = business.photo_url
+                ? `<div class="biz-panel-hero"><img src="${business.photo_url}" alt="${business.name}"></div>`
+                : `<div class="biz-panel-hero"><div class="biz-panel-hero-placeholder">${business.icon}</div></div>`;
+
+            const metaParts = [`<span class="biz-panel-type">${business.business_type_label}</span>`];
+            if (business.price_range) {
+                metaParts.push(`<span class="biz-panel-dot">·</span><span class="biz-panel-price-badge">${business.price_range}</span>`);
+            }
+            if (business.is_seasonal && business.season_open) {
+                metaParts.push(`<span class="biz-panel-dot">·</span><span class="biz-panel-seasonal-badge">🗓 ${business.season_open}</span>`);
+            }
+
+            const tagline = business.tagline
+                ? `<p class="biz-panel-tagline">${business.tagline}</p>`
+                : '';
+
+            // Action buttons
+            const actions = [];
+            if (business.phone) {
+                actions.push(`
+                    <a href="tel:${business.phone}" class="biz-panel-action-btn">
+                        <div class="biz-panel-action-icon">
+                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/></svg>
+                        </div>
+                        <span class="biz-panel-action-label">Call</span>
+                    </a>`);
+            }
+            if (business.website) {
+                actions.push(`
+                    <a href="${business.website}" target="_blank" class="biz-panel-action-btn">
+                        <div class="biz-panel-action-icon">
+                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"/></svg>
+                        </div>
+                        <span class="biz-panel-action-label">Website</span>
+                    </a>`);
+            }
+            if (business.facebook_url) {
+                actions.push(`
+                    <a href="${business.facebook_url}" target="_blank" class="biz-panel-action-btn">
+                        <div class="biz-panel-action-icon">
+                            <svg fill="currentColor" viewBox="0 0 24 24"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+                        </div>
+                        <span class="biz-panel-action-label">Facebook</span>
+                    </a>`);
+            }
+            // Always show directions
+            actions.push(`
+                <a href="https://www.google.com/maps/search/?api=1&query=${business.latitude},${business.longitude}" target="_blank" class="biz-panel-action-btn">
+                    <div class="biz-panel-action-icon">
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                    </div>
+                    <span class="biz-panel-action-label">Directions</span>
+                </a>`);
+
+            // Info rows
+            const infoRows = [];
+            if (business.address) {
+                infoRows.push(`
+                    <div class="biz-panel-info-row">
+                        <svg class="biz-panel-info-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                        <span>${business.address}</span>
+                    </div>`);
+            }
+            if (business.phone) {
+                infoRows.push(`
+                    <div class="biz-panel-info-row">
+                        <svg class="biz-panel-info-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/></svg>
+                        <a href="tel:${business.phone}" class="biz-panel-info-link">${business.phone}</a>
+                    </div>`);
+            }
+            if (business.website) {
+                const host = (() => { try { return new URL(business.website).hostname.replace('www.',''); } catch(e) { return business.website; } })();
+                infoRows.push(`
+                    <div class="biz-panel-info-row">
+                        <svg class="biz-panel-info-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"/></svg>
+                        <a href="${business.website}" target="_blank" class="biz-panel-info-link">${host}</a>
+                    </div>`);
+            }
+
+            content.innerHTML = `
+                <div style="position:relative;flex-shrink:0;">
+                    ${hero}
+                    <button onclick="document.getElementById('business-panel').classList.add('hidden')"
+                            style="position:absolute;top:10px;right:10px;background:rgba(255,255,255,0.92);border:none;cursor:pointer;border-radius:50%;width:34px;height:34px;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(0,0,0,0.18);"
+                            aria-label="Close">
+                        <svg width="16" height="16" fill="none" stroke="#374151" stroke-width="2.5" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                    </button>
+                </div>
+                <div class="biz-panel-body">
+                    <h2 class="biz-panel-name">${business.name}</h2>
+                    <div class="biz-panel-meta">${metaParts.join('')}</div>
+                    ${tagline}
+                    ${actions.length ? `<div class="biz-panel-actions">${actions.join('')}</div>` : ''}
+                    ${infoRows.length ? `<hr class="biz-panel-divider">${infoRows.join('')}` : ''}
+                </div>
+            `;
+
+            // Close trail panel if open
+            document.getElementById('trail-info-panel')?.classList.add('hidden');
+
+            // Focus map on business location
+            if (business.latitude && business.longitude) {
+                this.map.setView([business.latitude, business.longitude], 17, { animate: true, duration: 0.8 });
+            }
+
+            panel.classList.remove('hidden');
+        }
+
+        closeBusinessPanel() {
+            document.getElementById('business-panel')?.classList.add('hidden');
+        }
+
+        locateMe() {
+            const btn = document.getElementById('my-location-btn');
+
+            if (!navigator.geolocation) {
+                alert('Your browser does not support geolocation.');
+                return;
+            }
+
+            btn.disabled = true;
+            btn.querySelector('span').textContent = 'Locating…';
+
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    const lat = position.coords.latitude;
+                    const lng = position.coords.longitude;
+                    const accuracy = position.coords.accuracy;
+
+                    // Remove previous location marker/circle if any
+                    if (this._locationMarker) { this.map.removeLayer(this._locationMarker); }
+                    if (this._locationCircle) { this.map.removeLayer(this._locationCircle); }
+
+                    // Accuracy circle
+                    this._locationCircle = L.circle([lat, lng], {
+                        radius: accuracy,
+                        color: '#2563EB',
+                        fillColor: '#2563EB',
+                        fillOpacity: 0.08,
+                        weight: 1,
+                    }).addTo(this.map);
+
+                    // Pulsing dot marker
+                    const icon = L.divIcon({
+                        className: 'my-location-marker',
+                        html: '<div class="my-location-dot"></div>',
+                        iconSize: [18, 18],
+                        iconAnchor: [9, 9],
+                    });
+
+                    this._locationMarker = L.marker([lat, lng], { icon, zIndexOffset: 1000 })
+                        .addTo(this.map)
+                        .bindPopup(`<strong>You are here</strong><br><span class="text-xs text-gray-500">Accuracy: ~${Math.round(accuracy)}m</span>`);
+
+                    this.map.setView([lat, lng], 15, { animate: true, duration: 0.8 });
+
+                    btn.disabled = false;
+                    btn.querySelector('span').textContent = 'My Location';
+                    btn.classList.add('active');
+                },
+                (error) => {
+                    btn.disabled = false;
+                    btn.querySelector('span').textContent = 'My Location';
+
+                    const messages = {
+                        1: 'Location access was denied. Please allow location in your browser settings.',
+                        2: 'Your location could not be determined. Try again.',
+                        3: 'Location request timed out. Try again.',
+                    };
+                    alert(messages[error.code] || 'Unable to get your location.');
+                },
+                { enableHighAccuracy: true, timeout: 10000, maximumAge: 30000 }
+            );
         }
 
         focusOnHighlight(lat, lng) {
@@ -3256,30 +3773,127 @@
             }
         }
 
-        renderTrailList(trails) {
+        async loadBusinesses() {
+            try {
+                const response = await fetch('/api/businesses');
+                this.businessData = await response.json();
+                this.renderBusinessMarkers();
+
+                // Center map on business if ?business=ID is in the URL
+                const params = new URLSearchParams(window.location.search);
+                const businessId = params.get('business');
+                if (businessId) {
+                    const business = this.businessData.find(b => b.id == businessId);
+                    if (business && business.latitude && business.longitude) {
+                        this.map.once('moveend', () => {
+                            const marker = this.businessMarkers[business.id];
+                            if (marker) { marker.fire('click'); }
+                        });
+                        this.map.setView([business.latitude, business.longitude], 17);
+                    }
+                }
+            } catch (error) {
+                console.error('Error loading businesses:', error);
+            }
+        }
+
+        renderBusinessMarkers() {
+            this.businessLayer.clearLayers();
+            this.businessMarkers = {};
+
+            if (!this.showBusinesses) {
+                return;
+            }
+
+            (this.businessData || []).forEach(business => {
+                const businessIcon = L.divIcon({
+                    className: 'business-marker',
+                    html: `
+                        <div style="
+                            background: white;
+                            color: #2563EB;
+                            padding: 8px;
+                            border-radius: 50%;
+                            font-size: 18px;
+                            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+                            border: 3px solid #2563EB;
+                            width: 40px;
+                            height: 40px;
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                        ">
+                            ${business.icon}
+                        </div>
+                    `,
+                    iconSize: [40, 40],
+                    iconAnchor: [20, 20]
+                });
+
+                const marker = L.marker([business.latitude, business.longitude], {
+                    icon: businessIcon,
+                    zIndexOffset: 400
+                });
+
+                marker.on('click', () => {
+                    this.openBusinessPanel(business);
+                });
+                this.businessMarkers[business.id] = marker;
+                this.businessLayer.addLayer(marker);
+            });
+
+            if (this.showBusinesses) {
+                this.businessLayer.addTo(this.map);
+            }
+        }
+
+        renderTrailList(trails, businesses = []) {
             const container = document.getElementById('trail-cards');
             const countElement = document.getElementById('trail-count');
             const collapsedCountElement = document.getElementById('collapsed-trail-count');
-            
+
             countElement.textContent = trails.length;
             if (collapsedCountElement) {
                 collapsedCountElement.textContent = trails.length;
             }
-            
-            if (trails.length === 0) {
+
+            if (trails.length === 0 && businesses.length === 0) {
                 container.innerHTML = `
                     <div class="text-center py-8 text-gray-500">
                         <svg class="w-12 h-12 mx-auto mb-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
                         </svg>
-                        <p class="font-medium">No trails found in this area</p>
-                        <p class="text-sm mt-2">Try zooming out or adjusting your filters</p>
+                        <p class="font-medium">No results found</p>
+                        <p class="text-sm mt-2">Try adjusting your search or filters</p>
                     </div>
                 `;
                 return;
             }
+
+            // Business cards section (shown at top when searching)
+            const businessHtml = businesses.length > 0 ? `
+                <div class="px-1 pb-1">
+                    <p class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 px-1">🏪 Businesses (${businesses.length})</p>
+                    ${businesses.map(b => `
+                        <div class="flex items-center gap-3 p-3 rounded-lg hover:bg-blue-50 cursor-pointer border border-transparent hover:border-blue-200 mb-2 transition-colors"
+                            onclick="window.trailMap.focusOnBusiness(${b.id})">
+                            <div class="flex-shrink-0 text-xl w-8 text-center">${b.icon}</div>
+                            <div class="flex-1 min-w-0">
+                                <div class="font-medium text-sm text-gray-900 truncate">${b.name}</div>
+                                <div class="text-xs text-gray-500">${b.business_type_label}${b.address ? ' · ' + b.address : ''}</div>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+                ${trails.length > 0 ? '<div class="px-1 pb-1"><p class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 px-1">🥾 Trails (' + trails.length + ')</p></div>' : ''}
+            ` : '';
+
+            if (trails.length === 0) {
+                container.innerHTML = businessHtml;
+                return;
+            }
             
-            container.innerHTML = trails.map(trail => {
+            container.innerHTML = businessHtml + trails.map(trail => {
                 // Use preview_photo or first photo from photos array
                 const imageUrl = trail.preview_photo || (trail.photos && trail.photos.length > 0 ? trail.photos[0].url : null);
                 

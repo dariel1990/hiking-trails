@@ -91,10 +91,15 @@
                         <span>Trail Networks</span>
                         <div class="absolute bottom-0 left-0 w-0 h-0.5 bg-accent-600 group-hover:w-full transition-all duration-300 {{ request()->routeIs('trail-networks.*') ? 'w-full' : '' }}"></div>
                     </a>
-                    <a href="{{ route('map') }}" 
+                    <a href="{{ route('map') }}"
                        class="relative text-forest-700 hover:text-accent-600 font-medium transition-all duration-300 py-2 group {{ request()->routeIs('map') ? 'text-accent-700' : '' }}">
                         <span>Interactive Map</span>
                         <div class="absolute bottom-0 left-0 w-0 h-0.5 bg-accent-600 group-hover:w-full transition-all duration-300 {{ request()->routeIs('map') ? 'w-full' : '' }}"></div>
+                    </a>
+                    <a href="{{ route('businesses.public.index') }}"
+                       class="relative text-forest-700 hover:text-accent-600 font-medium transition-all duration-300 py-2 group {{ request()->routeIs('businesses.public.*') ? 'text-accent-700' : '' }}">
+                        <span>Local Businesses</span>
+                        <div class="absolute bottom-0 left-0 w-0 h-0.5 bg-accent-600 group-hover:w-full transition-all duration-300 {{ request()->routeIs('businesses.public.*') ? 'w-full' : '' }}"></div>
                     </a>
                 </div>
 
@@ -123,6 +128,7 @@
                         <a href="{{ route('trails.index') }}" class="block px-6 py-3 text-gray-700 hover:bg-emerald-50 hover:text-emerald-600 font-medium transition-colors">Individual Trails</a>
                         <a href="{{ route('trail-networks.index') }}" class="block px-6 py-3 text-gray-700 hover:bg-emerald-50 hover:text-emerald-600 font-medium transition-colors">Trail Networks</a>
                         <a href="{{ route('map') }}" class="block px-6 py-3 text-gray-700 hover:bg-emerald-50 hover:text-emerald-600 font-medium transition-colors">Interactive Map</a>
+                        <a href="{{ route('businesses.public.index') }}" class="block px-6 py-3 text-gray-700 hover:bg-emerald-50 hover:text-emerald-600 font-medium transition-colors">Local Businesses</a>
                     </div>
                 </div>
             </div>
@@ -307,7 +313,7 @@
                             <span class="text-emerald-400 font-medium">Discover responsibly.</span>
                         </p>
                         <div class="hidden md:flex items-center space-x-4 text-xs text-gray-500">
-                            <a href="#" class="hover:text-emerald-400 transition-colors">Privacy Policy</a>
+                            <a href="{{ route('privacy-policy') }}" class="hover:text-emerald-400 transition-colors">Privacy Policy</a>
                             <span>•</span>
                             <a href="#" class="hover:text-emerald-400 transition-colors">Terms of Service</a>
                             <span>•</span>

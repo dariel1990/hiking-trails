@@ -4,7 +4,11 @@ use App\Http\Controllers\Admin\ActivityTypeController;
 use App\Http\Controllers\Admin\AdminController;
 use App\Http\Controllers\Admin\AdminTrailController;
 use App\Http\Controllers\Admin\AdminTrailNetworkController;
+use App\Http\Controllers\Admin\BusinessController;
 use App\Http\Controllers\Admin\FacilityController;
+use App\Http\Controllers\Admin\MediaController;
+use App\Http\Controllers\Admin\UserController;
+use App\Http\Controllers\BusinessPublicController;
 use App\Http\Controllers\EventsController;
 use App\Http\Controllers\TrailController;
 use App\Http\Controllers\TrailNetworkController;
@@ -15,6 +19,12 @@ Route::get('/', [TrailController::class, 'home'])->name('home');
 Route::get('/trails', [TrailController::class, 'index'])->name('trails.index');
 Route::get('/trails/{trail}', [TrailController::class, 'show'])->name('trails.show');
 Route::get('/map', [TrailController::class, 'map'])->name('map');
+
+Route::get('/privacy-policy', fn () => view('privacy-policy'))->name('privacy-policy');
+
+// Public Business Routes
+Route::get('/businesses', [BusinessPublicController::class, 'index'])->name('businesses.public.index');
+Route::get('/businesses/{business:slug}', [BusinessPublicController::class, 'show'])->name('businesses.public.show');
 
 // Public Trail Networks Routes
 Route::get('/trail-networks', [TrailNetworkController::class, 'index'])
@@ -35,6 +45,9 @@ Route::prefix('admin')->name('admin.')->group(function () {
     Route::middleware(['auth', 'admin', 'throttle:10,1'])->group(function () {
         Route::post('/logout', [AdminController::class, 'logout'])->name('logout');
         Route::get('/dashboard', [AdminController::class, 'dashboard'])->name('dashboard');
+
+        // User management
+        Route::resource('users', UserController::class)->only(['index', 'create', 'store', 'edit', 'update', 'destroy']);
 
         // Trail management
         Route::resource('trails', AdminTrailController::class);
@@ -75,6 +88,35 @@ Route::prefix('admin')->name('admin.')->group(function () {
             ->name('facilities.media.order');
         Route::patch('/facilities/{facility}/media/{media}/caption', [FacilityController::class, 'updateMediaCaption'])
             ->name('facilities.media.caption');
+        // Businesses Management
+        Route::resource('businesses', BusinessController::class)
+            ->names([
+                'index' => 'businesses.index',
+                'create' => 'businesses.create',
+                'store' => 'businesses.store',
+                'edit' => 'businesses.edit',
+                'update' => 'businesses.update',
+                'destroy' => 'businesses.destroy',
+            ]);
+
+        Route::delete('/businesses/{business}/media/{media}', [BusinessController::class, 'deleteMedia'])
+            ->name('businesses.media.delete');
+        Route::patch('/businesses/{business}/media/{media}/primary', [BusinessController::class, 'setPrimaryMedia'])
+            ->name('businesses.media.primary');
+        Route::post('/businesses/{business}/media/order', [BusinessController::class, 'updateMediaOrder'])
+            ->name('businesses.media.order');
+        Route::patch('/businesses/{business}/media/{media}/caption', [BusinessController::class, 'updateMediaCaption'])
+            ->name('businesses.media.caption');
+
+        // Global Media Library
+        Route::get('/media', [MediaController::class, 'index'])->name('media.index');
+        Route::get('/media/trail/{media}', [MediaController::class, 'showTrailMedia'])->name('media.trail.show');
+        Route::get('/media/facility/{media}', [MediaController::class, 'showFacilityMedia'])->name('media.facility.show');
+        Route::delete('/media/trail/{media}', [MediaController::class, 'destroyTrailMedia'])->name('media.trail.destroy');
+        Route::delete('/media/facility/{media}', [MediaController::class, 'destroyFacilityMedia'])->name('media.facility.destroy');
+        Route::get('/media/business/{media}', [MediaController::class, 'showBusinessMedia'])->name('media.business.show');
+        Route::delete('/media/business/{media}', [MediaController::class, 'destroyBusinessMedia'])->name('media.business.destroy');
+
         // Media Management Routes
         // Route::get('/trails/{trail}/media', [AdminTrailController::class, 'mediaManagement'])->name('trails.media');
         // Route::post('/trails/{trail}/media/upload', [AdminTrailController::class, 'uploadMedia'])->name('trails.media.upload');
