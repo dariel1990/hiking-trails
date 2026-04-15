@@ -37,7 +37,7 @@
 </head>
 <body class="font-sans antialiased bg-gray-50">
     <!-- Navigation - Enhanced with XploreSmithers styling -->
-    <nav class="fixed top-0 w-full bg-white/95 backdrop-blur-md shadow-lg z-50 transition-all duration-300">
+    <nav class="fixed top-0 w-full bg-white/95 backdrop-blur-md shadow-lg z-50 transition-all duration-300 {{ request()->routeIs('map') ? 'max-md:hidden' : '' }}">
         <div class="{{ request()->routeIs('map') ? 'w-full' : 'max-w-7xl mx-auto' }} px-4">
             <div class="flex justify-between items-center h-20">
                 <!-- Logo - Enhanced with brand elements -->
@@ -136,7 +136,7 @@
     </nav>
 
     <!-- Main Content -->
-    <main class="pt-20">
+    <main class="pt-20 {{ request()->routeIs('map') ? 'max-md:pt-0' : '' }}">
         <!-- Flash Messages with enhanced styling -->
         @if(session('success'))
             <div class="fixed top-24 right-6 z-40 max-w-sm">
