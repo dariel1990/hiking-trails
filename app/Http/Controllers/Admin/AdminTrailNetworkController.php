@@ -15,7 +15,7 @@ class AdminTrailNetworkController extends Controller
     public function index()
     {
         $networks = TrailNetwork::withCount('trails')->orderBy('network_name')->get();
-        
+
         return view('admin.trail-networks.index', compact('networks'));
     }
 
@@ -44,12 +44,10 @@ class AdminTrailNetworkController extends Controller
             'is_always_visible' => 'boolean',
         ]);
 
-        // Auto-generate slug if not provided
         if (empty($validated['slug'])) {
-            $validated['slug'] = Str::slug($validated['network_name']);
+            $validated['slug'] = $this->uniqueSlug($validated['network_name']);
         }
 
-        // Ensure is_always_visible has a value
         $validated['is_always_visible'] = $request->has('is_always_visible');
 
         TrailNetwork::create($validated);
@@ -64,7 +62,7 @@ class AdminTrailNetworkController extends Controller
     public function show(TrailNetwork $trailNetwork)
     {
         $trailNetwork->load('trails');
-        
+
         return view('admin.trail-networks.show', compact('trailNetwork'));
     }
 
@@ -83,7 +81,7 @@ class AdminTrailNetworkController extends Controller
     {
         $validated = $request->validate([
             'network_name' => 'required|string|max:255',
-            'slug' => 'nullable|string|max:255|unique:trail_networks,slug,' . $trailNetwork->id,
+            'slug' => 'nullable|string|max:255|unique:trail_networks,slug,'.$trailNetwork->id,
             'type' => 'required|in:nordic_skiing,downhill_skiing,hiking,mountain_biking',
             'description' => 'nullable|string',
             'latitude' => 'required|numeric|between:-90,90',
@@ -93,12 +91,10 @@ class AdminTrailNetworkController extends Controller
             'is_always_visible' => 'boolean',
         ]);
 
-        // Auto-generate slug if not provided
         if (empty($validated['slug'])) {
-            $validated['slug'] = Str::slug($validated['network_name']);
+            $validated['slug'] = $this->uniqueSlug($validated['network_name'], $trailNetwork->id);
         }
 
-        // Ensure is_always_visible has a value
         $validated['is_always_visible'] = $request->has('is_always_visible');
 
         $trailNetwork->update($validated);
@@ -122,5 +118,21 @@ class AdminTrailNetworkController extends Controller
 
         return redirect()->route('admin.trail-networks.index')
             ->with('success', 'Trail network deleted successfully.');
+    }
+
+    private function uniqueSlug(string $name, ?int $ignoreId = null): string
+    {
+        $base = Str::slug($name);
+        $slug = $base;
+        $i = 1;
+
+        while (TrailNetwork::where('slug', $slug)
+            ->when($ignoreId, fn ($q) => $q->where('id', '!=', $ignoreId))
+            ->exists()
+        ) {
+            $slug = $base.'-'.++$i;
+        }
+
+        return $slug;
     }
 }

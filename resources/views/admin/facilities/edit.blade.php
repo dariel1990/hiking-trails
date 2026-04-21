@@ -5,8 +5,7 @@
 
 @section('content')
 
-<!-- Leaflet CSS -->
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<link href="https://api.mapbox.com/mapbox-gl-js/v3.10.0/mapbox-gl.css" rel="stylesheet">
 
 <!-- Confirmation Modal -->
 <div id="confirm-modal" class="hidden fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4">
@@ -422,8 +421,7 @@
     </div>
 </div>
 
-<!-- Leaflet JS -->
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://api.mapbox.com/mapbox-gl-js/v3.10.0/mapbox-gl.js"></script>
 
 <script>
 // Modal functions
@@ -442,68 +440,56 @@ function closeConfirmModal() {
 }
 
 document.getElementById('confirm-modal-action').addEventListener('click', function() {
-    if (confirmCallback) {
-        confirmCallback();
-    }
+    if (confirmCallback) { confirmCallback(); }
     closeConfirmModal();
 });
 
-// Close modal on backdrop click
 document.getElementById('confirm-modal').addEventListener('click', function(e) {
-    if (e.target === this) {
-        closeConfirmModal();
-    }
+    if (e.target === this) { closeConfirmModal(); }
 });
 
-// Close modal on Escape key
 document.addEventListener('keydown', function(e) {
-    if (e.key === 'Escape') {
-        closeConfirmModal();
-    }
+    if (e.key === 'Escape') { closeConfirmModal(); }
 });
 
-// Confirm delete facility
 function confirmDeleteFacility() {
     showConfirmModal(
         'Delete Facility',
         'Are you sure you want to delete this facility? This action cannot be undone.',
-        function() {
-            document.getElementById('delete-facility-form').submit();
-        }
+        function() { document.getElementById('delete-facility-form').submit(); }
     );
 }
 
 document.addEventListener('DOMContentLoaded', function() {
-    // Get existing facility coordinates
-    const existingLat = parseFloat(document.getElementById('latitude').value);
-    const existingLng = parseFloat(document.getElementById('longitude').value);
-    
-    // Initialize map centered on facility location
-    const map = L.map('coordinate-map').setView([existingLat, existingLng], 15);
-    
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '© OpenStreetMap contributors',
-        maxZoom: 18
-    }).addTo(map);
-    
-    // Add marker at existing facility location (draggable)
-    let marker = L.marker([existingLat, existingLng], {
-        draggable: true
-    }).addTo(map);
-    
-    marker.on('dragend', function(e) {
-        const position = marker.getLatLng();
-        updateCoordinates(position.lat, position.lng);
+    mapboxgl.accessToken = '{{ config('services.mapbox.access_token') }}';
+
+    const existingLat = parseFloat(document.getElementById('latitude').value) || 54.7804;
+    const existingLng = parseFloat(document.getElementById('longitude').value) || -127.1698;
+
+    const map = new mapboxgl.Map({
+        container: 'coordinate-map',
+        style: 'mapbox://styles/mapbox/streets-v12',
+        center: [existingLng, existingLat],
+        zoom: 15,
+        attributionControl: false,
     });
-    
+
+    map.addControl(new mapboxgl.NavigationControl({ showCompass: false }), 'bottom-right');
+
+    const marker = new mapboxgl.Marker({ draggable: true })
+        .setLngLat([existingLng, existingLat])
+        .addTo(map);
+
+    marker.on('dragend', function() {
+        const pos = marker.getLngLat();
+        updateCoordinates(pos.lat, pos.lng);
+    });
+
     map.on('click', function(e) {
-        const lat = e.latlng.lat;
-        const lng = e.latlng.lng;
-        
-        marker.setLatLng([lat, lng]);
-        updateCoordinates(lat, lng);
+        marker.setLngLat([e.lngLat.lng, e.lngLat.lat]);
+        updateCoordinates(e.lngLat.lat, e.lngLat.lng);
     });
-    
+
     function updateCoordinates(lat, lng) {
         document.getElementById('latitude').value = lat.toFixed(7);
         document.getElementById('longitude').value = lng.toFixed(7);
@@ -515,19 +501,13 @@ document.addEventListener('DOMContentLoaded', function() {
     const loadingIndicator = document.getElementById('search-loading');
     const resultsDropdown = document.getElementById('search-results-dropdown');
     let searchTimeout = null;
-    let searchMarker = null;
 
     searchInput.addEventListener('input', function() {
         const query = this.value.trim();
-        
         if (query.length > 2) {
             clearBtn.classList.remove('hidden');
-            
-            // Debounce search
             clearTimeout(searchTimeout);
-            searchTimeout = setTimeout(() => {
-                performSearch(query);
-            }, 500);
+            searchTimeout = setTimeout(() => performSearch(query), 500);
         } else {
             clearBtn.classList.add('hidden');
             resultsDropdown.classList.add('hidden');
@@ -538,13 +518,8 @@ document.addEventListener('DOMContentLoaded', function() {
         searchInput.value = '';
         clearBtn.classList.add('hidden');
         resultsDropdown.classList.add('hidden');
-        if (searchMarker) {
-            map.removeLayer(searchMarker);
-            searchMarker = null;
-        }
     });
 
-    // Close dropdown when clicking outside
     document.addEventListener('click', function(e) {
         if (!searchInput.contains(e.target) && !resultsDropdown.contains(e.target)) {
             resultsDropdown.classList.add('hidden');
@@ -553,75 +528,37 @@ document.addEventListener('DOMContentLoaded', function() {
 
     async function performSearch(query) {
         loadingIndicator.classList.remove('hidden');
-        
-        const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5&addressdetails=1`;
-        
         try {
-            const response = await fetch(url);
+            const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5&addressdetails=1`);
             const results = await response.json();
-            
             loadingIndicator.classList.add('hidden');
-            
             if (results.length > 0) {
-                displaySearchResults(results);
+                resultsDropdown.innerHTML = results.map(r => `
+                    <div class="search-result-item p-3 hover:bg-muted cursor-pointer border-b last:border-b-0"
+                         data-lat="${r.lat}" data-lon="${r.lon}" data-name="${r.display_name}">
+                        <div class="font-medium text-sm truncate">${r.display_name}</div>
+                        <div class="text-xs text-muted-foreground truncate">${r.type || 'Location'}</div>
+                    </div>
+                `).join('');
+                resultsDropdown.classList.remove('hidden');
+                resultsDropdown.querySelectorAll('.search-result-item').forEach(item => {
+                    item.addEventListener('click', function() {
+                        const lat = parseFloat(this.dataset.lat);
+                        const lon = parseFloat(this.dataset.lon);
+                        marker.setLngLat([lon, lat]);
+                        updateCoordinates(lat, lon);
+                        map.flyTo({ center: [lon, lat], zoom: 15 });
+                        searchInput.value = this.dataset.name;
+                        resultsDropdown.classList.add('hidden');
+                    });
+                });
             } else {
                 resultsDropdown.innerHTML = '<div class="p-3 text-sm text-muted-foreground">No results found</div>';
                 resultsDropdown.classList.remove('hidden');
             }
         } catch (error) {
-            console.error('Search error:', error);
             loadingIndicator.classList.add('hidden');
         }
-    }
-
-    function displaySearchResults(results) {
-        resultsDropdown.innerHTML = results.map(result => `
-            <div class="search-result-item p-3 hover:bg-muted cursor-pointer border-b last:border-b-0" 
-                 data-lat="${result.lat}" 
-                 data-lon="${result.lon}"
-                 data-name="${result.display_name}">
-                <div class="font-medium text-sm truncate">${result.display_name}</div>
-                <div class="text-xs text-muted-foreground truncate">${result.type || 'Location'}</div>
-            </div>
-        `).join('');
-        
-        resultsDropdown.classList.remove('hidden');
-        
-        // Add click handlers
-        resultsDropdown.querySelectorAll('.search-result-item').forEach(item => {
-            item.addEventListener('click', function() {
-                const lat = parseFloat(this.dataset.lat);
-                const lon = parseFloat(this.dataset.lon);
-                const name = this.dataset.name;
-                
-                // Update marker position
-                marker.setLatLng([lat, lon]);
-                updateCoordinates(lat, lon);
-                
-                // Pan map to location
-                map.setView([lat, lon], 15);
-                
-                // Update search input
-                searchInput.value = name;
-                resultsDropdown.classList.add('hidden');
-                
-                // Add search result marker temporarily
-                if (searchMarker) {
-                    map.removeLayer(searchMarker);
-                }
-                
-                searchMarker = L.marker([lat, lon], {
-                    icon: L.divIcon({
-                        className: 'custom-search-marker',
-                        html: '<div style="background: #3b82f6; width: 12px; height: 12px; border-radius: 50%; border: 2px solid white; box-shadow: 0 0 0 2px #3b82f6;"></div>',
-                        iconSize: [12, 12],
-                        iconAnchor: [6, 6]
-                    })
-                }).addTo(map);
-                
-                searchMarker.bindPopup(`<b>${name}</b>`).openPopup();
-            });
-        });
     }
 });
 
@@ -743,65 +680,6 @@ async function setPrimaryMedia(facilityId, mediaId, button) {
             alert('An error occurred');
         }
     });
-    
-    try {
-        const response = await fetch(`/admin/facilities/${facilityId}/media/${mediaId}/primary`, {
-            method: 'PATCH',
-            headers: {
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                'Accept': 'application/json',
-            },
-        });
-        
-        if (response.ok) {
-            // Update UI
-            const mediaGrid = document.getElementById('existing-media-grid');
-            const allContainers = mediaGrid.querySelectorAll('[data-media-id]');
-            
-            allContainers.forEach(container => {
-                const id = parseInt(container.dataset.mediaId);
-                const overlay = container.querySelector('.absolute.inset-0');
-                const star = container.querySelector('.primary-star');
-                
-                if (id === mediaId) {
-                    // This is now primary
-                    if (!star) {
-                        const newStar = document.createElement('div');
-                        newStar.className = 'absolute top-2 right-2 primary-star';
-                        newStar.innerHTML = '<span class="bg-yellow-500 text-white text-xs px-2 py-0.5 rounded-full">★</span>';
-                        container.appendChild(newStar);
-                    }
-                    // Change button to "Primary" text
-                    const btn = container.querySelector('button[onclick^="setPrimaryMedia"]');
-                    if (btn) {
-                        const span = document.createElement('span');
-                        span.className = 'text-xs bg-yellow-500 text-white px-2 py-1 rounded primary-badge';
-                        span.textContent = 'Primary';
-                        btn.replaceWith(span);
-                    }
-                } else {
-                    // Remove primary status
-                    if (star) star.remove();
-                    // Change back to "Set Primary" button if needed
-                    const badge = container.querySelector('.primary-badge');
-                    if (badge) {
-                        const otherId = container.dataset.mediaId;
-                        const newBtn = document.createElement('button');
-                        newBtn.type = 'button';
-                        newBtn.className = 'text-xs bg-white text-gray-900 px-2 py-1 rounded hover:bg-gray-100';
-                        newBtn.textContent = 'Set Primary';
-                        newBtn.onclick = function() { setPrimaryMedia(facilityId, parseInt(otherId), this); };
-                        badge.replaceWith(newBtn);
-                    }
-                }
-            });
-        } else {
-            alert('Failed to set primary media');
-        }
-    } catch (error) {
-        console.error('Error:', error);
-        alert('An error occurred');
-    }
 }
 
 // Delete media via AJAX
@@ -834,18 +712,8 @@ async function deleteMedia(facilityId, mediaId, button) {
 </script>
 
 <style>
-.search-result-item {
-    transition: background-color 0.15s ease;
-}
-
-.search-result-item:hover {
-    background-color: hsl(var(--muted));
-}
-
-.custom-search-marker {
-    background: transparent;
-    border: none;
-}
+.search-result-item { transition: background-color 0.15s ease; }
+.search-result-item:hover { background-color: hsl(var(--muted)); }
 </style>
 
 @endsection

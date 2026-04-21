@@ -58,7 +58,7 @@ Route::post('/calculate-route', function (Request $request) {
 Route::post('/elevation-profile', function (Request $request) {
     $request->validate([
         'coordinates' => 'required|array',
-        'coordinates.*' => 'required|array|size:2',
+        'coordinates.*' => 'required|array|min:2',
     ]);
 
     $routeService = new RouteService;

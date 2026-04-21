@@ -3,11 +3,10 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use App\Models\Trail;
 use App\Models\TrailMedia;
-use App\Models\TrailPhoto;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 class AdminController extends Controller
 {
@@ -31,7 +30,7 @@ class AdminController extends Controller
         if (Auth::check() && Auth::user()->isAdmin()) {
             return redirect()->route('admin.dashboard');
         }
-        
+
         $request->validate([
             'email' => 'required|email',
             'password' => 'required',
@@ -39,13 +38,15 @@ class AdminController extends Controller
 
         if (Auth::attempt($request->only('email', 'password'))) {
             $user = Auth::user();
-            
-            if (!$user->isAdmin()) {
+
+            if (! $user->isAdmin()) {
                 Auth::logout();
+
                 return back()->withErrors(['email' => 'Access denied. Admin privileges required.']);
             }
 
             $request->session()->regenerate();
+
             return redirect()->intended(route('admin.dashboard'));
         }
 
@@ -60,7 +61,7 @@ class AdminController extends Controller
         Auth::logout();
         $request->session()->invalidate();
         $request->session()->regenerateToken();
-        
+
         return redirect()->route('admin.login');
     }
 
@@ -73,10 +74,10 @@ class AdminController extends Controller
             'total_trails' => Trail::count(),
             'featured_trails' => Trail::featured()->count(),
             'active_trails' => Trail::active()->count(),
-            'total_photos' => TrailMedia::count(),
+            'inactive_trails' => Trail::where('status', '!=', 'active')->count(),
+            'total_photos' => TrailMedia::where('media_type', 'photo')->count(),
             'recent_trails' => Trail::latest()->take(5)->get(),
-            
-            // Add GPX stats
+
             'gpx_trails' => Trail::where('data_source', 'gpx')->count(),
             'manual_trails' => Trail::where('data_source', 'manual')->count(),
             'mixed_trails' => Trail::where('data_source', 'mixed')->count(),

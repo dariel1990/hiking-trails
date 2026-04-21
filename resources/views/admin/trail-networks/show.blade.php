@@ -1,6 +1,7 @@
 @extends('layouts.admin')
 
 @section('title', 'Trail Network Details')
+@section('page-title', $trailNetwork->network_name)
 
 @section('content')
 <div class="container mx-auto px-4 py-8">

@@ -159,7 +159,13 @@ class Business extends Model
     {
         static::creating(function (Business $business) {
             if (empty($business->slug)) {
-                $business->slug = Str::slug($business->name);
+                $base = Str::slug($business->name);
+                $slug = $base;
+                $i = 1;
+                while (static::where('slug', $slug)->exists()) {
+                    $slug = $base.'-'.++$i;
+                }
+                $business->slug = $slug;
             }
         });
     }

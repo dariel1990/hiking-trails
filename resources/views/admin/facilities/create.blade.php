@@ -5,8 +5,7 @@
 
 @section('content')
 
-<!-- Leaflet CSS -->
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<link href="https://api.mapbox.com/mapbox-gl-js/v3.10.0/mapbox-gl.css" rel="stylesheet">
 
 <div class="space-y-6">
     <!-- Header -->
@@ -297,8 +296,7 @@
     </form>
 </div>
 
-<!-- Leaflet JS -->
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://api.mapbox.com/mapbox-gl-js/v3.10.0/mapbox-gl.js"></script>
 
 <script>
 // Modal functions
@@ -323,14 +321,12 @@ document.getElementById('confirm-modal-action').addEventListener('click', functi
     closeConfirmModal();
 });
 
-// Close modal on backdrop click
 document.getElementById('confirm-modal').addEventListener('click', function(e) {
     if (e.target === this) {
         closeConfirmModal();
     }
 });
 
-// Close modal on Escape key
 document.addEventListener('keydown', function(e) {
     if (e.key === 'Escape') {
         closeConfirmModal();
@@ -338,38 +334,35 @@ document.addEventListener('keydown', function(e) {
 });
 
 document.addEventListener('DOMContentLoaded', function() {
-    // Get default coordinates (Smithers)
-    const defaultLat = parseFloat(document.getElementById('latitude').value);
-    const defaultLng = parseFloat(document.getElementById('longitude').value);
-    
-    // Initialize map centered on Smithers
-    const map = L.map('coordinate-map').setView([defaultLat, defaultLng], 11);
-    
-    // Add tile layer
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '© OpenStreetMap contributors',
-        maxZoom: 18
-    }).addTo(map);
-    
-    // Marker for selected facility location
-    let marker = L.marker([defaultLat, defaultLng], {
-        draggable: true
-    }).addTo(map);
-    
-    marker.on('dragend', function(e) {
-        const position = marker.getLatLng();
-        updateCoordinates(position.lat, position.lng);
+    mapboxgl.accessToken = '{{ config('services.mapbox.access_token') }}';
+
+    const defaultLat = parseFloat(document.getElementById('latitude').value) || 54.7804;
+    const defaultLng = parseFloat(document.getElementById('longitude').value) || -127.1698;
+
+    const map = new mapboxgl.Map({
+        container: 'coordinate-map',
+        style: 'mapbox://styles/mapbox/streets-v12',
+        center: [defaultLng, defaultLat],
+        zoom: 11,
+        attributionControl: false,
     });
-    
-    // Click on map to set facility location
+
+    map.addControl(new mapboxgl.NavigationControl({ showCompass: false }), 'bottom-right');
+
+    const marker = new mapboxgl.Marker({ draggable: true })
+        .setLngLat([defaultLng, defaultLat])
+        .addTo(map);
+
+    marker.on('dragend', function() {
+        const pos = marker.getLngLat();
+        updateCoordinates(pos.lat, pos.lng);
+    });
+
     map.on('click', function(e) {
-        const lat = e.latlng.lat;
-        const lng = e.latlng.lng;
-        
-        marker.setLatLng([lat, lng]);
-        updateCoordinates(lat, lng);
+        marker.setLngLat([e.lngLat.lng, e.lngLat.lat]);
+        updateCoordinates(e.lngLat.lat, e.lngLat.lng);
     });
-    
+
     function updateCoordinates(lat, lng) {
         document.getElementById('latitude').value = lat.toFixed(7);
         document.getElementById('longitude').value = lng.toFixed(7);
@@ -381,19 +374,13 @@ document.addEventListener('DOMContentLoaded', function() {
     const loadingIndicator = document.getElementById('search-loading');
     const resultsDropdown = document.getElementById('search-results-dropdown');
     let searchTimeout = null;
-    let searchMarker = null;
 
     searchInput.addEventListener('input', function() {
         const query = this.value.trim();
-        
         if (query.length > 2) {
             clearBtn.classList.remove('hidden');
-            
-            // Debounce search
             clearTimeout(searchTimeout);
-            searchTimeout = setTimeout(() => {
-                performSearch(query);
-            }, 500);
+            searchTimeout = setTimeout(() => performSearch(query), 500);
         } else {
             clearBtn.classList.add('hidden');
             resultsDropdown.classList.add('hidden');
@@ -404,13 +391,8 @@ document.addEventListener('DOMContentLoaded', function() {
         searchInput.value = '';
         clearBtn.classList.add('hidden');
         resultsDropdown.classList.add('hidden');
-        if (searchMarker) {
-            map.removeLayer(searchMarker);
-            searchMarker = null;
-        }
     });
 
-    // Close dropdown when clicking outside
     document.addEventListener('click', function(e) {
         if (!searchInput.contains(e.target) && !resultsDropdown.contains(e.target)) {
             resultsDropdown.classList.add('hidden');
@@ -419,75 +401,37 @@ document.addEventListener('DOMContentLoaded', function() {
 
     async function performSearch(query) {
         loadingIndicator.classList.remove('hidden');
-        
-        const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5&addressdetails=1`;
-        
         try {
-            const response = await fetch(url);
+            const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5&addressdetails=1`);
             const results = await response.json();
-            
             loadingIndicator.classList.add('hidden');
-            
             if (results.length > 0) {
-                displaySearchResults(results);
+                resultsDropdown.innerHTML = results.map(r => `
+                    <div class="search-result-item p-3 hover:bg-muted cursor-pointer border-b last:border-b-0"
+                         data-lat="${r.lat}" data-lon="${r.lon}" data-name="${r.display_name}">
+                        <div class="font-medium text-sm truncate">${r.display_name}</div>
+                        <div class="text-xs text-muted-foreground truncate">${r.type || 'Location'}</div>
+                    </div>
+                `).join('');
+                resultsDropdown.classList.remove('hidden');
+                resultsDropdown.querySelectorAll('.search-result-item').forEach(item => {
+                    item.addEventListener('click', function() {
+                        const lat = parseFloat(this.dataset.lat);
+                        const lon = parseFloat(this.dataset.lon);
+                        marker.setLngLat([lon, lat]);
+                        updateCoordinates(lat, lon);
+                        map.flyTo({ center: [lon, lat], zoom: 15 });
+                        searchInput.value = this.dataset.name;
+                        resultsDropdown.classList.add('hidden');
+                    });
+                });
             } else {
                 resultsDropdown.innerHTML = '<div class="p-3 text-sm text-muted-foreground">No results found</div>';
                 resultsDropdown.classList.remove('hidden');
             }
         } catch (error) {
-            console.error('Search error:', error);
             loadingIndicator.classList.add('hidden');
         }
-    }
-
-    function displaySearchResults(results) {
-        resultsDropdown.innerHTML = results.map(result => `
-            <div class="search-result-item p-3 hover:bg-muted cursor-pointer border-b last:border-b-0" 
-                 data-lat="${result.lat}" 
-                 data-lon="${result.lon}"
-                 data-name="${result.display_name}">
-                <div class="font-medium text-sm truncate">${result.display_name}</div>
-                <div class="text-xs text-muted-foreground truncate">${result.type || 'Location'}</div>
-            </div>
-        `).join('');
-        
-        resultsDropdown.classList.remove('hidden');
-        
-        // Add click handlers
-        resultsDropdown.querySelectorAll('.search-result-item').forEach(item => {
-            item.addEventListener('click', function() {
-                const lat = parseFloat(this.dataset.lat);
-                const lon = parseFloat(this.dataset.lon);
-                const name = this.dataset.name;
-                
-                // Update marker position
-                marker.setLatLng([lat, lon]);
-                updateCoordinates(lat, lon);
-                
-                // Pan map to location
-                map.setView([lat, lon], 15);
-                
-                // Update search input
-                searchInput.value = name;
-                resultsDropdown.classList.add('hidden');
-                
-                // Add search result marker temporarily
-                if (searchMarker) {
-                    map.removeLayer(searchMarker);
-                }
-                
-                searchMarker = L.marker([lat, lon], {
-                    icon: L.divIcon({
-                        className: 'custom-search-marker',
-                        html: '<div style="background: #3b82f6; width: 12px; height: 12px; border-radius: 50%; border: 2px solid white; box-shadow: 0 0 0 2px #3b82f6;"></div>',
-                        iconSize: [12, 12],
-                        iconAnchor: [6, 6]
-                    })
-                }).addTo(map);
-                
-                searchMarker.bindPopup(`<b>${name}</b>`).openPopup();
-            });
-        });
     }
 });
 
@@ -552,18 +496,8 @@ updateFacilityIcon();
 </script>
 
 <style>
-.search-result-item {
-    transition: background-color 0.15s ease;
-}
-
-.search-result-item:hover {
-    background-color: hsl(var(--muted));
-}
-
-.custom-search-marker {
-    background: transparent;
-    border: none;
-}
+.search-result-item { transition: background-color 0.15s ease; }
+.search-result-item:hover { background-color: hsl(var(--muted)); }
 </style>
 
 @endsection

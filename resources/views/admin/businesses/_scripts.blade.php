@@ -1,28 +1,34 @@
-<!-- Leaflet JS -->
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://api.mapbox.com/mapbox-gl-js/v3.10.0/mapbox-gl.js"></script>
 
 <script>
 document.addEventListener('DOMContentLoaded', function () {
+    mapboxgl.accessToken = '{{ config('services.mapbox.access_token') }}';
+
     const defaultLat = parseFloat(document.getElementById('latitude').value) || 54.7804;
     const defaultLng = parseFloat(document.getElementById('longitude').value) || -127.1698;
 
-    const map = L.map('coordinate-map').setView([defaultLat, defaultLng], 14);
+    const map = new mapboxgl.Map({
+        container: 'coordinate-map',
+        style: 'mapbox://styles/mapbox/streets-v12',
+        center: [defaultLng, defaultLat],
+        zoom: 14,
+        attributionControl: false,
+    });
 
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '© OpenStreetMap contributors',
-        maxZoom: 18
-    }).addTo(map);
+    map.addControl(new mapboxgl.NavigationControl({ showCompass: false }), 'bottom-right');
 
-    let marker = L.marker([defaultLat, defaultLng], { draggable: true }).addTo(map);
+    const marker = new mapboxgl.Marker({ draggable: true })
+        .setLngLat([defaultLng, defaultLat])
+        .addTo(map);
 
     marker.on('dragend', function () {
-        const pos = marker.getLatLng();
+        const pos = marker.getLngLat();
         updateCoordinates(pos.lat, pos.lng);
     });
 
     map.on('click', function (e) {
-        marker.setLatLng([e.latlng.lat, e.latlng.lng]);
-        updateCoordinates(e.latlng.lat, e.latlng.lng);
+        marker.setLngLat([e.lngLat.lng, e.lngLat.lat]);
+        updateCoordinates(e.lngLat.lat, e.lngLat.lng);
     });
 
     function updateCoordinates(lat, lng) {
@@ -80,9 +86,9 @@ document.addEventListener('DOMContentLoaded', function () {
                     item.addEventListener('click', function () {
                         const lat = parseFloat(this.dataset.lat);
                         const lon = parseFloat(this.dataset.lon);
-                        marker.setLatLng([lat, lon]);
+                        marker.setLngLat([lon, lat]);
                         updateCoordinates(lat, lon);
-                        map.setView([lat, lon], 16);
+                        map.flyTo({ center: [lon, lat], zoom: 16 });
                         searchInput.value = this.dataset.name;
                         dropdown.classList.add('hidden');
                     });

@@ -91,7 +91,9 @@ class TrailNetworkController extends Controller
             }
         });
 
-        return view('trail-networks.show', compact('network'));
+        $mapboxToken = config('services.mapbox.access_token');
+
+        return view('trail-networks.show', compact('network', 'mapboxToken'));
     }
 
     public function trailHighlights()

@@ -40,4 +40,8 @@ return [
         'base_url' => 'https://api.openrouteservice.org',
     ],
 
+    'mapbox' => [
+        'access_token' => env('MAPBOX_ACCESS_TOKEN'),
+    ],
+
 ];

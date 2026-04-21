@@ -18,9 +18,9 @@ class ActivityTypeController extends Controller
 
         // Search filter
         if ($request->search) {
-            $query->where(function($q) use ($request) {
+            $query->where(function ($q) use ($request) {
                 $q->where('name', 'like', "%{$request->search}%")
-                  ->orWhere('description', 'like', "%{$request->search}%");
+                    ->orWhere('description', 'like', "%{$request->search}%");
             });
         }
 
@@ -30,7 +30,7 @@ class ActivityTypeController extends Controller
         }
 
         // Status filter
-        if ($request->has('status')) {
+        if ($request->filled('status')) {
             $query->where('is_active', $request->status);
         }
 
@@ -64,7 +64,7 @@ class ActivityTypeController extends Controller
 
         // Ensure slug is lowercase and hyphenated
         $validated['slug'] = Str::slug($validated['slug']);
-        
+
         // Handle checkbox: if not present in request, set to false
         $validated['is_active'] = $request->has('is_active') ? true : false;
 
@@ -80,6 +80,7 @@ class ActivityTypeController extends Controller
     public function edit(ActivityType $activityType)
     {
         $activityType->loadCount('trails');
+
         return view('admin.activity-types.edit', compact('activityType'));
     }
 
@@ -90,7 +91,7 @@ class ActivityTypeController extends Controller
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'slug' => 'required|string|max:255|unique:activity_types,slug,' . $activityType->id,
+            'slug' => 'required|string|max:255|unique:activity_types,slug,'.$activityType->id,
             'icon' => 'required|string|max:10',
             'color' => 'required|string|max:7|regex:/^#[0-9A-Fa-f]{6}$/',
             'description' => 'nullable|string|max:500',
@@ -100,7 +101,7 @@ class ActivityTypeController extends Controller
 
         // Ensure slug is lowercase and hyphenated
         $validated['slug'] = Str::slug($validated['slug']);
-        
+
         // Handle checkbox: if not present in request, set to false
         $validated['is_active'] = $request->has('is_active') ? true : false;
 

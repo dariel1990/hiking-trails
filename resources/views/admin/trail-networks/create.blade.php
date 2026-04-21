@@ -1,10 +1,10 @@
 @extends('layouts.admin')
 
 @section('title', 'Create Trail Network')
+@section('page-title', 'Create Trail Network')
 
 @section('content')
-<!-- Leaflet CSS -->
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<link href="https://api.mapbox.com/mapbox-gl-js/v3.10.0/mapbox-gl.css" rel="stylesheet">
 <div class="container mx-auto px-4 py-8">
     <!-- Header -->
     <div class="mb-6">
@@ -193,58 +193,38 @@
         </form>
     </div>
 </div>
-<!-- Leaflet JS -->
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://api.mapbox.com/mapbox-gl-js/v3.10.0/mapbox-gl.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Initialize map centered on Smithers
-    const map = L.map('coordinate-map').setView([54.7804, -127.1698], 11);
-    
-    // Add tile layer
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '© OpenStreetMap contributors',
-        maxZoom: 18
-    }).addTo(map);
-    
-    // Marker for selected location
-    let marker = null;
-    
-    // Get existing coordinates if any
-    const existingLat = parseFloat(document.getElementById('latitude').value);
-    const existingLng = parseFloat(document.getElementById('longitude').value);
-    
-    if (existingLat && existingLng) {
-        marker = L.marker([existingLat, existingLng], {
-            draggable: true
-        }).addTo(map);
-        
-        marker.on('dragend', function(e) {
-            const position = marker.getLatLng();
-            updateCoordinates(position.lat, position.lng);
-        });
-    }
-    
-    // Click on map to set location
-    map.on('click', function(e) {
-        const lat = e.latlng.lat;
-        const lng = e.latlng.lng;
-        
-        if (marker) {
-            marker.setLatLng([lat, lng]);
-        } else {
-            marker = L.marker([lat, lng], {
-                draggable: true
-            }).addTo(map);
-            
-            marker.on('dragend', function(e) {
-                const position = marker.getLatLng();
-                updateCoordinates(position.lat, position.lng);
-            });
-        }
-        
-        updateCoordinates(lat, lng);
+    mapboxgl.accessToken = '{{ config('services.mapbox.access_token') }}';
+
+    const defaultLat = parseFloat(document.getElementById('latitude').value) || 54.7804;
+    const defaultLng = parseFloat(document.getElementById('longitude').value) || -127.1698;
+
+    const map = new mapboxgl.Map({
+        container: 'coordinate-map',
+        style: 'mapbox://styles/mapbox/streets-v12',
+        center: [defaultLng, defaultLat],
+        zoom: 11,
+        attributionControl: false,
     });
-    
+
+    map.addControl(new mapboxgl.NavigationControl({ showCompass: false }), 'bottom-right');
+
+    let marker = new mapboxgl.Marker({ draggable: true })
+        .setLngLat([defaultLng, defaultLat])
+        .addTo(map);
+
+    marker.on('dragend', function() {
+        const pos = marker.getLngLat();
+        updateCoordinates(pos.lat, pos.lng);
+    });
+
+    map.on('click', function(e) {
+        marker.setLngLat([e.lngLat.lng, e.lngLat.lat]);
+        updateCoordinates(e.lngLat.lat, e.lngLat.lng);
+    });
+
     function updateCoordinates(lat, lng) {
         document.getElementById('latitude').value = lat.toFixed(7);
         document.getElementById('longitude').value = lng.toFixed(7);

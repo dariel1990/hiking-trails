@@ -19,6 +19,7 @@ Route::get('/', [TrailController::class, 'home'])->name('home');
 Route::get('/trails', [TrailController::class, 'index'])->name('trails.index');
 Route::get('/trails/{trail}', [TrailController::class, 'show'])->name('trails.show');
 Route::get('/map', [TrailController::class, 'map'])->name('map');
+Route::get('/map-v2', [TrailController::class, 'mapV2'])->name('map.v2');
 
 Route::get('/privacy-policy', fn () => view('privacy-policy'))->name('privacy-policy');
 
@@ -52,8 +53,6 @@ Route::prefix('admin')->name('admin.')->group(function () {
         // Trail management
         Route::resource('trails', AdminTrailController::class);
         Route::resource('activity-types', ActivityTypeController::class);
-        Route::post('/trails/{trail}/photos', [AdminTrailController::class, 'uploadPhotos'])->name('trails.photos.store');
-        Route::delete('/photos/{photo}', [AdminTrailController::class, 'deletePhoto'])->name('photos.delete');
         Route::patch('/trails/{trail}/toggle-featured', [AdminTrailController::class, 'toggleFeatured'])->name('trails.toggle-featured')->middleware('throttle:10,1');
 
         // Add the trail networks routes here
@@ -117,15 +116,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::get('/media/business/{media}', [MediaController::class, 'showBusinessMedia'])->name('media.business.show');
         Route::delete('/media/business/{media}', [MediaController::class, 'destroyBusinessMedia'])->name('media.business.destroy');
 
-        // Media Management Routes
-        // Route::get('/trails/{trail}/media', [AdminTrailController::class, 'mediaManagement'])->name('trails.media');
-        // Route::post('/trails/{trail}/media/upload', [AdminTrailController::class, 'uploadMedia'])->name('trails.media.upload');
-        // Route::post('/trails/{trail}/media/{media}/link/{feature}', [AdminTrailController::class, 'linkMediaToFeature'])->name('admin.trails.media.link');
-        // Route::delete('/trails/{trail}/media/{media}/link/{feature}', [AdminTrailController::class, 'unlinkMediaFromFeature'])->name('admin.trails.media.unlink');
-        // Route::put('/trails/{trail}/media/{media}', [AdminTrailController::class, 'updateMedia'])->name('trails.media.update');
-        // Route::delete('/trails/{trail}/media/{media}', [AdminTrailController::class, 'deleteMedia'])->name('trails.media.delete');
-
-        // GPX API endpoints (add these)
+        // GPX API endpoints
         Route::post('/trails/gpx/preview', [AdminTrailController::class, 'previewGpx'])
             ->name('trails.gpx.preview');
         Route::post('/trails/{trail}/gpx/compare', [AdminTrailController::class, 'compareGpx'])

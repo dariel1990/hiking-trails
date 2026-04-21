@@ -1,6 +1,7 @@
 @extends('layouts.admin')
 
 @section('title', 'Trail Networks')
+@section('page-title', 'Trail Networks')
 
 @section('content')
 <div class="container mx-auto px-4 py-8">

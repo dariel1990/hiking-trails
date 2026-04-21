@@ -112,8 +112,8 @@
                         <td class="p-4 align-middle [&:has([role=checkbox])]:pr-0">
                             <div class="flex items-center gap-3">
                                 <div class="relative h-10 w-10 overflow-hidden rounded-lg">
-                                    @if($trail->featuredPhoto)
-                                        <img class="h-full w-full object-cover" src="{{ $trail->featuredPhoto->url }}" alt="{{ $trail->name }}">
+                                    @if($trail->featured_media_url)
+                                        <img class="h-full w-full object-cover" src="{{ $trail->featured_media_url }}" alt="{{ $trail->name }}">
                                     @else
                                         <div class="flex h-full w-full items-center justify-center bg-muted">
                                             <svg class="h-5 w-5 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">

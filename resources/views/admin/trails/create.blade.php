@@ -101,7 +101,7 @@
                                 class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 @error('trail_network_id') border-red-300 @enderror">
                             <option value="">-- None (Standalone Trail) --</option>
                             @foreach($trailNetworks as $network)
-                                <option value="{{ $network->id }}" {{ old('trail_network_id') == $network->id ? 'selected' : '' }}>
+                                <option value="{{ $network->id }}" {{ old('trail_network_id', request('network')) == $network->id ? 'selected' : '' }}>
                                     {{ $network->network_name }}
                                 </option>
                             @endforeach
@@ -1230,7 +1230,9 @@
 
 @push('scripts')
 <link href="https://cdn.quilljs.com/1.3.7/quill.snow.css" rel="stylesheet">
+<link href="https://api.mapbox.com/mapbox-gl-js/v3.10.0/mapbox-gl.css" rel="stylesheet">
 <script src="https://cdn.quilljs.com/1.3.7/quill.min.js"></script>
+<script src="https://api.mapbox.com/mapbox-gl-js/v3.10.0/mapbox-gl.js"></script>
 <style>
     .quill-editor { background: #fff; border: 1px solid hsl(var(--input)); border-radius: 0.375rem; overflow: hidden; }
     .quill-editor .ql-toolbar { border: none; border-bottom: 1px solid hsl(var(--input)); border-radius: 0.375rem 0.375rem 0 0; }
@@ -1382,20 +1384,21 @@
     class TrailBuilder {
         constructor() {
             this.map = null;
-            this.routeLayer = null;
             this.waypoints = [];
             this.routeSegments = [];
+            this.routeFeatures = []; // GeoJSON features for Mapbox source
+            this.existingTrailsData = null;
             this.totalDistance = 0;
             this.totalTime = 0;
             this.smartRouting = true;
-            this.highlights = []; 
-            this.highlightsLayer = null; 
-            this.pendingHighlight = null; 
-            this.editingHighlightId = null; 
-            this.highlightMarkers = {}; 
+            this.highlights = [];
+            this.pendingHighlight = null;
+            this.editingHighlightId = null;
+            this.highlightMarkers = {}; // id → mapboxgl.Marker
+            this.waypointMarkers = {}; // id → mapboxgl.Marker
             this.highlightFiles = [];
             this.waypointModeEnabled = false;
-            this.highlightModeEnabled = false; 
+            this.highlightModeEnabled = false;
             this.searchTimeout = null;
             this.searchMarker = null;
             this.currentSearchResults = [];
@@ -1506,47 +1509,32 @@
 
         init() {
             const mapElement = document.getElementById('trail-map');
-            
-            if (!mapElement) {
-                return;
-            }
-            
+            if (!mapElement) return;
+
             try {
-                this.map = L.map('trail-map', {
-                    maxZoom: 20,
-                    minZoom: 1,
-                    zoomControl: false  // Disable default zoom control
-                }).setView([54.7804, -127.1698], 10);
-
-                // Add zoom control to bottom left
-                L.control.zoom({
-                    position: 'bottomleft'
-                }).addTo(this.map);
-                
-                // Define base layers for map styles
-                this.baseLayers = {
-                    'standard': L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                        attribution: '© OpenStreetMap contributors',
-                        maxZoom: 19
-                    }),
-                    'satellite': L.tileLayer('https://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', {
-                        attribution: '© Google',
-                        maxZoom: 22,
-                        subdomains: ['mt0', 'mt1', 'mt2', 'mt3']
-                    })
-                };
-
-                // Track current map type
+                mapboxgl.accessToken = '{{ config('services.mapbox.access_token') }}';
+                this.map = new mapboxgl.Map({
+                    container: 'trail-map',
+                    style: 'mapbox://styles/mapbox/streets-v12',
+                    center: [-127.1698, 54.7804],
+                    zoom: 10,
+                    attributionControl: false,
+                });
+                this.map.addControl(new mapboxgl.NavigationControl({ showCompass: false }), 'bottom-left');
                 this.currentMapType = 'standard';
 
-                // Add default base layer
-                this.baseLayers[this.currentMapType].addTo(this.map);
-                this.routeLayer = L.layerGroup().addTo(this.map);
-                this.highlightsLayer = L.layerGroup().addTo(this.map); 
-                this.existingTrailsLayer = L.layerGroup().addTo(this.map);
-                
+                this.map.on('load', () => {
+                    this._initMapLayers();
+                    this.loadExistingTrails();
+                });
+
+                this.map.on('style.load', () => {
+                    this._initMapLayers();
+                    this._updateRouteSource();
+                    if (this.existingTrailsData) { this._updateExistingTrailsSource(); }
+                });
+
                 this.setupEventListeners();
-                this.loadExistingTrails();
                 this.setupMapClicks();
                 this.setupHighlightHandlers();
                 this.initMapSearch();
@@ -1554,159 +1542,98 @@
             }
         }
 
+        _initMapLayers() {
+            if (!this.map.getSource('route-segments')) {
+                this.map.addSource('route-segments', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
+                this.map.addLayer({ id: 'route-solid', type: 'line', source: 'route-segments', filter: ['==', ['get', 'lineStyle'], 'solid'], paint: { 'line-color': '#10B981', 'line-width': 4, 'line-opacity': 0.8 } });
+                this.map.addLayer({ id: 'route-dashed', type: 'line', source: 'route-segments', filter: ['==', ['get', 'lineStyle'], 'dashed'], paint: { 'line-color': '#EF4444', 'line-width': 4, 'line-opacity': 0.6, 'line-dasharray': [2.5, 1.25] } });
+            }
+            if (!this.map.getSource('existing-trails')) {
+                this.map.addSource('existing-trails', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
+                this.map.addLayer({ id: 'existing-trails-outline', type: 'line', source: 'existing-trails', paint: { 'line-color': '#ffffff', 'line-width': 5, 'line-opacity': 0.4 } });
+                this.map.addLayer({ id: 'existing-trails-line', type: 'line', source: 'existing-trails', paint: { 'line-color': '#10b981', 'line-width': 3, 'line-opacity': 0.7 } });
+                this.map.on('click', 'existing-trails-line', (e) => {
+                    const p = e.features[0].properties;
+                    const label = p.status.charAt(0).toUpperCase() + p.status.slice(1);
+                    new mapboxgl.Popup().setLngLat(e.lngLat).setHTML(`<div class="text-sm"><strong>${p.name}</strong><br><span style="font-size:11px;padding:2px 6px;border-radius:4px;background:#d1fae5;color:#065f46;">${label}</span></div>`).addTo(this.map);
+                });
+                this.map.on('mouseenter', 'existing-trails-line', () => { this.map.getCanvas().style.cursor = 'pointer'; });
+                this.map.on('mouseleave', 'existing-trails-line', () => { this.map.getCanvas().style.cursor = ''; });
+            }
+        }
+
+        _updateRouteSource() {
+            const src = this.map.getSource('route-segments');
+            if (src) { src.setData({ type: 'FeatureCollection', features: this.routeFeatures }); }
+        }
+
+        _updateExistingTrailsSource() {
+            const src = this.map.getSource('existing-trails');
+            if (src && this.existingTrailsData) { src.setData(this.existingTrailsData); }
+        }
+
         loadExistingTrails() {
             @if(isset($existingTrails) && $existingTrails->count() > 0)
             const existingTrails = @json($existingTrails);
-
-            // Color scheme - using green for all existing trails
-            const trailColor = '#10b981';
-
-            let trailsAdded = 0;
-            let trailsSkipped = 0;
-
-            existingTrails.forEach((trail, index) => {
+            const features = [];
+            existingTrails.forEach(trail => {
                 if (trail.coordinates && trail.coordinates.length > 1) {
                     try {
-                        // SOLID GREEN LINE - no dashes
-                        const trailLine = L.polyline(trail.coordinates, {
-                            color: trailColor,
-                            weight: 3,
-                            opacity: 0.7,
-                            // dashArray removed for solid line
-                            interactive: true,
-                            className: 'existing-trail-line'
-                        }).addTo(this.existingTrailsLayer);
-                        
-                        // Add white outline for better visibility on satellite
-                        const outlineLine = L.polyline(trail.coordinates, {
-                            color: '#ffffff',
-                            weight: 5,
-                            opacity: 0.4,
-                            interactive: false,
-                            className: 'existing-trail-outline'
-                        }).addTo(this.existingTrailsLayer);
-                        
-                        // Make sure outline is behind the main line
-                        outlineLine.bringToBack();
-                        
-                        // Add popup with trail info
-                        trailLine.bindPopup(`
-                            <div class="text-sm">
-                                <strong class="text-base">${trail.name}</strong><br>
-                                <span class="inline-block mt-1 px-2 py-0.5 rounded text-xs font-medium ${
-                                    trail.status === 'active' ? 'bg-green-100 text-green-800' :
-                                    trail.status === 'closed' ? 'bg-red-100 text-red-800' :
-                                    'bg-orange-100 text-orange-800'
-                                }">
-                                    ${trail.status.charAt(0).toUpperCase() + trail.status.slice(1)}
-                                </span>
-                            </div>
-                        `);
-                        
-                        // Hover effects
-                        trailLine.on('mouseover', function() {
-                            this.setStyle({
-                                weight: 5,
-                                opacity: 1.0
-                            });
-                            outlineLine.setStyle({
-                                weight: 7,
-                                opacity: 0.6
-                            });
+                        // coordinates are [lat,lng]; GeoJSON needs [lng,lat]
+                        features.push({
+                            type: 'Feature',
+                            properties: { name: trail.name, status: trail.status },
+                            geometry: { type: 'LineString', coordinates: trail.coordinates.map(c => [c[1], c[0]]) },
                         });
-                        
-                        trailLine.on('mouseout', function() {
-                            this.setStyle({
-                                weight: 3,
-                                opacity: 0.7
-                            });
-                            outlineLine.setStyle({
-                                weight: 5,
-                                opacity: 0.4
-                            });
-                        });
-                        
-                        trailsAdded++;
-                    } catch (error) {
-                        trailsSkipped++;
-                    }
-                } else {
-                    trailsSkipped++;
+                    } catch (e) {}
                 }
             });
-
+            this.existingTrailsData = { type: 'FeatureCollection', features };
+            this._updateExistingTrailsSource();
             this.addExistingTrailsToggle();
             @endif
         }
 
         addExistingTrailsToggle() {
             const mapContainer = document.getElementById('trail-map');
-            
-            // Create toggle button
             const toggleBtn = document.createElement('button');
             toggleBtn.type = 'button';
             toggleBtn.className = 'absolute bottom-6 right-2 z-[999] bg-white rounded-lg shadow-lg px-3 py-2 text-xs font-medium hover:bg-gray-50 transition-colors border border-gray-200 flex items-center gap-2';
-            toggleBtn.innerHTML = `
-                <svg class="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/>
-                </svg>
-                <span>Hide Other Trails</span>
-            `;
-            
+
+            const mapSVG = `<svg class="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/></svg>`;
+            const eyeSVG = `<svg class="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>`;
+
             let trailsVisible = true;
-            
+            toggleBtn.innerHTML = `${mapSVG}<span>Hide Other Trails</span>`;
+
             toggleBtn.addEventListener('click', () => {
                 trailsVisible = !trailsVisible;
-                
-                if (trailsVisible) {
-                    this.map.addLayer(this.existingTrailsLayer);
-                    toggleBtn.innerHTML = `
-                        <svg class="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/>
-                        </svg>
-                        <span>Hide Other Trails</span>
-                    `;
-                } else {
-                    this.map.removeLayer(this.existingTrailsLayer);
-                    toggleBtn.innerHTML = `
-                        <svg class="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
-                        </svg>
-                        <span>Show Other Trails</span>
-                    `;
+                const vis = trailsVisible ? 'visible' : 'none';
+                if (this.map.getLayer('existing-trails-line')) {
+                    this.map.setLayoutProperty('existing-trails-line', 'visibility', vis);
+                    this.map.setLayoutProperty('existing-trails-outline', 'visibility', vis);
                 }
+                toggleBtn.innerHTML = trailsVisible
+                    ? `${mapSVG}<span>Hide Other Trails</span>`
+                    : `${eyeSVG}<span>Show Other Trails</span>`;
             });
-            
+
             mapContainer.appendChild(toggleBtn);
         }
 
         switchMapType(mapType) {
-            // Remove current base layer
-            if (this.map.hasLayer(this.baseLayers[this.currentMapType])) {
-                this.map.removeLayer(this.baseLayers[this.currentMapType]);
-            }
-            
-            // Update current map type
+            const styles = {
+                'standard':  'mapbox://styles/mapbox/streets-v12',
+                'satellite': 'mapbox://styles/mapbox/satellite-streets-v12',
+            };
+            if (!styles[mapType]) { return; }
             this.currentMapType = mapType;
-            
-            // Add new base layer
-            this.baseLayers[this.currentMapType].addTo(this.map);
-            
-            // Update active state in dropdown
+            this.map.setStyle(styles[mapType]); // sources/layers re-added on style.load
             document.querySelectorAll('.map-layer-option-card').forEach(btn => {
-                if (btn.dataset.mapType === mapType) {
-                    btn.classList.add('active');
-                } else {
-                    btn.classList.remove('active');
-                }
+                btn.classList.toggle('active', btn.dataset.mapType === mapType);
             });
-            
-            // Close dropdown
             const dropdown = document.getElementById('map-layers-dropdown');
-            if (dropdown) {
-                dropdown.classList.add('hidden');
-            }
+            if (dropdown) { dropdown.classList.add('hidden'); }
         }
 
         setupEventListeners() {
@@ -1770,20 +1697,16 @@
 
         setupMapClicks() {
             this.map.on('click', (e) => {
-                // Check which mode is active
                 if (this.highlightModeEnabled) {
-                    // Highlight mode - place highlight marker
                     const highlightType = document.getElementById('highlight-type-select')?.value;
                     if (!highlightType) {
                         showToast('Please select a highlight type first', 'warning');
                         return;
                     }
-                    this.placeHighlightMarker(e.latlng.lat, e.latlng.lng);
+                    this.placeHighlightMarker(e.lngLat.lat, e.lngLat.lng);
                 } else if (this.waypointModeEnabled) {
-                    // Waypoint mode - add waypoint
-                    this.addWaypoint(e.latlng.lat, e.latlng.lng);
+                    this.addWaypoint(e.lngLat.lat, e.lngLat.lng);
                 } else {
-                    // No mode enabled
                     showToast('Please enable waypoint or highlight mode first', 'warning');
                 }
             });
@@ -1821,18 +1744,16 @@
             const waypoint = { lat, lng, id: Date.now() };
             this.waypoints.push(waypoint);
 
-            // Add waypoint marker
-            const marker = L.marker([lat, lng], {
-                icon: this.createWaypointIcon(this.waypoints.length),
-                draggable: true
-            }).addTo(this.routeLayer);
-
-            marker.waypointId = waypoint.id;
-            marker.on('dragend', (e) => {
-                this.updateWaypoint(waypoint.id, e.target.getLatLng());
+            const el = this.createWaypointElement(this.waypoints.length);
+            const marker = new mapboxgl.Marker({ element: el, draggable: true })
+                .setLngLat([lng, lat])
+                .addTo(this.map);
+            marker.on('dragend', () => {
+                const pos = marker.getLngLat();
+                this.updateWaypoint(waypoint.id, { lat: pos.lat, lng: pos.lng });
             });
+            this.waypointMarkers[waypoint.id] = marker;
 
-            // Calculate route to this waypoint if not the first
             if (this.waypoints.length > 1) {
                 await this.calculateRouteSegment(
                     this.waypoints[this.waypoints.length - 2],
@@ -2093,77 +2014,63 @@
         }
 
         displayRouteSegment(routeData, startId, endId) {
-            if (!routeData.features || !routeData.features[0]) {
-                return;
-            }
-
+            if (!routeData.features || !routeData.features[0]) { return; }
             const geometry = routeData.features[0].geometry;
-            let coordinates;
-            
-            // Handle encoded polyline (string) or coordinate array
+            let coordinates; // [lat,lng] internal format
+            let geoCoords;   // [lng,lat] for GeoJSON
+
             if (typeof geometry === 'string') {
-                // Decode polyline string
-                const decoded = this.decodePolyline(geometry);
-                coordinates = decoded; // Already in [lat, lng] format
+                coordinates = this.decodePolyline(geometry);
+                geoCoords = coordinates.map(c => [c[1], c[0]]);
             } else if (geometry && geometry.coordinates) {
-                // Handle GeoJSON LineString format
-                coordinates = geometry.coordinates.map(coord => [coord[1], coord[0]]);
+                geoCoords = geometry.coordinates;
+                coordinates = geometry.coordinates.map(c => [c[1], c[0]]);
             } else {
                 return;
             }
-            
-            // Create the route line
-            const routeLine = L.polyline(coordinates, {
-                color: '#10B981',  // Green color to indicate successful routing
-                weight: 4,
-                opacity: 0.8
-            }).addTo(this.routeLayer);
+
+            const featureId = `seg-${startId}-${endId}`;
+            this.routeFeatures.push({
+                type: 'Feature',
+                properties: { featureId, lineStyle: 'solid' },
+                geometry: { type: 'LineString', coordinates: geoCoords },
+            });
+            this._updateRouteSource();
 
             const distance = routeData.features[0].properties.segments[0].distance || 0;
-
-            this.routeSegments.push({
-                startId,
-                endId,
-                line: routeLine,
-                coordinates,
-                distance
-            });
-
+            this.routeSegments.push({ startId, endId, featureId, coordinates, distance });
             this.updateStats();
         }
 
         displayStraightLine(startWaypoint, endWaypoint) {
             const coordinates = [[startWaypoint.lat, startWaypoint.lng], [endWaypoint.lat, endWaypoint.lng]];
-            
-            const routeLine = L.polyline(coordinates, {
-                color: '#EF4444',
-                weight: 4,
-                opacity: 0.6,
-                dashArray: '10, 5'
-            }).addTo(this.routeLayer);
+            const geoCoords = [[startWaypoint.lng, startWaypoint.lat], [endWaypoint.lng, endWaypoint.lat]];
+            const featureId = `seg-direct-${startWaypoint.id}-${endWaypoint.id}`;
 
-            this.routeSegments.push({
-                startId: startWaypoint.id,
-                endId: endWaypoint.id,
-                line: routeLine,
-                coordinates,
-                distance: L.latLng(startWaypoint.lat, startWaypoint.lng).distanceTo(L.latLng(endWaypoint.lat, endWaypoint.lng))
+            this.routeFeatures.push({
+                type: 'Feature',
+                properties: { featureId, lineStyle: 'dashed' },
+                geometry: { type: 'LineString', coordinates: geoCoords },
             });
+            this._updateRouteSource();
 
+            const distance = this._haversineMetres([startWaypoint.lat, startWaypoint.lng], [endWaypoint.lat, endWaypoint.lng]);
+            this.routeSegments.push({ startId: startWaypoint.id, endId: endWaypoint.id, featureId, coordinates, distance });
             this.updateStats();
         }
 
-        createWaypointIcon(number) {
-            return L.divIcon({
-                html: `<div class="rounded-full w-8 h-8 flex items-center justify-center font-bold text-sm border-2 border-white shadow-lg text-white bg-blue-500">${number}</div>`,
-                className: 'custom-marker',
-                iconSize: [32, 32],
-                iconAnchor: [16, 16]
-            });
+        createWaypointElement(number) {
+            const el = document.createElement('div');
+            el.style.cssText = 'width:32px;height:32px;border-radius:50%;background:#3b82f6;border:2px solid white;box-shadow:0 4px 6px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:0.875rem;color:white;cursor:grab;';
+            el.textContent = number;
+            return el;
         }
 
         clearRoute() {
-            this.routeLayer.clearLayers();
+            Object.values(this.waypointMarkers).forEach(m => m.remove());
+            this.waypointMarkers = {};
+            this.routeFeatures = [];
+            this._updateRouteSource();
             this.waypoints = [];
             this.routeSegments = [];
             this.totalDistance = 0;
@@ -2246,35 +2153,32 @@
 
         async recalculateRoutesForWaypoint(waypointId) {
             const waypointIndex = this.waypoints.findIndex(w => w.id === waypointId);
-            if (waypointIndex === -1) return;
+            if (waypointIndex === -1) { return; }
 
-            // Store all segments we need to keep (ones not affected by this waypoint)
-            const segmentsToKeep = [];
-            
-            // Remove segments involving this waypoint and keep track of others
+            // Identify segments to keep vs remove
+            const keepSegments = new Map();
+            const removeIds = new Set();
             this.routeSegments.forEach(segment => {
                 if (segment.startId === waypointId || segment.endId === waypointId) {
-                    this.routeLayer.removeLayer(segment.line);
+                    removeIds.add(segment.featureId);
                 } else {
-                    segmentsToKeep.push(segment);
+                    keepSegments.set(`${segment.startId}-${segment.endId}`, segment);
                 }
             });
 
-            // Clear all segments and start fresh with the ones we're keeping
+            // Remove affected features from source
+            this.routeFeatures = this.routeFeatures.filter(f => !removeIds.has(f.properties.featureId));
+            this._updateRouteSource();
             this.routeSegments = [];
-            
-            // Rebuild ALL route segments in the correct order
+
+            // Rebuild ALL segments in order
             for (let i = 0; i < this.waypoints.length - 1; i++) {
                 const startWaypoint = this.waypoints[i];
                 const endWaypoint = this.waypoints[i + 1];
-                
-                // Check if we already have this segment (not involving the moved waypoint)
-                const existingSegment = segmentsToKeep.find(
-                    seg => seg.startId === startWaypoint.id && seg.endId === endWaypoint.id
-                );
-                
+                const key = `${startWaypoint.id}-${endWaypoint.id}`;
+                const existingSegment = keepSegments.get(key);
+
                 if (existingSegment) {
-                    // Reuse existing segment
                     this.routeSegments.push(existingSegment);
                 } else {
                     // Calculate new segment for the moved waypoint's connections
@@ -2288,25 +2192,22 @@
         }
 
         undoLastWaypoint() {
-            if (this.waypoints.length === 0) return;
-
+            if (this.waypoints.length === 0) { return; }
             const lastWaypoint = this.waypoints.pop();
-            
-            // Remove marker
-            this.routeLayer.eachLayer(layer => {
-                if (layer.waypointId === lastWaypoint.id) {
-                    this.routeLayer.removeLayer(layer);
-                }
-            });
 
-            // Remove route segments involving this waypoint
+            const m = this.waypointMarkers[lastWaypoint.id];
+            if (m) { m.remove(); delete this.waypointMarkers[lastWaypoint.id]; }
+
+            const removeIds = new Set();
             this.routeSegments = this.routeSegments.filter(segment => {
                 if (segment.startId === lastWaypoint.id || segment.endId === lastWaypoint.id) {
-                    this.routeLayer.removeLayer(segment.line);
+                    removeIds.add(segment.featureId);
                     return false;
                 }
                 return true;
             });
+            this.routeFeatures = this.routeFeatures.filter(f => !removeIds.has(f.properties.featureId));
+            this._updateRouteSource();
 
             this.updateStats();
             this.updateFormInputs();
@@ -2404,7 +2305,7 @@
             for (let i = 1; i < this.waypoints.length - 1; i++) {
                 const prev = optimized[optimized.length - 1];
                 const current = this.waypoints[i];
-                const distance = L.latLng(prev.lat, prev.lng).distanceTo(L.latLng(current.lat, current.lng));
+                const distance = this._haversineMetres([prev.lat, prev.lng], [current.lat, current.lng]);
                 
                 if (distance >= minDistance) {
                     optimized.push(current);
@@ -2423,24 +2324,24 @@
         }
 
         async rebuildRoute() {
-            // Clear existing route
-            this.routeLayer.clearLayers();
+            Object.values(this.waypointMarkers).forEach(m => m.remove());
+            this.waypointMarkers = {};
+            this.routeFeatures = [];
+            this._updateRouteSource();
             this.routeSegments = [];
 
-            // Rebuild markers
             this.waypoints.forEach((waypoint, index) => {
-                const marker = L.marker([waypoint.lat, waypoint.lng], {
-                    icon: this.createWaypointIcon(index + 1),
-                    draggable: true
-                }).addTo(this.routeLayer);
-
-                marker.waypointId = waypoint.id;
-                marker.on('dragend', (e) => {
-                    this.updateWaypoint(waypoint.id, e.target.getLatLng());
+                const el = this.createWaypointElement(index + 1);
+                const marker = new mapboxgl.Marker({ element: el, draggable: true })
+                    .setLngLat([waypoint.lng, waypoint.lat])
+                    .addTo(this.map);
+                marker.on('dragend', () => {
+                    const pos = marker.getLngLat();
+                    this.updateWaypoint(waypoint.id, { lat: pos.lat, lng: pos.lng });
                 });
+                this.waypointMarkers[waypoint.id] = marker;
             });
 
-            // Rebuild route segments
             for (let i = 0; i < this.waypoints.length - 1; i++) {
                 await this.calculateRouteSegment(this.waypoints[i], this.waypoints[i + 1]);
             }
@@ -2478,8 +2379,10 @@
 
             for (let i = 0; i < this.waypoints.length; i++) {
                 for (let j = i + 1; j < this.waypoints.length; j++) {
-                    const distance = L.latLng(this.waypoints[i].lat, this.waypoints[i].lng)
-                        .distanceTo(L.latLng(this.waypoints[j].lat, this.waypoints[j].lng));
+                    const distance = this._haversineMetres(
+                        [this.waypoints[i].lat, this.waypoints[i].lng],
+                        [this.waypoints[j].lat, this.waypoints[j].lng]
+                    );
                     
                     if (distance < minDistance) {
                         duplicates.push({ i, j, distance });
@@ -2674,39 +2577,50 @@
                 const waypoint = { lat: coord[0], lng: coord[1], id: Date.now() + order };
                 this.waypoints.push(waypoint);
 
-                const marker = L.marker([coord[0], coord[1]], {
-                    icon: this.createWaypointIcon(this.waypoints.length),
-                    draggable: true,
-                }).addTo(this.routeLayer);
+                const el = this.createWaypointElement(this.waypoints.length);
+                const marker = new mapboxgl.Marker({ element: el, draggable: true })
+                    .setLngLat([coord[1], coord[0]])
+                    .addTo(this.map);
 
-                marker.waypointId = waypoint.id;
-                marker.on('dragend', (e) => {
-                    this.updateWaypoint(waypoint.id, e.target.getLatLng());
+                marker.on('dragend', () => {
+                    const pos = marker.getLngLat();
+                    this.updateWaypoint(waypoint.id, { lat: pos.lat, lng: pos.lng });
                 });
+                this.waypointMarkers[waypoint.id] = marker;
             });
         }
 
         displayGPXRoute(coordinates) {
-            const routeLine = L.polyline(coordinates, {
-                color: '#10B981',
-                weight: 4,
-                opacity: 0.8,
-            }).addTo(this.routeLayer);
-
             let distance = 0;
             for (let i = 1; i < coordinates.length; i++) {
-                distance += L.latLng(coordinates[i-1]).distanceTo(L.latLng(coordinates[i]));
+                distance += this._haversineMetres(coordinates[i-1][0], coordinates[i-1][1], coordinates[i][0], coordinates[i][1]);
             }
+
+            const featureId = `gpx-${Date.now()}`;
+            this.routeFeatures.push({
+                type: 'Feature',
+                properties: { featureId, lineStyle: 'solid' },
+                geometry: {
+                    type: 'LineString',
+                    coordinates: coordinates.map(c => [c[1], c[0]]),
+                },
+            });
+            this._updateRouteSource();
 
             this.routeSegments.push({
                 startId: this.waypoints[0]?.id,
                 endId: this.waypoints[this.waypoints.length - 1]?.id,
-                line: routeLine,
+                featureId,
                 coordinates: coordinates,
                 distance: distance,
             });
 
-            this.map.fitBounds(routeLine.getBounds(), { padding: [20, 20] });
+            const lngs = coordinates.map(c => c[1]);
+            const lats = coordinates.map(c => c[0]);
+            this.map.fitBounds(
+                [[Math.min(...lngs), Math.min(...lats)], [Math.max(...lngs), Math.max(...lats)]],
+                { padding: 40 }
+            );
             this.updateStats();
         }
 
@@ -2810,24 +2724,23 @@
         }
 
         placeHighlightMarker(lat, lng) {
-            // Remove previous pending highlight
             if (this.pendingHighlight) {
-                this.highlightsLayer.removeLayer(this.pendingHighlight);
+                this.pendingHighlight.remove();
             }
 
             const color = document.getElementById('highlight-color-input').value || '#10B981';
             const icon = document.getElementById('highlight-icon-input').value || '📍';
 
-            this.pendingHighlight = L.marker([lat, lng], {
-                icon: L.divIcon({
-                    html: `<div style="background-color: ${color};" class="w-8 h-8 rounded-full border-2 border-white shadow-lg flex items-center justify-center text-white text-lg">${icon}</div>`,
-                    className: 'custom-marker',
-                    iconSize: [32, 32],
-                    iconAnchor: [16, 16]
-                })
-            }).addTo(this.highlightsLayer);
+            const el = document.createElement('div');
+            el.style.cssText = `background-color:${color};width:32px;height:32px;border-radius:50%;border:2px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;font-size:18px;cursor:pointer;`;
+            el.textContent = icon;
 
-            this.pendingHighlight.bindPopup('Click "Add Highlight" to save').openPopup();
+            const popup = new mapboxgl.Popup({ offset: 20 }).setText('Click "Add Highlight" to save');
+            this.pendingHighlight = new mapboxgl.Marker({ element: el })
+                .setLngLat([lng, lat])
+                .setPopup(popup)
+                .addTo(this.map);
+            this.pendingHighlight.togglePopup();
             this.pendingHighlight.coordinates = [lat, lng];
         }
 
@@ -2884,31 +2797,26 @@
 
                 // Remove pending marker
                 if (this.pendingHighlight) {
-                    this.highlightsLayer.removeLayer(this.pendingHighlight);
+                    this.pendingHighlight.remove();
                     this.pendingHighlight = null;
                 }
 
                 // Add permanent DRAGGABLE marker
-                const marker = L.marker(highlight.coordinates, {
-                    icon: L.divIcon({
-                        html: `<div style="background-color: ${highlight.color};" class="w-8 h-8 rounded-full border-2 border-white shadow-lg flex items-center justify-center text-white text-lg">${highlight.icon}</div>`,
-                        className: 'custom-marker',
-                        iconSize: [32, 32],
-                        iconAnchor: [16, 16]
-                    }),
-                    draggable: true  // Make marker draggable
-                }).addTo(this.highlightsLayer);
+                const markerEl = document.createElement('div');
+                markerEl.style.cssText = `background-color:${highlight.color};width:32px;height:32px;border-radius:50%;border:2px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;font-size:18px;cursor:move;`;
+                markerEl.textContent = highlight.icon;
 
-                marker.bindPopup(`<b>${highlight.name}</b><br>${highlight.description || ''}`);
-                marker.highlightId = highlight.id;
+                const popup = new mapboxgl.Popup({ offset: 20 }).setHTML(`<b>${highlight.name}</b><br>${highlight.description || ''}`);
+                const marker = new mapboxgl.Marker({ element: markerEl, draggable: true })
+                    .setLngLat([highlight.coordinates[1], highlight.coordinates[0]])
+                    .setPopup(popup)
+                    .addTo(this.map);
 
-                // Store marker reference for easy access
                 this.highlightMarkers[highlight.id] = marker;
 
-                // Add drag event listener to update coordinates
-                marker.on('dragend', (e) => {
-                    const newLatLng = e.target.getLatLng();
-                    this.updateHighlightCoordinates(highlight.id, newLatLng);
+                marker.on('dragend', () => {
+                    const pos = marker.getLngLat();
+                    this.updateHighlightCoordinates(highlight.id, { lat: pos.lat, lng: pos.lng });
                 });
 
                 showToast('Highlight added successfully!', 'success');
@@ -2990,7 +2898,7 @@
             // Remove marker from map using our marker map
             const marker = this.highlightMarkers[id];
             if (marker) {
-                this.highlightsLayer.removeLayer(marker);
+                marker.remove();
                 delete this.highlightMarkers[id];
             }
             
@@ -3054,8 +2962,9 @@
             // Highlight the marker on map (visual feedback)
             const marker = this.highlightMarkers[id];
             if (marker) {
-                marker.openPopup();
-                this.map.setView(marker.getLatLng(), this.map.getZoom());
+                marker.togglePopup();
+                const lngLat = marker.getLngLat();
+                this.map.flyTo({ center: [lngLat.lng, lngLat.lat] });
             }
             
             // Show toast notification
@@ -3109,15 +3018,14 @@
             // Update marker appearance on map
             const marker = this.highlightMarkers[id];
             if (marker) {
-                marker.setIcon(L.divIcon({
-                    html: `<div style="background-color: ${highlight.color};" class="w-8 h-8 rounded-full border-2 border-white shadow-lg flex items-center justify-center text-white text-lg">${highlight.icon}</div>`,
-                    className: 'custom-marker',
-                    iconSize: [32, 32],
-                    iconAnchor: [16, 16]
-                }));
-                
-                // Update popup
-                marker.bindPopup(`<b>${highlight.name}</b><br>${highlight.description || ''}`);
+                const el = marker.getElement();
+                el.style.backgroundColor = highlight.color;
+                el.textContent = highlight.icon;
+
+                const existingPopup = marker.getPopup();
+                if (existingPopup) {
+                    existingPopup.setHTML(`<b>${highlight.name}</b><br>${highlight.description || ''}`);
+                }
             }
             
             // Clear editing mode
@@ -3244,9 +3152,9 @@
                         }
                     }
                 );
-                
+
                 if (!response.ok) throw new Error('Search failed');
-                
+
                 const results = await response.json();
                 this.currentSearchResults = results;
                 this.displaySearchResults(results);
@@ -3271,7 +3179,7 @@
             const html = results.map((result, index) => {
                 const name = result.name || result.display_name.split(',')[0];
                 const address = result.display_name;
-                
+
                 return `
                     <div class="search-result-item" data-index="${index}">
                         <div class="search-result-name">${this.escapeHtml(name)}</div>
@@ -3306,9 +3214,7 @@
             const lon = parseFloat(result.lon);
             
             // Fly to location
-            this.map.flyTo([lat, lon], 15, {
-                duration: 1.5
-            });
+            this.map.flyTo({ center: [lon, lat], zoom: 15, duration: 1500 });
             
             // Add temporary search marker
             this.addSearchMarker(lat, lon, result.display_name);
@@ -3320,37 +3226,24 @@
         }
         
         addSearchMarker(lat, lon, name) {
-            // Remove existing search marker
             this.removeSearchMarker();
-            
-            // Create pulsing marker
-            const pulseIcon = L.divIcon({
-                html: `
-                    <div class="relative">
-                        <div class="absolute inset-0 bg-blue-500 rounded-full opacity-50 search-marker-pulse"></div>
-                        <div class="relative w-6 h-6 bg-blue-600 rounded-full border-2 border-white shadow-lg"></div>
-                    </div>
-                `,
-                className: 'custom-search-marker',
-                iconSize: [24, 24],
-                iconAnchor: [12, 12]
-            });
-            
-            this.searchMarker = L.marker([lat, lon], {
-                icon: pulseIcon
-            }).addTo(this.map);
-            
-            this.searchMarker.bindPopup(`<b>Search Result</b><br>${name}`).openPopup();
-            
-            // Auto remove after 10 seconds
-            setTimeout(() => {
-                this.removeSearchMarker();
-            }, 10000);
+
+            const el = document.createElement('div');
+            el.style.cssText = 'width:20px;height:20px;background:#2563EB;border-radius:50%;border:2px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.4);';
+
+            const popup = new mapboxgl.Popup({ offset: 14 }).setHTML(`<b>Search Result</b><br>${name}`);
+            this.searchMarker = new mapboxgl.Marker({ element: el })
+                .setLngLat([lon, lat])
+                .setPopup(popup)
+                .addTo(this.map);
+            this.searchMarker.togglePopup();
+
+            setTimeout(() => { this.removeSearchMarker(); }, 10000);
         }
-        
+
         removeSearchMarker() {
             if (this.searchMarker) {
-                this.map.removeLayer(this.searchMarker);
+                this.searchMarker.remove();
                 this.searchMarker = null;
             }
         }
@@ -3972,97 +3865,61 @@
         
         // If map already initialized, just resize it
         if (pointPickerMap) {
-            setTimeout(() => {
-                pointPickerMap.invalidateSize();
-            }, 100);
+            setTimeout(() => { pointPickerMap.resize(); }, 100);
             return;
         }
-        
-        // Initialize map for point picker
-        pointPickerMap = L.map('point-picker-map', {
-            maxZoom: 20,
-            minZoom: 1,
-            zoomControl: false  // Disable default zoom control
-        }).setView([54.7804, -127.1698], 10);
-        
-        // Add zoom control to bottom left
-        L.control.zoom({
-            position: 'bottomleft'
-        }).addTo(pointPickerMap);
-        
-        // Add tile layer
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '© OpenStreetMap contributors',
-            maxZoom: 19
-        }).addTo(pointPickerMap);
-        
-        // Add marker for point selection
+
+        mapboxgl.accessToken = '{{ config('services.mapbox.access_token') }}';
+        pointPickerMap = new mapboxgl.Map({
+            container: 'point-picker-map',
+            style: 'mapbox://styles/mapbox/streets-v12',
+            center: [-127.1698, 54.7804],
+            zoom: 10,
+            attributionControl: false,
+        });
+        pointPickerMap.addControl(new mapboxgl.NavigationControl({ showCompass: false }), 'bottom-left');
+
         let marker = null;
         const latInput = document.getElementById('point_latitude');
         const lngInput = document.getElementById('point_longitude');
-        
-        // If coordinates already exist, add marker
-        if (latInput.value && lngInput.value) {
-            const lat = parseFloat(latInput.value);
-            const lng = parseFloat(lngInput.value);
-            marker = L.marker([lat, lng], {
-                draggable: true,
-                icon: L.divIcon({
-                    className: 'fishing-lake-marker',
-                    html: '<div style="width: 40px; height: 40px; background: #3B82F6; border: 3px solid white; border-radius: 50%; box-shadow: 0 2px 8px rgba(0,0,0,0.3); display: flex; align-items: center; justify-content: center; font-size: 20px; cursor: move;">🐟</div>',
-                    iconSize: [40, 40],
-                    iconAnchor: [20, 20]
-                })
-            }).addTo(pointPickerMap);
-            pointPickerMap.setView([lat, lng], 13);
-            
-            // Update on drag
-            marker.on('dragend', function(e) {
-                const pos = e.target.getLatLng();
+
+        function createFishMarkerEl() {
+            const el = document.createElement('div');
+            el.style.cssText = 'width:40px;height:40px;background:#3B82F6;border:3px solid white;border-radius:50%;box-shadow:0 2px 8px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;font-size:20px;cursor:move;';
+            el.textContent = '🐟';
+            return el;
+        }
+
+        function placeMarker(lat, lng) {
+            if (marker) { marker.remove(); }
+            marker = new mapboxgl.Marker({ element: createFishMarkerEl(), draggable: true })
+                .setLngLat([lng, lat])
+                .addTo(pointPickerMap);
+            latInput.value = lat.toFixed(6);
+            lngInput.value = lng.toFixed(6);
+            marker.on('dragend', () => {
+                const pos = marker.getLngLat();
                 latInput.value = pos.lat.toFixed(6);
                 lngInput.value = pos.lng.toFixed(6);
             });
         }
-        
-        // Add click handler to place marker
-        pointPickerMap.on('click', function(e) {
-            const { lat, lng } = e.latlng;
-            
-            // Remove existing marker if any
-            if (marker) {
-                pointPickerMap.removeLayer(marker);
-            }
-            
-            // Create new draggable marker
-            marker = L.marker([lat, lng], {
-                draggable: true,
-                icon: L.divIcon({
-                    className: 'fishing-lake-marker',
-                    html: '<div style="width: 40px; height: 40px; background: #3B82F6; border: 3px solid white; border-radius: 50%; box-shadow: 0 2px 8px rgba(0,0,0,0.3); display: flex; align-items: center; justify-content: center; font-size: 20px; cursor: move;">🐟</div>',
-                    iconSize: [40, 40],
-                    iconAnchor: [20, 20]
-                })
-            }).addTo(pointPickerMap);
-            
-            // Update inputs
-            latInput.value = lat.toFixed(6);
-            lngInput.value = lng.toFixed(6);
-            
-            // Update on drag
-            marker.on('dragend', function(e) {
-                const pos = e.target.getLatLng();
-                latInput.value = pos.lat.toFixed(6);
-                lngInput.value = pos.lng.toFixed(6);
+
+        if (latInput.value && lngInput.value) {
+            const lat = parseFloat(latInput.value);
+            const lng = parseFloat(lngInput.value);
+            pointPickerMap.on('load', () => {
+                placeMarker(lat, lng);
+                pointPickerMap.flyTo({ center: [lng, lat], zoom: 13 });
             });
-            
-            // Pan to marker
-            pointPickerMap.setView([lat, lng], Math.max(pointPickerMap.getZoom(), 13));
+        }
+
+        pointPickerMap.on('click', function(e) {
+            placeMarker(e.lngLat.lat, e.lngLat.lng);
+            const zoom = Math.max(pointPickerMap.getZoom(), 13);
+            pointPickerMap.flyTo({ center: [e.lngLat.lng, e.lngLat.lat], zoom });
         });
-        
-        // Fix map display after Alpine shows the section
-        setTimeout(() => {
-            pointPickerMap.invalidateSize();
-        }, 100);
+
+        setTimeout(() => { pointPickerMap.resize(); }, 100);
         
         // Initialize search functionality
         initPointPickerSearch();
@@ -4111,9 +3968,8 @@
             resultsDropdown.classList.add('hidden');
             loadingIndicator.classList.add('hidden');
             
-            // Remove search marker if exists
-            if (pointSearchMarker && pointPickerMap) {
-                pointPickerMap.removeLayer(pointSearchMarker);
+            if (pointSearchMarker) {
+                pointSearchMarker.remove();
                 pointSearchMarker = null;
             }
         });
@@ -4132,18 +3988,18 @@
         
         // Nominatim API (OpenStreetMap)
         const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5&addressdetails=1`;
-        
+
         fetch(url)
             .then(response => response.json())
             .then(results => {
                 loadingIndicator.classList.add('hidden');
-                
+
                 if (results.length === 0) {
                     resultsDropdown.innerHTML = '<div class="p-4 text-center text-sm text-gray-500">No results found</div>';
                     resultsDropdown.classList.remove('hidden');
                     return;
                 }
-                
+
                 // Display results
                 resultsDropdown.innerHTML = results.map((result, index) => `
                     <div class="search-result-item p-3 hover:bg-gray-50 cursor-pointer border-b last:border-b-0" data-lat="${result.lat}" data-lon="${result.lon}" data-name="${result.display_name}">
@@ -4160,14 +4016,9 @@
                         const lon = parseFloat(this.dataset.lon);
                         const name = this.dataset.name;
                         
-                        // Place marker at search result
                         if (pointPickerMap) {
-                            // Trigger map click to place marker
-                            const e = { latlng: { lat, lng: lon } };
-                            pointPickerMap.fire('click', e);
-                            
-                            // Pan and zoom to location
-                            pointPickerMap.setView([lat, lon], 15);
+                            pointPickerMap.fire('click', { lngLat: { lat, lng: lon } });
+                            pointPickerMap.flyTo({ center: [lon, lat], zoom: 15 });
                         }
                         
                         // Close dropdown
@@ -4384,7 +4235,7 @@
                     }
 
                     if (window.trailBuilder.pendingHighlight) {
-                        window.trailBuilder.highlightsLayer.removeLayer(window.trailBuilder.pendingHighlight);
+                        window.trailBuilder.pendingHighlight.remove();
                         window.trailBuilder.pendingHighlight = null;
                     }
 
@@ -4874,11 +4725,7 @@
     filter: drop-shadow(0 0 3px rgba(255, 255, 255, 0.8));
 }
 
-/* Make existing trails more visible on satellite view */
-.leaflet-tile-pane + .leaflet-overlay-pane .existing-trail-line {
-    filter: drop-shadow(0 0 3px rgba(0, 0, 0, 1)) 
-            drop-shadow(0 0 2px rgba(255, 255, 255, 0.5));
-}
+
 </style>
 @endpush
 @endsection

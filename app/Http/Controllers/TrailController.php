@@ -160,7 +160,9 @@ class TrailController extends Controller
         // Get only general trail media (excludes feature-linked media)
         $generalMedia = $trail->generalMedia;
 
-        return view('trails.show', compact('trail', 'generalMedia'));
+        $mapboxToken = config('services.mapbox.access_token');
+
+        return view('trails.show', compact('trail', 'generalMedia', 'mapboxToken'));
     }
 
     /**
@@ -173,7 +175,23 @@ class TrailController extends Controller
             ->orderBy('name')
             ->get();
 
-        return view('map', compact('activities'));
+        $mapboxToken = config('services.mapbox.access_token');
+
+        return view('map', compact('activities', 'mapboxToken'));
+    }
+
+    /**
+     * Show Mapbox test map page
+     */
+    public function mapV2()
+    {
+        $activities = ActivityType::where('is_active', true)
+            ->orderBy('name')
+            ->get();
+
+        $mapboxToken = config('services.mapbox.access_token');
+
+        return view('map-v2', compact('activities', 'mapboxToken'));
     }
 
     /**

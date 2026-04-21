@@ -61,8 +61,8 @@ class TrailMedia extends Model
     public function features()
     {
         return $this->belongsToMany(TrailFeature::class, 'trail_feature_media')
-                    ->withPivot(['is_primary', 'sort_order', 'caption_override'])
-                    ->withTimestamps();
+            ->withPivot(['is_primary', 'sort_order', 'caption_override'])
+            ->withTimestamps();
     }
 
     /**
@@ -148,17 +148,19 @@ class TrailMedia extends Model
      */
     public function getEmbedUrl(): ?string
     {
-        if (!$this->isExternal() || !$this->video_url) {
+        if (! $this->isExternal() || ! $this->video_url) {
             return null;
         }
 
         switch ($this->video_provider) {
             case 'youtube':
                 $videoId = $this->extractYouTubeId($this->video_url);
+
                 return $videoId ? "https://www.youtube.com/embed/{$videoId}" : null;
 
             case 'vimeo':
                 $videoId = $this->extractVimeoId($this->video_url);
+
                 return $videoId ? "https://player.vimeo.com/video/{$videoId}" : null;
 
             default:
@@ -172,6 +174,7 @@ class TrailMedia extends Model
     private function extractYouTubeId(string $url): ?string
     {
         preg_match('/(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/i', $url, $matches);
+
         return $matches[1] ?? null;
     }
 
@@ -181,6 +184,7 @@ class TrailMedia extends Model
     private function extractVimeoId(string $url): ?string
     {
         preg_match('/vimeo\.com\/(?:channels\/(?:\w+\/)?|groups\/(?:[^\/]*)\/videos\/|album\/(?:\d+)\/video\/|)(\d+)(?:|\/\?)/', $url, $matches);
+
         return $matches[1] ?? null;
     }
 
@@ -189,7 +193,7 @@ class TrailMedia extends Model
      */
     public function getFormattedSizeAttribute(): string
     {
-        if (!$this->file_size) {
+        if (! $this->file_size) {
             return 'Unknown';
         }
 
@@ -202,7 +206,7 @@ class TrailMedia extends Model
             $unitIndex++;
         }
 
-        return round($size, 2) . ' ' . $units[$unitIndex];
+        return round($size, 2).' '.$units[$unitIndex];
     }
 
     /**
@@ -210,7 +214,7 @@ class TrailMedia extends Model
      */
     public function getFormattedDurationAttribute(): ?string
     {
-        if (!$this->duration) {
+        if (! $this->duration) {
             return null;
         }
 
@@ -269,12 +273,12 @@ class TrailMedia extends Model
 
         // When media is deleted, delete the physical files
         static::deleting(function ($media) {
-            if ($media->storage_path && Storage::exists($media->storage_path)) {
-                Storage::delete($media->storage_path);
+            if ($media->storage_path && Storage::disk('public')->exists($media->storage_path)) {
+                Storage::disk('public')->delete($media->storage_path);
             }
 
-            if ($media->thumbnail_path && Storage::exists($media->thumbnail_path)) {
-                Storage::delete($media->thumbnail_path);
+            if ($media->thumbnail_path && Storage::disk('public')->exists($media->thumbnail_path)) {
+                Storage::disk('public')->delete($media->thumbnail_path);
             }
         });
 

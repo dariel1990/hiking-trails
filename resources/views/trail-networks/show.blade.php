@@ -40,12 +40,11 @@
     </div>
 @endif
 
-<!-- Leaflet CSS -->
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<link href="https://api.mapbox.com/mapbox-gl-js/v3.10.0/mapbox-gl.css" rel="stylesheet">
 
 <style>
     #network-map {
-        height: calc(100vh - 64px);
+        height: calc(100vh - 80px);
         width: 100%;
         z-index: 1;
     }
@@ -81,10 +80,10 @@
     .network-sidebar {
         position: absolute;
         top: 16px;
+        bottom: 16px;
         left: 20px;
         z-index: 1000;
         width: 350px;
-        max-height: calc(100vh - 140px);
         overflow-y: auto;
         background: white;
         border-radius: 12px;
@@ -195,15 +194,7 @@
         border: none !important;
     }
 
-    /* Facility popup styling */
-    .facility-popup .leaflet-popup-content-wrapper {
-        border-radius: 12px;
-        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
-    }
 
-    .facility-popup .leaflet-popup-content {
-        margin: 0;
-    }
 
     /* Trail center dot (replaces circleMarker for reliable clicking) */
     .trail-center-dot {
@@ -213,14 +204,15 @@
         border: 3px solid white;
         box-shadow: 0 2px 8px rgba(0,0,0,0.35);
         cursor: pointer;
-        transition: transform 0.15s ease, box-shadow 0.15s ease;
-        /* transparent padding expands click area without affecting visuals */
+        /* Do NOT transition transform — Mapbox uses CSS transform to position markers;
+           animating it causes dots to drift/lag during zoom and pan. */
+        transition: box-shadow 0.15s ease, outline-color 0.15s ease;
         outline: 8px solid transparent;
     }
 
     .trail-center-dot:hover {
-        transform: scale(1.25);
-        box-shadow: 0 4px 14px rgba(0,0,0,0.45);
+        box-shadow: 0 4px 14px rgba(0,0,0,0.55);
+        outline-color: rgba(255,255,255,0.25);
     }
 
     /* Waypoint markers */
@@ -245,20 +237,7 @@
         box-shadow: 0 3px 8px rgba(239, 68, 68, 0.5);
     }
 
-    /* Trail detail popup styling */
-    .trail-detail-popup .leaflet-popup-content-wrapper {
-        border-radius: 16px;
-        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
-        padding: 5px 0 5px 0;
-    }
 
-    .trail-detail-popup .leaflet-popup-content {
-        margin: 16px;
-    }
-
-    .trail-detail-popup .leaflet-popup-tip {
-        background: white;
-    }
 
     /* Layer option cards with images */
     .layer-option-card {
@@ -718,9 +697,7 @@
     </div>
 </div>
 
-<!-- Leaflet JS -->
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/leaflet-textpath@1.2.3/leaflet.textpath.min.js"></script>
+<script src="https://api.mapbox.com/mapbox-gl-js/v3.10.0/mapbox-gl.js"></script>
 
 <script>
 // Network data
@@ -730,64 +707,276 @@ const trails = @json($network->trails);
 // Difficulty color mapping
 function getDifficultyColor(difficulty) {
     const colors = {
-        1: '#22c55e',  // Green - Easy
-        2: '#22c55e',  // Green - Easy
-        3: '#3b82f6',  // Blue - Intermediate
-        4: '#ef4444',  // Red - Advanced
-        5: '#ef4444',  // Red - Advanced
+        1: '#22c55e',
+        2: '#22c55e',
+        3: '#3b82f6',
+        4: '#ef4444',
+        5: '#ef4444',
     };
     return colors[Math.floor(difficulty)] || '#6b7280';
 }
 
-// Initialize map
-const map = L.map('network-map', {
-    zoomControl: false  // Disable default zoom control
-}).setView([networkData.latitude, networkData.longitude], 13);
+// State
+const trailCenterMarkers = {};
+const waypointMarkers = {};
+let selectedTrailId = null;
+const facilityMarkers = [];
+const highlightMarkers = [];
+let _mapLoaded = false;
 
-// Add zoom control to bottom right
-L.control.zoom({
-    position: 'bottomright'
-}).addTo(map);
-
-// Base layers for different map types
-const baseLayers = {
-    'standard': L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '© OpenStreetMap contributors',
-        maxZoom: 19
-    }),
-    'satellite': L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-        attribution: '© Esri, Maxar, Earthstar Geographics',
-        maxZoom: 18
-    }),
-    'terrain': L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
-        attribution: 'Map data: © OpenStreetMap, SRTM | Map style: © OpenTopoMap',
-        maxZoom: 18
-    }),
-    'outdoors': L.tileLayer('https://{s}.tile-cyclosm.openstreetmap.fr/cyclosm/{z}/{x}/{y}.png', {
-        attribution: '© OpenStreetMap, CyclOSM',
-        maxZoom: 18
-    })
+// Map styles
+const mapStyles = {
+    'standard':  'mapbox://styles/mapbox/standard',
+    'satellite': 'mapbox://styles/mapbox/satellite-streets-v12',
+    'terrain':   'mapbox://styles/mapbox/outdoors-v12',
+    'outdoors':  'mapbox://styles/mapbox/navigation-day-v1',
 };
-
-// Track current map type (default to satellite for network maps)
 let currentMapType = 'standard';
 
-// Add default base layer
-baseLayers[currentMapType].addTo(map);
+// Initialize Mapbox map
+mapboxgl.accessToken = '{{ $mapboxToken }}';
 
-map.on('click', function(e) {
-    // Close any open facility popups when clicking on the map
-    map.closePopup();
+const map = new mapboxgl.Map({
+    container: 'network-map',
+    style: mapStyles[currentMapType],
+    center: [networkData.longitude, networkData.latitude],
+    zoom: 13,
+    attributionControl: false,
 });
+
+map.addControl(new mapboxgl.NavigationControl({ showCompass: false }), 'bottom-right');
+map.addControl(new mapboxgl.AttributionControl({ compact: true }), 'bottom-left');
+
+// ── Trail GeoJSON features ────────────────────────────────────────────────────
+const trailFeatures = trails
+    .filter(t => t.route_coordinates && t.route_coordinates.length > 0)
+    .map(t => ({
+        type: 'Feature',
+        id: t.id,
+        properties: { trailId: t.id, color: getDifficultyColor(t.difficulty_level), name: t.name },
+        geometry: { type: 'LineString', coordinates: t.route_coordinates.map(c => [c[1], c[0]]) },
+    }));
+
+function initMapLayers() {
+    // 3D terrain
+    if (!map.getSource('mapbox-dem')) {
+        map.addSource('mapbox-dem', { type: 'raster-dem', url: 'mapbox://mapbox.mapbox-terrain-dem-v1', tileSize: 512, maxzoom: 14 });
+    }
+    map.setTerrain({ source: 'mapbox-dem', exaggeration: 1.5 });
+
+    // Arrow image
+    const arrowSVG = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 14 14"><polygon points="13,7 5,3 7,7 5,11" fill="white"/></svg>`;
+    const arrowImg = new Image(14, 14);
+    arrowImg.onload = () => { if (!map.hasImage('trail-arrow')) map.addImage('trail-arrow', arrowImg); };
+    arrowImg.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(arrowSVG);
+
+    // Trail routes source
+    if (!map.getSource('trail-routes')) {
+        map.addSource('trail-routes', { type: 'geojson', data: { type: 'FeatureCollection', features: trailFeatures } });
+    } else {
+        map.getSource('trail-routes').setData({ type: 'FeatureCollection', features: trailFeatures });
+    }
+
+    // Highlight outline (yellow glow when selected)
+    if (!map.getLayer('trail-routes-outline')) {
+        map.addLayer({
+            id: 'trail-routes-outline',
+            type: 'line',
+            source: 'trail-routes',
+            paint: {
+                'line-color': '#f3fd44',
+                'line-width': 15,
+                'line-opacity': ['case', ['boolean', ['feature-state', 'selected'], false], 1, 0],
+            },
+            layout: { 'line-join': 'round', 'line-cap': 'round' },
+        });
+    }
+
+    // Trail line
+    if (!map.getLayer('trail-routes-line')) {
+        map.addLayer({
+            id: 'trail-routes-line',
+            type: 'line',
+            source: 'trail-routes',
+            paint: {
+                'line-color': ['get', 'color'],
+                'line-width': ['case', ['boolean', ['feature-state', 'selected'], false], 5, 3],
+            },
+            layout: { 'line-join': 'round', 'line-cap': 'round' },
+        });
+    }
+
+    // Direction arrows
+    if (!map.getLayer('trail-routes-arrows')) {
+        map.addLayer({
+            id: 'trail-routes-arrows',
+            type: 'symbol',
+            source: 'trail-routes',
+            layout: {
+                'symbol-placement': 'line',
+                'symbol-spacing': 120,
+                'icon-image': 'trail-arrow',
+                'icon-size': 1,
+                'icon-allow-overlap': true,
+                'icon-ignore-placement': true,
+            },
+        });
+    }
+
+    // Click trail line → focus
+    map.on('click', 'trail-routes-line', (e) => {
+        if (e.features.length > 0) focusTrail(e.features[0].properties.trailId);
+    });
+    map.on('mouseenter', 'trail-routes-line', () => { map.getCanvas().style.cursor = 'pointer'; });
+    map.on('mouseleave', 'trail-routes-line', () => { map.getCanvas().style.cursor = ''; });
+
+    // Restore selected state after style reload
+    if (selectedTrailId !== null) {
+        map.setFeatureState({ source: 'trail-routes', id: selectedTrailId }, { selected: true });
+    }
+}
+
+map.on('load', () => {
+    _mapLoaded = true;
+    initMapLayers();
+
+    // Add trail center dot markers
+    trails.forEach(trail => {
+        if (!trail.route_coordinates || !trail.route_coordinates.length) return;
+        const midPoint = trail.route_coordinates[Math.floor(trail.route_coordinates.length / 2)];
+        const color = getDifficultyColor(trail.difficulty_level);
+
+        const el = document.createElement('div');
+        el.className = 'trail-center-dot';
+        el.style.backgroundColor = color;
+        el.dataset.trailId = trail.id;
+        el.title = trail.name;
+        el.addEventListener('click', (e) => { e.stopPropagation(); focusTrail(trail.id); });
+
+        trailCenterMarkers[trail.id] = new mapboxgl.Marker({ element: el, anchor: 'center' })
+            .setLngLat([midPoint[1], midPoint[0]])
+            .addTo(map);
+
+        // Start marker
+        const startCoord = trail.route_coordinates[0];
+        const startEl = document.createElement('div');
+        startEl.className = 'waypoint-start';
+        startEl.style.cssText = 'width:12px;height:12px;border-radius:50%;background:#10b981;border:3px solid white;box-shadow:0 2px 6px rgba(16,185,129,0.5);';
+        const startMarker = new mapboxgl.Marker({ element: startEl, anchor: 'center' })
+            .setLngLat([startCoord[1], startCoord[0]])
+            .setPopup(new mapboxgl.Popup({ offset: 10 }).setText('Start'))
+            .addTo(map);
+
+        // End marker
+        const endCoord = trail.route_coordinates[trail.route_coordinates.length - 1];
+        const endEl = document.createElement('div');
+        endEl.style.cssText = 'width:12px;height:12px;border-radius:50%;background:#ef4444;border:3px solid white;box-shadow:0 2px 6px rgba(239,68,68,0.5);';
+        const endMarker = new mapboxgl.Marker({ element: endEl, anchor: 'center' })
+            .setLngLat([endCoord[1], endCoord[0]])
+            .setPopup(new mapboxgl.Popup({ offset: 10 }).setText('End'))
+            .addTo(map);
+
+        waypointMarkers[trail.id] = [startMarker, endMarker];
+
+        // Store trail details data
+        if (!window.trailDetailsData) window.trailDetailsData = {};
+        window.trailDetailsData[trail.id] = {
+            id: trail.id, name: trail.name, trail_type: trail.trail_type,
+            description: trail.description, distance_km: trail.distance_km,
+            difficulty_level: trail.difficulty_level, elevation_gain: trail.elevation_gain_m,
+            preview_photo: trail.preview_photo, photos: trail.photos,
+        };
+    });
+
+    // Fit map to all trails
+    const allCoords = trails.filter(t => t.route_coordinates && t.route_coordinates.length).flatMap(t => t.route_coordinates);
+    if (allCoords.length) {
+        const lngs = allCoords.map(c => c[1]);
+        const lats = allCoords.map(c => c[0]);
+        map.fitBounds([[Math.min(...lngs), Math.min(...lats)], [Math.max(...lngs), Math.max(...lats)]], { padding: 50, duration: 0 });
+    }
+
+    // Load facilities
+    fetch('/api/facilities')
+        .then(r => r.json())
+        .then(facilities => {
+            facilities.forEach(facility => {
+                const el = document.createElement('div');
+                el.style.cssText = 'background:white;color:#059669;padding:6px;border-radius:50%;font-size:18px;box-shadow:0 4px 12px rgba(0,0,0,0.15);border:3px solid #059669;width:38px;height:38px;display:flex;align-items:center;justify-content:center;cursor:pointer;';
+                el.textContent = facility.icon;
+
+                const popup = new mapboxgl.Popup({ maxWidth: '300px', offset: 20 }).setHTML(`
+                    <div style="padding:12px;min-width:200px;">
+                        <div style="display:flex;align-items:center;margin-bottom:8px;">
+                            <span style="font-size:24px;margin-right:8px;">${facility.icon}</span>
+                            <h3 style="margin:0;font-size:16px;font-weight:bold;color:#1f2937;">${facility.name}</h3>
+                        </div>
+                        <p style="margin:0 0 8px 0;font-size:12px;color:#6b7280;"><strong>Type:</strong> ${facility.facility_type.replace(/_/g, ' ').replace(/\w/g, l => l.toUpperCase())}</p>
+                        ${facility.description ? `<p style="margin:0;font-size:13px;color:#4b5563;line-height:1.4;">${facility.description}</p>` : ''}
+                    </div>
+                `);
+
+                const marker = new mapboxgl.Marker({ element: el, anchor: 'center' })
+                    .setLngLat([facility.longitude, facility.latitude])
+                    .setPopup(popup)
+                    .addTo(map);
+                facilityMarkers.push(marker);
+            });
+        })
+        .catch(err => console.error('Error loading facilities:', err));
+
+    // Load highlights
+    fetch('/api/highlights')
+        .then(r => r.json())
+        .then(highlights => {
+            highlights.forEach(highlight => {
+                if (!highlight.coordinates || highlight.coordinates.length < 2) return;
+                const el = document.createElement('div');
+                el.style.cssText = `background-color:${highlight.color || '#8B5CF6'};padding:8px;border-radius:50%;font-size:20px;box-shadow:0 4px 12px rgba(0,0,0,0.15);border:2px solid white;width:40px;height:40px;display:flex;align-items:center;justify-content:center;cursor:pointer;`;
+                el.textContent = highlight.icon || '📍';
+
+                let mediaHTML = '';
+                if (highlight.media && highlight.media.length > 0) {
+                    const m = highlight.media[0];
+                    if (m.media_type === 'photo') {
+                        mediaHTML = `<img src="${m.url}" alt="${highlight.name}" class="w-full h-32 object-cover rounded-lg mb-2 cursor-pointer hover:opacity-90" onclick="event.stopPropagation();openHighlightMediaModal('${m.url}','photo','${highlight.name}')">`;
+                    }
+                }
+
+                const popup = new mapboxgl.Popup({ maxWidth: '300px', offset: 20 }).setHTML(`
+                    <div style="padding:12px;min-width:220px;max-width:280px;">
+                        ${mediaHTML}
+                        <div style="display:flex;align-items:center;margin-bottom:8px;">
+                            <span style="font-size:24px;margin-right:8px;">${highlight.icon || '📍'}</span>
+                            <h3 style="margin:0;font-size:16px;font-weight:bold;color:#1f2937;">${highlight.name}</h3>
+                        </div>
+                        ${highlight.description ? `<p style="margin:0 0 8px 0;font-size:13px;color:#4b5563;line-height:1.4;">${highlight.description}</p>` : ''}
+                    </div>
+                `);
+
+                const marker = new mapboxgl.Marker({ element: el, anchor: 'center' })
+                    .setLngLat([highlight.coordinates[1], highlight.coordinates[0]])
+                    .setPopup(popup)
+                    .addTo(map);
+                highlightMarkers.push(marker);
+            });
+        })
+        .catch(err => console.error('Error loading highlights:', err));
+});
+
+map.on('style.load', () => {
+    if (_mapLoaded) initMapLayers();
+});
+
+// Close popups when clicking map background
+map.on('click', () => {});
 
 // Layers dropdown toggle
 document.getElementById('layers-toggle').addEventListener('click', (e) => {
     e.stopPropagation();
-    const dropdown = document.getElementById('layers-dropdown');
-    dropdown.classList.toggle('hidden');
+    document.getElementById('layers-dropdown').classList.toggle('hidden');
 });
 
-// Close dropdown when clicking outside
 document.addEventListener('click', (e) => {
     const dropdown = document.getElementById('layers-dropdown');
     const toggle = document.getElementById('layers-toggle');
@@ -796,505 +985,21 @@ document.addEventListener('click', (e) => {
     }
 });
 
-// Map layer button clicks
+// Map layer switching
 document.querySelectorAll('.layer-option-card').forEach(btn => {
-    btn.addEventListener('click', (e) => {
+    btn.addEventListener('click', () => {
         const mapType = btn.dataset.mapType;
-        if (mapType) {
-            // Remove current base layer
-            if (map.hasLayer(baseLayers[currentMapType])) {
-                map.removeLayer(baseLayers[currentMapType]);
-            }
-            
-            // Update current map type
-            currentMapType = mapType;
-            
-            // Add new base layer
-            baseLayers[currentMapType].addTo(map);
-            
-            // Update active state in dropdown
-            document.querySelectorAll('.layer-option-card').forEach(b => {
-                if (b.dataset.mapType === mapType) {
-                    b.classList.add('active');
-                } else {
-                    b.classList.remove('active');
-                }
-            });
-            
-            // Close dropdown
-            document.getElementById('layers-dropdown').classList.add('hidden');
-        }
-    });
-});
-
-// Add network center marker
-L.circleMarker([networkData.latitude, networkData.longitude], {
-    radius: 10,
-    fillColor: '#3b82f6',
-    color: '#fff',
-    weight: 3,
-    opacity: 1,
-    fillOpacity: 0.8
-}).addTo(map).bindPopup(`<strong>${networkData.network_name}</strong><br>Network Center`);
-
-// Add network center marker
-L.circleMarker([networkData.latitude, networkData.longitude], {
-    radius: 10,
-    fillColor: '#3b82f6',
-    color: '#fff',
-    weight: 3,
-    opacity: 1,
-    fillOpacity: 0.8
-}).addTo(map).bindPopup(`<strong>${networkData.network_name}</strong><br>Network Center`);
-
-// Load and display facilities - FIXED VERSION
-fetch('/api/facilities')
-    .then(response => response.json())
-    .then(facilities => {
-        console.log('Loaded facilities:', facilities);
-        
-        facilities.forEach(facility => {
-            // Create custom icon with facility emoji
-            const facilityIcon = L.divIcon({
-                className: 'facility-marker-custom',
-                html: `
-                    <div style="
-                        background: white;
-                        color: #059669;
-                        padding: 6px;
-                        border-radius: 50%;
-                        font-size: 18px;
-                        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-                        border: 3px solid #059669;
-                        width: 38px;
-                        height: 38px;
-                        display: flex;
-                        align-items: center;
-                        justify-content: center;
-                        cursor: pointer;
-                    ">
-                        ${facility.icon}
-                    </div>
-                `,
-                iconSize: [38, 38],
-                iconAnchor: [19, 19]
-            });
-            
-            // Create marker
-            const facilityMarker = L.marker([facility.latitude, facility.longitude], {
-                icon: facilityIcon,
-                zIndexOffset: 500
-            });
-            
-            // Store facility data on the marker
-            facilityMarker.facilityData = facility;
-            
-            // Add to map
-            facilityMarker.addTo(map);
-            
-            // Store reference
-            facilityMarkers.push(facilityMarker);
-        });
-        
-        console.log('Facility markers created:', facilityMarkers.length);
-    })
-    .catch(error => console.error('Error loading facilities:', error));
-    
-// Load and display highlights
-fetch('/api/highlights')
-    .then(response => response.json())
-    .then(highlights => {
-        console.log('Loaded highlights:', highlights);
-        
-        highlights.forEach(highlight => {
-            if (!highlight.coordinates || highlight.coordinates.length < 2) return;
-            
-            const highlightIcon = L.divIcon({
-                className: 'highlight-marker-custom',
-                html: `
-                    <div style="
-                        background-color: ${highlight.color || '#8B5CF6'};
-                        padding: 8px;
-                        border-radius: 50%;
-                        font-size: 20px;
-                        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-                        border: 2px solid white;
-                        width: 40px;
-                        height: 40px;
-                        display: flex;
-                        align-items: center;
-                        justify-content: center;
-                        cursor: pointer;
-                    ">
-                        ${highlight.icon || '📍'}
-                    </div>
-                `,
-                iconSize: [40, 40],
-                iconAnchor: [20, 20]
-            });
-            
-            const highlightMarker = L.marker(highlight.coordinates, {
-                icon: highlightIcon,
-                zIndexOffset: 600
-            });
-            
-            highlightMarker.highlightData = highlight;
-            highlightMarker.addTo(map);
-            highlightMarkers.push(highlightMarker);
-        });
-    })
-    .catch(error => console.error('Error loading highlights:', error));
-
-// Global handler for highlight marker clicks
-map.on('click', function(e) {
-    let clickedHighlight = null;
-    
-    highlightMarkers.forEach(marker => {
-        const markerLatLng = marker.getLatLng();
-        const distance = map.distance(e.latlng, markerLatLng);
-        
-        if (distance < 25) {
-            clickedHighlight = marker;
-        }
-    });
-    
-    if (clickedHighlight) {
-        showHighlightPopup(clickedHighlight.highlightData, e.latlng);
-    }
-});
-
-// Function to show highlight popup
-function showHighlightPopup(highlight, latlng) {
-    let mediaHTML = '';
-    
-    if (highlight.media && highlight.media.length > 0) {
-        const primaryMedia = highlight.media[0];
-        
-        if (primaryMedia.media_type === 'photo') {
-            mediaHTML = `
-                <img src="${primaryMedia.url}" 
-                     alt="${highlight.name}"
-                     class="w-full h-32 object-cover rounded-lg mb-2 cursor-pointer hover:opacity-90 transition-opacity"
-                     onclick="event.stopPropagation(); openHighlightMediaModal('${primaryMedia.url}', 'photo', '${highlight.name}')">
-            `;
-        } else if (primaryMedia.media_type === 'video_url' || primaryMedia.media_type === 'video') {
-            const videoUrl = primaryMedia.video_url || primaryMedia.url;
-            const thumbnailUrl = getVideoThumbnail(videoUrl);
-            
-            mediaHTML = `
-                <div class="relative w-full h-32 rounded-lg mb-2 cursor-pointer hover:opacity-90 transition-opacity bg-gray-900 overflow-hidden"
-                     onclick="event.stopPropagation(); openHighlightMediaModal('${videoUrl}', 'video', '${highlight.name}')">
-                    ${thumbnailUrl ? `
-                        <img src="${thumbnailUrl}" 
-                             alt="Video thumbnail"
-                             class="w-full h-full object-cover">
-                    ` : `
-                        <div class="w-full h-full flex items-center justify-center">
-                            <svg class="w-8 h-8 text-white opacity-75" fill="currentColor" viewBox="0 0 20 20">
-                                <path d="M2 6a2 2 0 012-2h6a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V6zM14.553 7.106A1 1 0 0014 8v4a1 1 0 00.553.894l2 1A1 1 0 0018 13V7a1 1 0 00-1.447-.894l-2 1z"/>
-                            </svg>
-                        </div>
-                    `}
-                    <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
-                        <div class="bg-white bg-opacity-90 rounded-full p-2">
-                            <svg class="w-5 h-5 text-gray-900" fill="currentColor" viewBox="0 0 20 20">
-                                <path d="M6.3 2.841A1.5 1.5 0 004 4.11V15.89a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z"/>
-                            </svg>
-                        </div>
-                    </div>
-                </div>
-            `;
-        }
-    }
-    
-    const popupContent = `
-        <div style="padding: 12px; min-width: 220px; max-width: 280px;">
-            ${mediaHTML}
-            <div style="display: flex; align-items: center; margin-bottom: 8px;">
-                <span style="font-size: 24px; margin-right: 8px;">${highlight.icon || '📍'}</span>
-                <h3 style="margin: 0; font-size: 16px; font-weight: bold; color: #1f2937;">
-                    ${highlight.name}
-                </h3>
-            </div>
-            <p style="margin: 0 0 8px 0; font-size: 12px; color: #6b7280;">
-                <strong>Type:</strong> ${highlight.type.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
-            </p>
-            ${highlight.description ? `
-                <p style="margin: 0 0 8px 0; font-size: 13px; color: #4b5563; line-height: 1.4;">
-                    ${highlight.description}
-                </p>
-            ` : ''}
-            <p style="margin: 0 0 8px 0; font-size: 12px; color: #6b7280;">
-                <strong>Trail:</strong> ${highlight.trail.name}
-            </p>
-            ${highlight.media && highlight.media.length > 1 ? `
-                <p style="margin: 0; font-size: 11px; color: #8B5CF6; cursor: pointer;" 
-                   onclick="showAllHighlightMedia(${JSON.stringify(highlight).replace(/"/g, '&quot;')})">
-                    Click to view ${highlight.media.length} photo${highlight.media.length > 1 ? 's' : ''}
-                </p>
-            ` : ''}
-        </div>
-    `;
-    
-    L.popup({
-        maxWidth: 300,
-        className: 'highlight-popup',
-        closeButton: true
-    })
-    .setLatLng(latlng)
-    .setContent(popupContent)
-    .openOn(map);
-}
-
-// Optional: Function to show all media in a gallery
-function showAllHighlightMedia(highlight) {
-    if (!highlight.media || highlight.media.length === 0) return;
-    
-    // For now, just open the first one
-    // You can enhance this to show a gallery later
-    const firstMedia = highlight.media[0];
-    if (firstMedia.media_type === 'photo') {
-        openHighlightMediaModal(firstMedia.url, 'photo', highlight.name);
-    } else if (firstMedia.media_type === 'video_url' || firstMedia.media_type === 'video') {
-        openHighlightMediaModal(firstMedia.video_url || firstMedia.url, 'video', highlight.name);
-    }
-}
-
-// Global handler for facility marker clicks
-map.on('click', function(e) {
-    // Check if click was on a facility marker
-    let clickedFacility = null;
-    
-    facilityMarkers.forEach(marker => {
-        const markerLatLng = marker.getLatLng();
-        const distance = map.distance(e.latlng, markerLatLng);
-        
-        // If click is within 20 pixels of marker center
-        if (distance < 20) {
-            clickedFacility = marker.facilityData;
-        }
-    });
-    
-    // Only show popup if a facility was clicked
-    if (clickedFacility) {
-        const popupContent = `
-            <div style="padding: 12px; min-width: 200px;">
-                <div style="display: flex; align-items: center; margin-bottom: 8px;">
-                    <span style="font-size: 24px; margin-right: 8px;">${clickedFacility.icon}</span>
-                    <h3 style="margin: 0; font-size: 16px; font-weight: bold; color: #1f2937;">
-                        ${clickedFacility.name}
-                    </h3>
-                </div>
-                <p style="margin: 0 0 8px 0; font-size: 12px; color: #6b7280;">
-                    <strong>Type:</strong> ${clickedFacility.facility_type.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
-                </p>
-                ${clickedFacility.description ? `
-                    <p style="margin: 0; font-size: 13px; color: #4b5563; line-height: 1.4;">
-                        ${clickedFacility.description}
-                    </p>
-                ` : ''}
-            </div>
-        `;
-        
-        L.popup({
-            maxWidth: 300,
-            className: 'facility-popup',
-            closeButton: true
-        })
-        .setLatLng(e.latlng)
-        .setContent(popupContent)
-        .openOn(map);
-    }
-});
-// Store trail layers and waypoints for focusing
-const trailLayers = {};
-const trailWaypoints = {};
-let selectedTrailId = null;
-const facilityMarkers = [];
-const highlightMarkers = [];
-
-// Add trails to map
-trails.forEach(trail => {
-    if (!trail.route_coordinates || trail.route_coordinates.length === 0) {
-        return;
-    }
-
-    const color = getDifficultyColor(trail.difficulty_level);
-    
-    // Create trail route with white outline
-    const whiteOutline = L.polyline(trail.route_coordinates, {
-        color: 'white',
-        weight: 12,
-        opacity: 0,
-        className: `trail-outline-${trail.id}`,
-        interactive: true
-    }).addTo(map);
-
-    const route = L.polyline(trail.route_coordinates, {
-        color: color,
-        weight: 3,
-        opacity: 1,
-        className: `trail-route-${trail.id}`
-    }).addTo(map);
-
-    // Store both layers together
-    trailLayers[trail.id] = { route: route, outline: whiteOutline };
-
-    // // Add animated arrows along the path
-    // route.setText('  ➤  ', {
-    //     repeat: true,
-    //     offset: 6,
-    //     attributes: {
-    //         fill: 'black',
-    //         'font-size': '16',
-    //         'font-weight': 'bold',
-    //         'text-shadow': '0 0 2px rgba(255,255,255,0.8)'
-    //     }
-    // });
-
-    // Store layer reference
-    trailWaypoints[trail.id] = [];
-
-    // Add waypoint markers
-    const coordinates = trail.route_coordinates;
-    
-    // Start marker (green)
-    const startMarker = L.marker(coordinates[0], {
-        icon: L.divIcon({
-            className: 'waypoint-marker',
-            html: `<div class="waypoint-start" style="border-color: ${color};"></div>`,
-            iconSize: [16, 16],
-            iconAnchor: [8, 8]
-        }),
-        opacity: 0.8
-    }).addTo(map);
-    startMarker.bindTooltip('Start', { permanent: false, direction: 'top', className: 'waypoint-tooltip' });
-    trailWaypoints[trail.id].push(startMarker);
-
-    // Intermediate waypoints (show every 3rd point for clarity)
-    for (let i = 1; i < coordinates.length - 1; i += 3) {
-        const waypoint = L.marker(coordinates[i], {
-            icon: L.divIcon({
-                className: 'waypoint-marker',
-                html: `<div class="waypoint-dot" style="color: ${color};"></div>`,
-                iconSize: [12, 12],
-                iconAnchor: [6, 6]
-            }),
-            opacity: 0.6
-        }).addTo(map);
-        trailWaypoints[trail.id].push(waypoint);
-    }
-
-    // End marker (red)
-    const endMarker = L.marker(coordinates[coordinates.length - 1], {
-        icon: L.divIcon({
-            className: 'waypoint-marker',
-            html: `<div class="waypoint-end" style="border-color: ${color};"></div>`,
-            iconSize: [16, 16],
-            iconAnchor: [8, 8]
-        }),
-        opacity: 0.8
-    }).addTo(map);
-    endMarker.bindTooltip('End', { permanent: false, direction: 'top', className: 'waypoint-tooltip' });
-    trailWaypoints[trail.id].push(endMarker);
-
-    // Store trail data for the details card
-    if (!window.trailDetailsData) {
-        window.trailDetailsData = {};
-    }
-    window.trailDetailsData[trail.id] = {
-        id: trail.id,
-        name: trail.name,
-        trail_type: trail.trail_type,
-        description: trail.description,
-        distance_km: trail.distance_km,
-        difficulty_level: trail.difficulty_level,
-        elevation_gain: trail.elevation_gain,
-        preview_photo: trail.preview_photo,
-        photos: trail.photos
-    };
-
-    // Call focusTrail when route is clicked
-    route.on('click', function(e) {
-        focusTrail(trail.id);
-    });
-
-    // Make outline clickable too - also trigger focusTrail
-    whiteOutline.on('click', function(e) {
-        focusTrail(trail.id);
-    });
-
-    // Add clickable circle icon in the middle of the trail
-    const midPoint = Math.floor(trail.route_coordinates.length / 2);
-    const iconPosition = trail.route_coordinates[midPoint];
-
-    const trailIcon = L.marker(iconPosition, {
-        icon: L.divIcon({
-            className: '',
-            html: `<div class="trail-center-dot" style="background:${color};" data-trail-id="${trail.id}"></div>`,
-            iconSize: [28, 28],
-            iconAnchor: [14, 14],
-            tooltipAnchor: [0, -14]
-        }),
-        zIndexOffset: 500,
-        interactive: true
-    }).addTo(map);
-
-    // Make the icon clickable
-    trailIcon.on('click', function(e) {
-        L.DomEvent.stopPropagation(e);
-        focusTrail(trail.id);
-    });
-
-    // Add tooltip with trail name on hover
-    trailIcon.bindTooltip(trail.name, {
-        permanent: false,
-        direction: 'top',
-        className: 'trail-icon-tooltip',
-        offset: [0, -14]
-    });
-
-    // Store the icon reference with the trail layers
-    if (!trailLayers[trail.id].icon) {
-        trailLayers[trail.id].icon = trailIcon;
-    }
-});
-
-// Fit map to show all trails
-if (trails.length > 0 && trails.some(t => t.route_coordinates && t.route_coordinates.length > 0)) {
-    const allCoordinates = trails
-        .filter(t => t.route_coordinates && t.route_coordinates.length > 0)
-        .flatMap(t => t.route_coordinates);
-    
-    if (allCoordinates.length > 0) {
-        const bounds = L.latLngBounds(allCoordinates);
-        map.fitBounds(bounds, { padding: [50, 50] });
-    }
-}
-
-// Scale hit-area polyline weight with zoom so paths are always easy to click
-function getHitWeight(zoom) {
-    if (zoom >= 16) return 14;
-    if (zoom >= 14) return 18;
-    if (zoom >= 12) return 24;
-    return 30;
-}
-
-map.on('zoomend', function() {
-    const w = getHitWeight(map.getZoom());
-    Object.values(trailLayers).forEach(function(layers) {
-        if (layers && layers.outline) {
-            // Only update weight if not currently highlighted (selected trail shows yellow)
-            if (layers.outline.options.opacity === 0) {
-                layers.outline.setStyle({ weight: w });
-            }
-        }
+        if (!mapType || !mapStyles[mapType]) return;
+        currentMapType = mapType;
+        map.setStyle(mapStyles[mapType]);
+        document.querySelectorAll('.layer-option-card').forEach(b => b.classList.toggle('active', b.dataset.mapType === mapType));
+        document.getElementById('layers-dropdown').classList.add('hidden');
     });
 });
 
 // Focus on trail when clicked in sidebar
 window.focusTrail = function(trailId) {
-    // Close sidebar on mobile when trail is clicked
+    // Close sidebar on mobile
     if (window.innerWidth <= 768) {
         const sidebar = document.querySelector('.network-sidebar');
         const toggleBtn = document.getElementById('sidebar-toggle');
@@ -1303,94 +1008,32 @@ window.focusTrail = function(trailId) {
             toggleBtn.classList.remove('hidden');
         }
     }
-    
-    // Remove previous highlights
+
+    // Deselect previous trail
     if (selectedTrailId !== null) {
-        const prevLayers = trailLayers[selectedTrailId];
-        if (prevLayers) {
-            // Reset route to original size
-            prevLayers.route.setStyle({
-                weight: 3
-            });
-
-            // Hide the outline again (restore as invisible hit area)
-            prevLayers.outline.setStyle({
-                color: 'white',
-                weight: getHitWeight(map.getZoom()),
-                opacity: 0
-            });
-            if (prevLayers.icon) {
-                prevLayers.icon.setZIndexOffset(500);
-            }
-        }
-        
-        // Reset waypoint opacity
-        if (trailWaypoints[selectedTrailId]) {
-            trailWaypoints[selectedTrailId].forEach(waypoint => {
-                waypoint.setOpacity(0.6);
-            });
-        }
+        map.setFeatureState({ source: 'trail-routes', id: selectedTrailId }, { selected: false });
     }
 
-    // Highlight selected trail
-    const layers = trailLayers[trailId];
-    if (layers) {
-        // Make the route slightly thicker
-        layers.route.setStyle({
-            weight: 3
-        });
+    // Select new trail
+    map.setFeatureState({ source: 'trail-routes', id: trailId }, { selected: true });
+    selectedTrailId = trailId;
 
-        // Change outline to yellow and make it thicker
-        layers.outline.setStyle({
-            color: '#f3fd44', // Yellow
-            weight: 15,
-            opacity: 1
-        });
+    // Fit bounds to selected trail
+    const trail = trails.find(t => t.id == trailId);
+    if (trail && trail.route_coordinates && trail.route_coordinates.length) {
+        const coords = trail.route_coordinates;
+        const lngs = coords.map(c => c[1]);
+        const lats = coords.map(c => c[0]);
+        const bounds = [[Math.min(...lngs), Math.min(...lats)], [Math.max(...lngs), Math.max(...lats)]];
 
-        // Bring layers to front, icon last so it stays on top
-        layers.outline.bringToFront();
-        layers.route.bringToFront();
-        if (layers.icon) {
-            layers.icon.setZIndexOffset(1000);
-        }
-        
-        // Highlight all waypoints
-        if (trailWaypoints[trailId]) {
-            trailWaypoints[trailId].forEach((waypoint, index) => {
-                waypoint.setOpacity(1);
-                // Bring waypoints to front too
-                if (waypoint._icon) {
-                    waypoint._icon.style.zIndex = 1000;
-                }
-            });
-        }
-        
-        // Fit bounds and center the trail on map
-        const bounds = layers.route.getBounds();
-
-        if (window.innerWidth <= 768) {
-            // On mobile: fit bounds to show entire trail
-            map.fitBounds(bounds, { 
-                padding: [50, 50],
-                maxZoom: 16
-            });
-        } else {
-            // On desktop: fit bounds with offset for sidebar and card
-            // Account for sidebar (350px) and card (350px) on the left
-            map.fitBounds(bounds, { 
-                paddingTopLeft: [400, 50],  // Extra padding on left for sidebar + card
-                paddingBottomRight: [50, 50],
-                maxZoom: 16
-            });
-        }
-        
-        // Show trail details card
-        setTimeout(() => {
-            showTrailDetailsCard(trailId);
-        }, 300);
-        
-        selectedTrailId = trailId;
+        map.fitBounds(bounds, window.innerWidth <= 768
+            ? { padding: 50, maxZoom: 16 }
+            : { padding: { top: 50, left: 420, right: 50, bottom: 50 }, maxZoom: 16 }
+        );
     }
+
+    // Show trail details card
+    setTimeout(() => showTrailDetailsCard(trailId), 300);
 };
 
 // Function to show trail details in card

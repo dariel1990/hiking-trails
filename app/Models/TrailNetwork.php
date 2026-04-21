@@ -28,10 +28,16 @@ class TrailNetwork extends Model
     protected static function boot()
     {
         parent::boot();
-        
+
         static::creating(function ($network) {
             if (empty($network->slug)) {
-                $network->slug = Str::slug($network->network_name);
+                $base = Str::slug($network->network_name);
+                $slug = $base;
+                $i = 1;
+                while (static::where('slug', $slug)->exists()) {
+                    $slug = $base.'-'.++$i;
+                }
+                $network->slug = $slug;
             }
         });
     }

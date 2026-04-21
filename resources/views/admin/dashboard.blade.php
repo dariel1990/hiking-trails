@@ -19,7 +19,8 @@
             <div class="card-content">
                 <div class="text-2xl font-bold text-gray-900">{{ $stats['total_trails'] }}</div>
                 <p class="text-xs text-gray-600">
-                    +2 from last month
+                    {{ $stats['gpx_trails'] + $stats['mixed_trails'] }} from GPX,
+                    {{ $stats['manual_trails'] }} manual
                 </p>
             </div>
         </div>
@@ -53,7 +54,7 @@
             <div class="card-content">
                 <div class="text-2xl font-bold text-gray-900">{{ $stats['active_trails'] }}</div>
                 <p class="text-xs text-gray-600">
-                    {{ $stats['total_trails'] - $stats['active_trails'] }} trails closed
+                    {{ $stats['inactive_trails'] }} inactive
                 </p>
             </div>
         </div>
@@ -70,7 +71,7 @@
             <div class="card-content">
                 <div class="text-2xl font-bold text-gray-900">{{ $stats['total_photos'] }}</div>
                 <p class="text-xs text-gray-600">
-                    +12 this week
+                    across all trails
                 </p>
             </div>
         </div>
@@ -97,18 +98,12 @@
                     </svg>
                     Manage All Trails
                 </a>
-                <button class="btn-outline w-full justify-start">
+                <a href="{{ route('admin.media.index') }}" class="btn-outline w-full justify-start">
                     <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
                     </svg>
-                    Upload Photos
-                </button>
-                <button class="btn-ghost w-full justify-start text-gray-600">
-                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-                    </svg>
-                    Export Data
-                </button>
+                    Manage Media
+                </a>
             </div>
         </div>
 
@@ -124,9 +119,9 @@
                         @foreach($stats['recent_trails'] as $trail)
                         <div class="flex items-center justify-between group">
                             <div class="flex items-center space-x-3">
-                                <div class="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
-                                    @if($trail->featuredPhoto)
-                                        <img src="{{ $trail->featuredPhoto->url }}" alt="{{ $trail->name }}" class="w-10 h-10 rounded-lg object-cover">
+                                <div class="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center overflow-hidden">
+                                    @if($trail->featured_media_url)
+                                        <img src="{{ $trail->featured_media_url }}" alt="{{ $trail->name }}" class="w-10 h-10 rounded-lg object-cover">
                                     @else
                                         <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"/>
@@ -206,41 +201,28 @@
             <p class="card-description">Latest changes and updates to your trails</p>
         </div>
         <div class="card-content">
-            <div class="space-y-4">
-                <div class="flex items-start space-x-3">
-                    <div class="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
-                    <div class="flex-1 min-w-0">
-                        <p class="text-sm text-gray-900">
-                            <span class="font-medium">System</span> updated trail difficulty algorithm
-                        </p>
-                        <p class="text-xs text-gray-600">2 hours ago</p>
-                    </div>
-                </div>
-                
-                @if($stats['recent_trails']->count() > 0)
-                    @foreach($stats['recent_trails']->take(3) as $trail)
+            @if($stats['recent_trails']->count() > 0)
+                <div class="space-y-4">
+                    @foreach($stats['recent_trails'] as $trail)
                     <div class="flex items-start space-x-3">
                         <div class="w-2 h-2 bg-green-500 rounded-full mt-2 flex-shrink-0"></div>
                         <div class="flex-1 min-w-0">
                             <p class="text-sm text-gray-900">
-                                New trail <span class="font-medium">{{ $trail->name }}</span> was created
+                                Trail <span class="font-medium">{{ $trail->name }}</span>
+                                @if($trail->created_at->eq($trail->updated_at))
+                                    was created
+                                @else
+                                    was updated
+                                @endif
                             </p>
-                            <p class="text-xs text-gray-600">{{ $trail->created_at->diffForHumans() }}</p>
+                            <p class="text-xs text-gray-600">{{ $trail->updated_at->diffForHumans() }}</p>
                         </div>
                     </div>
                     @endforeach
-                @endif
-                
-                <div class="flex items-start space-x-3">
-                    <div class="w-2 h-2 bg-orange-500 rounded-full mt-2 flex-shrink-0"></div>
-                    <div class="flex-1 min-w-0">
-                        <p class="text-sm text-gray-900">
-                            <span class="font-medium">Admin</span> updated system settings
-                        </p>
-                        <p class="text-xs text-gray-600">1 day ago</p>
-                    </div>
                 </div>
-            </div>
+            @else
+                <p class="text-sm text-gray-600 text-center py-4">No activity yet.</p>
+            @endif
         </div>
     </div>
 </div>

@@ -38,10 +38,15 @@ class BusinessController extends Controller
         $business = Business::create($validated);
 
         $this->handleMediaUploads($request, $business);
-        $this->handleVideoUrls($request, $business);
+        $unsupported = $this->handleVideoUrls($request, $business);
 
-        return redirect()->route('admin.businesses.index')
-            ->with('success', 'Business added successfully.');
+        $message = 'Business added successfully.';
+
+        if (! empty($unsupported)) {
+            $message .= ' Skipped unsupported video URLs (only YouTube and Vimeo are supported): '.implode(', ', $unsupported);
+        }
+
+        return redirect()->route('admin.businesses.index')->with('success', $message);
     }
 
     public function edit(Business $business): View
@@ -63,10 +68,15 @@ class BusinessController extends Controller
         $business->update($validated);
 
         $this->handleMediaUploads($request, $business);
-        $this->handleVideoUrls($request, $business);
+        $unsupported = $this->handleVideoUrls($request, $business);
 
-        return redirect()->route('admin.businesses.index')
-            ->with('success', 'Business updated successfully.');
+        $message = 'Business updated successfully.';
+
+        if (! empty($unsupported)) {
+            $message .= ' Skipped unsupported video URLs (only YouTube and Vimeo are supported): '.implode(', ', $unsupported);
+        }
+
+        return redirect()->route('admin.businesses.index')->with('success', $message);
     }
 
     public function destroy(Business $business): RedirectResponse
@@ -161,12 +171,16 @@ class BusinessController extends Controller
         }
     }
 
-    private function handleVideoUrls(Request $request, Business $business): void
+    /**
+     * @return array<int, string> URLs rejected because the provider is unsupported
+     */
+    private function handleVideoUrls(Request $request, Business $business): array
     {
         $videoUrls = $request->input('video_urls', []);
+        $unsupported = [];
 
         foreach ($videoUrls as $index => $videoUrl) {
-            $videoUrl = trim($videoUrl);
+            $videoUrl = trim((string) $videoUrl);
 
             if (empty($videoUrl)) {
                 continue;
@@ -174,16 +188,22 @@ class BusinessController extends Controller
 
             $provider = BusinessMedia::detectVideoProvider($videoUrl);
 
-            if ($provider) {
-                BusinessMedia::create([
-                    'business_id' => $business->id,
-                    'media_type' => 'video_url',
-                    'url' => $videoUrl,
-                    'video_provider' => $provider,
-                    'caption' => $request->input("video_captions.{$index}"),
-                    'sort_order' => $business->media()->count() + $index,
-                ]);
+            if (! $provider) {
+                $unsupported[] = $videoUrl;
+
+                continue;
             }
+
+            BusinessMedia::create([
+                'business_id' => $business->id,
+                'media_type' => 'video_url',
+                'url' => $videoUrl,
+                'video_provider' => $provider,
+                'caption' => $request->input("video_captions.{$index}"),
+                'sort_order' => $business->media()->count() + $index,
+            ]);
         }
+
+        return $unsupported;
     }
 }

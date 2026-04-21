@@ -208,12 +208,11 @@ class AdminTrailController extends Controller
 
             // Handle route coordinates
             if ($request->has('route_coordinates')) {
-                $data['route_coordinates'] = json_decode($request->route_coordinates);
+                $data['route_coordinates'] = json_decode($request->route_coordinates, true);
             }
         } else {
             // Fishing lake specific data
             $data = array_merge($data, [
-                'trail_type' => $request->trail_type,
                 'fishing_location' => $request->fishing_location,
                 'fishing_distance_from_town' => $request->fishing_distance_from_town,
                 'fish_species' => $request->has('fish_species') ? array_filter($request->fish_species) : null,
@@ -648,7 +647,7 @@ class AdminTrailController extends Controller
 
             // Handle route coordinates
             if ($request->has('route_coordinates')) {
-                $data['route_coordinates'] = json_decode($request->route_coordinates);
+                $data['route_coordinates'] = json_decode($request->route_coordinates, true);
             }
         } else {
             $data = array_merge($data, [
@@ -1061,19 +1060,7 @@ class AdminTrailController extends Controller
 
         // Update featured photo if specified
         if ($request->has('featured_photo_id') && $request->featured_photo_id) {
-            // Remove featured status from all photos
             $trail->media()->update(['is_featured' => false]);
-
-            // Set new featured photo
-            $trail->media()->where('id', $request->featured_photo_id)->update(['is_featured' => true]);
-        }
-
-        // Update featured photo if specified
-        if ($request->has('featured_photo_id') && $request->featured_photo_id) {
-            // Remove featured status from all photos
-            $trail->media()->update(['is_featured' => false]);
-
-            // Set new featured photo
             $trail->media()->where('id', $request->featured_photo_id)->update(['is_featured' => true]);
         }
 

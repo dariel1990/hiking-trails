@@ -43,20 +43,26 @@ class FacilityController extends Controller
             'description' => 'nullable|string',
             'icon' => 'nullable|string|max:10',
             'is_active' => 'boolean',
+            'photos' => 'nullable|array',
+            'photos.*' => 'image|mimes:jpg,jpeg,png,webp|max:10240',
+            'video_urls' => 'nullable|array',
+            'video_urls.*' => 'nullable|url|max:500',
         ]);
 
         $validated['is_active'] = $request->has('is_active');
 
         $facility = Facility::create($validated);
 
-        // Handle media uploads
         $this->handleMediaUploads($request, $facility);
+        $unsupported = $this->handleVideoUrls($request, $facility);
 
-        // Handle video URLs
-        $this->handleVideoUrls($request, $facility);
+        $message = 'Facility added successfully.';
 
-        return redirect()->route('admin.facilities.index')
-            ->with('success', 'Facility added successfully.');
+        if (! empty($unsupported)) {
+            $message .= ' Skipped unsupported video URLs (only YouTube and Vimeo are supported): '.implode(', ', $unsupported);
+        }
+
+        return redirect()->route('admin.facilities.index')->with('success', $message);
     }
 
     /**
@@ -84,20 +90,26 @@ class FacilityController extends Controller
             'description' => 'nullable|string',
             'icon' => 'nullable|string|max:10',
             'is_active' => 'boolean',
+            'photos' => 'nullable|array',
+            'photos.*' => 'image|mimes:jpg,jpeg,png,webp|max:10240',
+            'video_urls' => 'nullable|array',
+            'video_urls.*' => 'nullable|url|max:500',
         ]);
 
         $validated['is_active'] = $request->has('is_active');
 
         $facility->update($validated);
 
-        // Handle media uploads
         $this->handleMediaUploads($request, $facility);
+        $unsupported = $this->handleVideoUrls($request, $facility);
 
-        // Handle video URLs
-        $this->handleVideoUrls($request, $facility);
+        $message = 'Facility updated successfully.';
 
-        return redirect()->route('admin.facilities.index')
-            ->with('success', 'Facility updated successfully.');
+        if (! empty($unsupported)) {
+            $message .= ' Skipped unsupported video URLs (only YouTube and Vimeo are supported): '.implode(', ', $unsupported);
+        }
+
+        return redirect()->route('admin.facilities.index')->with('success', $message);
     }
 
     /**
@@ -135,13 +147,16 @@ class FacilityController extends Controller
 
     /**
      * Handle video URL additions
+     *
+     * @return array<int, string> List of URLs that were rejected because the provider is unsupported
      */
-    private function handleVideoUrls(Request $request, Facility $facility): void
+    private function handleVideoUrls(Request $request, Facility $facility): array
     {
         $videoUrls = $request->input('video_urls', []);
+        $unsupported = [];
 
         foreach ($videoUrls as $index => $videoUrl) {
-            $videoUrl = trim($videoUrl);
+            $videoUrl = trim((string) $videoUrl);
 
             if (empty($videoUrl)) {
                 continue;
@@ -149,17 +164,23 @@ class FacilityController extends Controller
 
             $provider = FacilityMedia::detectVideoProvider($videoUrl);
 
-            if ($provider) {
-                FacilityMedia::create([
-                    'facility_id' => $facility->id,
-                    'media_type' => 'video_url',
-                    'url' => $videoUrl,
-                    'video_provider' => $provider,
-                    'caption' => $request->input("video_captions.{$index}"),
-                    'sort_order' => $facility->media()->count() + $index,
-                ]);
+            if (! $provider) {
+                $unsupported[] = $videoUrl;
+
+                continue;
             }
+
+            FacilityMedia::create([
+                'facility_id' => $facility->id,
+                'media_type' => 'video_url',
+                'url' => $videoUrl,
+                'video_provider' => $provider,
+                'caption' => $request->input("video_captions.{$index}"),
+                'sort_order' => $facility->media()->count() + $index,
+            ]);
         }
+
+        return $unsupported;
     }
 
     /**

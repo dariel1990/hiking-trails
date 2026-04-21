@@ -28,7 +28,7 @@
 @endif
 @endpush
 @push('styles')
-<link href="https://cesium.com/downloads/cesiumjs/releases/1.95/Build/Cesium/Widgets/widgets.css" rel="stylesheet">
+<link href="https://api.mapbox.com/mapbox-gl-js/v3.10.0/mapbox-gl.css" rel="stylesheet">
 <style>
     /* Sticky Sidebar */
     .sticky-sidebar {
@@ -184,9 +184,9 @@
     }
     
     /* Map Container */
-    #trail-detail-map, #trail-3d-viewer {
-        border-radius: 1rem;
-        overflow: hidden;
+    #trail-detail-map {
+        width: 100%;
+        height: 100%;
     }
     
     /* Elevation Profile Chart */
@@ -208,26 +208,9 @@
 
     /* Print Styles */
     @media print {
-        .sticky-sidebar, .tab-nav, #trail-detail-map, #trail-3d-viewer {
+        .sticky-sidebar, .tab-nav, #trail-detail-map {
             display: none;
         }
-    }
-
-    #trail-3d-viewer:fullscreen,
-    #trail-3d-viewer:-webkit-full-screen {
-        width: 100vw !important;
-        height: 100vh !important;
-    }
-
-    .cesium-button svg {
-        display: block;
-        margin: auto;
-    }
-
-    .cesium-toolbar-button {
-        display: flex !important;
-        align-items: center !important;
-        justify-content: center !important;
     }
 </style>
 @endpush
@@ -733,45 +716,33 @@
                 <!-- Route & Map Tab -->
                 <div id="route-tab" class="tab-content">
                     <div class="mb-8">
-                        <div class="flex justify-between items-center mb-4">
-                            <h2 class="text-2xl sm:text-3xl font-bold text-forest-700">Interactive Trail Map</h2>
-                            <div class="flex space-x-2">
-                                <button id="view-2d-btn" class="px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700 transition-colors">
-                                    2D Map
+                        <h2 class="text-2xl sm:text-3xl font-bold text-forest-700 mb-4">Interactive Trail Map</h2>
+
+                        <!-- Mapbox Map with overlaid controls -->
+                        <div class="relative rounded-xl shadow-lg" style="height: 500px; overflow: hidden;">
+                            <div id="trail-detail-map" style="position:absolute;inset:0;z-index:0;"></div>
+
+                            <!-- Custom controls: stacked below the Mapbox zoom (top-left) -->
+                            <div class="absolute top-[106px] left-[10px] z-10 flex flex-col gap-1.5">
+                                <!-- 3D Toggle -->
+                                <button id="toggle-3d-btn"
+                                    title="Switch to 3D"
+                                    class="bg-white text-gray-700 shadow-md hover:bg-gray-50 transition-colors border border-gray-300"
+                                    style="width:29px;height:29px;display:flex;align-items:center;justify-content:center;border-radius:4px;">
+                                    <span class="font-bold text-xs leading-none">3D</span>
                                 </button>
-                                <button id="view-3d-btn" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-300 transition-colors">
-                                    3D Terrain
-                                </button>
-                            </div>
-                        </div>
-                        
-                        <!-- 2D Map -->
-                        <div id="trail-detail-map" class="w-full shadow-lg z-10" style="height: 500px;"></div>
-                        
-                        <!-- 3D Viewer -->
-                        <div id="trail-3d-viewer" class="w-full h-[500px] shadow-lg hidden"></div>
-                        
-                        <div class="mt-4 flex justify-between items-center">
-                            <button id="fit-route-btn" class="px-6 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors font-medium">
-                                <span id="fit-btn-text">Center Route</span>
-                            </button>
-                            
-                            <div id="3d-loading" class="hidden flex items-center text-gray-600">
-                                <svg class="animate-spin h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24">
-                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                </svg>
-                                Loading 3D terrain...
-                            </div>
-                            
-                            @if($trail->route_coordinates)
-                                <span class="text-sm text-green-600 flex items-center">
-                                    <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                                <!-- Fly Along Trail -->
+                                @if($trail->route_coordinates && count($trail->route_coordinates) > 1)
+                                <button id="fly-along-btn"
+                                    title="Fly Along Trail"
+                                    class="bg-white text-gray-700 shadow-md hover:bg-gray-50 transition-colors border border-gray-300"
+                                    style="width:29px;height:29px;display:flex;align-items:center;justify-content:center;border-radius:4px;">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                                        <path d="M13.49 5.48c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm-3.6 13.9 1-4.4 2.1 2v6h2v-7.5l-2.1-2 .6-3c1.3 1.5 3.3 2.5 5.5 2.5v-2c-1.9 0-3.5-1-4.3-2.4l-1-1.6c-.4-.6-1-1-1.7-1-.3 0-.5.1-.8.1l-5.2 2.2v4.7h2v-3.4l1.8-.7-1.6 8.1-4.9-1-.4 2 7 1.4z"/>
                                     </svg>
-                                    3D terrain available
-                                </span>
-                            @endif
+                                </button>
+                                @endif
+                            </div>
                         </div>
                     </div>
                     
@@ -1396,7 +1367,7 @@
 
 @push('scripts')
 @vite(['resources/js/app.js'])
-<script src="{{ asset('js/cesium-loader.js') }}"></script>
+<script src="https://api.mapbox.com/mapbox-gl-js/v3.10.0/mapbox-gl.js"></script>
 <script>
 // Video Thumbnail Generator Functions
 function getVideoThumbnail(videoUrl) {
@@ -1458,22 +1429,8 @@ function openMediaModal(url, type, caption) {
     const content = document.getElementById('modal-content');
     const captionEl = document.getElementById('modal-caption');
     
-    // Check if we're in fullscreen mode
-    const viewer3D = document.getElementById('trail-3d-viewer');
-    const isFullscreen = !!(document.fullscreenElement || document.webkitFullscreenElement);
-    const fullscreenElement = document.fullscreenElement || document.webkitFullscreenElement;
-    const isViewer3DFullscreen = isFullscreen && fullscreenElement === viewer3D;
-
-    if (isViewer3DFullscreen) {
-        // If in fullscreen, append modal to the fullscreen container
-        if (modal.parentElement !== viewer3D) {
-            viewer3D.appendChild(modal);
-        }
-    } else {
-        // Normal mode - ensure it's in body
-        if (modal.parentElement !== document.body) {
-            document.body.appendChild(modal);
-        }
+    if (modal.parentElement !== document.body) {
+        document.body.appendChild(modal);
     }
     
     if (type === 'photo') {
@@ -1552,13 +1509,15 @@ document.addEventListener('DOMContentLoaded', function() {
             button.classList.add('active');
             document.getElementById(`${targetTab}-tab`).classList.add('active');
             
-            // If switching to route tab, invalidate map size
-            if (targetTab === 'route' && window.trailMap) {
+            // Lazy-init Mapbox on first Route tab open; resize on subsequent opens
+            if (targetTab === 'route') {
                 setTimeout(() => {
-                    window.trailMap.invalidateSize();
-                    // Auto-trigger center route button
-                    document.getElementById('fit-route-btn')?.click();
-                }, 300);
+                    if (!window.trailDetailMap) {
+                        initTrailMap();
+                    } else {
+                        window.trailDetailMap.resize();
+                    }
+                }, 100);
             }
         });
     });
@@ -1590,401 +1549,326 @@ document.addEventListener('DOMContentLoaded', function() {
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') closeLightbox();
     });
-    
-    // Load leaflet-polylinedecorator after Leaflet (Vite bundle) is ready
-    (function loadDecoratorThenMap() {
-        const s = document.createElement('script');
-        s.src = 'https://unpkg.com/leaflet-polylinedecorator@1.6.0/dist/leaflet.polylineDecorator.js';
-        s.onload = initTrailMap;
-        s.onerror = initTrailMap;
-        document.head.appendChild(s);
-    })();
+
+    // If page loads with #route hash or Route tab already active, init map
+    if (window.location.hash === '#route') {
+        const routeBtn = document.querySelector('[data-tab="route"]');
+        if (routeBtn) routeBtn.click();
+    }
 });
 
 function initTrailMap() {
 
-    // Trail Map and 3D Functionality
     const trail = @json($trail);
-    let trail3DViewer = null;
-    let currentView = '2d';
-    let trailRoute = null;
-    
-    // Check if this is a fishing lake
     const isFishingLake = trail.location_type === 'fishing_lake';
 
-    // Initialize 2D map - fishing lakes zoom out more to see the whole lake
-    const initialZoom = isFishingLake ? 11 : 13;
-    const map = L.map('trail-detail-map').setView(trail.start_coordinates, initialZoom);
-    window.trailMap = map;
-    
-    L.tileLayer('https://{s}.tile-cyclosm.openstreetmap.fr/cyclosm/{z}/{x}/{y}.png', {
-        attribution: '© OpenStreetMap, CyclOSM',
-    }).addTo(map);
-    
-    // Add trail route (only for trails, not fishing lakes)
-    function rdpSimplify(points, epsilon) {
-        if (points.length < 3) return points;
-        let maxDist = 0, maxIndex = 0;
-        const start = points[0], end = points[points.length - 1];
-        for (let i = 1; i < points.length - 1; i++) {
-            const dx = end[1] - start[1], dy = end[0] - start[0];
-            let dist;
-            if (dx === 0 && dy === 0) {
-                dist = Math.sqrt((points[i][1]-start[1])**2 + (points[i][0]-start[0])**2);
-            } else {
-                const t = Math.max(0, Math.min(1, ((points[i][1]-start[1])*dx + (points[i][0]-start[0])*dy) / (dx*dx + dy*dy)));
-                dist = Math.sqrt((points[i][1]-(start[1]+t*dx))**2 + (points[i][0]-(start[0]+t*dy))**2);
-            }
-            if (dist > maxDist) { maxDist = dist; maxIndex = i; }
+    let _is3D = false;
+    let _isFlying = false;
+    let _flyAnimation = null;
+    let _flyTimeout = null;
+    let _hikerMarker = null;
+    let _highlightMarkers = [];
+
+    // ── Mapbox init ──────────────────────────────────────────────────────────
+    mapboxgl.accessToken = '{{ $mapboxToken }}';
+
+    const initialCenter = trail.start_coordinates
+        ? [trail.start_coordinates[1], trail.start_coordinates[0]]
+        : [-127.1698, 54.7804];
+
+    const map = new mapboxgl.Map({
+        container: 'trail-detail-map',
+        style: 'mapbox://styles/mapbox/satellite-streets-v12',
+        center: initialCenter,
+        zoom: isFishingLake ? 11 : 13,
+        pitch: 0,
+        bearing: 0,
+        attributionControl: false,
+    });
+
+    window.trailDetailMap = map;
+
+    map.addControl(new mapboxgl.NavigationControl({ showCompass: false }), 'top-left');
+    map.addControl(new mapboxgl.AttributionControl({ compact: true }), 'bottom-left');
+
+    map.on('load', () => {
+        if (!map.getSource('mapbox-dem')) {
+            map.addSource('mapbox-dem', {
+                type: 'raster-dem',
+                url: 'mapbox://mapbox.mapbox-terrain-dem-v1',
+                tileSize: 512,
+                maxzoom: 14,
+            });
         }
-        if (maxDist > epsilon) {
-            const left = rdpSimplify(points.slice(0, maxIndex + 1), epsilon);
-            const right = rdpSimplify(points.slice(maxIndex), epsilon);
-            return [...left.slice(0, -1), ...right];
+        map.setTerrain({ source: 'mapbox-dem', exaggeration: 1.5 });
+
+        if (!isFishingLake && trail.route_coordinates && trail.route_coordinates.length > 0) {
+            const geojsonCoords = trail.route_coordinates.map(c => [c[1], c[0]]);
+
+            const arrowSVG = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 14 14"><polygon points="13,7 5,3 7,7 5,11" fill="white"/></svg>`;
+            const arrowImg = new Image(14, 14);
+            arrowImg.onload = () => { if (!map.hasImage('trail-arrow')) map.addImage('trail-arrow', arrowImg); };
+            arrowImg.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(arrowSVG);
+
+            map.addSource('trail-route', {
+                type: 'geojson',
+                data: { type: 'Feature', geometry: { type: 'LineString', coordinates: geojsonCoords } },
+            });
+
+            map.addLayer({
+                id: 'trail-route-line',
+                type: 'line',
+                source: 'trail-route',
+                paint: { 'line-color': '#10B981', 'line-width': 4, 'line-opacity': 1 },
+                layout: { 'line-join': 'round', 'line-cap': 'round' },
+            });
+
+            map.addLayer({
+                id: 'trail-route-arrows',
+                type: 'symbol',
+                source: 'trail-route',
+                layout: {
+                    'symbol-placement': 'line',
+                    'symbol-spacing': 120,
+                    'icon-image': 'trail-arrow',
+                    'icon-size': 1,
+                    'icon-allow-overlap': true,
+                    'icon-ignore-placement': true,
+                },
+            });
+
+            const lngs = geojsonCoords.map(c => c[0]);
+            const lats = geojsonCoords.map(c => c[1]);
+            map.fitBounds(
+                [[Math.min(...lngs), Math.min(...lats)], [Math.max(...lngs), Math.max(...lats)]],
+                { padding: 50, duration: 0 }
+            );
         }
-        return [start, end];
+
+        function makeMarkerEl(bgColor, label, isEmoji = false) {
+            const el = document.createElement('div');
+            el.style.cssText = `width:36px;height:36px;border-radius:50%;background-color:${bgColor};border:2px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,0.35);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:${isEmoji ? '18px' : '14px'};`;
+            el.textContent = label;
+            return el;
+        }
+
+        if (isFishingLake && trail.start_coordinates) {
+            const el = makeMarkerEl('#3B82F6', '🐟', true);
+            const fishSpecies = Array.isArray(trail.fish_species) ? trail.fish_species.join(', ') : 'Various species';
+            const popup = new mapboxgl.Popup({ offset: 20 }).setHTML(
+                `<div class="font-semibold">${trail.name}</div><div class="text-sm text-gray-600">Fishing Lake</div>` +
+                (trail.fishing_location ? `<div class="text-xs text-gray-500 mt-1">${trail.fishing_location}</div>` : '') +
+                `<div class="text-xs text-blue-600 mt-2 font-medium">${fishSpecies}</div>`
+            );
+            new mapboxgl.Marker({ element: el, anchor: 'center' })
+                .setLngLat([trail.start_coordinates[1], trail.start_coordinates[0]])
+                .setPopup(popup).addTo(map);
+        }
+
+        if (!isFishingLake && trail.start_coordinates) {
+            const el = makeMarkerEl('#10B981', 'S');
+            const popup = new mapboxgl.Popup({ offset: 20 }).setHTML(
+                `<div class="font-semibold">${trail.name}</div><div class="text-sm text-gray-600">Trail Start</div>`
+            );
+            new mapboxgl.Marker({ element: el, anchor: 'center' })
+                .setLngLat([trail.start_coordinates[1], trail.start_coordinates[0]])
+                .setPopup(popup).addTo(map);
+        }
+
+        if (!isFishingLake && trail.end_coordinates &&
+            JSON.stringify(trail.start_coordinates) !== JSON.stringify(trail.end_coordinates)) {
+            const el = makeMarkerEl('#EF4444', 'E');
+            const popup = new mapboxgl.Popup({ offset: 20 }).setHTML('<div class="font-semibold">Trail End</div>');
+            new mapboxgl.Marker({ element: el, anchor: 'center' })
+                .setLngLat([trail.end_coordinates[1], trail.end_coordinates[0]])
+                .setPopup(popup).addTo(map);
+        }
+
+        if (trail.highlights && trail.highlights.length > 0) {
+            trail.highlights.forEach(feature => {
+                if (!feature.coordinates) return;
+                const el = document.createElement('div');
+                el.style.cssText = `width:32px;height:32px;border-radius:50%;background-color:${feature.color || '#EC4899'};border:2px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;font-size:16px;cursor:pointer;`;
+                el.textContent = feature.icon || '\u{1F4CD}';
+
+                const popup = new mapboxgl.Popup({ maxWidth: '320px', offset: 20 }).setHTML(`
+                    <div class="min-w-[200px]">
+                        <div class="flex items-start gap-2 mb-2">
+                            <div style="background-color:${feature.color || '#6366f1'};" class="w-7 h-7 rounded-lg flex items-center justify-center text-white text-sm flex-shrink-0">${feature.icon || '\u{1F4CD}'}</div>
+                            <div>
+                                <div class="font-semibold text-sm text-gray-900">${feature.name}</div>
+                                <span class="text-xs bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded capitalize">${(feature.feature_type || '').replace(/_/g, ' ')}</span>
+                            </div>
+                        </div>
+                        ${feature.description ? `<p class="text-xs text-gray-600 leading-relaxed border-t border-gray-100 pt-2">${feature.description}</p>` : ''}
+                    </div>
+                `);
+
+                const marker = new mapboxgl.Marker({ element: el, anchor: 'center' })
+                    .setLngLat([feature.coordinates[1], feature.coordinates[0]])
+                    .setPopup(popup).addTo(map);
+
+                _highlightMarkers.push({ name: feature.name, marker, coordinates: feature.coordinates });
+            });
+        }
+    });
+
+    // ── 3D Toggle ────────────────────────────────────────────────────────────
+    const toggle3DBtn = document.getElementById('toggle-3d-btn');
+    if (toggle3DBtn) {
+        toggle3DBtn.addEventListener('click', function() {
+            _is3D = !_is3D;
+            map.easeTo({ pitch: _is3D ? 60 : 0, bearing: _is3D ? -10 : 0, duration: 800 });
+            this.innerHTML = `<span class="font-bold text-xs leading-none">${_is3D ? '2D' : '3D'}</span>`;
+            this.title = _is3D ? 'Switch to 2D' : 'Switch to 3D';
+            this.classList.toggle('bg-emerald-600', _is3D);
+            this.classList.toggle('text-white', _is3D);
+            this.classList.toggle('bg-white', !_is3D);
+            this.classList.toggle('text-gray-700', !_is3D);
+            this.classList.toggle('border-emerald-600', _is3D);
+            this.classList.toggle('border-gray-300', !_is3D);
+        });
     }
 
-    function simplifyRoute(coords, target = 500) {
-        if (coords.length <= target) return coords;
-        let epsilon = 0.00001, result = rdpSimplify(coords, epsilon);
-        while (result.length > target && epsilon < 1.0) { epsilon *= 1.5; result = rdpSimplify(coords, epsilon); }
-        return result;
-    }
-
-    function smoothCoordinates(coords, win = 3, passes = 2) {
+    // ── Fly Along Trail ──────────────────────────────────────────────────────
+    function smoothCoords(coords, win, passes) {
         if (!coords || coords.length < 3) return coords;
         let result = coords;
         const half = Math.floor(win / 2);
         for (let p = 0; p < passes; p++) {
-            const smoothed = [result[0]];
+            const s = [result[0]];
             for (let i = 1; i < result.length - 1; i++) {
-                const s = Math.max(0, i - half), e = Math.min(result.length - 1, i + half);
-                let sumLat = 0, sumLng = 0, count = 0;
-                for (let j = s; j <= e; j++) { sumLat += result[j][0]; sumLng += result[j][1]; count++; }
-                smoothed.push([sumLat / count, sumLng / count]);
+                const lo = Math.max(0, i - half), hi = Math.min(result.length - 1, i + half);
+                let sLat = 0, sLng = 0, cnt = 0;
+                for (let j = lo; j <= hi; j++) { sLat += result[j][0]; sLng += result[j][1]; cnt++; }
+                s.push([sLat / cnt, sLng / cnt]);
             }
-            smoothed.push(result[result.length - 1]);
-            result = smoothed;
+            s.push(result[result.length - 1]);
+            result = s;
         }
         return result;
     }
 
-    if (!isFishingLake && trail.route_coordinates && trail.route_coordinates.length > 0) {
-        const routeColor = '#10B981';
-        const displayCoords = smoothCoordinates(simplifyRoute(trail.route_coordinates));
+    function getBearing(start, end) {
+        const toRad = d => d * Math.PI / 180;
+        const dLng = toRad(end[1] - start[1]);
+        const lat1 = toRad(start[0]), lat2 = toRad(end[0]);
+        const x = Math.sin(dLng) * Math.cos(lat2);
+        const y = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLng);
+        return (Math.atan2(x, y) * 180 / Math.PI + 360) % 360;
+    }
 
-        const routeOutline = L.polyline(displayCoords, {
-            color: 'white',
-            weight: 12,
-            opacity: 0,
-            interactive: false,
-        }).addTo(map);
+    function createHikerEl() {
+        const el = document.createElement('div');
+        el.style.cssText = 'width:36px;height:36px;border-radius:50%;background-color:#2563EB;border:3px solid #fff;box-shadow:0 2px 10px rgba(0,0,0,0.45);display:flex;align-items:center;justify-content:center;pointer-events:none;user-select:none;';
+        el.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="white"><path d="M13.49 5.48c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm-3.6 13.9 1-4.4 2.1 2v6h2v-7.5l-2.1-2 .6-3c1.3 1.5 3.3 2.5 5.5 2.5v-2c-1.9 0-3.5-1-4.3-2.4l-1-1.6c-.4-.6-1-1-1.7-1-.3 0-.5.1-.8.1l-5.2 2.2v4.7h2v-3.4l1.8-.7-1.6 8.1-4.9-1-.4 2 7 1.4z"/></svg>`;
+        return el;
+    }
 
-        trailRoute = L.polyline(displayCoords, {
-            color: routeColor,
-            weight: 3,
-            opacity: 1,
-            lineJoin: 'round',
-            lineCap: 'round',
-        }).addTo(map);
+    function stopFlyAnimation() {
+        _isFlying = false;
+        if (_flyTimeout) { clearTimeout(_flyTimeout); _flyTimeout = null; }
+        if (_flyAnimation) { cancelAnimationFrame(_flyAnimation); _flyAnimation = null; }
+        if (_hikerMarker) { _hikerMarker.remove(); _hikerMarker = null; }
+        map.easeTo({ pitch: 0, bearing: 0, duration: 1000 });
+        updateFlyBtn(false);
+    }
 
-        if (window.L.polylineDecorator && window.L.Symbol) {
-            L.polylineDecorator(trailRoute, {
-                patterns: [
-                    {
-                        offset: 20,
-                        repeat: 80,
-                        symbol: L.Symbol.arrowHead({
-                            pixelSize: 10,
-                            headAngle: 40,
-                            pathOptions: {
-                                color: 'white',
-                                fillOpacity: 1,
-                                weight: 0,
-                            },
-                        }),
-                    },
-                ],
-            }).addTo(map);
+    function updateFlyBtn(isFlying) {
+        const btn = document.getElementById('fly-along-btn');
+        if (!btn) return;
+        if (isFlying) {
+            btn.title = 'Stop Animation';
+            btn.innerHTML = `<svg class="w-4 h-4 text-red-600" fill="currentColor" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>`;
+            btn.classList.add('border-red-400');
+            btn.classList.remove('border-gray-300');
+        } else {
+            btn.title = 'Fly Along Trail';
+            btn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M13.49 5.48c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm-3.6 13.9 1-4.4 2.1 2v6h2v-7.5l-2.1-2 .6-3c1.3 1.5 3.3 2.5 5.5 2.5v-2c-1.9 0-3.5-1-4.3-2.4l-1-1.6c-.4-.6-1-1-1.7-1-.3 0-.5.1-.8.1l-5.2 2.2v4.7h2v-3.4l1.8-.7-1.6 8.1-4.9-1-.4 2 7 1.4z"/></svg>`;
+            btn.classList.remove('border-red-400');
+            btn.classList.add('border-gray-300');
         }
-
-        map.fitBounds(trailRoute.getBounds(), { padding: [50, 50] });
-    }
-    
-    // Fishing lake location marker
-    if (isFishingLake && trail.start_coordinates) {
-        const fishSpecies = trail.fish_species ? JSON.parse(JSON.stringify(trail.fish_species)).join(', ') : 'Various species';
-        const lakeIcon = L.divIcon({
-            html: '<div class="w-10 h-10 bg-blue-500 text-white rounded-full flex items-center justify-center border-2 border-white shadow-lg text-2xl">🐟</div>',
-            className: '',
-            iconSize: [40, 40],
-            iconAnchor: [20, 20]
-        });
-        L.marker(trail.start_coordinates, { icon: lakeIcon })
-            .addTo(map)
-            .bindPopup(`<div class="font-semibold">${trail.name}</div><div class="text-sm text-gray-600">Fishing Lake</div>` +
-                (trail.fishing_location ? `<div class="text-xs text-gray-500 mt-1">${trail.fishing_location}</div>` : '') +
-                `<div class="text-xs text-blue-600 mt-2 font-medium">${fishSpecies}</div>`);
     }
 
-    // Start marker (trails only)
-    if (!isFishingLake && trail.start_coordinates) {
-        const startIcon = L.divIcon({
-            html: '<div class="w-10 h-10 bg-emerald-500 text-white rounded-full flex items-center justify-center font-bold text-lg border-2 border-white shadow-lg">S</div>',
-            className: '',
-            iconSize: [40, 40],
-            iconAnchor: [20, 20]
-        });
+    function flyAlongTrail() {
+        if (!trail.route_coordinates || trail.route_coordinates.length < 2) return;
+        if (_isFlying) { stopFlyAnimation(); return; }
 
-        L.marker(trail.start_coordinates, { icon: startIcon })
-            .addTo(map)
-            .bindPopup(`<div class="font-semibold">${trail.name}</div><div class="text-sm text-gray-600">Trail Start</div>`);
-    }
-    
-    // Add end marker if different (only for trails)
-    if (!isFishingLake && trail.end_coordinates && 
-        JSON.stringify(trail.start_coordinates) !== JSON.stringify(trail.end_coordinates)) {
-        
-        const endIcon = L.divIcon({
-            html: '<div class="w-10 h-10 bg-red-500 text-white rounded-full flex items-center justify-center font-bold text-lg border-2 border-white shadow-lg">E</div>',
-            className: '',
-            iconSize: [40, 40],
-            iconAnchor: [20, 20]
-        });
-        
-        L.marker(trail.end_coordinates, { icon: endIcon })
-            .addTo(map)
-            .bindPopup('<div class="font-semibold">Trail End</div>');
+        const raw = trail.route_coordinates.filter(c => Array.isArray(c) && c.length >= 2 && isFinite(c[0]) && isFinite(c[1]));
+        const coords = smoothCoords(raw, 5, 2);
+        if (coords.length < 2) return;
+
+        if (_hikerMarker) { _hikerMarker.remove(); _hikerMarker = null; }
+        _hikerMarker = new mapboxgl.Marker({ element: createHikerEl(), anchor: 'center' })
+            .setLngLat([coords[0][1], coords[0][0]])
+            .addTo(map);
+
+        _isFlying = true;
+        updateFlyBtn(true);
+
+        const lngs = coords.map(c => c[1]);
+        const lats = coords.map(c => c[0]);
+        map.fitBounds(
+            [[Math.min(...lngs), Math.min(...lats)], [Math.max(...lngs), Math.max(...lats)]],
+            { padding: 80, maxZoom: 14, duration: 1500 }
+        );
+
+        _flyTimeout = setTimeout(() => {
+            _flyTimeout = null;
+            if (!_isFlying) return;
+
+            const last = coords.length - 1;
+            const DURATION_MS = Math.max(20000, coords.length * 100);
+            const startTime = performance.now();
+
+            const animate = (now) => {
+                if (!_isFlying) return;
+                const progress = Math.min((now - startTime) / DURATION_MS, 1);
+                const rawIndex = progress * last;
+                const i = Math.min(Math.floor(rawIndex), last);
+                const t = rawIndex - i;
+                const cur = coords[i], next = coords[Math.min(i + 1, last)];
+                if (!cur || !next) { _flyAnimation = requestAnimationFrame(animate); return; }
+
+                const lng = cur[1] + (next[1] - cur[1]) * t;
+                const lat = cur[0] + (next[0] - cur[0]) * t;
+                if (_hikerMarker) _hikerMarker.setLngLat([lng, lat]);
+
+                const camI = Math.max(0, i - 8);
+                const camA = coords[camI], camB = coords[Math.min(camI + 1, last)];
+                if (camA && camB) {
+                    map.easeTo({
+                        center: [camA[1] + (camB[1] - camA[1]) * t, camA[0] + (camB[0] - camA[0]) * t],
+                        bearing: getBearing(cur, next),
+                        pitch: 60, zoom: 15, duration: 150, easing: x => x,
+                    });
+                }
+
+                if (progress < 1) { _flyAnimation = requestAnimationFrame(animate); }
+                else { stopFlyAnimation(); }
+            };
+            _flyAnimation = requestAnimationFrame(animate);
+        }, 1800);
     }
 
-    // Add highlight markers if available
-    if (trail.highlights && trail.highlights.length > 0) {
-        trail.highlights.forEach(feature => {
-            const highlightIcon = L.divIcon({
-                html: `<div style="background-color: ${feature.color || '#EC4899'};" class="w-8 h-8 rounded-full border-2 border-white shadow-lg flex items-center justify-center text-white text-lg">${feature.icon || '📍'}</div>`,
-                className: 'custom-highlight-marker',
-                iconSize: [32, 32],
-                iconAnchor: [16, 16]
-            });
-            
-            // Build media HTML for popup
-            let mediaHTML = '';
-            if (feature.media && feature.media.length > 0) {
-                const displayMedia = feature.media.slice(0, 3); // Show max 3 media items
-                const hasMore = feature.media.length > 3;
-                const basePath = window.location.origin;
-                mediaHTML = `
-                    <div class="mt-3 pt-3 border-t border-gray-100">
-                        <div class="grid grid-cols-3 gap-1.5">
-                            ${displayMedia.map(media => {
-                                if (media.media_type === 'photo') {
-                                    return `
-                                        <div class="relative aspect-square rounded overflow-hidden cursor-pointer hover:opacity-90 transition group"
-                                            onclick="event.stopPropagation(); openMediaModal('${basePath}/storage/${media.storage_path}', 'photo', '${media.caption || feature.name}')">
-                                            <img src="${basePath}/storage/${media.storage_path}" 
-                                                alt="${media.caption || feature.name}"
-                                                class="w-full h-full object-cover">
-                                            <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all flex items-center justify-center">
-                                                <svg class="w-5 h-5 text-white opacity-0 group-hover:opacity-100 transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7"/>
-                                                </svg>
-                                            </div>
-                                        </div>
-                                    `;
-                                } else if (media.media_type === 'video_url') {
-                                    // Generate thumbnail for video
-                                    let thumbnailHTML = '';
-                                    const videoUrl = media.video_url || media.url;
-                                    
-                                    if (media.video_provider === 'youtube') {
-                                        // Extract YouTube video ID and create thumbnail
-                                        const youtubeMatch = videoUrl.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\s]+)/);
-                                        if (youtubeMatch && youtubeMatch[1]) {
-                                            const videoId = youtubeMatch[1];
-                                            thumbnailHTML = `
-                                                <img src="https://img.youtube.com/vi/${videoId}/mqdefault.jpg" 
-                                                    alt="${media.caption || feature.name}"
-                                                    class="w-full h-full object-cover"
-                                                    onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-                                                <div class="w-full h-full hidden items-center justify-center bg-gray-900">
-                                                    <svg class="w-8 h-8 text-white opacity-75" fill="currentColor" viewBox="0 0 20 20">
-                                                        <path d="M2 6a2 2 0 012-2h6a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V6zM14.553 7.106A1 1 0 0014 8v4a1 1 0 00.553.894l2 1A1 1 0 0018 13V7a1 1 0 00-1.447-.894l-2 1z"/>
-                                                    </svg>
-                                                </div>
-                                            `;
-                                        }
-                                    } else if (media.video_provider === 'vimeo') {
-                                        // For Vimeo, we'd need an API call, so we'll use generic icon for now
-                                        thumbnailHTML = `
-                                            <div class="w-full h-full flex items-center justify-center bg-gradient-to-br from-blue-500 to-blue-700">
-                                                <svg class="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 20 20">
-                                                    <path d="M2 6a2 2 0 012-2h6a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V6zM14.553 7.106A1 1 0 0014 8v4a1 1 0 00.553.894l2 1A1 1 0 0018 13V7a1 1 0 00-1.447-.894l-2 1z"/>
-                                                </svg>
-                                            </div>
-                                        `;
-                                    }
-                                    
-                                    // Fallback if no thumbnail could be generated
-                                    if (!thumbnailHTML) {
-                                        thumbnailHTML = `
-                                            <div class="w-full h-full flex items-center justify-center bg-gray-900">
-                                                <svg class="w-8 h-8 text-white opacity-75" fill="currentColor" viewBox="0 0 20 20">
-                                                    <path d="M2 6a2 2 0 012-2h6a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V6zM14.553 7.106A1 1 0 0014 8v4a1 1 0 00.553.894l2 1A1 1 0 0018 13V7a1 1 0 00-1.447-.894l-2 1z"/>
-                                                </svg>
-                                            </div>
-                                        `;
-                                    }
-                                    
-                                    return `
-                                        <div class="relative aspect-square rounded overflow-hidden cursor-pointer hover:opacity-90 transition group"
-                                            onclick="event.stopPropagation(); openMediaModal('${videoUrl}', 'video', '${media.caption || feature.name}')">
-                                            ${thumbnailHTML}
-                                            <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-all"></div>
-                                            <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
-                                                <div class="bg-white bg-opacity-90 rounded-full p-1.5 shadow-lg group-hover:scale-110 transition-transform">
-                                                    <svg class="w-4 h-4 text-gray-900" fill="currentColor" viewBox="0 0 20 20">
-                                                        <path d="M6.3 2.841A1.5 1.5 0 004 4.11V15.89a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z"/>
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    `;
-                                }
-                                return '';
-                            }).join('')}
-                        </div>
-                        ${hasMore ? `
-                            <div class="text-center mt-2">
-                                <span class="text-xs text-emerald-600 font-medium">+${feature.media.length - 3} more</span>
-                            </div>
-                        ` : ''}
-                    </div>
-                `;
-            }
+    document.getElementById('fly-along-btn')?.addEventListener('click', flyAlongTrail);
 
-            const marker = L.marker(feature.coordinates, { icon: highlightIcon })
-                .addTo(map)
-                .bindPopup(`
-                    <div class="min-w-[240px] max-w-[320px]">
-                        <div class="space-y-2">
-                            <div class="flex items-start gap-2">
-                                <div style="background-color: ${feature.color || '#6366f1'};" class="w-8 h-8 rounded-lg flex items-center justify-center text-white shadow-sm flex-shrink-0">
-                                    ${feature.icon || '📍'}
-                                </div>
-                                <div class="flex-1 min-w-0">
-                                    <h4 class="font-semibold text-sm text-gray-900 leading-tight mb-1">${feature.name}</h4>
-                                    <span class="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-emerald-100 text-emerald-700 capitalize">
-                                        ${(feature.feature_type || '').replace(/_/g, ' ')}
-                                    </span>
-                                </div>
-                            </div>
-                            ${feature.description ? `
-                                <p class="text-xs text-gray-600 leading-relaxed pt-2 border-t border-gray-100">
-                                    ${feature.description}
-                                </p>
-                            ` : ''}
-                            ${mediaHTML}
-                        </div>
-                    </div>
-                `, {
-                    maxWidth: 320,
-                    className: 'custom-popup'
-                });
-        });
-    }
-    
-    // View toggle handlers
-    document.getElementById('view-2d-btn').addEventListener('click', function() {
-        if (currentView === '2d') return;
-        
-        currentView = '2d';
-        document.getElementById('trail-detail-map').classList.remove('hidden');
-        document.getElementById('trail-3d-viewer').classList.add('hidden');
-        document.getElementById('3d-loading').classList.add('hidden');
-        
-        this.classList.add('bg-emerald-600', 'text-white');
-        this.classList.remove('bg-gray-200', 'text-gray-700');
-        document.getElementById('view-3d-btn').classList.remove('bg-emerald-600', 'text-white');
-        document.getElementById('view-3d-btn').classList.add('bg-gray-200', 'text-gray-700');
-        
-        document.getElementById('fit-btn-text').textContent = 'Center Route';
-        
-        if (trail3DViewer) {
-            trail3DViewer.destroy();
-            trail3DViewer = null;
-        }
-        
-        setTimeout(() => map.invalidateSize(), 100);
-    });
-    
-    document.getElementById('view-3d-btn').addEventListener('click', function() {
-        if (currentView === '3d') return;
-        
-        currentView = '3d';
-        document.getElementById('trail-detail-map').classList.add('hidden');
-        document.getElementById('trail-3d-viewer').classList.remove('hidden');
-        document.getElementById('3d-loading').classList.remove('hidden');
-        
-        this.classList.add('bg-emerald-600', 'text-white');
-        this.classList.remove('bg-gray-200', 'text-gray-700');
-        document.getElementById('view-2d-btn').classList.remove('bg-emerald-600', 'text-white');
-        document.getElementById('view-2d-btn').classList.add('bg-gray-200', 'text-gray-700');
-        
-        document.getElementById('fit-btn-text').textContent = 'Fly to Trail';
-        
-        setTimeout(() => {
-            try {
-                trail3DViewer = new Trail3DViewer('trail-3d-viewer', trail, trail.highlights || []);
-                document.getElementById('3d-loading').classList.add('hidden');
-            } catch (error) {
-                console.error('Failed to load 3D viewer:', error);
-                document.getElementById('3d-loading').innerHTML = '<span class="text-red-600">3D loading failed</span>';
-            }
-        }, 100);
-    });
-    
-    // Fit route button
-    document.getElementById('fit-route-btn').addEventListener('click', function() {
-        if (currentView === '2d') {
-            if (trailRoute) {
-                map.fitBounds(trailRoute.getBounds(), { padding: [50, 50] });
-            } else {
-                map.setView(trail.start_coordinates, 13);
-            }
-        } else if (currentView === '3d' && trail3DViewer) {
-            trail3DViewer.flyToTrail();
-        }
-    });
-    
-    // Show on main map button
+    // ── Show on map ──────────────────────────────────────────────────────────
     document.getElementById('show-on-map-btn').addEventListener('click', function() {
         window.open(`{{ route('map') }}?trail=${trail.id}`, '_blank');
     });
-    
-    // Focus feature function
+
+    // ── Focus feature (highlight card click) ─────────────────────────────────
     window.focusFeature = function(coordinates, name) {
-        if (currentView === '3d' && trail3DViewer) {
-            trail3DViewer.focusHighlight(name);
-        } else {
-            document.querySelector('[data-tab="route"]').click();
-            
-            setTimeout(() => {
-                map.setView(coordinates, 16, { animate: true });
-                
-                map.eachLayer(layer => {
-                    if (layer instanceof L.Marker) {
-                        const popup = layer.getPopup();
-                        if (popup && popup.getContent().includes(name)) {
-                            layer.openPopup();
-                        }
-                    }
-                });
-            }, 300);
-        }
+        document.querySelector('[data-tab="route"]').click();
+        setTimeout(() => {
+            map.flyTo({ center: [coordinates[1], coordinates[0]], zoom: 16, duration: 800 });
+            const entry = _highlightMarkers.find(m => m.name === name);
+            if (entry) entry.marker.togglePopup();
+        }, 300);
     };
 
-    // Elevation Profile Functions
+        // Elevation Profile Functions
     async function loadElevationProfile() {
         console.log('loadElevationProfile called');
         
@@ -2432,20 +2316,8 @@ function initTrailMap() {
         `;
         
         // Show modal with animation
-        // Check if 3D viewer is in fullscreen mode
-        const viewer3D = document.getElementById('trail-3d-viewer');
-        const isFullscreen = !!(document.fullscreenElement || document.webkitFullscreenElement);
-        const fullscreenElement = document.fullscreenElement || document.webkitFullscreenElement;
-        const isViewer3DFullscreen = isFullscreen && fullscreenElement === viewer3D;
-
-        if (isViewer3DFullscreen) {
-            // If in fullscreen, append modal to the fullscreen container
-            viewer3D.appendChild(popup);
-        } else {
-            // Normal mode - ensure it's in body
-            if (popup.parentElement !== document.body) {
-                document.body.appendChild(popup);
-            }
+        if (popup.parentElement !== document.body) {
+            document.body.appendChild(popup);
         }
 
         popup.style.display = 'flex';
@@ -2466,31 +2338,8 @@ function initTrailMap() {
         popup.style.display = 'none';
     }
 
-    // Handle fullscreen changes - move modal back to body when exiting fullscreen
-    document.addEventListener('fullscreenchange', handleFullscreenChange);
-    document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
-
-    function handleFullscreenChange() {
-        const popup = document.getElementById('highlight-3d-popup');
-        const mediaModal = document.getElementById('media-modal');
-        const isFullscreen = !!(document.fullscreenElement || document.webkitFullscreenElement);
-        
-        // If exiting fullscreen, move modals back to body
-        if (!isFullscreen) {
-            if (popup && popup.parentElement !== document.body) {
-                document.body.appendChild(popup);
-            }
-            if (mediaModal && mediaModal.parentElement !== document.body) {
-                document.body.appendChild(mediaModal);
-            }
-        }
-    }
-
     document.getElementById('close-highlight-popup')?.addEventListener('click', function() {
         window.close3DHighlightPopup();
-        if (trail3DViewer) {
-            trail3DViewer.closeHighlightPopup();
-        }
     });
 
     // Close when clicking outside modal (on backdrop)
@@ -2505,9 +2354,6 @@ function initTrailMap() {
         
         if (e.target === this) {
             window.close3DHighlightPopup();
-            if (trail3DViewer) {
-                trail3DViewer.closeHighlightPopup();
-            }
         }
     });
 

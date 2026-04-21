@@ -1,6 +1,11 @@
 @extends('layouts.public')
 
-@section('title', 'Interactive Trail Map')
+@section('title', 'Interactive Trail Map (Mapbox)')
+
+@push('styles')
+<link href="https://api.mapbox.com/mapbox-gl-js/v3.10.0/mapbox-gl.css" rel="stylesheet" />
+@endpush
+
 @section('content')
 <div class="flex h-[calc(100vh-100px)] md:h-[calc(100vh-100px)] max-md:h-screen overflow-hidden">
 
@@ -346,7 +351,30 @@
     <div id="map-area" class="flex-1 relative overflow-hidden">
 
     <!-- Main Map Container -->
-    <div id="main-map" class="absolute inset-0 z-10"></div>
+    <div id="main-map" class="absolute inset-0 z-10" style="width:100%;height:100%;"></div>
+
+    <!-- Bottom-right custom controls (sit above Mapbox zoom) -->
+    <div class="absolute bottom-24 right-2.5 z-30 flex flex-col gap-1.5">
+        <!-- 3D Toggle -->
+        <button id="toggle-3d-btn"
+            onclick="window.trailMap && window.trailMap.toggle3D()"
+            title="Switch to 3D"
+            class="bg-white text-gray-700 shadow-md hover:bg-gray-50 transition-colors border border-gray-300"
+            style="width:29px;height:29px;display:flex;align-items:center;justify-content:center;border-radius:4px;">
+            <span class="font-bold text-xs leading-none">3D</span>
+        </button>
+        <!-- My Location -->
+        <button id="my-location-btn"
+            onclick="window.trailMap && window.trailMap.locateMe()"
+            title="My Location"
+            class="bg-white text-gray-700 shadow-md hover:bg-gray-50 transition-colors border border-gray-300"
+            style="width:29px;height:29px;display:flex;align-items:center;justify-content:center;border-radius:4px;">
+            <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
+            </svg>
+        </button>
+    </div>
 
     <!-- Map Type Selector - Top Right on Desktop, Bottom Left on Mobile -->
     <div class="absolute top-4 right-4 max-md:top-auto max-md:right-auto max-md:bottom-8 max-md:left-4 z-30">
@@ -363,7 +391,7 @@
                 <div class="p-2">
                     <div class="text-xs font-semibold text-gray-500 uppercase tracking-wider px-3 py-2">Map Style</div>
                     <div class="grid grid-cols-2 gap-2 mb-2">
-                        <button class="layer-option-card" data-map-type="standard">
+                        <button class="layer-option-card active" data-map-type="standard">
                             <div class="layer-preview">
                                 <img src="{{ asset('images/map-layers/standard.png') }}"
                                     alt="Standard" class="w-full h-full object-cover">
@@ -396,7 +424,7 @@
                             </svg>
                         </button>
 
-                        <button class="layer-option-card active" data-map-type="outdoors">
+                        <button class="layer-option-card" data-map-type="outdoors">
                             <div class="layer-preview">
                                 <img src="{{ asset('images/map-layers/outdoor.png') }}"
                                     alt="Outdoors" class="w-full h-full object-cover">
@@ -534,14 +562,6 @@
             </div>
         </div>
 
-        <!-- My Location Button -->
-        <button id="my-location-btn" class="filter-pill bg-white hover:bg-gray-50 border border-gray-300 rounded-full px-4 py-2 text-sm font-medium text-gray-700 flex items-center gap-2 shadow-sm" title="Show my location">
-            <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
-            </svg>
-            <span>My Location</span>
-        </button>
 
         <!-- All Filters Button -->
         <button id="all-filters-btn" class="filter-pill bg-white hover:bg-gray-50 border border-gray-300 rounded-full px-4 py-2 text-sm font-medium text-gray-700 flex items-center gap-2 shadow-sm">
@@ -660,7 +680,7 @@
     </div>
 </div>
 @push('scripts')
-{{-- leaflet-polylinedecorator is loaded dynamically below after Leaflet (Vite bundle) is ready --}}
+<script src="https://api.mapbox.com/mapbox-gl-js/v3.10.0/mapbox-gl.js"></script>
 <style>
 /* Filter Pills */
 .filter-pill {
@@ -753,9 +773,9 @@
 }
 
 @media (max-width: 768px) {
-    .leaflet-bottom.leaflet-right .leaflet-control-zoom {
-        bottom: 10px !important; /* Same as layers-toggle bottom-8 */
-        right: 10px !important;
+    .mapboxgl-ctrl-bottom-right .mapboxgl-ctrl-group {
+        margin-bottom: 10px;
+        margin-right: 10px;
     }
 }
 
@@ -1089,7 +1109,7 @@
     color: #2563EB;
 }
 
-.leaflet-my-location-btn {
+.mapbox-my-location-btn {
     display: flex;
     align-items: center;
     justify-content: center;
@@ -1100,20 +1120,30 @@
     border-radius: 4px;
     cursor: pointer;
     color: #374151;
-    bottom: 5px;
-    right: 10px;
 }
-.leaflet-my-location-btn:hover {
+.mapbox-my-location-btn:hover {
     background: #f3f4f6;
     color: #2563eb;
 }
-.leaflet-my-location-btn.active {
+.mapbox-my-location-btn.active {
     background: #eff6ff;
     color: #2563eb;
     border-color: #2563eb;
 }
 @media (min-width: 768px) {
-    .leaflet-my-location-btn { display: none; }
+    .mapbox-my-location-btn { display: none; }
+}
+
+/* Mapbox popup customization */
+.mapboxgl-popup-content {
+    border-radius: 12px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+    padding: 0;
+}
+.mapboxgl-popup-close-button {
+    font-size: 18px;
+    padding: 4px 8px;
+    color: #6b7280;
 }
 
 /* Facility marker styling */
@@ -1122,14 +1152,11 @@
     border: none !important;
 }
 
-/* Facility popup styling */
-.facility-popup .leaflet-popup-content-wrapper {
+/* Facility popup styling - Mapbox */
+.facility-popup .mapboxgl-popup-content {
     border-radius: 12px;
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
-}
-
-.facility-popup .leaflet-popup-content {
-    margin: 0;
+    padding: 0;
 }
 
 /* Facility Popup Gallery Styles */
@@ -1616,6 +1643,16 @@
 </style>
 <script>
 
+    function escapeHtml(str) {
+        if (str == null) return '';
+        return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+    }
+
     // Video Thumbnail Generator Functions
     function getVideoThumbnail(videoUrl) {
         // YouTube
@@ -1857,109 +1894,191 @@
             if (badgeMobile) badgeMobile.classList.add('hidden');
         }
     }
+    mapboxgl.accessToken = '{{ $mapboxToken }}';
+
     class EnhancedTrailMap {
         constructor() {
             this.map = null;
             this.currentSeason = 'summer';
             this.currentDistance = '';
             this.currentDifficulty = '';
-            this.activeFilters = ['hiking', 'fishing', 'camping', 'viewpoint', 'highlights', 
+            this.activeFilters = ['hiking', 'fishing', 'camping', 'viewpoint', 'highlights',
                       'snowshoeing', 'ice-fishing', 'cross-country-skiing', 'downhill-skiing'];
-            this.baseLayers = {};
-            this.overlayLayers = {};
-            this.routeLayer = null;  // Add this line
             this.allTrails = [];
-            this.highlightedRoute = null;
             this.init();
 
             window.trailMap = this;
         }
 
         init() {
-            // Initialize map
-            this.map = L.map('main-map', {
-                zoomControl: false
-            }).setView([54.7804, -127.1698], 10);
+            // Map style definitions
+            this.mapStyles = {
+                'standard':  'mapbox://styles/mapbox/standard',
+                'satellite': 'mapbox://styles/mapbox/satellite-streets-v12',
+                'terrain':   'mapbox://styles/mapbox/outdoors-v12',
+                'outdoors':  'mapbox://styles/mapbox/navigation-day-v1',
+            };
+            this.currentMapType = 'standard';
 
-            // Add zoom control to bottom right
-            L.control.zoom({
-                position: 'bottomright'
-            }).addTo(this.map);
-
-            // My Location button above zoom (mobile only)
-            const MyLocationControl = L.Control.extend({
-                options: { position: 'bottomright' },
-                onAdd: () => {
-                    const btn = L.DomUtil.create('button', 'leaflet-my-location-btn md:hidden');
-                    btn.title = 'My Location';
-                    btn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
-                    </svg>`;
-                    L.DomEvent.on(btn, 'click', L.DomEvent.stopPropagation);
-                    L.DomEvent.on(btn, 'click', () => this.locateMe());
-                    return btn;
-                }
+            // Initialize Mapbox map with 3D terrain
+            this.map = new mapboxgl.Map({
+                container: 'main-map',
+                style: this.mapStyles[this.currentMapType],
+                center: [-127.1698, 54.7804], // [lng, lat]
+                zoom: 10,
+                pitch: 0,
+                bearing: 0,
+                attributionControl: false,
             });
-            new MyLocationControl().addTo(this.map);
 
-            // Base layers for different map types
-            this.baseLayers = {
-                'standard': L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                    attribution: '© OpenStreetMap contributors',
-                    maxZoom: 19
-                }),
-                'satellite': L.tileLayer('https://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', {
-                    attribution: '© Google',
-                    maxZoom: 22,
-                    subdomains: ['mt0', 'mt1', 'mt2', 'mt3']
-                }),
-                'terrain': L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
-                    attribution: 'Map data: © OpenStreetMap, SRTM | Map style: © OpenTopoMap',
-                    maxZoom: 18
-                }),
-                'outdoors': L.tileLayer('https://{s}.tile-cyclosm.openstreetmap.fr/cyclosm/{z}/{x}/{y}.png', {
-                    attribution: '© OpenStreetMap, CyclOSM',
-                    maxZoom: 18
-                })
+            // Navigation control (zoom + compass) — bottom right
+            this.map.addControl(new mapboxgl.NavigationControl({ showCompass: false }), 'bottom-right');
+
+            // Attribution
+            this.map.addControl(new mapboxgl.AttributionControl({ compact: true }), 'bottom-left');
+
+
+            // Marker storage per activity type (arrays of mapboxgl.Marker)
+            this.overlayMarkers = {
+                'hiking': [], 'fishing': [], 'camping': [], 'viewpoint': [], 'highlights': [],
+                'snowshoeing': [], 'ice-fishing': [], 'cross-country-skiing': [], 'downhill-skiing': []
             };
-
-            // Track current map type
-            this.currentMapType = 'outdoors';
-
-            // Activity overlay layers
-            this.overlayLayers = {
-                // Summer activities
-                'hiking': L.layerGroup(),
-                'fishing': L.layerGroup(),
-                'camping': L.layerGroup(),
-                'viewpoint': L.layerGroup(),
-                'highlights': L.layerGroup(),
-                // Winter activities
-                'snowshoeing': L.layerGroup(),
-                'ice-fishing': L.layerGroup(),
-                'cross-country-skiing': L.layerGroup(),
-                'downhill-skiing': L.layerGroup()
-            };
-
-            // Business overlay layer (separate from activity layers)
-            this.businessLayer = L.layerGroup();
+            this.businessMarkers = {};
+            this.facilityMarkers = [];
             this.showBusinesses = true;
             this.currentTrails = [];
             this.businessData = [];
             this.activeLocationFilter = 'all';
-
-            // Add default base layer
-            this.baseLayers[this.currentMapType].addTo(this.map);
+            this._selectedTrailId = null;
+            this._locationMarker = null;
+            this._locationCircle = null;
+            this._is3D = false;
+            this._isFlying = false;
+            this._flyAnimation = null;
+            this._flyTimeout = null;
+            this._hikerMarker = null;
 
             this.setupEventListeners();
-
-            // Ensure activity filter options match the default season on initial load
             this.updateActivityFilters(this.currentSeason);
 
-            this.loadTrails();
-            this.loadFacilities();
-            this.loadBusinesses();
+            // Wait for map style to load before adding sources/layers and data
+            this.map.on('load', () => {
+                this._initMapLayers();
+                this.loadTrails();
+                this.loadFacilities();
+                this.loadBusinesses();
+            });
+
+            // Re-init layers when style changes (after setStyle)
+            this.map.on('style.load', () => {
+                this._initMapLayers();
+                // Restore pitch after style swap if 3D was active
+                if (this._is3D) this.map.setPitch(45);
+                // Re-render trails/businesses after style reload
+                if (this.allTrails && this.allTrails.length) {
+                    this.applyFilters();
+                    this.renderBusinessMarkers();
+                }
+            });
+        }
+
+        _initMapLayers() {
+            // 3D Terrain
+            if (!this.map.getSource('mapbox-dem')) {
+                this.map.addSource('mapbox-dem', {
+                    type: 'raster-dem',
+                    url: 'mapbox://mapbox.mapbox-terrain-dem-v1',
+                    tileSize: 512,
+                    maxzoom: 14,
+                });
+            }
+            this.map.setTerrain({ source: 'mapbox-dem', exaggeration: 1.5 });
+
+            // Sky / atmosphere layer
+            if (!this.map.getLayer('sky')) {
+                this.map.addLayer({
+                    id: 'sky',
+                    type: 'sky',
+                    paint: {
+                        'sky-type': 'atmosphere',
+                        'sky-atmosphere-sun': [0.0, 90.0],
+                        'sky-atmosphere-sun-intensity': 15,
+                    },
+                });
+            }
+
+            // Arrow image for route direction indicators
+            // Tip points right (+x) so Mapbox rotates it along line travel direction
+            const arrowSVG = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 14 14"><polygon points="13,7 5,3 7,7 5,11" fill="white"/></svg>`;
+            const arrowImg = new Image(14, 14);
+            arrowImg.onload = () => {
+                if (!this.map.hasImage('trail-arrow')) {
+                    this.map.addImage('trail-arrow', arrowImg);
+                }
+            };
+            arrowImg.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(arrowSVG);
+
+            // GeoJSON source for trail routes
+            if (!this.map.getSource('trail-routes')) {
+                this.map.addSource('trail-routes', {
+                    type: 'geojson',
+                    data: { type: 'FeatureCollection', features: [] }
+                });
+            }
+
+            // Highlight/outline layer (yellow glow when selected)
+            if (!this.map.getLayer('trail-routes-outline')) {
+                this.map.addLayer({
+                    id: 'trail-routes-outline',
+                    type: 'line',
+                    source: 'trail-routes',
+                    paint: {
+                        'line-color': '#f3fd44',
+                        'line-width': 15,
+                        'line-opacity': ['case', ['boolean', ['feature-state', 'selected'], false], 1, 0],
+                    },
+                });
+            }
+
+            // Visible route layer
+            if (!this.map.getLayer('trail-routes-line')) {
+                this.map.addLayer({
+                    id: 'trail-routes-line',
+                    type: 'line',
+                    source: 'trail-routes',
+                    paint: {
+                        'line-color': ['get', 'color'],
+                        'line-width': ['case', ['boolean', ['feature-state', 'selected'], false], 4, 3],
+                        'line-opacity': 1,
+                    },
+                });
+            }
+
+            // Direction arrow layer
+            if (!this.map.getLayer('trail-routes-arrows')) {
+                this.map.addLayer({
+                    id: 'trail-routes-arrows',
+                    type: 'symbol',
+                    source: 'trail-routes',
+                    layout: {
+                        'symbol-placement': 'line',
+                        'symbol-spacing': 120,
+                        'icon-image': 'trail-arrow',
+                        'icon-size': 0.9,
+                        'icon-allow-overlap': true,
+                        'icon-ignore-placement': true,
+                    },
+                });
+            }
+
+            // Click on route line
+            this.map.on('click', 'trail-routes-line', (e) => {
+                if (e.features.length > 0) {
+                    this.highlightTrailRoute(e.features[0].properties.trailId);
+                }
+            });
+            this.map.on('mouseenter', 'trail-routes-line', () => { this.map.getCanvas().style.cursor = 'pointer'; });
+            this.map.on('mouseleave', 'trail-routes-line', () => { this.map.getCanvas().style.cursor = ''; });
         }
 
         setupEventListeners() {
@@ -1998,11 +2117,11 @@
                 });
             });
 
-            // Close business panel when clicking map
-            this.map.on('click', () => this.closeBusinessPanel());
+            // Close business panel when clicking map background
+            this.map.on('click', (e) => {
+                if (!e.features || e.features.length === 0) this.closeBusinessPanel();
+            });
 
-            // My Location button
-            document.getElementById('my-location-btn')?.addEventListener('click', () => this.locateMe());
 
             // Other filters - Check if elements exist first
             const difficultyFilter = document.getElementById('difficulty-filter');
@@ -2080,18 +2199,16 @@
                     }
                     setTimeout(() => {
                         if (window.trailMap && window.trailMap.map) {
-                            window.trailMap.map.invalidateSize();
+                            window.trailMap.map.resize();
                         }
                     }, 320);
                 });
             }
 
-            // Click on map to collapse controls (if they exist)
+            // Click on map to collapse controls
             this.map.on('click', () => {
                 const controlsContent = document.getElementById('controls-content');
-                if (controlsContent) {
-                    controlsContent.classList.add('hidden');
-                }
+                if (controlsContent) controlsContent.classList.add('hidden');
             });
 
             // External filter dropdowns
@@ -2138,50 +2255,6 @@
                 if (distanceDropdown) distanceDropdown.classList.add('hidden');
                 if (difficultyDropdown) difficultyDropdown.classList.add('hidden');
             });
-
-            // Map movement/zoom event - update visible trails
-            // this.map.on('moveend', () => {
-            //     this.updateVisibleTrails();
-            // });
-
-            // this.map.on('zoomend', () => {
-            //     this.updateVisibleTrails();
-            // });
-
-            this.map.on('zoomend', () => {
-                this._updateArrowDensity();
-            });
-
-            // Geocoding search with debouncing
-            const globalSearch = document.getElementById('global-trail-search');
-            if (globalSearch) {
-                let searchTimeout;
-                
-                globalSearch.addEventListener('input', (e) => {
-                    clearTimeout(searchTimeout);
-                    const query = e.target.value.trim();
-                    
-                    if (query.length === 0) {
-                        // If search is cleared, show all visible trails
-                        this.updateVisibleTrails();
-                        const suggestionsDiv = document.getElementById('search-suggestions');
-                        if (suggestionsDiv) {
-                            suggestionsDiv.classList.add('hidden');
-                        }
-                        return;
-                    }
-                    
-                    if (query.length < 2) {
-                        return; // Don't search until at least 2 characters
-                    }
-                    
-                    // Debounce search by 300ms
-                    searchTimeout = setTimeout(() => {
-                        this.performGeocodeSearch(query);
-                    }, 300);
-                });
-
-            }
 
             // Mobile filter dropdowns
             const distanceBtnMobile = document.getElementById('distance-filter-btn-mobile');
@@ -2258,14 +2331,6 @@
                 if (difficultyDropdownMobile) difficultyDropdownMobile.classList.add('hidden');
             });
 
-            // Close suggestions when clicking outside
-            document.addEventListener('click', (e) => {
-                const suggestionsDiv = document.getElementById('search-suggestions');
-                const searchInput = document.getElementById('global-trail-search');
-                if (suggestionsDiv && !suggestionsDiv.contains(e.target) && e.target !== searchInput) {
-                    suggestionsDiv.classList.add('hidden');
-                }
-            });
         }
 
         updateActivityFilters(season) {
@@ -2278,10 +2343,10 @@
             // Get valid activities for this season
             const validActivities = seasonalActivities[season] || seasonalActivities.summer;
 
-            // Ensure overlay layers exist for all valid activities
+            // Ensure overlay marker arrays exist for all valid activities
             validActivities.forEach(activityType => {
-                if (!this.overlayLayers[activityType]) {
-                    this.overlayLayers[activityType] = L.layerGroup();
+                if (!this.overlayMarkers[activityType]) {
+                    this.overlayMarkers[activityType] = [];
                 }
             });
 
@@ -2323,134 +2388,6 @@
                 if (typeof updateFilterCountBadge === 'function') {
                     updateFilterCountBadge();
                 }
-            }
-        }
-
-        async performGeocodeSearch(query) {
-            const suggestionsDiv = document.getElementById('search-suggestions');
-            
-            // Search local trails first
-            const matchingTrails = this.allTrails.filter(trail => {
-                return trail.name.toLowerCase().includes(query.toLowerCase()) ||
-                    (trail.location && trail.location.toLowerCase().includes(query.toLowerCase()));
-            });
-            
-            // Geocode search for places
-            let placeResults = [];
-            try {
-                const response = await fetch(
-                    `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5`
-                );
-                placeResults = await response.json();
-            } catch (error) {
-                console.error('Geocoding error:', error);
-            }
-            
-            // Show suggestions
-            if (suggestionsDiv && (matchingTrails.length > 0 || placeResults.length > 0)) {
-                let html = '';
-                
-                // Trail results
-                if (matchingTrails.length > 0) {
-                    const hikingResults = matchingTrails.filter(t => t.location_type !== 'fishing_lake');
-                    const lakeResults = matchingTrails.filter(t => t.location_type === 'fishing_lake');
-
-                    if (hikingResults.length > 0) {
-                        html += '<div class="p-2 bg-gray-50 text-xs font-semibold text-gray-500 uppercase">Trails</div>';
-                        hikingResults.slice(0, 5).forEach(trail => {
-                            html += `
-                                <div class="px-4 py-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 suggestion-item"
-                                    data-type="trail"
-                                    data-id="${trail.id}">
-                                    <div class="font-medium text-gray-900">${trail.name}</div>
-                                    <div class="text-sm text-gray-600">${trail.location || ''} · ${trail.distance}km</div>
-                                </div>
-                            `;
-                        });
-                    }
-
-                    if (lakeResults.length > 0) {
-                        html += '<div class="p-2 bg-gray-50 text-xs font-semibold text-gray-500 uppercase">🐟 Fishing Lakes</div>';
-                        lakeResults.slice(0, 5).forEach(trail => {
-                            html += `
-                                <div class="px-4 py-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 suggestion-item"
-                                    data-type="trail"
-                                    data-id="${trail.id}">
-                                    <div class="font-medium text-gray-900">${trail.name}</div>
-                                    <div class="text-sm text-gray-600">${trail.location || 'Fishing Lake'}</div>
-                                </div>
-                            `;
-                        });
-                    }
-                }
-                
-                // Place results
-                if (placeResults.length > 0) {
-                    html += '<div class="p-2 bg-gray-50 text-xs font-semibold text-gray-500 uppercase">Places</div>';
-                    placeResults.forEach(place => {
-                        html += `
-                            <div class="px-4 py-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 suggestion-item" 
-                                data-type="place" 
-                                data-lat="${place.lat}" 
-                                data-lon="${place.lon}"
-                                data-boundingbox='${JSON.stringify(place.boundingbox)}'
-                                data-name="${place.display_name}">
-                                <div class="font-medium text-gray-900 flex items-center">
-                                    <svg class="w-4 h-4 mr-2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
-                                    </svg>
-                                    ${place.display_name}
-                                </div>
-                            </div>
-                        `;
-                    });
-                }
-                
-                suggestionsDiv.innerHTML = html;
-                suggestionsDiv.classList.remove('hidden');
-                
-                // Add click handlers
-                document.querySelectorAll('.suggestion-item').forEach(item => {
-                    item.addEventListener('click', () => {
-                        const searchInput = document.getElementById('global-trail-search');
-                        
-                        if (item.dataset.type === 'trail') {
-                            const trail = this.allTrails.find(t => t.id == item.dataset.id);
-                            if (trail) {
-                                this.focusOnTrail(trail);
-                                if (searchInput) searchInput.value = trail.name;
-                            }
-                        } else if (item.dataset.type === 'place') {
-                            const lat = parseFloat(item.dataset.lat);
-                            const lon = parseFloat(item.dataset.lon);
-                            const boundingBox = item.dataset.boundingbox ? JSON.parse(item.dataset.boundingbox) : null;
-                            
-                            if (boundingBox) {
-                                // If we have bounding box, fit the map to show the whole area
-                                const southWest = [parseFloat(boundingBox[0]), parseFloat(boundingBox[2])];
-                                const northEast = [parseFloat(boundingBox[1]), parseFloat(boundingBox[3])];
-                                this.map.fitBounds([southWest, northEast], {
-                                    padding: [50, 50],
-                                    animate: true,
-                                    duration: 1
-                                });
-                            } else {
-                                // Fallback to center point with appropriate zoom
-                                this.map.setView([lat, lon], 12, {
-                                    animate: true,
-                                    duration: 1
-                                });
-                            }
-                            
-                            setTimeout(() => this.updateVisibleTrails(), 500);
-                            if (searchInput) searchInput.value = item.dataset.name;
-                        }
-                        suggestionsDiv.classList.add('hidden');
-                    });
-                });
-            } else if (suggestionsDiv) {
-                suggestionsDiv.innerHTML = '<div class="p-4 text-center text-gray-500 text-sm">No results found</div>';
-                suggestionsDiv.classList.remove('hidden');
             }
         }
 
@@ -2560,152 +2497,60 @@
             return '#7C2D12';                         // Dark Red - Very long trails
         }
 
-        addTrailRoute(trail) {
-            if (!trail.route_coordinates || trail.route_coordinates.length === 0) {
-                return null;
-            }
+        buildRouteGeoJSON(trails) {
+            // Build a GeoJSON FeatureCollection from filtered trails for Mapbox source
+            const features = [];
+            trails.forEach(trail => {
+                if (trail.location_type === 'fishing_lake') return;
+                if (!trail.route_coordinates || trail.route_coordinates.length === 0) return;
 
-            try {
-                const sanitizedRoute = trail.route_coordinates
-                    .map(coord => this.sanitizeCoordinates(coord))
-                    .filter(coord => coord !== null);
+                const sanitized = trail.route_coordinates
+                    .map(c => this.sanitizeCoordinates(c))
+                    .filter(c => c !== null);
+                if (sanitized.length === 0) return;
 
-                if (sanitizedRoute.length === 0) {
-                    console.warn('No valid coordinates in route for trail:', trail.name);
-                    return null;
-                }
+                const smoothed = this.smoothCoordinates(sanitized);
+                // Mapbox coords are [lng, lat], data is [lat, lng] — swap
+                const mapboxCoords = smoothed.map(c => [c[1], c[0]]);
 
-                const routeColor = this.getDistanceColor(trail.distance);
-                const smoothedRoute = this.smoothCoordinates(sanitizedRoute);
-
-                // Invisible thick outline — wide hit area + yellow highlight on select
-                const outline = L.polyline(smoothedRoute, {
-                    color: 'white',
-                    weight: 12,
-                    opacity: 0,
-                    interactive: true,
-                });
-
-                // Visible coloured route on top
-                const route = L.polyline(smoothedRoute, {
-                    color: routeColor,
-                    weight: 3,
-                    opacity: 1,
-                    dashArray: trail.status === 'seasonal' ? '10, 5' : null,
-                });
-
-                // Directional arrowheads — white, zoom-responsive density
-                let arrowDecorator = null;
-                if (window.L.polylineDecorator && window.L.Symbol) {
-                    arrowDecorator = this._buildArrowDecorator(route);
-                }
-
-                const layers = arrowDecorator
-                    ? L.layerGroup([outline, route, arrowDecorator])
-                    : L.layerGroup([outline, route]);
-
-                // Store refs for highlight/reset and zoom updates
-                layers._outline = outline;
-                layers._route = route;
-                layers._arrowDecorator = arrowDecorator;
-                layers._routeColor = routeColor;
-                layers._smoothedRoute = smoothedRoute;
-                layers._trailId = trail.id;
-
-                // Click handler on both outline and route
-                const onClick = () => this.highlightTrailRoute(trail.id);
-                outline.on('click', onClick);
-                route.on('click', onClick);
-
-                return layers;
-            } catch (error) {
-                console.error('Error creating route for trail:', trail.name, error);
-                return null;
-            }
-        }
-
-        _arrowRepeatForZoom(zoom) {
-            if (zoom >= 16) return 40;
-            if (zoom >= 14) return 70;
-            if (zoom >= 12) return 120;
-            return 200;
-        }
-
-        _buildArrowDecorator(routePolyline) {
-            const zoom = this.map ? this.map.getZoom() : 13;
-            return L.polylineDecorator(routePolyline, {
-                patterns: [
-                    {
-                        offset: 20,
-                        repeat: this._arrowRepeatForZoom(zoom),
-                        symbol: L.Symbol.arrowHead({
-                            pixelSize: 10,
-                            headAngle: 40,
-                            pathOptions: {
-                                color: 'white',
-                                fillOpacity: 1,
-                                weight: 0,
-                            },
-                        }),
+                features.push({
+                    type: 'Feature',
+                    id: trail.id,
+                    properties: {
+                        trailId: trail.id,
+                        color: this.getDistanceColor(trail.distance),
+                        status: trail.status || 'active',
                     },
-                ],
+                    geometry: { type: 'LineString', coordinates: mapboxCoords },
+                });
             });
-        }
-
-        _updateArrowDensity() {
-            if (!window.L.polylineDecorator || !window.L.Symbol) return;
-            if (!this.routeLayer) return;
-            this.routeLayer.eachLayer(layerGroup => {
-                if (!layerGroup._route || !layerGroup._arrowDecorator) return;
-                // Remove old decorator and add a new one with updated repeat
-                layerGroup.removeLayer(layerGroup._arrowDecorator);
-                layerGroup._arrowDecorator = this._buildArrowDecorator(layerGroup._route);
-                layerGroup.addLayer(layerGroup._arrowDecorator);
-                // Keep highlighted trail arrows on top
-                if (this._selectedRouteLayer && this._selectedRouteLayer._trailId === layerGroup._trailId) {
-                    layerGroup._arrowDecorator.bringToFront();
-                }
-            });
+            return { type: 'FeatureCollection', features };
         }
 
         highlightTrailRoute(trailId) {
-            // Reset previously selected route
-            if (this._selectedRouteLayer) {
-                const prev = this._selectedRouteLayer;
-                prev._outline.setStyle({ color: 'white', weight: 12, opacity: 0 });
-                prev._route.setStyle({ weight: 3, opacity: 1 });
+            // Deselect previous
+            if (this._selectedTrailId !== null) {
+                try {
+                    this.map.setFeatureState(
+                        { source: 'trail-routes', id: this._selectedTrailId },
+                        { selected: false }
+                    );
+                } catch(e) { /* ignore */ }
             }
+            // Select new
+            this._selectedTrailId = trailId;
+            try {
+                this.map.setFeatureState(
+                    { source: 'trail-routes', id: trailId },
+                    { selected: true }
+                );
+            } catch(e) { /* ignore */ }
 
-            // Find the layer group for this trail
-            let targetLayer = null;
-            this.routeLayer.eachLayer(layer => {
-                if (layer._trailId === trailId) {
-                    targetLayer = layer;
-                }
-            });
-
-            if (!targetLayer) return;
-
-            // Yellow glow BEHIND the route: outline first, route on top
-            targetLayer._outline.setStyle({ color: '#f3fd44', weight: 15, opacity: 1 });
-            targetLayer._outline.bringToFront();
-            targetLayer._route.bringToFront();  // route sits above the yellow glow
-            targetLayer._route.setStyle({ weight: 4, opacity: 1 });
-            if (targetLayer._arrowDecorator) {
-                targetLayer._arrowDecorator.bringToFront();
-            }
-
-            this._selectedRouteLayer = targetLayer;
-
-            // Also show the trail info panel
             const trail = this.allTrails.find(t => t.id == trailId);
-            if (trail) {
-                this.showTrailInfo(trail);
-            }
+            if (trail) this.showTrailInfo(trail);
         }
 
         switchSeason(season) {
-            console.log('Switching to season:', season);
             
             // Update current season
             this.currentSeason = season;
@@ -2726,73 +2571,47 @@
             this.loadTrails(season);
         }
 
-        switchMapType(mapType) {
-            // Remove current base layer
-            if (this.map.hasLayer(this.baseLayers[this.currentMapType])) {
-                this.map.removeLayer(this.baseLayers[this.currentMapType]);
-            }
-            
-            // Update current map type
-            this.currentMapType = mapType;
-            
-            // Add new base layer
-            this.baseLayers[this.currentMapType].addTo(this.map);
-            
-            // Update active state in dropdown
-            document.querySelectorAll('.layer-option-card').forEach(btn => {
-                if (btn.dataset.mapType === mapType) {
-                    btn.classList.add('active');
-                } else {
-                    btn.classList.remove('active');
-                }
+        toggle3D() {
+            this._is3D = !this._is3D;
+            this.map.easeTo({
+                pitch: this._is3D ? 60 : 0,
+                bearing: this._is3D ? -10 : 0,
+                duration: 800,
             });
-            
-            // Close dropdown
+            const btn = document.getElementById('toggle-3d-btn');
+            if (btn) {
+                btn.innerHTML = this._is3D
+                    ? `<span class="font-bold text-xs">2D</span>`
+                    : `<span class="font-bold text-xs">3D</span>`;
+                btn.title = this._is3D ? 'Switch to 2D' : 'Switch to 3D';
+                btn.classList.toggle('bg-primary-600', this._is3D);
+                btn.classList.toggle('text-white', this._is3D);
+                btn.classList.toggle('bg-white', !this._is3D);
+                btn.classList.toggle('text-gray-700', !this._is3D);
+            }
+        }
+
+        switchMapType(mapType) {
+            this.currentMapType = mapType;
+            const style = this.mapStyles[mapType] || this.mapStyles['outdoors'];
+            this.map.setStyle(style);
+
+            document.querySelectorAll('.layer-option-card').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.mapType === mapType);
+            });
             document.getElementById('layers-dropdown').classList.add('hidden');
         }
 
-        updateCollapsedButton(mapType) {
-            const mapTypeData = {
-                'standard': {
-                    label: 'Map',
-                    icon: `<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/>
-                        </svg>`,
-                    bgClass: ''
-                },
-                'terrain': {
-                    label: 'Terrain',
-                    icon: `<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"/>
-                        </svg>`,
-                    bgClass: 'bg-gray-200'
-                },
-                'satellite': {
-                    label: 'Satellite',
-                    icon: `<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                        </svg>`,
-                    bgClass: 'bg-gray-300'
-                },
-                'outdoors': {
-                    label: 'Outdoors',
-                    icon: `<svg class="w-6 h-6 text-green-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 10l-2 1m0 0l-2-1m2 1v2.5M20 7l-2 1m2-1l-2-1m2 1v2.5M14 4l-2-1-2 1M4 7l2-1M4 7l2 1M4 7v2.5M12 21l-2-1m2 1l2-1m-2 1v-2.5M6 18l-2-1v-2.5M18 18l2-1v-2.5"/>
-                        </svg>`,
-                    bgClass: 'bg-green-100'
-                }
-            };
-            
-            const data = mapTypeData[mapType];
-            const iconElement = document.getElementById('current-map-icon');
-            const labelElement = document.getElementById('current-map-label');
-            
-            // Update icon
-            iconElement.innerHTML = data.icon;
-            iconElement.className = 'map-layer-icon-small ' + data.bgClass;
-            
-            // Update label
-            labelElement.textContent = data.label;
+        showToast(message, duration = 3000) {
+            const existing = document.getElementById('map-toast');
+            if (existing) existing.remove();
+
+            const toast = document.createElement('div');
+            toast.id = 'map-toast';
+            toast.textContent = message;
+            toast.style.cssText = 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:#1f2937;color:#fff;padding:10px 18px;border-radius:8px;font-size:14px;z-index:9999;box-shadow:0 4px 12px rgba(0,0,0,0.3);pointer-events:none;';
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), duration);
         }
 
         searchTrails(searchTerm) {
@@ -2829,82 +2648,67 @@
             this.applyFilters();
         }
 
-        // In your applyFilters function, make sure you have these variable declarations at the top:
         applyFilters() {
-            // Clear all overlay layers
-            Object.values(this.overlayLayers).forEach(layer => {
-                this.map.removeLayer(layer);
-                layer.clearLayers();
+            // Remove all existing overlay markers
+            Object.values(this.overlayMarkers).forEach(markers => {
+                markers.forEach(m => m.remove());
             });
-
-            if (this.routeLayer) {
-                this.map.removeLayer(this.routeLayer);
-            }
-            this.routeLayer = L.layerGroup().addTo(this.map);
+            Object.keys(this.overlayMarkers).forEach(k => { this.overlayMarkers[k] = []; });
 
             const visibleTrails = this.getVisibleTrails();
             this.renderTrailList(visibleTrails, this.businessData || []);
 
             const allFilteredTrails = this.filterTrails(this.allTrails);
-            console.log('Filtered trails:', allFilteredTrails);
-            
+
+            // Update route GeoJSON source
+            const source = this.map.getSource('trail-routes');
+            if (source) {
+                source.setData(this.buildRouteGeoJSON(allFilteredTrails));
+                // Reset selected state after data update
+                if (this._selectedTrailId) {
+                    setTimeout(() => {
+                        try {
+                            this.map.setFeatureState(
+                                { source: 'trail-routes', id: this._selectedTrailId },
+                                { selected: true }
+                            );
+                        } catch(e) { /* ignore */ }
+                    }, 100);
+                }
+            }
+
             allFilteredTrails.forEach(trail => {
                 const isFishingLake = trail.location_type === 'fishing_lake';
 
-                // Add trail route (fishing lakes have a single-point route — skip polyline)
-                if (!isFishingLake) {
-                    const route = this.addTrailRoute(trail);
-                    if (route) {
-                        this.routeLayer.addLayer(route);
-                    }
-                }
-
-                // Add highlights if enabled
+                // Highlight markers
                 if (this.activeFilters.includes('highlights')) {
                     this.createHighlightMarkers(trail);
                 }
 
                 if (isFishingLake) {
-                    // Fishing lakes always appear on the fishing layer regardless of assigned activities
-                    if (!this.overlayLayers['fishing']) {
-                        this.overlayLayers['fishing'] = L.layerGroup();
-                    }
+                    if (!this.overlayMarkers['fishing']) this.overlayMarkers['fishing'] = [];
                     const marker = this.createTrailMarker(trail, { type: 'fishing', icon: '🐟', color: '#3B82F6' });
-                    if (marker) {
-                        this.overlayLayers['fishing'].addLayer(marker);
-                    }
+                    if (marker) this.overlayMarkers['fishing'].push(marker);
                 } else if (this.currentSeason === 'summer') {
-                    // Summer trails always use the hiking icon regardless of assigned activities
                     if (this.activeFilters.includes('hiking')) {
-                        if (!this.overlayLayers['hiking']) {
-                            this.overlayLayers['hiking'] = L.layerGroup();
-                        }
+                        if (!this.overlayMarkers['hiking']) this.overlayMarkers['hiking'] = [];
                         const marker = this.createTrailMarker(trail, { type: 'hiking', icon: '🥾', color: '#10B981' });
-                        if (marker) {
-                            this.overlayLayers['hiking'].addLayer(marker);
-                        }
+                        if (marker) this.overlayMarkers['hiking'].push(marker);
                     }
                 } else {
-                    // Winter: keep activity-based marker logic
                     trail.activities.forEach(activity => {
                         if (this.activeFilters.includes(activity.type)) {
-                            if (!this.overlayLayers[activity.type]) {
-                                this.overlayLayers[activity.type] = L.layerGroup();
-                            }
+                            if (!this.overlayMarkers[activity.type]) this.overlayMarkers[activity.type] = [];
                             const marker = this.createTrailMarker(trail, activity);
-                            if (marker) {
-                                this.overlayLayers[activity.type].addLayer(marker);
-                            }
+                            if (marker) this.overlayMarkers[activity.type].push(marker);
                         }
                     });
                 }
             });
 
-            // Only add layers that exist and are in active filters
+            // Show markers for active filters
             this.activeFilters.forEach(activityType => {
-                if (this.overlayLayers[activityType]) {
-                    this.overlayLayers[activityType].addTo(this.map);
-                }
+                (this.overlayMarkers[activityType] || []).forEach(m => m.addTo(this.map));
             });
         }
 
@@ -2918,78 +2722,48 @@
             }
         }
 
+        // Unified marker color (dark teal matching map theme)
+        get markerColor() { return '#1B3935'; }
+
+        _createMarkerEl(emoji) {
+            const el = document.createElement('div');
+            el.style.cssText = `background-color:${this.markerColor};width:32px;height:32px;border-radius:50%;border:2px solid rgba(255,255,255,0.4);box-shadow:0 2px 8px rgba(0,0,0,0.4);display:flex;align-items:center;justify-content:center;font-size:15px;cursor:pointer;line-height:1;`;
+            el.textContent = emoji;
+            return el;
+        }
+
         createTrailMarker(trail, activity) {
             const coords = this.sanitizeCoordinates(trail.coordinates);
             if (!coords) {
                 console.warn('Invalid coordinates for trail:', trail.name);
                 return null;
             }
-            
-            const colors = {
-                // Summer activities
-                hiking: '#10B981',
-                fishing: '#3B82F6',
-                camping: '#F59E0B',
-                viewpoint: '#8B5CF6',
-                // Winter activities
-                snowshoeing: '#06B6D4',
-                'ice-fishing': '#0EA5E9',
-                'cross-country-skiing': '#3B82F6',
-                'downhill-skiing': '#6366F1'
-            };
 
-            // Check if this is a fishing lake
             const isFishingLake = trail.location_type === 'fishing_lake';
-            
-            let icon;
-            if (isFishingLake) {
-                // Fishing lake icon - larger blue marker with fish emoji
-                icon = L.divIcon({
-                    html: `<div style="background-color: #3B82F6;" class="w-8 h-8 rounded-full border-2 border-white shadow-lg flex items-center justify-center text-white text-lg">🐟</div>`,
-                    className: 'custom-fishing-marker',
-                    iconSize: [32, 32],
-                    iconAnchor: [16, 16]
-                });
-            } else {
-                // Trail icon - regular activity-based icon
-                icon = L.divIcon({
-                    html: `<div style="background-color: ${colors[activity.type] || '#6B7280'};" class="w-8 h-8 rounded-full border-2 border-white shadow-lg flex items-center justify-center text-white text-sm font-bold">${activity.icon || '•'}</div>`,
-                    className: 'custom-trail-marker',
-                    iconSize: [32, 32],
-                    iconAnchor: [16, 16]
-                });
-            }
+            const emoji = isFishingLake ? '🐟' : (activity.icon || '📍');
 
-            const marker = L.marker(coords, { icon });
-                //.bindPopup(this.createPopupContent(trail));
+            const el = this._createMarkerEl(emoji);
+            el.addEventListener('click', (e) => { e.stopPropagation(); this.focusOnTrail(trail); });
 
-            marker.on('click', () => {
-                this.focusOnTrail(trail);
-            });
-
-            return marker;
+            // [lng, lat] for Mapbox
+            return new mapboxgl.Marker({ element: el, anchor: 'center' })
+                .setLngLat([coords[1], coords[0]]);
         }
 
         createHighlightMarkers(trail) {
             if (!trail.highlights || trail.highlights.length === 0) return;
 
             trail.highlights.forEach(highlight => {
-                const icon = L.divIcon({
-                    html: `<div style="background-color: ${highlight.color || '#6366f1'};" class="w-8 h-8 rounded-full border-2 border-white shadow-lg flex items-center justify-center text-white text-lg">${highlight.icon || '📍'}</div>`,
-                    className: 'custom-highlight-marker',
-                    iconSize: [32, 32],
-                    iconAnchor: [16, 16]
-                });
+                const el = this._createMarkerEl(highlight.icon || '📍');
+                el.addEventListener('click', (e) => { e.stopPropagation(); this.showHighlightInfo(trail, highlight); });
 
-                const marker = L.marker(highlight.coordinates, { icon });
-                    //.bindPopup(this.createHighlightPopupContent(trail, highlight));
+                const coords = highlight.coordinates; // [lat, lng]
+                const marker = new mapboxgl.Marker({ element: el, anchor: 'center' })
+                    .setLngLat([coords[1], coords[0]])
+                    .addTo(this.map);
 
-                // Add click event
-                marker.on('click', () => {
-                    this.showHighlightInfo(trail, highlight);
-                });
-
-                this.overlayLayers['highlights'].addLayer(marker);
+                if (!this.overlayMarkers['highlights']) this.overlayMarkers['highlights'] = [];
+                this.overlayMarkers['highlights'].push(marker);
             });
         }
 
@@ -3087,8 +2861,8 @@
                             ${highlight.icon}
                         </div>
                         <div>
-                            <h3 class="text-lg font-bold text-gray-900">${highlight.name}</h3>
-                            <p class="text-sm text-gray-600 capitalize">${highlight.type.replace('_', ' ')}</p>
+                            <h3 class="text-lg font-bold text-gray-900">${escapeHtml(highlight.name)}</h3>
+                            <p class="text-sm text-gray-600 capitalize">${escapeHtml(highlight.type.replace('_', ' '))}</p>
                         </div>
                     </div>
                     <button onclick="this.closest('#trail-info-panel').classList.add('hidden')" 
@@ -3101,7 +2875,7 @@
                 
                 ${highlight.description ? `
                     <div class="mb-4">
-                        <p class="text-gray-700 text-xs">${highlight.description}</p>
+                        <p class="text-gray-700 text-xs">${escapeHtml(highlight.description)}</p>
                     </div>
                 ` : ''}
 
@@ -3123,11 +2897,8 @@
         }
 
         viewHighlight(trailId, coordinates) {
-            this.map.closePopup();
-            this.map.setView(coordinates, 16, {
-                animate: true,
-                duration: 1
-            });
+            // coordinates is [lat, lng], Mapbox needs [lng, lat]
+            this.map.flyTo({ center: [coordinates[1], coordinates[0]], zoom: 16, duration: 1000 });
         }
 
         createPopupContent(trail) {
@@ -3136,7 +2907,7 @@
 
             return `
                 <div class="max-w-sm">
-                    <h5 class="font-bold text-lg mb-2">${trail.name}</h5>
+                    <h5 class="font-bold text-lg mb-2">${escapeHtml(trail.name)}</h5>
                     <div class="grid grid-cols-2 gap-2 text-xs mb-2">
                         <span><strong>Distance:</strong> ${trail.distance} km</span>
                         <span><strong>Difficulty:</strong> ${trail.difficulty}/5</span>
@@ -3157,53 +2928,37 @@
             const trail = this.allTrails.find(t => t.id == trailId);
             if (!trail) return;
 
-            // Close any open popups
-            this.map.closePopup();
-
-            // Clear existing route highlights
-            if (this.highlightedRoute) {
-                this.map.removeLayer(this.highlightedRoute);
-            }
-
-            // Check if trail has route coordinates
             if (!trail.route_coordinates || trail.route_coordinates.length === 0) {
-                alert('Route data not available for this trail.');
+                this.showToast('Route data is not available for this trail.');
                 return;
             }
 
-            // Create highlighted route
-            this.highlightedRoute = L.polyline(this.smoothCoordinates(trail.route_coordinates), {
-                color: '#FF0000',
-                weight: 6,
-                opacity: 0.9,
-                dashArray: '10, 5'
-            }).addTo(this.map);
+            this.highlightTrailRoute(trailId);
 
-            // Zoom to route bounds with padding
-            this.map.fitBounds(this.highlightedRoute.getBounds(), { 
-                padding: [20, 20],
-                maxZoom: 18
-            });
-
-            // Add route popup
-            this.highlightedRoute.bindPopup(`
-                <div class="text-center">
-                    <b>${trail.name} Route</b><br>
-                    <span class="text-sm">${trail.distance}km trail path</span><br>
-                    <button onclick="window.trailMap.clearRoute()" class="mt-2 bg-gray-500 text-white px-2 py-1 rounded text-xs">
-                        Clear Route
-                    </button>
-                </div>
-            `).openPopup();
+            // Fit map to route bounds
+            const sanitized = trail.route_coordinates
+                .map(c => this.sanitizeCoordinates(c)).filter(c => c !== null);
+            if (sanitized.length > 0) {
+                const lngs = sanitized.map(c => c[1]);
+                const lats = sanitized.map(c => c[0]);
+                this.map.fitBounds([
+                    [Math.min(...lngs), Math.min(...lats)],
+                    [Math.max(...lngs), Math.max(...lats)]
+                ], { padding: 40, maxZoom: 18 });
+            }
         }
 
-        // Add method to clear highlighted route
         clearRoute() {
-            if (this.highlightedRoute) {
-                this.map.removeLayer(this.highlightedRoute);
-                this.highlightedRoute = null;
+            // Deselect highlighted trail
+            if (this._selectedTrailId !== null) {
+                try {
+                    this.map.setFeatureState(
+                        { source: 'trail-routes', id: this._selectedTrailId },
+                        { selected: false }
+                    );
+                } catch(e) { /* ignore */ }
+                this._selectedTrailId = null;
             }
-            this.map.closePopup();
         }
 
         showTrailInfo(trail) {
@@ -3211,6 +2966,9 @@
             const content = document.getElementById('trail-info-content');
 
             if (!trail) return;
+
+            // Stop any active fly animation when switching trails
+            if (this._isFlying) this.stopFlyAnimation();
 
             // Close business panel if open
             document.getElementById('business-panel')?.classList.add('hidden');
@@ -3241,7 +2999,7 @@
                     ${trail.fishing_location ? `<div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
                         <div class="mb-2">
                             <div class="text-xs text-blue-600 font-semibold uppercase tracking-wide mb-1">Location</div>
-                            <div class="text-sm font-bold text-gray-900">${trail.fishing_location}</div>
+                            <div class="text-sm font-bold text-gray-900">${escapeHtml(trail.fishing_location)}</div>
                         </div>
                         <div class="flex items-start gap-2">
                             <span class="flex-shrink-0 mt-0.5">🐟</span>
@@ -3330,7 +3088,7 @@
             content.innerHTML = `
                 <!-- Header (sticky) -->
                 <div class="flex items-start justify-between mb-4 flex-shrink-0">
-                    <h3 class="text-xl font-bold pr-8">${trail.name}</h3>
+                    <h3 class="text-xl font-bold pr-8">${escapeHtml(trail.name)}</h3>
                     <button onclick="closeTrailInfoPanel()"
                             class="text-gray-400 hover:text-gray-600 transition flex-shrink-0">
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -3344,7 +3102,7 @@
                     ${photosHTML}
                     ${statsHTML}
                     <div class="mt-4">
-                        <p class="text-sm text-gray-600 leading-relaxed">${trail.description}</p>
+                        <p class="text-sm text-gray-600 leading-relaxed">${escapeHtml(trail.description)}</p>
                     </div>
                     ${highlightsHTML}
                 </div>
@@ -3358,6 +3116,14 @@
                         </svg>
                         View Full Route
                     </button>
+                    ${trail.route_coordinates && trail.route_coordinates.length > 1 ? `
+                    <button id="fly-along-btn"
+                            onclick="window.trailMap.flyAlongTrail(${trail.id})"
+                            class="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium py-2.5 px-4 rounded transition flex items-center justify-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><path d="M13.49 5.48c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm-3.6 13.9 1-4.4 2.1 2v6h2v-7.5l-2.1-2 .6-3c1.3 1.5 3.3 2.5 5.5 2.5v-2c-1.9 0-3.5-1-4.3-2.4l-1-1.6c-.4-.6-1-1-1.7-1-.3 0-.5.1-.8.1l-5.2 2.2v4.7h2v-3.4l1.8-.7-1.6 8.1-4.9-1-.4 2 7 1.4z"/></svg>
+                        <span>Fly Along Trail</span>
+                    </button>
+                    ` : ''}
                     <a href="/trails/${trail.id}" target="_blank"
                        class="block w-full bg-white border-2 border-gray-300 hover:bg-gray-50 text-gray-700 font-medium py-2.5 px-4 rounded transition text-center">
                         View Trail Details
@@ -3423,39 +3189,35 @@
         }
 
         focusOnTrail(trail) {
-            // Validate trail object
             if (!trail || !trail.coordinates) {
                 console.warn('Trail has no coordinates:', trail);
                 return;
             }
 
-            // Show trail info panel
             this.showTrailInfo(trail);
-            
-            // If trail has route, highlight it and fit to bounds
+
             const isFishingLake = trail.location_type === 'fishing_lake';
             if (!isFishingLake && trail.route_coordinates && trail.route_coordinates.length > 1) {
                 try {
                     this.highlightTrailRoute(trail.id);
-
-                    // Fit map to route bounds
-                    const coords = this.smoothCoordinates(trail.route_coordinates);
-                    this.map.fitBounds(L.latLngBounds(coords), {
-                        padding: [50, 50],
-                        maxZoom: 18,
-                    });
+                    const sanitized = trail.route_coordinates
+                        .map(c => this.sanitizeCoordinates(c)).filter(c => c !== null);
+                    if (sanitized.length > 0) {
+                        const lngs = sanitized.map(c => c[1]);
+                        const lats = sanitized.map(c => c[0]);
+                        this.map.fitBounds([
+                            [Math.min(...lngs), Math.min(...lats)],
+                            [Math.max(...lngs), Math.max(...lats)]
+                        ], { padding: 60, maxZoom: 18 });
+                    }
                 } catch (error) {
-                    console.error('Error highlighting trail route:', error);
-                    this.map.setView(trail.coordinates, 15, { animate: true, duration: 1 });
+                    console.error('Error focusing trail route:', error);
+                    const coords = this.sanitizeCoordinates(trail.coordinates);
+                    if (coords) this.map.flyTo({ center: [coords[1], coords[0]], zoom: 15, duration: 1000 });
                 }
             } else {
-                // If no route, just zoom to trail start coordinates
-                if (Array.isArray(trail.coordinates) && trail.coordinates.length === 2) {
-                    this.map.setView(trail.coordinates, 15, {
-                        animate: true,
-                        duration: 1
-                    });
-                }
+                const coords = this.sanitizeCoordinates(trail.coordinates);
+                if (coords) this.map.flyTo({ center: [coords[1], coords[0]], zoom: 15, duration: 1000 });
             }
         }
 
@@ -3569,7 +3331,7 @@
                     </button>
                 </div>
                 <div class="biz-panel-body">
-                    <h2 class="biz-panel-name">${business.name}</h2>
+                    <h2 class="biz-panel-name">${escapeHtml(business.name)}</h2>
                     <div class="biz-panel-meta">${metaParts.join('')}</div>
                     ${tagline}
                     ${actions.length ? `<div class="biz-panel-actions">${actions.join('')}</div>` : ''}
@@ -3582,7 +3344,7 @@
 
             // Focus map on business location
             if (business.latitude && business.longitude) {
-                this.map.setView([business.latitude, business.longitude], 17, { animate: true, duration: 0.8 });
+                this.map.flyTo({ center: [business.longitude, business.latitude], zoom: 17, duration: 800 });
             }
 
             panel.classList.remove('hidden');
@@ -3594,56 +3356,40 @@
 
         locateMe() {
             const btn = document.getElementById('my-location-btn');
-            const mobileBtn = document.querySelector('.leaflet-my-location-btn');
 
             if (!navigator.geolocation) {
                 alert('Your browser does not support geolocation.');
                 return;
             }
 
-            if (btn) { btn.disabled = true; btn.querySelector('span') && (btn.querySelector('span').textContent = 'Locating…'); }
-            if (mobileBtn) { mobileBtn.disabled = true; }
+            if (btn) btn.disabled = true;
 
             navigator.geolocation.getCurrentPosition(
                 (position) => {
                     const lat = position.coords.latitude;
                     const lng = position.coords.longitude;
-                    const accuracy = position.coords.accuracy;
 
-                    // Remove previous location marker/circle if any
-                    if (this._locationMarker) { this.map.removeLayer(this._locationMarker); }
-                    if (this._locationCircle) { this.map.removeLayer(this._locationCircle); }
+                    // Remove previous location marker
+                    if (this._locationMarker) this._locationMarker.remove();
 
-                    // Accuracy circle
-                    this._locationCircle = L.circle([lat, lng], {
-                        radius: accuracy,
-                        color: '#2563EB',
-                        fillColor: '#2563EB',
-                        fillOpacity: 0.08,
-                        weight: 1,
-                    }).addTo(this.map);
+                    // Pulsing dot (keep existing CSS animation)
+                    const dotEl = document.createElement('div');
+                    dotEl.className = 'my-location-marker';
+                    dotEl.innerHTML = '<div class="my-location-dot"></div>';
+                    dotEl.style.cssText = 'cursor:pointer;';
 
-                    // Pulsing dot marker
-                    const icon = L.divIcon({
-                        className: 'my-location-marker',
-                        html: '<div class="my-location-dot"></div>',
-                        iconSize: [18, 18],
-                        iconAnchor: [9, 9],
-                    });
+                    this._locationMarker = new mapboxgl.Marker({ element: dotEl, anchor: 'center' })
+                        .setLngLat([lng, lat])
+                        .setPopup(new mapboxgl.Popup({ offset: 12 })
+                            .setHTML(`<div class="facility-popup-content" style="min-width:0;"><strong>You are here</strong></div>`))
+                        .addTo(this.map);
 
-                    this._locationMarker = L.marker([lat, lng], { icon, zIndexOffset: 1000 })
-                        .addTo(this.map)
-                        .bindPopup(`<strong>You are here</strong><br><span class="text-xs text-gray-500">Accuracy: ~${Math.round(accuracy)}m</span>`);
+                    this.map.flyTo({ center: [lng, lat], zoom: 15, duration: 800 });
 
-                    this.map.setView([lat, lng], 15, { animate: true, duration: 0.8 });
-
-                    if (btn) { btn.disabled = false; btn.querySelector('span') && (btn.querySelector('span').textContent = 'My Location'); btn.classList.add('active'); }
-                    if (mobileBtn) { mobileBtn.disabled = false; mobileBtn.classList.add('active'); }
+                    if (btn) { btn.disabled = false; btn.classList.add('active'); }
                 },
                 (error) => {
-                    if (btn) { btn.disabled = false; btn.querySelector('span') && (btn.querySelector('span').textContent = 'My Location'); }
-                    if (mobileBtn) { mobileBtn.disabled = false; }
-
+                    if (btn) btn.disabled = false;
                     const messages = {
                         1: 'Location access was denied. Please allow location in your browser settings.',
                         2: 'Your location could not be determined. Try again.',
@@ -3656,24 +3402,7 @@
         }
 
         focusOnHighlight(lat, lng) {
-            this.map.setView([lat, lng], 16, {
-                animate: true,
-                duration: 1
-            });
-            
-            // Add a temporary highlight marker
-            const highlightMarker = L.circleMarker([lat, lng], {
-                radius: 15,
-                color: '#8B5CF6',
-                fillColor: '#8B5CF6',
-                fillOpacity: 0.3,
-                weight: 3
-            }).addTo(this.map);
-            
-            // Remove after animation
-            setTimeout(() => {
-                this.map.removeLayer(highlightMarker);
-            }, 3000);
+            this.map.flyTo({ center: [lng, lat], zoom: 16, duration: 1000 });
         }
 
         async loadTrails(seasonFilter = null) {
@@ -3692,15 +3421,11 @@
                     params.append('distance', this.currentDistance);
                 }
 
-                console.log('Loading trails with params:', params.toString());
-                
                 const response = await fetch(`/api/trails?${params}`);
                 if (!response.ok) {
                     throw new Error(`API returned ${response.status}: ${response.statusText}`);
                 }
                 this.allTrails = await response.json();
-                
-                console.log('Loaded trails:', this.allTrails.length);
                 
                 // Render trail list
                 this.updateVisibleTrails();
@@ -3728,87 +3453,48 @@
             try {
                 const response = await fetch('/api/facilities');
                 const facilities = await response.json();
-                
-                console.log('Loaded facilities:', facilities);
-                
+
                 facilities.forEach(facility => {
-                    // Create custom icon with facility emoji
-                    const facilityIcon = L.divIcon({
-                        className: 'facility-marker',
-                        html: `<div style="background-color:#059669;" class="w-8 h-8 rounded-full border-2 border-white shadow-lg flex items-center justify-center text-white text-sm">${facility.icon}</div>`,
-                        iconSize: [32, 32],
-                        iconAnchor: [16, 16]
-                    });
-                    
-                    const facilityMarker = L.marker([facility.latitude, facility.longitude], {
-                        icon: facilityIcon,
-                        zIndexOffset: 500 // Below network markers but above trails
-                    }).addTo(this.map);
-                    
-                    // Create popup content with media gallery
-                    let popupContent = `
-                        <div class="facility-popup-content">
-                            <div class="facility-popup-header">
-                                <span class="facility-popup-icon">${facility.icon}</span>
-                                <h3 class="facility-popup-title">${facility.name}</h3>
-                            </div>
-                            <p class="facility-popup-type">
-                                ${facility.facility_type_label}
-                            </p>
-                            ${facility.description ? `
-                                <p class="facility-popup-description">${facility.description}</p>
-                            ` : ''}
-                    `;
-                    
-                    // Add media gallery if facility has media
+                    const el = this._createMarkerEl(facility.icon || '📍');
+
+                    let popupContent = `<div class="facility-popup-content">
+                        <div class="facility-popup-header">
+                            <span class="facility-popup-icon">${facility.icon}</span>
+                            <h3 class="facility-popup-title">${facility.name}</h3>
+                        </div>
+                        <p class="facility-popup-type">${facility.facility_type_label}</p>
+                        ${facility.description ? `<p class="facility-popup-description">${facility.description}</p>` : ''}`;
+
                     if (facility.media && facility.media.length > 0) {
-                        popupContent += `
-                            <div class="facility-media-gallery">
-                                <p class="facility-media-count">${facility.media_count} ${facility.media_count === 1 ? 'photo/video' : 'photos/videos'}</p>
-                                <div class="facility-media-grid">
-                        `;
-                        
-                        // Show up to 4 media items
+                        popupContent += `<div class="facility-media-gallery">
+                            <p class="facility-media-count">${facility.media_count} ${facility.media_count === 1 ? 'photo/video' : 'photos/videos'}</p>
+                            <div class="facility-media-grid">`;
                         facility.media.slice(0, 4).forEach((media, index) => {
                             const isVideo = media.media_type === 'video_url';
                             const thumbnailUrl = media.thumbnail_url || media.url;
                             const fullUrl = isVideo ? media.url : (thumbnailUrl || media.url);
                             const mediaType = isVideo ? 'video' : 'photo';
                             const remainingCount = facility.media.length - 4;
-                            
                             if (index === 3 && remainingCount > 0) {
-                                // Show "+X more" overlay on the 4th item if there are more
-                                popupContent += `
-                                    <div class="facility-media-item" onclick="openFacilityMediaModal('${fullUrl}', '${mediaType}', '${media.caption || facility.name}')">
-                                        <img src="${thumbnailUrl}" class="facility-media-thumbnail" alt="${media.caption || facility.name}">
-                                        <div class="facility-media-overlay">+${remainingCount} more</div>
-                                        ${isVideo ? '<div class="facility-video-badge">▶</div>' : ''}
-                                    </div>
-                                `;
+                                popupContent += `<div class="facility-media-item" onclick="openFacilityMediaModal('${fullUrl}','${mediaType}','${media.caption || facility.name}')"><img src="${thumbnailUrl}" class="facility-media-thumbnail"><div class="facility-media-overlay">+${remainingCount} more</div>${isVideo ? '<div class="facility-video-badge">▶</div>' : ''}</div>`;
                             } else {
-                                popupContent += `
-                                    <div class="facility-media-item" onclick="openFacilityMediaModal('${fullUrl}', '${mediaType}', '${media.caption || facility.name}')">
-                                        <img src="${thumbnailUrl}" class="facility-media-thumbnail" alt="${media.caption || facility.name}">
-                                        ${isVideo ? '<div class="facility-video-badge">▶</div>' : ''}
-                                    </div>
-                                `;
+                                popupContent += `<div class="facility-media-item" onclick="openFacilityMediaModal('${fullUrl}','${mediaType}','${media.caption || facility.name}')"><img src="${thumbnailUrl}" class="facility-media-thumbnail">${isVideo ? '<div class="facility-video-badge">▶</div>' : ''}</div>`;
                             }
                         });
-                        
-                        popupContent += `
-                                </div>
-                            </div>
-                        `;
+                        popupContent += `</div></div>`;
                     }
-                    
                     popupContent += `</div>`;
-                    
-                    facilityMarker.bindPopup(popupContent, {
-                        maxWidth: 320,
-                        className: 'facility-popup'
-                    });
+
+                    const popup = new mapboxgl.Popup({ maxWidth: '320px', className: 'facility-popup', offset: 16 })
+                        .setHTML(popupContent);
+
+                    const marker = new mapboxgl.Marker({ element: el, anchor: 'center' })
+                        .setLngLat([facility.longitude, facility.latitude])
+                        .setPopup(popup)
+                        .addTo(this.map);
+
+                    this.facilityMarkers.push(marker);
                 });
-                
             } catch (error) {
                 console.error('Error loading facilities:', error);
             }
@@ -3820,17 +3506,16 @@
                 this.businessData = await response.json();
                 this.renderBusinessMarkers();
 
-                // Center map on business if ?business=ID is in the URL
                 const params = new URLSearchParams(window.location.search);
                 const businessId = params.get('business');
                 if (businessId) {
                     const business = this.businessData.find(b => b.id == businessId);
                     if (business && business.latitude && business.longitude) {
-                        this.map.once('moveend', () => {
+                        this.map.flyTo({ center: [business.longitude, business.latitude], zoom: 17 });
+                        setTimeout(() => {
                             const marker = this.businessMarkers[business.id];
-                            if (marker) { marker.fire('click'); }
-                        });
-                        this.map.setView([business.latitude, business.longitude], 17);
+                            if (marker) this.openBusinessPanel(business);
+                        }, 800);
                     }
                 }
             } catch (error) {
@@ -3839,36 +3524,22 @@
         }
 
         renderBusinessMarkers() {
-            this.businessLayer.clearLayers();
+            // Remove existing business markers
+            Object.values(this.businessMarkers).forEach(m => m.remove());
             this.businessMarkers = {};
 
-            if (!this.showBusinesses) {
-                return;
-            }
+            if (!this.showBusinesses) return;
 
             (this.businessData || []).forEach(business => {
-                const businessIcon = L.divIcon({
-                    className: 'business-marker',
-                    html: `<div style="background-color:#2563EB;" class="w-8 h-8 rounded-full border-2 border-white shadow-lg flex items-center justify-center text-white text-sm">${business.icon}</div>`,
-                    iconSize: [32, 32],
-                    iconAnchor: [16, 16]
-                });
+                const el = this._createMarkerEl(business.icon || '🏪');
+                el.addEventListener('click', (e) => { e.stopPropagation(); this.openBusinessPanel(business); });
 
-                const marker = L.marker([business.latitude, business.longitude], {
-                    icon: businessIcon,
-                    zIndexOffset: 400
-                });
+                const marker = new mapboxgl.Marker({ element: el, anchor: 'center' })
+                    .setLngLat([business.longitude, business.latitude])
+                    .addTo(this.map);
 
-                marker.on('click', () => {
-                    this.openBusinessPanel(business);
-                });
                 this.businessMarkers[business.id] = marker;
-                this.businessLayer.addLayer(marker);
             });
-
-            if (this.showBusinesses) {
-                this.businessLayer.addTo(this.map);
-            }
         }
 
         renderTrailList(trails, businesses = [], targetContainerId = null) {
@@ -3896,8 +3567,8 @@
                     onclick="window.trailMap.focusOnBusiness(${b.id})">
                     <div class="flex-shrink-0 text-xl w-8 text-center">${b.icon}</div>
                     <div class="flex-1 min-w-0">
-                        <div class="font-medium text-sm text-gray-900 truncate">${b.name}</div>
-                        <div class="text-xs text-gray-500">${b.business_type_label}${b.address ? ' · ' + b.address : ''}</div>
+                        <div class="font-medium text-sm text-gray-900 truncate">${escapeHtml(b.name)}</div>
+                        <div class="text-xs text-gray-500">${escapeHtml(b.business_type_label)}${b.address ? ' · ' + escapeHtml(b.address) : ''}</div>
                     </div>
                 </div>
             `).join('');
@@ -3920,8 +3591,8 @@
                             </div>`
                         }
                         <div class="flex-1 min-w-0">
-                            <h3 class="font-semibold text-gray-900 text-sm mb-1 truncate">${trail.name}</h3>
-                            <p class="text-xs text-gray-600 mb-2">${trail.location || 'Location not specified'}</p>
+                            <h3 class="font-semibold text-gray-900 text-sm mb-1 truncate">${escapeHtml(trail.name)}</h3>
+                            <p class="text-xs text-gray-600 mb-2">${escapeHtml(trail.location) || 'Location not specified'}</p>
                             
                             <div class="flex items-center gap-2 text-xs text-gray-600 mb-2">
                                 ${trail.location_type === 'fishing_lake' ? `
@@ -4018,6 +3689,188 @@
             this.applyFilters();
         }
 
+        // ── Fly Along Trail ─────────────────────────────────────────────────
+
+        flyAlongTrail(trailId) {
+            // If already flying (including the pending timeout phase), stop cleanly first
+            if (this._isFlying || this._flyTimeout) {
+                this.stopFlyAnimation();
+                return;
+            }
+
+            const trail = this.allTrails.find(t => t.id == trailId);
+            if (!trail || !trail.route_coordinates || trail.route_coordinates.length < 2) {
+                this.showToast('No route available for this trail.');
+                return;
+            }
+
+            const coords = trail.route_coordinates
+                .map(c => this.sanitizeCoordinates(c))
+                .filter(c => c !== null);
+
+            if (coords.length < 2) {
+                this.showToast('Not enough route data for animation.');
+                return;
+            }
+
+            const smoothed = this.smoothCoordinates(coords, 5, 2);
+
+            // Place hiker marker at trail start
+            if (this._hikerMarker) { this._hikerMarker.remove(); this._hikerMarker = null; }
+            this._hikerMarker = new mapboxgl.Marker({ element: this._createHikerMarkerEl(), anchor: 'center' })
+                .setLngLat([smoothed[0][1], smoothed[0][0]])
+                .addTo(this.map);
+
+            this._isFlying = true;
+            this._updateFlyButton(true);
+
+            // Fit full trail into view, then begin animation once camera settles
+            const lngs = smoothed.map(c => c[1]);
+            const lats = smoothed.map(c => c[0]);
+            this.map.fitBounds(
+                [[Math.min(...lngs), Math.min(...lats)], [Math.max(...lngs), Math.max(...lats)]],
+                { padding: 80, maxZoom: 14, duration: 1500 }
+            );
+
+            // Store timeout ID so stopFlyAnimation can cancel it before it fires
+            this._flyTimeout = setTimeout(() => {
+                this._flyTimeout = null;
+                if (!this._isFlying) return;
+                this._animateAlongTrail(smoothed);
+            }, 1800);
+        }
+
+        _createHikerMarkerEl() {
+            const el = document.createElement('div');
+            el.style.cssText = [
+                'width:36px', 'height:36px', 'border-radius:50%',
+                'background-color:#2563EB', 'border:3px solid #fff',
+                'box-shadow:0 2px 10px rgba(0,0,0,0.45)',
+                'display:flex', 'align-items:center', 'justify-content:center',
+                'pointer-events:none', 'user-select:none',
+            ].join(';');
+            el.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="white">
+                <path d="M13.49 5.48c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm-3.6 13.9 1-4.4 2.1 2v6h2v-7.5l-2.1-2 .6-3c1.3 1.5 3.3 2.5 5.5 2.5v-2c-1.9 0-3.5-1-4.3-2.4l-1-1.6c-.4-.6-1-1-1.7-1-.3 0-.5.1-.8.1l-5.2 2.2v4.7h2v-3.4l1.8-.7-1.6 8.1-4.9-1-.4 2 7 1.4z"/>
+            </svg>`;
+            return el;
+        }
+
+        _animateAlongTrail(rawCoords) {
+            // Strip any entry that is not a clean [lat, lng] pair with finite numbers
+            const coords = rawCoords.filter(
+                c => Array.isArray(c) && c.length === 2 &&
+                     isFinite(c[0]) && isFinite(c[1])
+            );
+
+            if (coords.length < 2) {
+                this.stopFlyAnimation();
+                return;
+            }
+
+            const last = coords.length - 1;
+            // Duration scales with route length — ~100ms per point, min 20s
+            const DURATION_MS = Math.max(20000, coords.length * 100);
+            const startTime = performance.now();
+
+            const animate = (now) => {
+                if (!this._isFlying) return;
+
+                const progress  = Math.min((now - startTime) / DURATION_MS, 1);
+                const rawIndex  = progress * last;
+                const i         = Math.min(Math.floor(rawIndex), last);
+                const t         = rawIndex - i;
+
+                const cur  = coords[i];
+                const next = coords[Math.min(i + 1, last)];
+
+                // Guard: skip frame if either point is somehow missing
+                if (!cur || !next) {
+                    this._flyAnimation = requestAnimationFrame(animate);
+                    return;
+                }
+
+                // Interpolate hiker position smoothly between waypoints
+                const lng = cur[1]  + (next[1]  - cur[1])  * t;
+                const lat = cur[0]  + (next[0]  - cur[0])  * t;
+
+                if (this._hikerMarker) this._hikerMarker.setLngLat([lng, lat]);
+
+                // Camera lags 8 waypoints behind so hiker stays visible ahead
+                const camI   = Math.max(0, i - 8);
+                const camA   = coords[camI];
+                const camB   = coords[Math.min(camI + 1, last)];
+
+                if (camA && camB) {
+                    this.map.easeTo({
+                        center:   [camA[1] + (camB[1] - camA[1]) * t,
+                                   camA[0] + (camB[0] - camA[0]) * t],
+                        bearing:  this._getBearing(cur, next),
+                        pitch:    60,
+                        zoom:     15,
+                        duration: 150,
+                        easing:   x => x,
+                    });
+                }
+
+                if (progress < 1) {
+                    this._flyAnimation = requestAnimationFrame(animate);
+                } else {
+                    this.stopFlyAnimation();
+                }
+            };
+
+            this._flyAnimation = requestAnimationFrame(animate);
+        }
+
+        _getBearing(start, end) {
+            const toRad = d => d * Math.PI / 180;
+            const dLng  = toRad(end[1] - start[1]);
+            const lat1  = toRad(start[0]);
+            const lat2  = toRad(end[0]);
+            const x = Math.sin(dLng) * Math.cos(lat2);
+            const y = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLng);
+            return (Math.atan2(x, y) * 180 / Math.PI + 360) % 360;
+        }
+
+        stopFlyAnimation() {
+            this._isFlying = false;
+
+            // Cancel the pre-animation delay if it hasn't fired yet — this was the bug
+            if (this._flyTimeout) {
+                clearTimeout(this._flyTimeout);
+                this._flyTimeout = null;
+            }
+
+            if (this._flyAnimation) {
+                cancelAnimationFrame(this._flyAnimation);
+                this._flyAnimation = null;
+            }
+
+            if (this._hikerMarker) {
+                this._hikerMarker.remove();
+                this._hikerMarker = null;
+            }
+
+            this.map.easeTo({ pitch: 0, bearing: 0, duration: 1000 });
+            this._updateFlyButton(false);
+        }
+
+        _updateFlyButton(isFlying) {
+            const btn = document.getElementById('fly-along-btn');
+            if (!btn) return;
+            if (isFlying) {
+                btn.innerHTML = `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2" stroke-width="2" fill="currentColor"/></svg><span>Stop Animation</span>`;
+                btn.classList.remove('bg-gray-100', 'hover:bg-gray-200', 'text-gray-700');
+                btn.classList.add('bg-red-100', 'hover:bg-red-200', 'text-red-700');
+            } else {
+                btn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><path d="M13.49 5.48c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm-3.6 13.9 1-4.4 2.1 2v6h2v-7.5l-2.1-2 .6-3c1.3 1.5 3.3 2.5 5.5 2.5v-2c-1.9 0-3.5-1-4.3-2.4l-1-1.6c-.4-.6-1-1-1.7-1-.3 0-.5.1-.8.1l-5.2 2.2v4.7h2v-3.4l1.8-.7-1.6 8.1-4.9-1-.4 2 7 1.4z"/></svg><span>Fly Along Trail</span>`;
+                btn.classList.remove('bg-red-100', 'hover:bg-red-200', 'text-red-700');
+                btn.classList.add('bg-gray-100', 'hover:bg-gray-200', 'text-gray-700');
+            }
+        }
+
+        // ── /Fly Along Trail ─────────────────────────────────────────────────
+
          updateHighlightsCount() {
             const count = this.allTrails.reduce((total, trail) => {
                 return total + (trail.highlights ? trail.highlights.length : 0);
@@ -4052,15 +3905,8 @@
         }
     }
 
-    // Initialize map when DOM is loaded
-    document.addEventListener('DOMContentLoaded', function() {
-        // Load leaflet-polylinedecorator after Leaflet (bundled via Vite) is ready
-        const decoratorScript = document.createElement('script');
-        decoratorScript.src = 'https://unpkg.com/leaflet-polylinedecorator@1.6.0/dist/leaflet.polylineDecorator.js';
-        decoratorScript.onload = () => initMap();
-        decoratorScript.onerror = () => initMap(); // still init map if CDN fails
-        document.head.appendChild(decoratorScript);
-    });
+    // Scripts are at bottom of body — DOM is ready, initialize immediately
+    initMap();
 
     function initMap() {
         window.trailMap = new EnhancedTrailMap();
