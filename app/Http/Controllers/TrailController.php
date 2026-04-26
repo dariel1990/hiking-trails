@@ -395,6 +395,7 @@ class TrailController extends Controller
                 'elevation_gain' => $trail->elevation_gain_m,
                 'estimated_time' => $trail->estimated_time_hours,
                 'trail_type' => $trail->trail_type,
+                'trail_network_id' => $trail->trail_network_id,
                 'status' => $trail->status,
                 'route_coordinates' => $routeCoords,
                 'preview_photo' => $featuredMedia ? Storage::url($featuredMedia->storage_path) : null,

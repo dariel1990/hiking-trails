@@ -2529,6 +2529,26 @@
             return '#8B5E3C';
         }
 
+        // Winter: color network-trail routes by difficulty (1=very easy, 2=easy, 3=moderate, 4=hard, 5=very hard)
+        getDifficultyColor(difficulty) {
+            const level = parseInt(difficulty, 10);
+            switch (level) {
+                case 2: return '#22C55E';            // Easy → green
+                case 1:
+                case 3: return '#F97316';            // Very Easy / Moderate → orange
+                case 4:
+                case 5: return '#EF4444';            // Hard / Very Hard → red
+                default: return this.getDistanceColor();
+            }
+        }
+
+        getRouteColor(trail) {
+            if (this.currentSeason === 'winter' && trail.trail_network_id) {
+                return this.getDifficultyColor(trail.difficulty);
+            }
+            return this.getDistanceColor(trail.distance);
+        }
+
         buildRouteGeoJSON(trails) {
             // Build a GeoJSON FeatureCollection from filtered trails for Mapbox source
             const features = [];
@@ -2550,7 +2570,7 @@
                     id: trail.id,
                     properties: {
                         trailId: trail.id,
-                        color: this.getDistanceColor(trail.distance),
+                        color: this.getRouteColor(trail),
                         status: trail.status || 'active',
                     },
                     geometry: { type: 'LineString', coordinates: mapboxCoords },
@@ -3670,10 +3690,18 @@
             const renderTrailCards = (items) => items.map(trail => {
                 // Use preview_photo or first photo from photos array
                 const imageUrl = trail.preview_photo || (trail.photos && trail.photos.length > 0 ? trail.photos[0].url : null);
-                
+
+                // Winter + network-trail difficulty color accent on left border
+                const showDifficultyAccent = this.currentSeason === 'winter'
+                    && trail.trail_network_id
+                    && trail.location_type !== 'fishing_lake';
+                const accentStyle = showDifficultyAccent
+                    ? `style="border-left: 4px solid ${this.getDifficultyColor(trail.difficulty)};"`
+                    : '';
+
                 return `
-                    <div class="trail-list-card" data-location-type="${trail.location_type}" onclick="window.trailMap.focusOnTrailById(${trail.id})">
-                        ${imageUrl ? 
+                    <div class="trail-list-card" data-location-type="${trail.location_type}" ${accentStyle} onclick="window.trailMap.focusOnTrailById(${trail.id})">
+                        ${imageUrl ?
                             `<img src="${imageUrl}" alt="${trail.name}" class="trail-list-image">` :
                             `<div class="trail-list-image-placeholder" style="background: ${trail.location_type === 'fishing_lake' ? 'linear-gradient(135deg, #0369a1, #0ea5e9)' : 'linear-gradient(135deg, #166534, #22c55e)'};">
                                 <span style="font-size: 2rem;">${trail.location_type === 'fishing_lake' ? '🎣' : '🥾'}</span>
@@ -3815,43 +3843,56 @@
             const stopBtn = document.getElementById('fly-stop-overlay-btn');
             if (stopBtn) { stopBtn.classList.remove('hidden'); }
 
-            // Place hiker marker at trail start
-            if (this._hikerMarker) { this._hikerMarker.remove(); this._hikerMarker = null; }
-            this._hikerMarker = new mapboxgl.Marker({ element: this._createHikerMarkerEl(), anchor: 'center' })
-                .setLngLat([smoothed[0][1], smoothed[0][0]])
-                .addTo(this.map);
-
             this._isFlying = true;
             this._updateFlyButton(true);
 
-            // Fit full trail into view, then begin animation once camera settles
-            const lngs = smoothed.map(c => c[1]);
-            const lats = smoothed.map(c => c[0]);
-            this.map.fitBounds(
-                [[Math.min(...lngs), Math.min(...lats)], [Math.max(...lngs), Math.max(...lats)]],
-                { padding: 80, maxZoom: 14, duration: 1500 }
-            );
+            // Switch to satellite for the flyover; remember previous style to restore on stop
+            this._preFlyMapType = this.currentMapType;
+            const needsStyleSwitch = this.currentMapType !== 'satellite';
+            if (needsStyleSwitch) {
+                this.switchMapType('satellite');
+            }
 
-            // Store timeout ID so stopFlyAnimation can cancel it before it fires
-            this._flyTimeout = setTimeout(() => {
-                this._flyTimeout = null;
+            const beginAnimation = () => {
                 if (!this._isFlying) return;
-                this._animateAlongTrail(smoothed);
-            }, 1800);
+
+                // Place hiker marker at trail start
+                if (this._hikerMarker) { this._hikerMarker.remove(); this._hikerMarker = null; }
+                this._hikerMarker = new mapboxgl.Marker({ element: this._createHikerMarkerEl(), anchor: 'center' })
+                    .setLngLat([smoothed[0][1], smoothed[0][0]])
+                    .addTo(this.map);
+
+                // Fit full trail into view, then begin animation once camera settles
+                const lngs = smoothed.map(c => c[1]);
+                const lats = smoothed.map(c => c[0]);
+                this.map.fitBounds(
+                    [[Math.min(...lngs), Math.min(...lats)], [Math.max(...lngs), Math.max(...lats)]],
+                    { padding: 80, maxZoom: 14, duration: 1500 }
+                );
+
+                this._flyTimeout = setTimeout(() => {
+                    this._flyTimeout = null;
+                    if (!this._isFlying) return;
+                    this._animateAlongTrail(smoothed);
+                }, 1800);
+            };
+
+            if (needsStyleSwitch) {
+                // Wait for the new style to fully load before placing the marker / fitting bounds
+                this.map.once('idle', beginAnimation);
+            } else {
+                beginAnimation();
+            }
         }
 
         _createHikerMarkerEl() {
             const el = document.createElement('div');
             el.style.cssText = [
-                'width:36px', 'height:36px', 'border-radius:50%',
-                'background-color:#2563EB', 'border:3px solid #fff',
-                'box-shadow:0 2px 10px rgba(0,0,0,0.45)',
-                'display:flex', 'align-items:center', 'justify-content:center',
+                'width:48px', 'height:48px',
                 'pointer-events:none', 'user-select:none',
+                'filter:drop-shadow(0 2px 6px rgba(0,0,0,0.45))',
             ].join(';');
-            el.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="white">
-                <path d="M13.49 5.48c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm-3.6 13.9 1-4.4 2.1 2v6h2v-7.5l-2.1-2 .6-3c1.3 1.5 3.3 2.5 5.5 2.5v-2c-1.9 0-3.5-1-4.3-2.4l-1-1.6c-.4-.6-1-1-1.7-1-.3 0-.5.1-.8.1l-5.2 2.2v4.7h2v-3.4l1.8-.7-1.6 8.1-4.9-1-.4 2 7 1.4z"/>
-            </svg>`;
+            el.innerHTML = `<img src="{{ asset('images/hiking-person.png') }}" alt="Hiker" style="width:100%;height:100%;display:block;object-fit:contain;">`;
             return el;
         }
 
@@ -3959,6 +4000,9 @@
                 window.trailListPanelApi.expand();
             }
             this._flyAutoCollapsed = false;
+
+            // Stay on satellite after the flyover — do not restore the previous map type
+            this._preFlyMapType = null;
 
             this.map.easeTo({ pitch: 0, bearing: 0, duration: 1000 });
             this._updateFlyButton(false);
