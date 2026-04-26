@@ -139,6 +139,22 @@ class TrailController extends Controller
             ->orderBy('name')
             ->get();
 
+        if ($request->ajax_type === 'hiking') {
+            return response()->json([
+                'html' => view('trails._cards', ['trails' => $hikingTrails, 'type' => 'hiking'])->render(),
+                'has_more' => $hikingTrails->hasMorePages(),
+                'next_page' => $hikingTrails->currentPage() + 1,
+            ]);
+        }
+
+        if ($request->ajax_type === 'lakes') {
+            return response()->json([
+                'html' => view('trails._cards', ['trails' => $fishingLakes, 'type' => 'lakes'])->render(),
+                'has_more' => $fishingLakes->hasMorePages(),
+                'next_page' => $fishingLakes->currentPage() + 1,
+            ]);
+        }
+
         return view('trails.index', compact('hikingTrails', 'fishingLakes', 'activities'));
     }
 

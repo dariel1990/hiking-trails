@@ -8,7 +8,7 @@
     {{-- Image --}}
     <div class="trail-card-image group-hover:scale-105 transition-transform duration-500">
         @if($photoUrl)
-            <img src="{{ $photoUrl }}" alt="{{ $business->name }}" class="w-full h-full object-cover">
+            <img src="{{ $photoUrl }}" alt="{{ $business->name }}" class="w-full h-full object-cover" loading="lazy">
         @else
             <div class="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
                 <span class="text-7xl opacity-60">{{ $business->icon }}</span>

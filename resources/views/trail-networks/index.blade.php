@@ -63,14 +63,11 @@
                 <!-- Enhanced Network Header with Gradient -->
                 <div class="trail-card-image group-hover:scale-105 transition-transform duration-500">
                     
-                    <!-- Content Overlay -->
-                    <div class="relative h-full flex flex-col items-center justify-center p-6 text-white">
-                        <!-- Network Icon -->
-                        <div class="absolute inset-0 flex items-center justify-center">
-                            <img src="{{ asset('images/no-image.png') }}" 
-                            alt="Trail Finder Logo" 
-                            class="w-24 h-24 object-contain transition-all duration-300 group-hover:scale-105">
-                        </div>
+                    <!-- Placeholder -->
+                    <div class="absolute inset-0 flex items-center justify-center bg-emerald-600">
+                        <img src="{{ asset('images/xplore-smithers-logo.png') }}"
+                        alt="Xplore Smithers"
+                        class="w-32 h-32 object-contain transition-all duration-300 group-hover:scale-105">
                     </div>
                     
                     <!-- Hover Overlay -->

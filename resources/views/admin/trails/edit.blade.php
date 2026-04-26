@@ -62,33 +62,18 @@
                     <p class="text-sm text-muted-foreground">Essential details about the location</p>
                 </div>
                 
-                <!-- Location Type Selector -->
-                <div class="rounded-lg border-2 border-blue-200 bg-blue-50 p-4 space-y-3">
-                    <label class="text-sm font-medium text-blue-900">Location Type <span class="text-red-500">*</span></label>
-                    <div class="grid grid-cols-2 gap-4">
-                        <label class="relative flex items-center p-4 rounded-lg border-2 cursor-pointer transition-all"
-                               :class="locationType === 'trail' ? 'border-blue-600 bg-blue-100' : 'border-gray-300 bg-white hover:border-blue-400'">
-                            <input type="radio" name="location_type" value="trail" x-model="locationType" class="sr-only">
-                            <div class="flex items-center gap-3">
-                                <div class="text-2xl">🥾</div>
-                                <div>
-                                    <div class="font-semibold text-sm">Hiking Trail</div>
-                                    <div class="text-xs text-muted-foreground">Route with distance & elevation</div>
-                                </div>
-                            </div>
-                        </label>
-                        <label class="relative flex items-center p-4 rounded-lg border-2 cursor-pointer transition-all"
-                               :class="locationType === 'fishing_lake' ? 'border-blue-600 bg-blue-100' : 'border-gray-300 bg-white hover:border-blue-400'">
-                            <input type="radio" name="location_type" value="fishing_lake" x-model="locationType" class="sr-only">
-                            <div class="flex items-center gap-3">
-                                <div class="text-2xl">🐟</div>
-                                <div>
-                                    <div class="font-semibold text-sm">Fishing Lake</div>
-                                    <div class="text-xs text-muted-foreground">Point location with fish species</div>
-                                </div>
-                            </div>
-                        </label>
+                <!-- Location Type (read-only on edit) -->
+                <div class="rounded-lg border-2 border-gray-200 bg-gray-50 p-4 space-y-3">
+                    <label class="text-sm font-medium text-gray-700">Location Type</label>
+                    <div class="flex items-center gap-3 p-4 rounded-lg border-2 border-blue-600 bg-blue-50 w-fit">
+                        <div class="text-2xl">{{ $trail->location_type === 'fishing_lake' ? '🐟' : '🥾' }}</div>
+                        <div>
+                            <div class="font-semibold text-sm">{{ $trail->location_type === 'fishing_lake' ? 'Fishing Lake' : 'Hiking Trail' }}</div>
+                            <div class="text-xs text-muted-foreground">{{ $trail->location_type === 'fishing_lake' ? 'Point location with fish species' : 'Route with distance & elevation' }}</div>
+                        </div>
                     </div>
+                    <p class="text-xs text-gray-500">Location type cannot be changed after creation.</p>
+                    <input type="hidden" name="location_type" value="{{ $trail->location_type }}">
                 </div>
                 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -3149,12 +3134,12 @@
         loadExistingStats() {
             // Just display the existing database values without recalculating
             const existingTrail = @json($trail);
-            
+
             const distanceEl = document.getElementById('route-distance');
             const timeEl = document.getElementById('route-time');
             const elevationEl = document.getElementById('route-elevation');
             const waypointCountEl = document.getElementById('waypoint-count-display');
-            
+
             if (distanceEl && existingTrail.distance_km) {
                 distanceEl.textContent = `${parseFloat(existingTrail.distance_km).toFixed(2)} km`;
             }
@@ -3167,7 +3152,20 @@
             if (waypointCountEl) {
                 waypointCountEl.textContent = this.waypoints.length;
             }
-            
+
+            // Restore input field values that clearRoute() zeroed out
+            const distanceInput = document.querySelector('input[name="distance_km"]');
+            const timeInput = document.querySelector('input[name="estimated_time_hours"]');
+            const elevationInput = document.querySelector('input[name="elevation_gain_m"]');
+            if (distanceInput && existingTrail.distance_km) {
+                distanceInput.value = parseFloat(existingTrail.distance_km).toFixed(2);
+            }
+            if (timeInput && existingTrail.estimated_time_hours) {
+                timeInput.value = parseFloat(existingTrail.estimated_time_hours).toFixed(1);
+            }
+            if (elevationInput && existingTrail.elevation_gain_m) {
+                elevationInput.value = existingTrail.elevation_gain_m;
+            }
         }
 
         async rebuildRouteFromWaypoints() {

@@ -108,28 +108,94 @@
 
             @if(request()->hasAny(['search', 'type']))
                 {{-- Flat grid when filtered --}}
-                <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-                    @foreach($businesses as $business)
-                        @include('businesses._card', ['business' => $business])
-                    @endforeach
+                <div
+                    x-data="{
+                        nextPage: {{ $businesses->hasMorePages() ? $businesses->currentPage() + 1 : 'null' }},
+                        loading: false,
+                        async loadMore() {
+                            if (!this.nextPage || this.loading) return;
+                            this.loading = true;
+                            const params = new URLSearchParams(window.location.search);
+                            params.set('page', this.nextPage);
+                            const res = await fetch('{{ route('businesses.public.index') }}?' + params.toString(), { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+                            const data = await res.json();
+                            this.$refs.grid.insertAdjacentHTML('beforeend', data.html);
+                            this.nextPage = data.has_more ? data.next_page : null;
+                            this.loading = false;
+                        }
+                    }"
+                >
+                    <div x-ref="grid" class="grid md:grid-cols-2 lg:grid-cols-3 gap-8 mb-6">
+                        @foreach($businesses as $business)
+                            @include('businesses._card', ['business' => $business])
+                        @endforeach
+                    </div>
+                    <div x-show="nextPage !== null" class="flex items-center gap-4 mb-14 select-none">
+                        <div class="flex-1 h-px bg-gray-200"></div>
+                        <button x-on:click="loadMore" :disabled="loading"
+                            class="group flex items-center gap-1.5 text-sm text-gray-500 hover:text-emerald-600 transition-colors duration-200 disabled:opacity-50">
+                            <svg x-show="loading" class="animate-spin w-3.5 h-3.5 text-emerald-600" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
+                            </svg>
+                            <span x-text="loading ? 'Loading...' : 'Show more businesses'"></span>
+                            <svg x-show="!loading" class="w-3.5 h-3.5 group-hover:translate-y-0.5 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                            </svg>
+                        </button>
+                        <div class="flex-1 h-px bg-gray-200"></div>
+                    </div>
                 </div>
             @else
                 {{-- Grouped by type --}}
                 @foreach($types as $typeKey => $typeLabel)
-                    @if($grouped->has($typeKey))
-                        @php $group = $grouped->get($typeKey); @endphp
-                        <div class="mb-14">
+                    @if(isset($paginatedGroups[$typeKey]) && $paginatedGroups[$typeKey]->total() > 0)
+                        @php $group = $paginatedGroups[$typeKey]; @endphp
+                        <div class="mb-14"
+                            x-data="{
+                                nextPage: {{ $group->hasMorePages() ? $group->currentPage() + 1 : 'null' }},
+                                loading: false,
+                                async loadMore() {
+                                    if (!this.nextPage || this.loading) return;
+                                    this.loading = true;
+                                    const params = new URLSearchParams(window.location.search);
+                                    params.set('ajax_type', '{{ $typeKey }}');
+                                    params.set('page', this.nextPage);
+                                    const res = await fetch('{{ route('businesses.public.index') }}?' + params.toString(), { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+                                    const data = await res.json();
+                                    this.$refs.grid.insertAdjacentHTML('beforeend', data.html);
+                                    this.nextPage = data.has_more ? data.next_page : null;
+                                    this.loading = false;
+                                }
+                            }"
+                        >
                             <div class="flex items-center gap-3 mb-6">
                                 <span class="text-2xl">{{ explode(' ', $typeLabel)[0] }}</span>
                                 <h3 class="text-2xl font-bold text-gray-800">{{ implode(' ', array_slice(explode(' ', $typeLabel), 1)) ?: $typeLabel }}</h3>
-                                <span class="text-sm text-gray-500 font-medium">({{ $group->count() }})</span>
+                                <span class="text-sm text-gray-500 font-medium">({{ $group->total() }})</span>
                                 <div class="flex-1 h-px bg-gray-200"></div>
                             </div>
 
-                            <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+                            <div x-ref="grid" class="grid md:grid-cols-2 lg:grid-cols-3 gap-8 mb-6">
                                 @foreach($group as $business)
                                     @include('businesses._card', ['business' => $business])
                                 @endforeach
+                            </div>
+
+                            <div x-show="nextPage !== null" class="flex items-center gap-4 mb-6 select-none">
+                                <div class="flex-1 h-px bg-gray-200"></div>
+                                <button x-on:click="loadMore" :disabled="loading"
+                                    class="group flex items-center gap-1.5 text-sm text-gray-500 hover:text-emerald-600 transition-colors duration-200 disabled:opacity-50">
+                                    <svg x-show="loading" class="animate-spin w-3.5 h-3.5 text-emerald-600" fill="none" viewBox="0 0 24 24">
+                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
+                                    </svg>
+                                    <span x-text="loading ? 'Loading...' : 'Show more {{ strtolower(implode(' ', array_slice(explode(' ', $typeLabel), 1)) ?: $typeLabel) }}'"></span>
+                                    <svg x-show="!loading" class="w-3.5 h-3.5 group-hover:translate-y-0.5 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                                    </svg>
+                                </button>
+                                <div class="flex-1 h-px bg-gray-200"></div>
                             </div>
                         </div>
                     @endif
@@ -160,5 +226,42 @@
     </div>
 </section>
 @endif
+
+@push('styles')
+<style>
+.lazy-card {
+    opacity: 0;
+    transform: translateY(24px);
+    transition: opacity 0.5s ease-out, transform 0.5s ease-out;
+}
+.lazy-card.visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+</style>
+@endpush
+
+@push('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const cards = document.querySelectorAll('.trail-card');
+    cards.forEach(card => card.classList.add('lazy-card'));
+
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                entry.target.classList.add('visible');
+                observer.unobserve(entry.target);
+            }
+        });
+    }, { threshold: 0.08, rootMargin: '0px 0px -40px 0px' });
+
+    cards.forEach((card, i) => {
+        card.style.transitionDelay = `${(i % 3) * 80}ms`;
+        observer.observe(card);
+    });
+});
+</script>
+@endpush
 
 @endsection

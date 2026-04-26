@@ -1853,11 +1853,6 @@ function initTrailMap() {
 
     document.getElementById('fly-along-btn')?.addEventListener('click', flyAlongTrail);
 
-    // ── Show on map ──────────────────────────────────────────────────────────
-    document.getElementById('show-on-map-btn').addEventListener('click', function() {
-        window.open(`{{ route('map') }}?trail=${trail.id}`, '_blank');
-    });
-
     // ── Focus feature (highlight card click) ─────────────────────────────────
     window.focusFeature = function(coordinates, name) {
         document.querySelector('[data-tab="route"]').click();
@@ -2058,158 +2053,6 @@ function initTrailMap() {
         setTimeout(loadElevationIfNeeded, 500);
     }
     
-    // Download GPX functionality
-    document.getElementById('download-gpx-btn')?.addEventListener('click', function() {
-        if (!trail.route_coordinates || trail.route_coordinates.length < 2) {
-            alert('No route data available for download');
-            return;
-        }
-
-        const gpxContent = generateGPX(trail.route_coordinates, trail.name);
-        const blob = new Blob([gpxContent], { type: 'application/gpx+xml' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `${trail.name.replace(/[^a-z0-9]/gi, '_')}.gpx`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-    });
-
-    function generateGPX(coordinates, name) {
-        const trackPoints = coordinates.map(coord => 
-            `      <trkpt lat="${coord[0]}" lon="${coord[1]}"></trkpt>`
-        ).join('\n');
-
-        return `<gpx version="1.1" creator="Trail Finder" xmlns="http://www.topografix.com/GPX/1/1">
-        <trk>
-            <name>${name}</name>
-            <trkseg>
-        ${trackPoints}
-            </trkseg>
-        </trk>
-        </gpx>`;
-    }
-
-    // Share Modal Functionality (NEW)
-    const shareBtn = document.getElementById('share-trail-btn');
-    const shareModal = document.getElementById('share-modal');
-    const closeModalBtn = document.getElementById('close-share-modal');
-    const copyLinkBtn = document.getElementById('copy-link-btn');
-    const trailUrlInput = document.getElementById('trail-url');
-
-    // Open modal
-    shareBtn?.addEventListener('click', function() {
-        shareModal.style.display = 'flex';
-        setTimeout(() => {
-            shareModal.classList.remove('hidden');
-        }, 10);
-    });
-
-    // Close modal
-    function closeShareModal() {
-        shareModal.classList.add('hidden');
-        setTimeout(() => {
-            shareModal.style.display = 'none';
-        }, 300);
-    }
-
-    closeModalBtn?.addEventListener('click', closeShareModal);
-    
-    // Close on backdrop click
-    shareModal?.addEventListener('click', function(e) {
-        if (e.target === shareModal) {
-            closeShareModal();
-        }
-    });
-
-    // Close on Escape key
-    document.addEventListener('keydown', function(e) {
-        if (e.key === 'Escape' && !shareModal.classList.contains('hidden')) {
-            closeShareModal();
-        }
-    });
-
-    // Copy link functionality
-    copyLinkBtn?.addEventListener('click', async function() {
-        const url = trailUrlInput.value;
-        const btnText = document.getElementById('copy-btn-text');
-        
-        try {
-            if (navigator.clipboard && window.isSecureContext) {
-                await navigator.clipboard.writeText(url);
-            } else {
-                // Fallback for older browsers
-                trailUrlInput.select();
-                document.execCommand('copy');
-            }
-            
-            // Success feedback
-            btnText.textContent = 'Copied!';
-            copyLinkBtn.classList.remove('bg-emerald-600', 'hover:bg-emerald-700');
-            copyLinkBtn.classList.add('bg-green-600');
-            
-            setTimeout(() => {
-                btnText.textContent = 'Copy';
-                copyLinkBtn.classList.remove('bg-green-600');
-                copyLinkBtn.classList.add('bg-emerald-600', 'hover:bg-emerald-700');
-            }, 2000);
-        } catch (err) {
-            console.error('Failed to copy:', err);
-            btnText.textContent = 'Failed';
-            setTimeout(() => {
-                btnText.textContent = 'Copy';
-            }, 2000);
-        }
-    });
-
-    // Trail data for sharing
-    const trailData = {
-        name: '{{ addslashes($trail->name) }}',
-        difficulty: '{{ $trail->difficulty_text }}',
-        location: '{{ addslashes($trail->location) }}',
-        distance: '{{ $trail->distance ? number_format($trail->distance, 1) . " km" : "" }}'
-    };
-
-    // Social Share Functions
-    window.shareToFacebook = function() {
-        const url = encodeURIComponent(trailUrlInput.value);
-        const shareUrl = `https://www.facebook.com/sharer/sharer.php?u=${url}`;
-        window.open(shareUrl, 'facebook-share', 'width=600,height=400');
-    };
-
-    window.shareToTwitter = function() {
-        const url = encodeURIComponent(trailUrlInput.value);
-        const text = encodeURIComponent(`Check out ${trailData.name} - ${trailData.difficulty} trail in ${trailData.location}! 🥾⛰️`);
-        const shareUrl = `https://twitter.com/intent/tweet?url=${url}&text=${text}`;
-        window.open(shareUrl, 'twitter-share', 'width=600,height=400');
-    };
-
-    window.shareToWhatsApp = function() {
-        const url = encodeURIComponent(trailUrlInput.value);
-        const text = encodeURIComponent(`Check out this trail: ${trailData.name} - ${trailData.difficulty} in ${trailData.location}! 🥾⛰️\n\n`);
-        const shareUrl = `https://wa.me/?text=${text}${url}`;
-        window.open(shareUrl, 'whatsapp-share');
-    };
-
-    window.shareViaEmail = function() {
-        const url = trailUrlInput.value;
-        const subject = encodeURIComponent(`Check out this trail: ${trailData.name}`);
-        
-        let emailBody = `I found this amazing trail and thought you might be interested!\n\n`;
-        emailBody += `Trail: ${trailData.name}\n`;
-        emailBody += `Location: ${trailData.location}\n`;
-        emailBody += `Difficulty: ${trailData.difficulty}\n`;
-        if (trailData.distance) {
-            emailBody += `Distance: ${trailData.distance}\n`;
-        }
-        emailBody += `Link: ${url}\n\n`;
-        emailBody += `Happy hiking! 🥾⛰️`;
-        
-        const body = encodeURIComponent(emailBody);
-        window.location.href = `mailto:?subject=${subject}&body=${body}`;
-    };    
 
     // ===== 3D HIGHLIGHT POPUP HANDLER =====
     let current3DHighlight = null;
@@ -2364,6 +2207,131 @@ function initTrailMap() {
     });
 
 } // end initTrailMap
+
+document.addEventListener('DOMContentLoaded', function() {
+    // ── View on Interactive Map ───────────────────────────────────────────────
+    document.getElementById('show-on-map-btn')?.addEventListener('click', function() {
+        window.open('{{ route('map') }}?trail={{ $trail->id }}', '_blank');
+    });
+
+    // ── Download GPX ─────────────────────────────────────────────────────────
+    const trailRouteCoords = @json($trail->route_coordinates ?? []);
+    const trailName = @json($trail->name);
+
+    document.getElementById('download-gpx-btn')?.addEventListener('click', function() {
+        if (!trailRouteCoords || trailRouteCoords.length < 2) {
+            alert('No route data available for download');
+            return;
+        }
+        const trackPoints = trailRouteCoords.map(coord =>
+            `      <trkpt lat="${coord[0]}" lon="${coord[1]}"></trkpt>`
+        ).join('\n');
+        const gpxContent = `<gpx version="1.1" creator="Trail Finder" xmlns="http://www.topografix.com/GPX/1/1">
+        <trk>
+            <name>${trailName}</name>
+            <trkseg>
+        ${trackPoints}
+            </trkseg>
+        </trk>
+        </gpx>`;
+        const blob = new Blob([gpxContent], { type: 'application/gpx+xml' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${trailName.replace(/[^a-z0-9]/gi, '_')}.gpx`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    });
+
+    // ── Share Trail ──────────────────────────────────────────────────────────
+    const shareBtn = document.getElementById('share-trail-btn');
+    const shareModal = document.getElementById('share-modal');
+    const closeModalBtn = document.getElementById('close-share-modal');
+    const copyLinkBtn = document.getElementById('copy-link-btn');
+    const trailUrlInput = document.getElementById('trail-url');
+
+    const trailData = {
+        name: '{{ addslashes($trail->name) }}',
+        difficulty: '{{ $trail->difficulty_text }}',
+        location: '{{ addslashes($trail->location) }}',
+        distance: '{{ $trail->distance ? number_format($trail->distance, 1) . " km" : "" }}'
+    };
+
+    function closeShareModal() {
+        shareModal.classList.add('hidden');
+        setTimeout(() => { shareModal.style.display = 'none'; }, 300);
+    }
+
+    shareBtn?.addEventListener('click', function() {
+        shareModal.style.display = 'flex';
+        setTimeout(() => { shareModal.classList.remove('hidden'); }, 10);
+    });
+
+    closeModalBtn?.addEventListener('click', closeShareModal);
+
+    shareModal?.addEventListener('click', function(e) {
+        if (e.target === shareModal) { closeShareModal(); }
+    });
+
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && shareModal && !shareModal.classList.contains('hidden')) {
+            closeShareModal();
+        }
+    });
+
+    copyLinkBtn?.addEventListener('click', async function() {
+        const url = trailUrlInput.value;
+        const btnText = document.getElementById('copy-btn-text');
+        try {
+            if (navigator.clipboard && window.isSecureContext) {
+                await navigator.clipboard.writeText(url);
+            } else {
+                trailUrlInput.select();
+                document.execCommand('copy');
+            }
+            btnText.textContent = 'Copied!';
+            copyLinkBtn.classList.remove('bg-emerald-600', 'hover:bg-emerald-700');
+            copyLinkBtn.classList.add('bg-green-600');
+            setTimeout(() => {
+                btnText.textContent = 'Copy';
+                copyLinkBtn.classList.remove('bg-green-600');
+                copyLinkBtn.classList.add('bg-emerald-600', 'hover:bg-emerald-700');
+            }, 2000);
+        } catch (err) {
+            console.error('Failed to copy:', err);
+            btnText.textContent = 'Failed';
+            setTimeout(() => { btnText.textContent = 'Copy'; }, 2000);
+        }
+    });
+
+    window.shareToFacebook = function() {
+        const url = encodeURIComponent(trailUrlInput.value);
+        window.open(`https://www.facebook.com/sharer/sharer.php?u=${url}`, 'facebook-share', 'width=600,height=400');
+    };
+
+    window.shareToTwitter = function() {
+        const url = encodeURIComponent(trailUrlInput.value);
+        const text = encodeURIComponent(`Check out ${trailData.name} - ${trailData.difficulty} trail in ${trailData.location}! 🥾⛰️`);
+        window.open(`https://twitter.com/intent/tweet?url=${url}&text=${text}`, 'twitter-share', 'width=600,height=400');
+    };
+
+    window.shareToWhatsApp = function() {
+        const url = encodeURIComponent(trailUrlInput.value);
+        const text = encodeURIComponent(`Check out this trail: ${trailData.name} - ${trailData.difficulty} in ${trailData.location}! 🥾⛰️\n\n`);
+        window.open(`https://wa.me/?text=${text}${url}`, 'whatsapp-share');
+    };
+
+    window.shareViaEmail = function() {
+        const url = trailUrlInput.value;
+        const subject = encodeURIComponent(`Check out this trail: ${trailData.name}`);
+        let body = `I found this amazing trail and thought you might be interested!\n\nTrail: ${trailData.name}\nLocation: ${trailData.location}\nDifficulty: ${trailData.difficulty}\n`;
+        if (trailData.distance) { body += `Distance: ${trailData.distance}\n`; }
+        body += `Link: ${url}\n\nHappy hiking! 🥾⛰️`;
+        window.location.href = `mailto:?subject=${subject}&body=${encodeURIComponent(body)}`;
+    };
+});
 
 // Admin delete confirmation
 function confirmDelete() {
