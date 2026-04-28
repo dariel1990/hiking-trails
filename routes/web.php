@@ -14,6 +14,26 @@ use App\Http\Controllers\TrailController;
 use App\Http\Controllers\TrailNetworkController;
 use Illuminate\Support\Facades\Route;
 
+// Android App Links — Digital Asset Links file
+// Verifies that this domain authorizes the Android app to handle deep links
+Route::get('/.well-known/assetlinks.json', function () {
+    $package = config('services.android_app.package_name');
+    $fingerprints = config('services.android_app.sha256_fingerprints', []);
+
+    if (empty($package) || empty($fingerprints)) {
+        return response()->json([], 404);
+    }
+
+    return response()->json([[
+        'relation' => ['delegate_permission/common.handle_all_urls'],
+        'target' => [
+            'namespace' => 'android_app',
+            'package_name' => $package,
+            'sha256_cert_fingerprints' => $fingerprints,
+        ],
+    ]]);
+});
+
 // PUBLIC ROUTES (No authentication required)
 Route::get('/', [TrailController::class, 'home'])->name('home');
 Route::get('/trails', [TrailController::class, 'index'])->name('trails.index');

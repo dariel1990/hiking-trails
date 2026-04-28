@@ -1,6 +1,6 @@
 @extends('layouts.public')
 
-@section('title', 'Trail Networks')
+@section('title', 'Ski Trails')
 
 @section('content')
 <!-- Enhanced Hero Section with Wavy Divider -->
@@ -16,7 +16,7 @@
         <!-- Badge -->
         <div class="mb-8 fade-in">
             <span class="inline-flex items-center px-6 py-3 bg-white/25 backdrop-blur-sm rounded-full text-white text-sm font-semibold border border-white/30 shadow-lg">
-                🗺️ {{ $networks->count() }} Trail Networks Available
+                🗺️ {{ $networks->count() }} Ski Trails Available
             </span>
         </div>
         
@@ -25,7 +25,7 @@
             <h1 class="text-5xl md:text-7xl font-bold leading-tight">
                 <span class="text-white text-shadow-lg">Explore Organized</span><br>
                 <span class="bg-gradient-to-r from-emerald-300 via-sand-200 to-accent-300 bg-clip-text text-transparent">
-                    Trail Networks
+                    Ski Trails
                 </span>
             </h1>
         </div>
@@ -47,7 +47,7 @@
         <!-- Section Header -->
         @if($networks->count() > 0)
         <div class="text-center mb-12">
-            <h2 class="section-title text-forest-600">Trail Network Systems</h2>
+            <h2 class="section-title text-forest-600">Ski Trail Systems</h2>
             <p class="section-subtitle">
                 Organized trail systems with comprehensive maps, facilities, and detailed information for your adventure.
             </p>
@@ -148,7 +148,7 @@
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/>
                         </svg>
                     </div>
-                    <h3 class="text-2xl font-bold text-gray-900 mb-4">No Trail Networks Yet</h3>
+                    <h3 class="text-2xl font-bold text-gray-900 mb-4">No Ski Trails Yet</h3>
                     <p class="text-gray-600 mb-8">
                         We're curating organized trail systems for you. Check back soon for Nordic skiing, downhill runs, and hiking networks.
                     </p>
@@ -166,7 +166,7 @@
 @if($networks->count() > 0)
 <section class="section cta-section">
     <div class="max-w-4xl mx-auto px-4 text-center">
-        <h2 class="text-4xl font-bold text-white mb-6">Ready to Explore Trail Networks?</h2>
+        <h2 class="text-4xl font-bold text-white mb-6">Ready to Explore Ski Trails?</h2>
         <p class="text-xl text-emerald-100 mb-8">
             Experience organized trail systems with comprehensive maps, facilities, and multiple interconnected routes for extended adventures.
         </p>

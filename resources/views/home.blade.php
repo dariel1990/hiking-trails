@@ -50,7 +50,7 @@
                 📍 View Interactive Map
             </a>
             <a href="{{ route('trail-networks.index') }}" class="bg-transparent border-2 border-white text-white hover:bg-white hover:text-gray-900 font-semibold py-4 px-10 rounded-xl transition-all duration-300 text-lg shadow-xl">
-                🏔️ Trail Networks
+                🏔️ Ski Trails
             </a>
         </div>
         <!-- Enhanced Search Bar with Better Layout -->

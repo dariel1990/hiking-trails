@@ -44,4 +44,13 @@ return [
         'access_token' => env('MAPBOX_ACCESS_TOKEN'),
     ],
 
+    'android_app' => [
+        'package_name' => env('ANDROID_APP_PACKAGE_NAME'),
+        'play_store_url' => env('ANDROID_APP_PLAY_STORE_URL'),
+        'sha256_fingerprints' => array_values(array_filter(array_map(
+            'trim',
+            explode(',', (string) env('ANDROID_APP_SHA256_FINGERPRINTS', ''))
+        ))),
+    ],
+
 ];

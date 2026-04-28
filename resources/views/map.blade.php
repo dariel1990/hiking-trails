@@ -2549,6 +2549,15 @@
             return this.getDistanceColor(trail.distance);
         }
 
+        // For non-fishing trails, pick the activity that should drive the marker icon/colour.
+        // Prefer hiking when present, otherwise fall back to the first activity.
+        getTrailDisplayActivity(trail) {
+            if (!trail || !Array.isArray(trail.activities) || trail.activities.length === 0) {
+                return null;
+            }
+            return trail.activities.find(a => a.type === 'hiking') || trail.activities[0];
+        }
+
         buildRouteGeoJSON(trails) {
             // Build a GeoJSON FeatureCollection from filtered trails for Mapbox source
             const features = [];
@@ -2757,7 +2766,13 @@
                 } else if (this.currentSeason === 'summer') {
                     if (this.activeFilters.includes('hiking')) {
                         if (!this.overlayMarkers['hiking']) this.overlayMarkers['hiking'] = [];
-                        const marker = this.createTrailMarker(trail, { type: 'hiking', icon: '🥾', color: '#10B981' });
+                        const displayActivity = this.getTrailDisplayActivity(trail);
+                        const markerConfig = {
+                            type: 'hiking',
+                            icon: (displayActivity && displayActivity.icon) || '🥾',
+                            color: (displayActivity && displayActivity.color) || '#10B981',
+                        };
+                        const marker = this.createTrailMarker(trail, markerConfig);
                         if (marker) this.overlayMarkers['hiking'].push(marker);
                     }
                 } else {
@@ -3699,12 +3714,18 @@
                     ? `style="border-left: 4px solid ${this.getDifficultyColor(trail.difficulty)};"`
                     : '';
 
+                // Activity-driven placeholder icon (falls back to 🥾 / 🎣 if no activities)
+                const placeholderActivity = this.getTrailDisplayActivity(trail);
+                const placeholderIcon = trail.location_type === 'fishing_lake'
+                    ? '🎣'
+                    : ((placeholderActivity && placeholderActivity.icon) || '🥾');
+
                 return `
                     <div class="trail-list-card" data-location-type="${trail.location_type}" ${accentStyle} onclick="window.trailMap.focusOnTrailById(${trail.id})">
                         ${imageUrl ?
                             `<img src="${imageUrl}" alt="${trail.name}" class="trail-list-image">` :
                             `<div class="trail-list-image-placeholder" style="background: ${trail.location_type === 'fishing_lake' ? 'linear-gradient(135deg, #0369a1, #0ea5e9)' : 'linear-gradient(135deg, #166534, #22c55e)'};">
-                                <span style="font-size: 2rem;">${trail.location_type === 'fishing_lake' ? '🎣' : '🥾'}</span>
+                                <span style="font-size: 2rem;">${placeholderIcon}</span>
                             </div>`
                         }
                         <div class="flex-1 min-w-0">

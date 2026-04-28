@@ -88,7 +88,7 @@
                     </a>
                     <a href="{{ route('trail-networks.index') }}" 
                     class="relative text-forest-700 hover:text-accent-600 font-medium transition-all duration-300 py-2 group {{ request()->routeIs('trail-networks.*') ? 'text-accent-700' : '' }}">
-                        <span>Trail Networks</span>
+                        <span>Ski Trails</span>
                         <div class="absolute bottom-0 left-0 w-0 h-0.5 bg-accent-600 group-hover:w-full transition-all duration-300 {{ request()->routeIs('trail-networks.*') ? 'w-full' : '' }}"></div>
                     </a>
                     <a href="{{ route('map') }}"
@@ -126,7 +126,7 @@
                     <div class="py-4 space-y-2">
                         <a href="{{ route('home') }}" class="block px-6 py-3 text-gray-700 hover:bg-emerald-50 hover:text-emerald-600 font-medium transition-colors">Home</a>
                         <a href="{{ route('trails.index') }}" class="block px-6 py-3 text-gray-700 hover:bg-emerald-50 hover:text-emerald-600 font-medium transition-colors">Individual Trails</a>
-                        <a href="{{ route('trail-networks.index') }}" class="block px-6 py-3 text-gray-700 hover:bg-emerald-50 hover:text-emerald-600 font-medium transition-colors">Trail Networks</a>
+                        <a href="{{ route('trail-networks.index') }}" class="block px-6 py-3 text-gray-700 hover:bg-emerald-50 hover:text-emerald-600 font-medium transition-colors">Ski Trails</a>
                         <a href="{{ route('map') }}" class="block px-6 py-3 text-gray-700 hover:bg-emerald-50 hover:text-emerald-600 font-medium transition-colors">Interactive Map</a>
                         <a href="{{ route('businesses.public.index') }}" class="block px-6 py-3 text-gray-700 hover:bg-emerald-50 hover:text-emerald-600 font-medium transition-colors">Local Businesses</a>
                     </div>
@@ -282,6 +282,28 @@
                             </form>
                         </div>
                         
+                        @if(config('services.android_app.play_store_url'))
+                        <!-- Get the app -->
+                        <div class="mb-6">
+                            <p class="text-gray-300 text-sm mb-3 font-medium">Get the app</p>
+                            <a href="{{ config('services.android_app.play_store_url') }}"
+                               target="_blank"
+                               rel="noopener"
+                               class="inline-flex items-center gap-3 bg-black hover:bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 transition-colors duration-300">
+                                <svg class="w-7 h-7" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M3.609 1.814L13.792 12 3.61 22.186a.996.996 0 0 1-.61-.92V2.734a1 1 0 0 1 .609-.92z" fill="#34A853"/>
+                                    <path d="M16.81 15.013L6.05 21.21l8.13-8.131 2.63 1.934z" fill="#EA4335"/>
+                                    <path d="M20.16 10.81a1 1 0 0 1 0 1.74l-3.35 1.93-2.63-2.48 2.63-2.48 3.35 1.29z" fill="#FBBC04"/>
+                                    <path d="M14.18 12l-8.13-8.13L16.81 8.97l-2.63 3.03z" fill="#4285F4"/>
+                                </svg>
+                                <div class="flex flex-col leading-tight">
+                                    <span class="text-[10px] text-gray-300 uppercase tracking-wider">Get it on</span>
+                                    <span class="text-white text-base font-semibold">Google Play</span>
+                                </div>
+                            </a>
+                        </div>
+                        @endif
+
                         <!-- Social links -->
                         <div>
                             <p class="text-gray-300 text-sm mb-4 font-medium">Follow our adventures</p>
