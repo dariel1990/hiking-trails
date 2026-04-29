@@ -104,6 +104,7 @@ class Facility extends Model
             'water' => '💧',
             'shelter' => '⛺',
             'camping_site' => '🏕️',
+            'point_of_interest' => '📍'
         ];
 
         return $icons[$this->facility_type] ?? '📍';
@@ -125,6 +126,7 @@ class Facility extends Model
             'water' => '💧 Water',
             'shelter' => '⛺ Shelter',
             'camping_site' => '🏕️ Camping Site',
+            'point_of_interest' => '📍 Point of Interest',
         ];
     }
 

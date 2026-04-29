@@ -285,7 +285,7 @@
                         
                         @if(config('services.android_app.play_store_url'))
                         <!-- Get the app -->
-                        <div class="mb-6">
+                        <div class="mb-6 hidden lg:block">
                             <p class="text-gray-300 text-sm mb-3 font-medium">Get the app</p>
                             <a href="{{ config('services.android_app.play_store_url') }}"
                                target="_blank"
