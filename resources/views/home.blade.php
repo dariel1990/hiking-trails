@@ -43,7 +43,7 @@
 
         @if(config('services.android_app.play_store_url'))
         <!-- Mobile App Promo (hero) -->
-        <div class="slide-in-up mb-12 flex flex-col md:flex-row items-center justify-center gap-5 max-w-2xl mx-auto" style="animation-delay: 0.4s;">
+        <div class="slide-in-up mb-12 hidden lg:flex flex-col md:flex-row items-center justify-center gap-5 max-w-2xl mx-auto" style="animation-delay: 0.4s;">
             <a href="{{ config('services.android_app.play_store_url') }}"
                target="_blank"
                rel="noopener"
