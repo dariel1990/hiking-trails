@@ -622,7 +622,7 @@
                                                     @foreach($highlight->media->take(3) as $media)
                                                         @if($media->media_type === 'photo')
                                                             <div class="relative aspect-square rounded overflow-hidden cursor-pointer hover:opacity-90 transition group"
-                                                                onclick="event.stopPropagation(); openMediaModal('{{ $media->url }}', 'photo', '{{ $media->caption ?? $highlight->name }}')">
+                                                                onclick="event.stopPropagation(); openMediaCarousel('highlight-{{ $highlight->id }}', {{ $loop->index }})">
                                                                 <img src="{{ $media->url }}" 
                                                                     alt="{{ $media->caption ?? $highlight->name }}"
                                                                     class="w-full h-full object-cover">
@@ -635,7 +635,7 @@
                                                         @elseif($media->media_type === 'video_url')
                                                             <div class="relative aspect-square rounded overflow-hidden cursor-pointer hover:opacity-90 transition group bg-gray-900"
                                                                 data-video-url="{{ $media->video_url }}"
-                                                                onclick="event.stopPropagation(); openMediaModal('{{ $media->video_url }}', 'video', '{{ $media->caption ?? $highlight->name }}')">
+                                                                onclick="event.stopPropagation(); openMediaCarousel('highlight-{{ $highlight->id }}', {{ $loop->index }})">
                                                                 <div class="video-icon-placeholder w-full h-full flex items-center justify-center">
                                                                     <svg class="w-8 h-8 text-white opacity-75" fill="currentColor" viewBox="0 0 20 20">
                                                                         <path d="M2 6a2 2 0 012-2h6a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V6zM14.553 7.106A1 1 0 0014 8v4a1 1 0 00.553.894l2 1A1 1 0 0018 13V7a1 1 0 00-1.447-.894l-2 1z"/>
@@ -666,7 +666,7 @@
                                                             
                                                             <div class="relative aspect-square rounded overflow-hidden cursor-pointer hover:opacity-90 transition group bg-gray-900"
                                                                 @if($hasExternalUrl) data-video-url="{{ $videoUrl }}" @endif
-                                                                onclick="event.stopPropagation(); openMediaModal('{{ $videoUrl }}', 'video', '{{ $media->caption ?? $highlight->name }}')">
+                                                                onclick="event.stopPropagation(); openMediaCarousel('highlight-{{ $highlight->id }}', {{ $loop->index }})">
                                                                 
                                                                 @if($hasExternalUrl)
                                                                     <!-- Dynamic thumbnail will load here -->
@@ -698,9 +698,11 @@
                                                 
                                                 @if($highlight->media->count() > 3)
                                                     <div class="text-center mt-2">
-                                                        <span class="text-xs text-emerald-600 font-semibold">
+                                                        <button type="button"
+                                                                onclick="event.stopPropagation(); openMediaCarousel('highlight-{{ $highlight->id }}', 3)"
+                                                                class="text-xs text-emerald-600 font-semibold hover:text-emerald-700 hover:underline transition-colors">
                                                             +{{ $highlight->media->count() - 3 }} more
-                                                        </span>
+                                                        </button>
                                                     </div>
                                                 @endif
                                             </div>
@@ -790,7 +792,7 @@
                                     @if($media->media_type === 'photo')
                                         {{-- Photo Display --}}
                                         <div class="relative group overflow-hidden rounded-lg border border-input cursor-pointer"
-                                            onclick="openMediaModal('{{ asset('storage/' . $media->storage_path) }}', 'photo', '{{ $media->caption ?? $trail->name }}')">
+                                            onclick="openMediaCarousel('trail-general', {{ $loop->index }})">
                                             <img src="{{ asset('storage/' . $media->storage_path) }}"
                                                 alt="{{ $media->caption ?? $trail->name }}"
                                                 class="w-full h-48 object-cover transition-transform group-hover:scale-105">
@@ -810,7 +812,7 @@
                                     @elseif($media->media_type === 'video_url')
                                         {{-- Video URL Display --}}
                                         <div class="relative group overflow-hidden rounded-lg border border-input cursor-pointer"
-                                            onclick="openMediaModal('{{ $media->video_url }}', 'video', '{{ $media->caption ?? $trail->name }}')">
+                                            onclick="openMediaCarousel('trail-general', {{ $loop->index }})">
                                             <div class="w-full h-32 bg-gray-900 flex items-center justify-center relative">
                                                 {{-- Video Thumbnail from provider --}}
                                                 @if($media->video_provider === 'youtube')
@@ -1206,26 +1208,42 @@
     </div>
 </div>
 
-<div id="media-modal" class="hidden fixed inset-0 bg-black bg-opacity-75 z-50 flex items-center justify-center p-4">
-    <div class="relative max-w-5xl w-full bg-white rounded-lg shadow-xl">
-        <!-- Close button -->
-        <button onclick="closeMediaModal()" 
-                class="absolute top-4 right-4 z-10 bg-gray-900 bg-opacity-75 hover:bg-opacity-100 text-white rounded-full p-2 transition-all">
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-            </svg>
-        </button>
-        
-        <!-- Content container -->
-        <div id="modal-content" class="p-4">
-            <!-- Content will be dynamically inserted here -->
-        </div>
-        
-        <!-- Caption -->
-        <div id="modal-caption" class="px-6 pb-6 text-center text-gray-700">
-            <!-- Caption will be dynamically inserted here -->
-        </div>
-    </div>
+<div id="media-modal" class="hidden fixed inset-0 bg-black bg-opacity-95 z-[9999] flex flex-col items-center justify-center p-4 gap-4">
+    <!-- Counter pill -->
+    <div id="modal-counter"
+         class="absolute top-4 left-1/2 -translate-x-1/2 z-20 px-3 py-1.5 rounded-full bg-white/10 backdrop-blur text-white text-xs font-semibold tracking-wide"></div>
+
+    <!-- Close -->
+    <button type="button" onclick="closeMediaModal()"
+            class="absolute top-4 right-4 z-20 w-10 h-10 rounded-full bg-white/10 hover:bg-white/25 backdrop-blur text-white flex items-center justify-center transition-all">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"/>
+        </svg>
+    </button>
+
+    <!-- Prev -->
+    <button id="modal-prev" type="button"
+            class="absolute left-4 top-1/2 -translate-y-1/2 z-20 w-11 h-11 rounded-full bg-white/10 hover:bg-white/25 backdrop-blur text-white flex items-center justify-center transition-all">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7"/>
+        </svg>
+    </button>
+
+    <!-- Next -->
+    <button id="modal-next" type="button"
+            class="absolute right-4 top-1/2 -translate-y-1/2 z-20 w-11 h-11 rounded-full bg-white/10 hover:bg-white/25 backdrop-blur text-white flex items-center justify-center transition-all">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7"/>
+        </svg>
+    </button>
+
+    <!-- Image / video stage -->
+    <div id="modal-content"
+         class="max-w-6xl w-full flex items-center justify-center"></div>
+
+    <!-- Caption -->
+    <div id="modal-caption"
+         class="max-w-2xl text-center text-white/80 text-sm leading-relaxed px-2"></div>
 </div>
 
 <!-- Share Modal (COMPLETE VERSION) -->
@@ -1424,71 +1442,143 @@ function loadVideoThumbnails() {
 // Call after page loads
 document.addEventListener('DOMContentLoaded', loadVideoThumbnails);
 
-function openMediaModal(url, type, caption) {
+// --------------------------------------------------------------------
+// Media carousel — build per-list data, then navigate with prev/next
+// --------------------------------------------------------------------
+window._trailMediaLists = window._trailMediaLists || {};
+
+// Trail's general gallery
+window._trailMediaLists['trail-general'] = [
+@foreach($generalMedia ?? [] as $media)
+    @php
+        if ($media->media_type === 'photo') {
+            $jsType = 'photo';
+            $jsUrl = asset('storage/' . $media->storage_path);
+        } elseif ($media->media_type === 'video_url') {
+            $jsType = 'video';
+            $jsUrl = $media->video_url;
+        } else { // 'video'
+            $jsType = 'video';
+            $jsUrl = $media->video_url ?? asset('storage/' . $media->storage_path);
+        }
+    @endphp
+    { type: @json($jsType), url: @json($jsUrl), caption: @json($media->caption ?? $trail->name) },
+@endforeach
+];
+
+// Per-highlight galleries
+@foreach($trail->highlights ?? [] as $highlight)
+window._trailMediaLists['highlight-{{ $highlight->id }}'] = [
+@foreach($highlight->media ?? [] as $media)
+    @php
+        if ($media->media_type === 'photo') {
+            $jsType = 'photo';
+            $jsUrl = $media->url;
+        } elseif ($media->media_type === 'video_url') {
+            $jsType = 'video';
+            $jsUrl = $media->video_url;
+        } else { // 'video'
+            $jsType = 'video';
+            $jsUrl = $media->video_url ?? $media->url;
+        }
+    @endphp
+    { type: @json($jsType), url: @json($jsUrl), caption: @json($media->caption ?? $highlight->name) },
+@endforeach
+];
+@endforeach
+
+let _modalState = { listId: null, index: 0 };
+
+function openMediaCarousel(listId, index) {
+    const list = window._trailMediaLists[listId];
+    if (!list || !list.length) { return; }
+    _modalState.listId = listId;
+    _modalState.index = Math.max(0, Math.min(index || 0, list.length - 1));
     const modal = document.getElementById('media-modal');
+    if (modal.parentElement !== document.body) { document.body.appendChild(modal); }
+    modal.classList.remove('hidden');
+    _renderModalItem();
+}
+
+// Backward-compatible single-item viewer (used by 3D map highlights, etc.)
+function openMediaModal(url, type, caption) {
+    window._trailMediaLists['_temp'] = [{ type: type, url: url, caption: caption || '' }];
+    openMediaCarousel('_temp', 0);
+}
+
+function _renderModalItem() {
+    const { listId, index } = _modalState;
+    const list = window._trailMediaLists[listId];
+    if (!list) { return; }
+    const item = list[index];
+    const total = list.length;
     const content = document.getElementById('modal-content');
+    const counter = document.getElementById('modal-counter');
     const captionEl = document.getElementById('modal-caption');
-    
-    if (modal.parentElement !== document.body) {
-        document.body.appendChild(modal);
-    }
-    
-    if (type === 'photo') {
-        content.innerHTML = `<img src="${url}" alt="${caption}" class="w-full h-auto max-h-[70vh] object-contain rounded-lg">`;
-    } else if (type === 'video') {
-        // Convert video URL to embed URL
+    const prevBtn = document.getElementById('modal-prev');
+    const nextBtn = document.getElementById('modal-next');
+
+    if (item.type === 'video') {
+        const youtubeMatch = (item.url || '').match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\s]+)/);
+        const vimeoMatch = (item.url || '').match(/vimeo\.com\/(\d+)/);
         let embedUrl = '';
-        
-        // YouTube
-        const youtubeMatch = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\s]+)/);
-        if (youtubeMatch) {
-            embedUrl = `https://www.youtube.com/embed/${youtubeMatch[1]}`;
-        }
-        
-        // Vimeo
-        const vimeoMatch = url.match(/vimeo\.com\/(\d+)/);
-        if (vimeoMatch) {
-            embedUrl = `https://player.vimeo.com/video/${vimeoMatch[1]}`;
-        }
-        
+        if (youtubeMatch) { embedUrl = `https://www.youtube.com/embed/${youtubeMatch[1]}`; }
+        else if (vimeoMatch) { embedUrl = `https://player.vimeo.com/video/${vimeoMatch[1]}`; }
+
         if (embedUrl) {
             content.innerHTML = `
-                <div class="relative" style="padding-bottom: 56.25%; height: 0;">
-                    <iframe src="${embedUrl}" 
-                            frameborder="0" 
-                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                <div class="relative w-full max-w-5xl" style="padding-bottom: 56.25%;">
+                    <iframe src="${embedUrl}" frameborder="0"
+                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                             allowfullscreen
-                            class="absolute top-0 left-0 w-full h-full rounded-lg">
-                    </iframe>
-                </div>
-            `;
+                            class="absolute inset-0 w-full h-full rounded-lg shadow-2xl"></iframe>
+                </div>`;
+        } else {
+            content.innerHTML = `<video src="${item.url}" controls autoplay class="max-w-full max-h-[78vh] rounded-lg shadow-2xl"></video>`;
         }
+    } else {
+        content.innerHTML = `<img src="${item.url}" alt="" class="max-w-full max-h-[78vh] object-contain rounded-lg shadow-2xl">`;
     }
-    
-    captionEl.textContent = caption;
-    modal.classList.remove('hidden');
+
+    counter.textContent = `${index + 1} / ${total}`;
+    captionEl.textContent = item.caption || '';
+
+    const showArrows = total > 1;
+    prevBtn.style.display = showArrows ? '' : 'none';
+    nextBtn.style.display = showArrows ? '' : 'none';
+    counter.style.display = showArrows ? '' : 'none';
+}
+
+function _modalStep(delta) {
+    const list = window._trailMediaLists[_modalState.listId];
+    if (!list || !list.length) { return; }
+    _modalState.index = (_modalState.index + delta + list.length) % list.length;
+    _renderModalItem();
 }
 
 function closeMediaModal() {
     const modal = document.getElementById('media-modal');
     const content = document.getElementById('modal-content');
-    
     modal.classList.add('hidden');
-    content.innerHTML = ''; // Clear content to stop video playback
+    content.innerHTML = ''; // stop video playback
+    _modalState.listId = null;
 }
 
-// Close modal when clicking outside
+document.getElementById('modal-prev')?.addEventListener('click', (e) => { e.stopPropagation(); _modalStep(-1); });
+document.getElementById('modal-next')?.addEventListener('click', (e) => { e.stopPropagation(); _modalStep(1); });
+
+// Close on backdrop click
 document.getElementById('media-modal')?.addEventListener('click', function(e) {
-    if (e.target === this) {
-        closeMediaModal();
-    }
+    if (e.target === this) { closeMediaModal(); }
 });
 
-// Close modal with Escape key
+// Keyboard navigation
 document.addEventListener('keydown', function(e) {
-    if (e.key === 'Escape') {
-        closeMediaModal();
-    }
+    const modal = document.getElementById('media-modal');
+    if (!modal || modal.classList.contains('hidden')) { return; }
+    if (e.key === 'Escape') { closeMediaModal(); }
+    if (e.key === 'ArrowLeft') { _modalStep(-1); }
+    if (e.key === 'ArrowRight') { _modalStep(1); }
 });
 </script>
 <script>

@@ -96,6 +96,70 @@
         transform: scale(1.1);
     }
 
+    .lightbox-counter {
+        position: fixed;
+        top: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        color: white;
+        font-size: 0.8rem;
+        font-weight: 600;
+        letter-spacing: 0.04em;
+        background: rgba(255,255,255,0.12);
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
+        padding: 6px 14px;
+        border-radius: 999px;
+        z-index: 10000;
+    }
+
+    .lightbox-nav {
+        position: fixed;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 48px;
+        height: 48px;
+        border: 0;
+        border-radius: 50%;
+        background: rgba(255,255,255,0.12);
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
+        color: white;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s ease;
+        z-index: 10000;
+    }
+
+    .lightbox-nav:hover {
+        background: rgba(255,255,255,0.28);
+        transform: translateY(-50%) scale(1.05);
+    }
+
+    .lightbox-nav.prev { left: 20px; }
+    .lightbox-nav.next { right: 20px; }
+
+    .lightbox-nav svg {
+        width: 24px;
+        height: 24px;
+        stroke-width: 2.5;
+    }
+
+    .lightbox-caption {
+        position: fixed;
+        bottom: 24px;
+        left: 50%;
+        transform: translateX(-50%);
+        color: rgba(255,255,255,0.85);
+        font-size: 0.875rem;
+        text-align: center;
+        max-width: min(90%, 600px);
+        line-height: 1.5;
+        padding: 0 1rem;
+    }
+
     .tab-nav {
         border-bottom: 2px solid #e5e7eb;
         margin-bottom: 2rem;
@@ -301,7 +365,7 @@
                     <div id="tab-photos" class="tab-content">
                         <div class="photo-grid">
                             @foreach($photos as $photo)
-                                <div class="photo-grid-item" onclick="openLightbox('{{ $photo->url }}', '{{ addslashes($photo->caption ?? $business->name) }}')">
+                                <div class="photo-grid-item" onclick="openLightbox({{ $loop->index }})">
                                     <img src="{{ $photo->url }}" alt="{{ $photo->caption ?? $business->name }}" loading="lazy">
                                     @if($photo->caption)
                                         <div class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-3 opacity-0 hover:opacity-100 transition-opacity">
@@ -479,12 +543,31 @@
     </div>
 </section>
 
-{{-- Lightbox --}}
+{{-- Lightbox carousel --}}
 <div id="lightbox" class="lightbox" onclick="closeLightbox()">
-    <span class="lightbox-close">✕</span>
+    <div id="lightbox-counter" class="lightbox-counter"></div>
+
+    <span class="lightbox-close" onclick="event.stopPropagation(); closeLightbox()">✕</span>
+
+    <button type="button" class="lightbox-nav prev" id="lightbox-prev"
+            onclick="event.stopPropagation(); lightboxStep(-1)">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/>
+        </svg>
+    </button>
+
+    <button type="button" class="lightbox-nav next" id="lightbox-next"
+            onclick="event.stopPropagation(); lightboxStep(1)">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
+        </svg>
+    </button>
+
     <div class="lightbox-content" onclick="event.stopPropagation()">
         <img id="lightbox-img" src="" alt="">
     </div>
+
+    <div id="lightbox-caption" class="lightbox-caption"></div>
 </div>
 
 @if($hasMap)
@@ -536,11 +619,43 @@
         btn.classList.add('active');
     }
 
-    function openLightbox(url, caption) {
-        document.getElementById('lightbox-img').src = url;
-        document.getElementById('lightbox-img').alt = caption;
+    // Photo carousel — full list cached on page load
+    window._businessPhotos = [
+@foreach($photos as $photo)
+        { url: @json($photo->url), caption: @json($photo->caption ?? $business->name) },
+@endforeach
+    ];
+
+    let _lbIndex = 0;
+
+    function openLightbox(index) {
+        if (!window._businessPhotos.length) { return; }
+        _lbIndex = Math.max(0, Math.min(index || 0, window._businessPhotos.length - 1));
         document.getElementById('lightbox').classList.add('active');
         document.body.style.overflow = 'hidden';
+        renderLightboxItem();
+    }
+
+    function renderLightboxItem() {
+        const item = window._businessPhotos[_lbIndex];
+        const total = window._businessPhotos.length;
+        const img = document.getElementById('lightbox-img');
+        img.src = item.url;
+        img.alt = item.caption || '';
+        document.getElementById('lightbox-counter').textContent = `${_lbIndex + 1} / ${total}`;
+        document.getElementById('lightbox-caption').textContent = item.caption || '';
+
+        const showArrows = total > 1;
+        document.getElementById('lightbox-prev').style.display = showArrows ? '' : 'none';
+        document.getElementById('lightbox-next').style.display = showArrows ? '' : 'none';
+        document.getElementById('lightbox-counter').style.display = showArrows ? '' : 'none';
+    }
+
+    function lightboxStep(delta) {
+        const total = window._businessPhotos.length;
+        if (total < 2) { return; }
+        _lbIndex = (_lbIndex + delta + total) % total;
+        renderLightboxItem();
     }
 
     function closeLightbox() {
@@ -549,7 +664,11 @@
     }
 
     document.addEventListener('keydown', function (e) {
+        const lb = document.getElementById('lightbox');
+        if (!lb.classList.contains('active')) { return; }
         if (e.key === 'Escape') { closeLightbox(); }
+        if (e.key === 'ArrowLeft') { lightboxStep(-1); }
+        if (e.key === 'ArrowRight') { lightboxStep(1); }
     });
 </script>
 

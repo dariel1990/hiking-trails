@@ -7,7 +7,7 @@
 @endpush
 
 @section('content')
-<div class="flex h-[calc(100vh-100px)] md:h-[calc(100vh-100px)] max-md:h-[100dvh] overflow-hidden">
+<div class="flex h-[calc(100vh-80px)] md:h-[calc(100vh-80px)] max-md:h-[100dvh] overflow-hidden">
 
     <!-- Mobile Filter Modals (outside the scroll container) -->
     <!-- Distance Modal -->
@@ -283,16 +283,9 @@
                 </svg>
             </button>
 
-            <!-- All -->
-            <button data-location-filter="all"
-                    class="location-filter-btn sidebar-nav-btn active-filter flex flex-col items-center gap-1 w-full py-3 px-1 text-center transition-colors">
-                <span class="text-xl">🗺️</span>
-                <span class="text-[10px] font-medium leading-tight">All</span>
-            </button>
-
             <!-- Hiking Trails -->
             <button data-location-filter="trail"
-                    class="location-filter-btn sidebar-nav-btn flex flex-col items-center gap-1 w-full py-3 px-1 text-center transition-colors">
+                    class="location-filter-btn sidebar-nav-btn active-filter flex flex-col items-center gap-1 w-full py-3 px-1 text-center transition-colors">
                 <span class="text-xl">🥾</span>
                 <span class="text-[10px] font-medium leading-tight">Hiking</span>
             </button>
@@ -625,10 +618,7 @@
     </div>
     <!-- Location Type Filter Tabs -->
     <div class="flex border-b border-gray-100 bg-white flex-shrink-0">
-        <button data-mobile-location-filter="all" class="mobile-location-tab flex-1 flex flex-col items-center gap-1 py-2 text-xs font-medium text-primary-600 border-b-2 border-primary-600">
-            <span class="text-lg">🗺️</span><span>All</span>
-        </button>
-        <button data-mobile-location-filter="trail" class="mobile-location-tab flex-1 flex flex-col items-center gap-1 py-2 text-xs font-medium text-gray-500 border-b-2 border-transparent">
+        <button data-mobile-location-filter="trail" class="mobile-location-tab flex-1 flex flex-col items-center gap-1 py-2 text-xs font-medium text-primary-600 border-b-2 border-primary-600">
             <span class="text-lg">🥾</span><span>Hiking</span>
         </button>
         <button data-mobile-location-filter="fishing_lake" class="mobile-location-tab flex-1 flex flex-col items-center gap-1 py-2 text-xs font-medium text-gray-500 border-b-2 border-transparent">
@@ -669,26 +659,42 @@
 </div>
 
 <!-- Facility Media Modal -->
-<div id="facility-media-modal" class="hidden fixed inset-0 bg-black bg-opacity-90 z-[9999] flex items-center justify-center p-4">
-    <div class="relative max-w-5xl w-full bg-white rounded-lg shadow-xl">
-        <!-- Close button -->
-        <button onclick="closeFacilityMediaModal()" 
-                class="absolute top-4 right-4 z-10 bg-gray-900 bg-opacity-75 hover:bg-opacity-100 text-white rounded-full p-2 transition-all">
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-            </svg>
-        </button>
-        
-        <!-- Content container -->
-        <div id="facility-modal-content" class="p-4">
-            <!-- Content will be dynamically inserted here -->
-        </div>
-        
-        <!-- Caption -->
-        <div id="facility-modal-caption" class="px-6 pb-6 text-center text-gray-700">
-            <!-- Caption will be dynamically inserted here -->
-        </div>
-    </div>
+<div id="facility-media-modal" class="hidden fixed inset-0 bg-black bg-opacity-95 z-[9999] flex flex-col items-center justify-center p-4 gap-4">
+    <!-- Counter pill -->
+    <div id="facility-modal-counter"
+         class="absolute top-4 left-1/2 -translate-x-1/2 z-20 px-3 py-1.5 rounded-full bg-white/10 backdrop-blur text-white text-xs font-semibold tracking-wide"></div>
+
+    <!-- Close button -->
+    <button type="button" onclick="closeFacilityMediaModal()"
+            class="absolute top-4 right-4 z-20 w-10 h-10 rounded-full bg-white/10 hover:bg-white/25 backdrop-blur text-white flex items-center justify-center transition-all">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"/>
+        </svg>
+    </button>
+
+    <!-- Prev -->
+    <button id="facility-modal-prev" type="button"
+            class="absolute left-4 top-1/2 -translate-y-1/2 z-20 w-11 h-11 rounded-full bg-white/10 hover:bg-white/25 backdrop-blur text-white flex items-center justify-center transition-all">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7"/>
+        </svg>
+    </button>
+
+    <!-- Next -->
+    <button id="facility-modal-next" type="button"
+            class="absolute right-4 top-1/2 -translate-y-1/2 z-20 w-11 h-11 rounded-full bg-white/10 hover:bg-white/25 backdrop-blur text-white flex items-center justify-center transition-all">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7"/>
+        </svg>
+    </button>
+
+    <!-- Image / video stage -->
+    <div id="facility-modal-content"
+         class="max-w-6xl w-full flex items-center justify-center"></div>
+
+    <!-- Caption -->
+    <div id="facility-modal-caption"
+         class="max-w-2xl text-center text-white/80 text-sm leading-relaxed px-2"></div>
 </div>
 @push('scripts')
 <script src="https://api.mapbox.com/mapbox-gl-js/v3.10.0/mapbox-gl.js"></script>
@@ -1080,6 +1086,24 @@
 }
 
 
+/* Selected state for trail/business/fishing/highlight markers — styled in place
+   so the marker never shifts off its lat/lng. No transform transition: it would
+   interact with Mapbox's per-frame transform on the marker container during zoom
+   and cause visible drift. */
+.selectable-marker-el.selected {
+    transform: scale(1.35);
+    box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.55), 0 4px 14px rgba(0, 0, 0, 0.55) !important;
+}
+
+/* Network markers always render on top of other markers */
+.mapboxgl-marker:has(.network-marker-el) {
+    z-index: 10 !important;
+}
+.network-marker-el.selected {
+    transform: scale(1.18);
+    box-shadow: 0 0 0 4px rgba(22, 101, 52, 0.35), 0 4px 14px rgba(0, 0, 0, 0.5) !important;
+}
+
 /* My Location marker */
 .my-location-marker {
     background: transparent !important;
@@ -1165,47 +1189,125 @@
 
 /* Facility popup styling - Mapbox */
 .facility-popup .mapboxgl-popup-content {
-    border-radius: 12px;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+    border-radius: 14px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.18), 0 2px 8px rgba(0, 0, 0, 0.08);
+    border: 1px solid rgba(0, 0, 0, 0.06);
     padding: 0;
+    overflow: hidden;
+}
+
+.facility-popup .mapboxgl-popup-tip {
+    border-top-color: #fff;
+    border-bottom-color: #fff;
+}
+
+.facility-popup .mapboxgl-popup-close-button {
+    top: 10px;
+    right: 10px;
+    width: 26px;
+    height: 26px;
+    padding: 0;
+    border-radius: 50%;
+    background: rgba(17, 24, 39, 0.06);
+    color: #4b5563;
+    font-size: 18px;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s ease, color 0.15s ease;
+}
+
+.facility-popup .mapboxgl-popup-close-button:hover {
+    background: rgba(17, 24, 39, 0.12);
+    color: #111827;
 }
 
 /* Facility Popup Gallery Styles */
 .facility-popup-content {
-    padding: 16px;
+    padding: 16px 18px 16px;
     min-width: 280px;
+    max-width: 320px;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
 }
 
 .facility-popup-header {
     display: flex;
     align-items: center;
-    margin-bottom: 8px;
+    gap: 12px;
+    margin-bottom: 10px;
+    padding-right: 28px;
 }
 
 .facility-popup-icon {
-    font-size: 28px;
-    margin-right: 12px;
+    flex-shrink: 0;
+    width: 42px;
+    height: 42px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+    border: 1px solid #bbf7d0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    line-height: 1;
+    margin: 0;
 }
 
 .facility-popup-title {
     margin: 0;
-    font-size: 18px;
-    font-weight: 600;
+    font-size: 15px;
+    font-weight: 700;
     color: #111827;
+    line-height: 1.3;
+    letter-spacing: -0.01em;
+    word-break: break-word;
 }
 
 .facility-popup-type {
-    margin: 0 0 8px 0;
-    font-size: 13px;
-    color: #6b7280;
-    text-transform: capitalize;
+    display: inline-block;
+    margin: 0 0 12px 0;
+    padding: 3px 10px;
+    background: #f0fdf4;
+    color: #166534;
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    border-radius: 999px;
 }
 
 .facility-popup-description {
-    margin: 0 0 12px 0;
-    font-size: 14px;
-    color: #374151;
-    line-height: 1.5;
+    margin: 0;
+    font-size: 13px;
+    color: #4b5563;
+    line-height: 1.55;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.facility-popup-description.expanded {
+    -webkit-line-clamp: unset;
+    overflow: visible;
+}
+
+.facility-popup-readmore {
+    margin: 4px 0 0;
+    padding: 0;
+    background: none;
+    border: 0;
+    color: #166534;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    line-height: 1.4;
+    display: none; /* shown via JS only when description is actually clipped */
+}
+
+.facility-popup-readmore:hover {
+    text-decoration: underline;
 }
 
 /* ── Business slide panel ────────────────────────────────── */
@@ -1292,6 +1394,35 @@
 
 .biz-panel-body {
     padding: 20px 20px 28px;
+    /* Firefox: hide scrollbar by default */
+    scrollbar-width: thin;
+    scrollbar-color: transparent transparent;
+    transition: scrollbar-color 0.25s ease;
+}
+.biz-panel-body:hover,
+.biz-panel-body.is-scrolling {
+    scrollbar-color: rgba(0, 0, 0, 0.28) transparent;
+}
+/* WebKit / Chromium / Safari */
+.biz-panel-body::-webkit-scrollbar {
+    width: 8px;
+}
+.biz-panel-body::-webkit-scrollbar-track {
+    background: transparent;
+}
+.biz-panel-body::-webkit-scrollbar-thumb {
+    background-color: transparent;
+    border-radius: 999px;
+    border: 2px solid transparent;
+    background-clip: padding-box;
+    transition: background-color 0.25s ease;
+}
+.biz-panel-body:hover::-webkit-scrollbar-thumb,
+.biz-panel-body.is-scrolling::-webkit-scrollbar-thumb {
+    background-color: rgba(0, 0, 0, 0.28);
+}
+.biz-panel-body:hover::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(0, 0, 0, 0.5);
 }
 
 .biz-panel-name {
@@ -1741,44 +1872,88 @@
         content.innerHTML = ''; // Clear content to stop video playback
     }
 
-    // Facility Media Modal Functions
-    function openFacilityMediaModal(url, type, caption) {
-        const modal = document.getElementById('facility-media-modal');
-        const content = document.getElementById('facility-modal-content');
+    // Facility Media Modal — carousel through every photo/video for the facility.
+    // Media is cached per facility id by loadFacilities().
+    window._facilityMediaCache = window._facilityMediaCache || {};
+    let _facilityModalState = { facilityId: null, index: 0 };
+
+    function openFacilityMediaModal(facilityId, index) {
+        const data = window._facilityMediaCache[facilityId];
+        if (!data || !data.media || !data.media.length) { return; }
+        _facilityModalState.facilityId = facilityId;
+        _facilityModalState.index = Math.max(0, Math.min(index || 0, data.media.length - 1));
+        document.getElementById('facility-media-modal').classList.remove('hidden');
+        _renderFacilityMediaItem();
+    }
+
+    function _renderFacilityMediaItem() {
+        const { facilityId, index } = _facilityModalState;
+        const data = window._facilityMediaCache[facilityId];
+        if (!data) { return; }
+        const media = data.media[index];
+        const total = data.media.length;
+        const content   = document.getElementById('facility-modal-content');
+        const counter   = document.getElementById('facility-modal-counter');
         const captionEl = document.getElementById('facility-modal-caption');
-        
-        if (type === 'photo') {
-            content.innerHTML = `<img src="${url}" alt="${caption}" class="w-full h-auto max-h-[70vh] object-contain rounded-lg">`;
-        } else if (type === 'video') {
-            const embedUrl = getVideoEmbedUrl(url);
-            
+        const prevBtn   = document.getElementById('facility-modal-prev');
+        const nextBtn   = document.getElementById('facility-modal-next');
+
+        const isVideo = media.media_type === 'video_url' || media.media_type === 'video';
+        const fullUrl = isVideo
+            ? (media.url || media.video_url)
+            : (media.url || media.thumbnail_url);
+
+        if (isVideo) {
+            const embedUrl = getVideoEmbedUrl(fullUrl);
             if (embedUrl) {
                 content.innerHTML = `
-                    <div class="relative" style="padding-bottom: 56.25%; height: 0;">
-                        <iframe src="${embedUrl}" 
-                                frameborder="0" 
-                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                    <div class="relative w-full max-w-5xl" style="padding-bottom: 56.25%;">
+                        <iframe src="${embedUrl}"
+                                frameborder="0"
+                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                                 allowfullscreen
-                                class="absolute top-0 left-0 w-full h-full rounded-lg">
-                        </iframe>
-                    </div>
-                `;
+                                class="absolute inset-0 w-full h-full rounded-lg shadow-2xl"></iframe>
+                    </div>`;
             } else {
-                content.innerHTML = `<p class="text-red-500 text-center p-4">Unable to load video</p>`;
+                content.innerHTML = `<p class="text-red-300 text-center p-4">Unable to load video</p>`;
             }
+        } else {
+            content.innerHTML = `<img src="${fullUrl}" alt="" class="max-w-full max-h-[78vh] object-contain rounded-lg shadow-2xl">`;
         }
-        
-        captionEl.textContent = caption || '';
-        modal.classList.remove('hidden');
+
+        counter.textContent = `${index + 1} / ${total}`;
+        captionEl.textContent = media.caption || data.name || '';
+
+        const showArrows = total > 1;
+        prevBtn.style.display = showArrows ? '' : 'none';
+        nextBtn.style.display = showArrows ? '' : 'none';
+        counter.style.display = showArrows ? '' : 'none';
+    }
+
+    function _facilityMediaStep(delta) {
+        const data = window._facilityMediaCache[_facilityModalState.facilityId];
+        if (!data || !data.media.length) { return; }
+        const total = data.media.length;
+        _facilityModalState.index = (_facilityModalState.index + delta + total) % total;
+        _renderFacilityMediaItem();
     }
 
     function closeFacilityMediaModal() {
         const modal = document.getElementById('facility-media-modal');
         const content = document.getElementById('facility-modal-content');
-        
         modal.classList.add('hidden');
-        content.innerHTML = ''; // Clear content to stop video playback
+        content.innerHTML = ''; // stop any video playback
+        _facilityModalState.facilityId = null;
     }
+
+    document.getElementById('facility-modal-prev')?.addEventListener('click', (e) => {
+        e.stopPropagation();
+        _facilityMediaStep(-1);
+    });
+    document.getElementById('facility-modal-next')?.addEventListener('click', (e) => {
+        e.stopPropagation();
+        _facilityMediaStep(1);
+    });
 
     // Close modal when clicking outside
     document.getElementById('highlight-media-modal')?.addEventListener('click', function(e) {
@@ -1793,11 +1968,17 @@
         }
     });
 
-    // Close modal with Escape key
+    // Close modal with Escape key, navigate facility carousel with arrow keys
     document.addEventListener('keydown', function(e) {
         if (e.key === 'Escape') {
             closeHighlightMediaModal();
             closeFacilityMediaModal();
+            return;
+        }
+        const facModal = document.getElementById('facility-media-modal');
+        if (facModal && !facModal.classList.contains('hidden')) {
+            if (e.key === 'ArrowLeft')  { _facilityMediaStep(-1); }
+            if (e.key === 'ArrowRight') { _facilityMediaStep(1); }
         }
     });
 
@@ -1958,11 +2139,13 @@
                 'snowshoeing': [], 'ice-fishing': [], 'cross-country-skiing': [], 'downhill-skiing': []
             };
             this.businessMarkers = {};
+            this.networkMarkers = {};
+            this.networkData = [];
             this.facilityMarkers = [];
             this.showBusinesses = true;
             this.currentTrails = [];
             this.businessData = [];
-            this.activeLocationFilter = 'all';
+            this.activeLocationFilter = 'trail';
             this._selectedTrailId = null;
             this._selectedPinMarker = null;
             this._selectedOriginalEl = null;
@@ -1983,6 +2166,7 @@
                 this.loadTrails();
                 this.loadFacilities();
                 this.loadBusinesses();
+                this.loadTrailNetworks();
             });
 
             // Re-init layers when style changes (after setStyle)
@@ -1994,6 +2178,7 @@
                 if (this.allTrails && this.allTrails.length) {
                     this.applyFilters();
                     this.renderBusinessMarkers();
+                    this.renderNetworkMarkers();
                 }
             });
         }
@@ -2734,10 +2919,20 @@
 
             const allFilteredTrails = this.filterTrails(this.allTrails);
 
+            // Trails to draw on the map (routes + point markers) — filtered by location filter
+            let mapTrails;
+            if (this.activeLocationFilter === 'business') {
+                mapTrails = [];
+            } else if (this.activeLocationFilter === 'fishing_lake') {
+                mapTrails = allFilteredTrails.filter(t => t.location_type === 'fishing_lake');
+            } else {
+                mapTrails = allFilteredTrails.filter(t => t.location_type !== 'fishing_lake');
+            }
+
             // Update route GeoJSON source
             const source = this.map.getSource('trail-routes');
             if (source) {
-                source.setData(this.buildRouteGeoJSON(allFilteredTrails));
+                source.setData(this.buildRouteGeoJSON(mapTrails));
                 // Reset selected state after data update
                 if (this._selectedTrailId) {
                     setTimeout(() => {
@@ -2751,7 +2946,10 @@
                 }
             }
 
-            allFilteredTrails.forEach(trail => {
+            mapTrails.forEach(trail => {
+                // Network trails are represented by a single network marker — skip individual markers
+                if (trail.trail_network_id) { return; }
+
                 const isFishingLake = trail.location_type === 'fishing_lake';
 
                 // Highlight markers
@@ -2832,14 +3030,10 @@
             this._clearSelection();
             if (!originalEl) return;
 
-            originalEl.style.visibility = 'hidden';
+            // Style the marker in place — never swap or hide it, so its lat/lng
+            // anchor never changes and the marker can't visually jump on click.
+            originalEl.classList.add('selected');
             this._selectedOriginalEl = originalEl;
-
-            const emoji = originalEl.dataset.emoji || '📍';
-            const pinEl = this._createSelectedPinEl(emoji);
-            this._selectedPinMarker = new mapboxgl.Marker({ element: pinEl, anchor: 'bottom' })
-                .setLngLat([lng, lat])
-                .addTo(this.map);
         }
 
         _clearSelection() {
@@ -2848,6 +3042,7 @@
                 this._selectedPinMarker = null;
             }
             if (this._selectedOriginalEl) {
+                this._selectedOriginalEl.classList.remove('selected');
                 this._selectedOriginalEl.style.visibility = '';
                 this._selectedOriginalEl = null;
             }
@@ -3342,9 +3537,24 @@
 
         focusOnTrailById(trailId) {
             const trail = this.allTrails.find(t => t.id == trailId);
-            if (trail) {
-                this.focusOnTrail(trail);
+            if (!trail) { return; }
+
+            // Trail belongs to a network — show the network panel instead
+            if (trail.trail_network_id) {
+                const network = (this.networkData || []).find(n => n.id == trail.trail_network_id);
+                if (network) {
+                    const marker = this.networkMarkers[network.id];
+                    if (marker) {
+                        const { lat, lng } = marker.getLngLat();
+                        this._selectMarker(marker.getElement(), lat, lng);
+                        this.map.flyTo({ center: [lng, lat], zoom: 13, duration: 800 });
+                    }
+                    this.showNetworkInfo(network);
+                    return;
+                }
             }
+
+            this.focusOnTrail(trail);
         }
 
         focusOnBusiness(businessId) {
@@ -3576,29 +3786,38 @@
                 facilities.forEach(facility => {
                     const el = this._createMarkerEl(facility.icon || '📍');
 
+                    // Cache the full media list so the modal carousel can navigate it
+                    if (facility.media && facility.media.length) {
+                        window._facilityMediaCache[facility.id] = {
+                            name: facility.name,
+                            media: facility.media,
+                        };
+                    }
+
                     let popupContent = `<div class="facility-popup-content">
                         <div class="facility-popup-header">
                             <span class="facility-popup-icon">${facility.icon}</span>
                             <h3 class="facility-popup-title">${facility.name}</h3>
                         </div>
                         <p class="facility-popup-type">${facility.facility_type_label}</p>
-                        ${facility.description ? `<p class="facility-popup-description">${facility.description}</p>` : ''}`;
+                        ${facility.description ? `
+                            <p class="facility-popup-description">${facility.description}</p>
+                            <button type="button" class="facility-popup-readmore" data-state="collapsed">Read more</button>
+                        ` : ''}`;
 
                     if (facility.media && facility.media.length > 0) {
                         popupContent += `<div class="facility-media-gallery">
                             <p class="facility-media-count">${facility.media_count} ${facility.media_count === 1 ? 'photo/video' : 'photos/videos'}</p>
                             <div class="facility-media-grid">`;
                         facility.media.slice(0, 4).forEach((media, index) => {
-                            const isVideo = media.media_type === 'video_url';
+                            const isVideo = media.media_type === 'video_url' || media.media_type === 'video';
                             const thumbnailUrl = media.thumbnail_url || media.url;
-                            const fullUrl = isVideo ? media.url : (thumbnailUrl || media.url);
-                            const mediaType = isVideo ? 'video' : 'photo';
                             const remainingCount = facility.media.length - 4;
-                            if (index === 3 && remainingCount > 0) {
-                                popupContent += `<div class="facility-media-item" onclick="openFacilityMediaModal('${fullUrl}','${mediaType}','${media.caption || facility.name}')"><img src="${thumbnailUrl}" class="facility-media-thumbnail"><div class="facility-media-overlay">+${remainingCount} more</div>${isVideo ? '<div class="facility-video-badge">▶</div>' : ''}</div>`;
-                            } else {
-                                popupContent += `<div class="facility-media-item" onclick="openFacilityMediaModal('${fullUrl}','${mediaType}','${media.caption || facility.name}')"><img src="${thumbnailUrl}" class="facility-media-thumbnail">${isVideo ? '<div class="facility-video-badge">▶</div>' : ''}</div>`;
-                            }
+                            const overlay = (index === 3 && remainingCount > 0)
+                                ? `<div class="facility-media-overlay">+${remainingCount} more</div>`
+                                : '';
+                            const videoBadge = isVideo ? '<div class="facility-video-badge">▶</div>' : '';
+                            popupContent += `<div class="facility-media-item" onclick="openFacilityMediaModal(${facility.id}, ${index})"><img src="${thumbnailUrl}" class="facility-media-thumbnail">${overlay}${videoBadge}</div>`;
                         });
                         popupContent += `</div></div>`;
                     }
@@ -3607,6 +3826,25 @@
                     const popup = new mapboxgl.Popup({ maxWidth: '320px', className: 'facility-popup', offset: 28 })
                         .setHTML(popupContent);
 
+                    // Show the "Read more" button only if the description is actually
+                    // clipped by the 3-line clamp. Runs after the popup is in the DOM.
+                    popup.on('open', () => {
+                        const root = popup.getElement();
+                        if (!root) { return; }
+                        const desc = root.querySelector('.facility-popup-description');
+                        const btn = root.querySelector('.facility-popup-readmore');
+                        if (!desc || !btn) { return; }
+                        // Reset so re-opening after expand still re-evaluates correctly
+                        desc.classList.remove('expanded');
+                        btn.dataset.state = 'collapsed';
+                        btn.textContent = 'Read more';
+                        if (desc.scrollHeight > desc.clientHeight + 1) {
+                            btn.style.display = 'inline';
+                        } else {
+                            btn.style.display = 'none';
+                        }
+                    });
+
                     el.addEventListener('click', (e) => {
                         e.stopPropagation();
                         this._selectMarker(el, facility.latitude, facility.longitude);
@@ -3614,14 +3852,24 @@
                     });
 
                     const marker = new mapboxgl.Marker({ element: el, anchor: 'center' })
-                        .setLngLat([facility.longitude, facility.latitude])
-                        .addTo(this.map);
+                        .setLngLat([facility.longitude, facility.latitude]);
+
+                    if (this.activeLocationFilter === 'trail') {
+                        marker.addTo(this.map);
+                    }
 
                     this.facilityMarkers.push(marker);
                 });
             } catch (error) {
                 console.error('Error loading facilities:', error);
             }
+        }
+
+        toggleFacilityVisibility() {
+            const show = this.activeLocationFilter === 'trail';
+            (this.facilityMarkers || []).forEach(m => {
+                if (show) { m.addTo(this.map); } else { m.remove(); }
+            });
         }
 
         async loadBusinesses() {
@@ -3653,6 +3901,7 @@
             this.businessMarkers = {};
 
             if (!this.showBusinesses) return;
+            if (this.activeLocationFilter !== 'business') return;
 
             (this.businessData || []).forEach(business => {
                 const el = this._createMarkerEl(business.icon || '🏪');
@@ -3669,6 +3918,154 @@
 
                 this.businessMarkers[business.id] = marker;
             });
+        }
+
+        async loadTrailNetworks() {
+            try {
+                const response = await fetch('/api/trail-networks');
+                this.networkData = await response.json();
+                this.renderNetworkMarkers();
+            } catch (error) {
+                console.error('Error loading trail networks:', error);
+            }
+        }
+
+        _createNetworkMarkerEl(emoji) {
+            const el = document.createElement('div');
+            el.className = 'selectable-marker-el network-marker-el';
+            el.dataset.emoji = emoji;
+            el.style.cssText = 'background-color:#166534;width:38px;height:38px;border-radius:8px;border:2px solid #ffffff;box-shadow:0 3px 10px rgba(0,0,0,0.4);display:flex;align-items:center;justify-content:center;font-size:17px;cursor:pointer;line-height:1;';
+            el.textContent = emoji;
+            return el;
+        }
+
+        renderNetworkMarkers() {
+            Object.values(this.networkMarkers).forEach(m => m.remove());
+            this.networkMarkers = {};
+
+            if (this.activeLocationFilter !== 'trail') return;
+
+            (this.networkData || []).forEach(network => {
+                let lat = network.latitude;
+                let lng = network.longitude;
+
+                // Fall back to centroid of member trails if network has no coordinates
+                if (!lat || !lng) {
+                    const memberTrails = (this.allTrails || []).filter(t => t.trail_network_id == network.id);
+                    const coords = memberTrails.map(t => this.sanitizeCoordinates(t.coordinates)).filter(Boolean);
+                    if (coords.length === 0) { return; }
+                    lat = coords.reduce((s, c) => s + c[0], 0) / coords.length;
+                    lng = coords.reduce((s, c) => s + c[1], 0) / coords.length;
+                }
+
+                if (!lat || !lng) { return; }
+
+                const type = (network.type || '').toLowerCase();
+                let icon = network.icon || '🏔️';
+                if (!network.icon) {
+                    if (type.includes('ski') || type.includes('snow')) { icon = '⛷️'; }
+                    else if (type.includes('hike') || type.includes('hiking')) { icon = '🥾'; }
+                    else if (type.includes('bike') || type.includes('cycling')) { icon = '🚵'; }
+                }
+
+                const el = this._createNetworkMarkerEl(icon);
+                el.dataset.networkId = network.id;
+
+                el.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    this._selectMarker(el, lat, lng);
+                    this.showNetworkInfo(network);
+                });
+
+                const marker = new mapboxgl.Marker({ element: el, anchor: 'center' })
+                    .setLngLat([lng, lat])
+                    .addTo(this.map);
+
+                this.networkMarkers[network.id] = marker;
+            });
+        }
+
+        showNetworkInfo(network) {
+            const panel = document.getElementById('trail-info-panel');
+            const content = document.getElementById('trail-info-content');
+            if (!panel || !content) { return; }
+
+            document.getElementById('business-panel')?.classList.add('hidden');
+            if (this._isFlying) { this.stopFlyAnimation(); }
+
+            const type = (network.type || '').toLowerCase();
+            let heroIcon = network.icon || '🏔️';
+            if (!network.icon) {
+                if (type.includes('ski') || type.includes('snow')) { heroIcon = '⛷️'; }
+                else if (type.includes('hike') || type.includes('hiking')) { heroIcon = '🥾'; }
+                else if (type.includes('bike') || type.includes('cycling')) { heroIcon = '🚵'; }
+            }
+
+            const hero = network.image
+                ? `<div class="biz-panel-hero" style="background-image:url('${network.image}');background-size:cover;background-position:center;"></div>`
+                : `<div class="biz-panel-hero" style="background:linear-gradient(135deg,#14532d,#166534);"><div class="biz-panel-hero-placeholder">${heroIcon}</div></div>`;
+
+            const actions = [];
+            actions.push(`
+                <a href="/trail-networks/${network.slug}" class="biz-panel-action-btn">
+                    <div class="biz-panel-action-icon" style="background:#166534;">
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-1.447-.894L15 9m0 8V9m0 0V7"/></svg>
+                    </div>
+                    <span class="biz-panel-action-label" style="color:#14532d;">View Network</span>
+                </a>`);
+            if (network.website_url) {
+                actions.push(`
+                    <a href="${network.website_url}" target="_blank" class="biz-panel-action-btn">
+                        <div class="biz-panel-action-icon" style="background:#166534;">
+                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"/></svg>
+                        </div>
+                        <span class="biz-panel-action-label" style="color:#14532d;">Website</span>
+                    </a>`);
+            }
+
+            const diffLabel = ['', 'Very Easy', 'Easy', 'Moderate', 'Hard', 'Very Hard'];
+            const trailRows = (network.trails || []).map(t => {
+                const color = this.getDifficultyColor(t.difficulty);
+                const label = diffLabel[t.difficulty] || ('Level ' + t.difficulty);
+                return `
+                    <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid #f3f4f6;">
+                        <span style="font-size:13px;color:#374151;font-weight:500;">${escapeHtml(t.name)}</span>
+                        <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
+                            ${t.distance ? `<span style="font-size:11px;color:#6b7280;">${t.distance} km</span>` : ''}
+                            ${t.difficulty ? `<span style="font-size:11px;font-weight:700;color:${color};background:${color}20;padding:2px 7px;border-radius:999px;">${label}</span>` : ''}
+                        </div>
+                    </div>`;
+            }).join('');
+
+            content.innerHTML = `
+                <div style="position:relative;flex-shrink:0;">
+                    ${hero}
+                    <button onclick="closeTrailInfoPanel()"
+                            style="position:absolute;top:10px;right:10px;background:rgba(255,255,255,0.92);border:none;cursor:pointer;border-radius:50%;width:34px;height:34px;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(0,0,0,0.18);"
+                            aria-label="Close">
+                        <svg width="16" height="16" fill="none" stroke="#374151" stroke-width="2.5" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                    </button>
+                </div>
+                <div class="biz-panel-body" style="flex:1;overflow-y:auto;">
+                    <h2 class="biz-panel-name">${escapeHtml(network.name)}</h2>
+                    <div class="biz-panel-meta">
+                        <span class="biz-panel-type">🏔️ Trail Network</span>
+                        ${network.type ? `<span class="biz-panel-dot">·</span><span style="font-size:12px;font-weight:600;background:#dcfce7;color:#166534;padding:2px 8px;border-radius:999px;">${escapeHtml(network.type)}</span>` : ''}
+                        <span class="biz-panel-dot">·</span>
+                        <span style="font-size:12px;color:#6b7280;">${network.trail_count} trail${network.trail_count !== 1 ? 's' : ''}</span>
+                    </div>
+                    <div class="biz-panel-actions">${actions.join('')}</div>
+                    <hr class="biz-panel-divider">
+                    ${network.description ? `<p style="font-size:13px;color:#4b5563;line-height:1.6;margin:0 0 16px;">${escapeHtml(network.description)}</p>` : ''}
+                    ${trailRows ? `
+                        <div style="font-size:12px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:8px;">Trails in this Network</div>
+                        <div>${trailRows}</div>` : ''}
+                </div>
+            `;
+
+            panel.classList.remove('hidden');
         }
 
         renderTrailList(trails, businesses = [], targetContainerId = null) {
@@ -4080,6 +4477,37 @@
         }
     }
 
+    // Expand / collapse the description in facility popups (delegated click handler).
+    document.addEventListener('click', function (e) {
+        const btn = e.target.closest('.facility-popup-readmore');
+        if (!btn) { return; }
+        const desc = btn.previousElementSibling;
+        if (!desc || !desc.classList.contains('facility-popup-description')) { return; }
+        const expanded = btn.dataset.state === 'expanded';
+        desc.classList.toggle('expanded', !expanded);
+        btn.dataset.state = expanded ? 'collapsed' : 'expanded';
+        btn.textContent = expanded ? 'Read more' : 'Show less';
+    });
+
+    // Show the panel scrollbar while the user is actively scrolling.
+    // Scroll events don't bubble, but they propagate in the capture phase.
+    (function () {
+        const timers = new WeakMap();
+        document.addEventListener('scroll', function (e) {
+            const el = e.target;
+            if (!(el instanceof Element) || !el.classList || !el.classList.contains('biz-panel-body')) {
+                return;
+            }
+            el.classList.add('is-scrolling');
+            const prev = timers.get(el);
+            if (prev) { clearTimeout(prev); }
+            timers.set(el, setTimeout(() => {
+                el.classList.remove('is-scrolling');
+                timers.delete(el);
+            }, 800));
+        }, true);
+    })();
+
     // Scripts are at bottom of body — DOM is ready, initialize immediately
     initMap();
 
@@ -4089,7 +4517,7 @@
 
         const searchInput = document.getElementById('trail-list-search');
         const clearSearchBtn = document.getElementById('clear-trail-search-btn');
-        let activeLocationFilter = 'all';
+        let activeLocationFilter = 'trail';
 
         function filterBusinesses(businesses, searchTerm) {
             if (!searchTerm) return businesses;
@@ -4117,18 +4545,13 @@
 
             if (activeLocationFilter === 'business') {
                 window.trailMap.renderTrailList([], filterBusinesses(allBusinesses, searchTerm));
-            } else if (activeLocationFilter === 'trail') {
-                const hiking = filterTrails(allTrails.filter(t => t.location_type === 'trail'), searchTerm);
-                window.trailMap.renderTrailList(hiking, []);
             } else if (activeLocationFilter === 'fishing_lake') {
                 const fishing = filterTrails(allTrails.filter(t => t.location_type === 'fishing_lake'), searchTerm);
                 window.trailMap.renderTrailList(fishing, []);
             } else {
-                // All
-                window.trailMap.renderTrailList(
-                    filterTrails(allTrails, searchTerm),
-                    filterBusinesses(allBusinesses, searchTerm)
-                );
+                // Trails (hiking)
+                const hiking = filterTrails(allTrails.filter(t => t.location_type === 'trail'), searchTerm);
+                window.trailMap.renderTrailList(hiking, []);
             }
         }
 
@@ -4155,7 +4578,13 @@
         document.querySelectorAll('.location-filter-btn').forEach(btn => {
             btn.addEventListener('click', function() {
                 activeLocationFilter = this.dataset.locationFilter;
-                if (window.trailMap) window.trailMap.activeLocationFilter = activeLocationFilter;
+                if (window.trailMap) {
+                    window.trailMap.activeLocationFilter = activeLocationFilter;
+                    window.trailMap.applyFilters();
+                    window.trailMap.renderBusinessMarkers();
+                    window.trailMap.renderNetworkMarkers();
+                    window.trailMap.toggleFacilityVisibility();
+                }
 
                 document.querySelectorAll('.location-filter-btn').forEach(b => {
                     b.classList.remove('active-filter');
@@ -4213,28 +4642,21 @@
                 const q = input ? input.value.trim().toLowerCase() : '';
                 const allTrails     = window.trailMap.allTrails || [];
                 const allBusinesses = window.trailMap.businessData || [];
-                const filter = typeof mobileLocationFilter !== 'undefined' ? mobileLocationFilter : 'all';
+                const filter = typeof mobileLocationFilter !== 'undefined' ? mobileLocationFilter : 'trail';
                 let trails, businesses;
                 if (filter === 'business') {
                     trails = [];
                     businesses = q ? allBusinesses.filter(b =>
                         b.name.toLowerCase().includes(q) || (b.address && b.address.toLowerCase().includes(q))
                     ) : allBusinesses;
-                } else if (filter === 'trail') {
-                    trails = allTrails.filter(t => t.location_type === 'trail' &&
-                        (!q || t.name.toLowerCase().includes(q) || (t.location && t.location.toLowerCase().includes(q))));
-                    businesses = [];
                 } else if (filter === 'fishing_lake') {
                     trails = allTrails.filter(t => t.location_type === 'fishing_lake' &&
                         (!q || t.name.toLowerCase().includes(q) || (t.location && t.location.toLowerCase().includes(q))));
                     businesses = [];
                 } else {
-                    trails = q ? allTrails.filter(t =>
-                        t.name.toLowerCase().includes(q) || (t.location && t.location.toLowerCase().includes(q))
-                    ) : allTrails;
-                    businesses = q ? allBusinesses.filter(b =>
-                        b.name.toLowerCase().includes(q) || (b.address && b.address.toLowerCase().includes(q))
-                    ) : allBusinesses;
+                    trails = allTrails.filter(t => t.location_type === 'trail' &&
+                        (!q || t.name.toLowerCase().includes(q) || (t.location && t.location.toLowerCase().includes(q))));
+                    businesses = [];
                 }
                 const saved = window.trailMap.activeLocationFilter;
                 window.trailMap.activeLocationFilter = filter;
@@ -4253,16 +4675,16 @@
                 if (clearBtn) { clearBtn.classList.add('hidden'); }
                 const inner = document.getElementById('mobile-search-results-inner');
                 if (inner) { inner.innerHTML = '<p class="text-sm text-gray-400 text-center py-8">Start typing to search...</p>'; }
-                // Reset tabs to "All"
-                if (typeof mobileLocationFilter !== 'undefined') { mobileLocationFilter = 'all'; }
+                // Reset tabs to "Hiking"
+                if (typeof mobileLocationFilter !== 'undefined') { mobileLocationFilter = 'trail'; }
                 document.querySelectorAll('.mobile-location-tab').forEach(b => {
                     b.classList.remove('text-primary-600', 'border-primary-600');
                     b.classList.add('text-gray-500', 'border-transparent');
                 });
-                const allTab = document.querySelector('[data-mobile-location-filter="all"]');
-                if (allTab) {
-                    allTab.classList.remove('text-gray-500', 'border-transparent');
-                    allTab.classList.add('text-primary-600', 'border-primary-600');
+                const trailTab = document.querySelector('[data-mobile-location-filter="trail"]');
+                if (trailTab) {
+                    trailTab.classList.remove('text-gray-500', 'border-transparent');
+                    trailTab.classList.add('text-primary-600', 'border-primary-600');
                 }
             },
         };
@@ -4293,7 +4715,7 @@
         });
 
         // Mobile search drawer location filter tabs
-        let mobileLocationFilter = 'all';
+        let mobileLocationFilter = 'trail';
         document.querySelectorAll('.mobile-location-tab').forEach(btn => {
             btn.addEventListener('click', function () {
                 mobileLocationFilter = this.dataset.mobileLocationFilter;

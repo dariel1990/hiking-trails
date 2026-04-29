@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\TrailNetwork;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class AdminTrailNetworkController extends Controller
@@ -36,6 +37,8 @@ class AdminTrailNetworkController extends Controller
             'network_name' => 'required|string|max:255',
             'slug' => 'nullable|string|max:255|unique:trail_networks,slug',
             'type' => 'required|in:nordic_skiing,downhill_skiing,hiking,mountain_biking',
+            'icon' => 'nullable|string|max:10',
+            'image' => 'nullable|image|mimes:jpeg,jpg,png,webp|max:5120',
             'description' => 'nullable|string',
             'latitude' => 'required|numeric|between:-90,90',
             'longitude' => 'required|numeric|between:-180,180',
@@ -49,6 +52,10 @@ class AdminTrailNetworkController extends Controller
         }
 
         $validated['is_always_visible'] = $request->has('is_always_visible');
+
+        if ($request->hasFile('image')) {
+            $validated['image'] = $request->file('image')->store('trail-networks', 'public');
+        }
 
         TrailNetwork::create($validated);
 
@@ -83,6 +90,8 @@ class AdminTrailNetworkController extends Controller
             'network_name' => 'required|string|max:255',
             'slug' => 'nullable|string|max:255|unique:trail_networks,slug,'.$trailNetwork->id,
             'type' => 'required|in:nordic_skiing,downhill_skiing,hiking,mountain_biking',
+            'icon' => 'nullable|string|max:10',
+            'image' => 'nullable|image|mimes:jpeg,jpg,png,webp|max:5120',
             'description' => 'nullable|string',
             'latitude' => 'required|numeric|between:-90,90',
             'longitude' => 'required|numeric|between:-180,180',
@@ -96,6 +105,18 @@ class AdminTrailNetworkController extends Controller
         }
 
         $validated['is_always_visible'] = $request->has('is_always_visible');
+
+        if ($request->hasFile('image')) {
+            if ($trailNetwork->image) {
+                Storage::disk('public')->delete($trailNetwork->image);
+            }
+            $validated['image'] = $request->file('image')->store('trail-networks', 'public');
+        } elseif ($request->boolean('remove_image') && $trailNetwork->image) {
+            Storage::disk('public')->delete($trailNetwork->image);
+            $validated['image'] = null;
+        } else {
+            unset($validated['image']);
+        }
 
         $trailNetwork->update($validated);
 
@@ -112,6 +133,10 @@ class AdminTrailNetworkController extends Controller
         if ($trailNetwork->trails()->count() > 0) {
             return redirect()->route('admin.trail-networks.index')
                 ->with('error', 'Cannot delete trail network with existing trails. Please reassign or delete the trails first.');
+        }
+
+        if ($trailNetwork->image) {
+            Storage::disk('public')->delete($trailNetwork->image);
         }
 
         $trailNetwork->delete();

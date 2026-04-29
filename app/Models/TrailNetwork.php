@@ -11,6 +11,8 @@ class TrailNetwork extends Model
         'network_name',
         'slug',
         'type',
+        'icon',
+        'image',
         'description',
         'latitude',
         'longitude',
