@@ -105,6 +105,22 @@
                                     <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                                 @enderror
                             </div>
+
+                            <div>
+                                <label for="season" class="block text-sm font-medium text-gray-700 mb-1.5">
+                                    Season <span class="text-red-500">*</span>
+                                </label>
+                                <select name="season" id="season" required
+                                        class="block w-full rounded-lg border-gray-300 shadow-sm px-4 py-2.5 focus:border-green-500 focus:ring-green-500 @error('season') border-red-300 @enderror">
+                                    <option value="summer" {{ old('season', 'summer') === 'summer' ? 'selected' : '' }}>☀️ Summer only</option>
+                                    <option value="winter" {{ old('season') === 'winter' ? 'selected' : '' }}>❄️ Winter only</option>
+                                    <option value="both" {{ old('season') === 'both' ? 'selected' : '' }}>Both seasons</option>
+                                </select>
+                                <p class="mt-1 text-xs text-gray-500">Controls when this network appears on the public map's seasonal filter.</p>
+                                @error('season')
+                                    <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                                @enderror
+                            </div>
                         </div>
 
                         {{-- Icon Picker --}}

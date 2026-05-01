@@ -185,7 +185,7 @@
         @yield('content')
     </main>
 
-    @unless(request()->routeIs('map'))
+    @unless(request()->routeIs('map') || request()->routeIs('trail-networks.show'))
     <!-- Enhanced Footer inspired by XploreSmithers -->
     <footer class="bg-gray-900 text-white relative overflow-hidden" style="background: linear-gradient(135deg, #2C5F5D 0%, #1a2e2e 100%);">
         <!-- Subtle background pattern -->

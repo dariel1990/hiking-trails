@@ -360,13 +360,27 @@
     <!-- Bottom-right custom controls (sit above Mapbox zoom) -->
     <div class="absolute bottom-24 right-2.5 z-30 flex flex-col gap-1.5">
         <!-- 3D Toggle -->
-        <button id="toggle-3d-btn"
-            onclick="window.trailMap && window.trailMap.toggle3D()"
-            title="Switch to 3D"
-            class="bg-white text-gray-700 shadow-md hover:bg-gray-50 transition-colors border border-gray-300"
-            style="width:29px;height:29px;display:flex;align-items:center;justify-content:center;border-radius:4px;">
-            <span class="font-bold text-xs leading-none">3D</span>
-        </button>
+        <div id="view-mode-control" class="relative" style="width:29px;height:29px;">
+            <!-- Sliding options pill (appears to the left of the button) -->
+            <div id="view-mode-options"
+                class="absolute right-full top-1/2 -translate-y-1/2 mr-2 flex items-center gap-1 bg-white rounded-full p-1 shadow-md border border-gray-300 pointer-events-none opacity-0 -translate-x-2 transition-all duration-200">
+                <button type="button" data-view-mode="2d"
+                    class="view-mode-option px-3 py-1 rounded-full text-xs font-bold text-gray-500 hover:bg-gray-100 transition-colors leading-none">
+                    2D
+                </button>
+                <button type="button" data-view-mode="3d"
+                    class="view-mode-option active px-3 py-1 rounded-full text-xs font-bold text-gray-500 hover:bg-gray-100 transition-colors leading-none">
+                    3D
+                </button>
+            </div>
+            <button id="toggle-3d-btn"
+                type="button"
+                title="Change view"
+                class="bg-white text-gray-700 shadow-md hover:bg-gray-50 transition-colors border border-gray-300"
+                style="width:29px;height:29px;display:flex;align-items:center;justify-content:center;border-radius:4px;">
+                <span class="font-bold text-xs leading-none">3D</span>
+            </button>
+        </div>
         <!-- My Location -->
         <button id="my-location-btn"
             onclick="window.trailMap && window.trailMap.locateMe()"
@@ -395,7 +409,7 @@
                 <div class="p-2">
                     <div class="text-xs font-semibold text-gray-500 uppercase tracking-wider px-3 py-2">Map Style</div>
                     <div class="grid grid-cols-2 gap-2 mb-2">
-                        <button class="layer-option-card active" data-map-type="standard">
+                        <button class="layer-option-card" data-map-type="standard">
                             <div class="layer-preview">
                                 <img src="{{ asset('images/map-layers/standard.png') }}"
                                     alt="Standard" class="w-full h-full object-cover">
@@ -406,7 +420,7 @@
                             </svg>
                         </button>
 
-                        <button class="layer-option-card" data-map-type="satellite">
+                        <button class="layer-option-card active" data-map-type="satellite">
                             <div class="layer-preview">
                                 <img src="{{ asset('images/map-layers/satellite.png') }}"
                                     alt="Satellite" class="w-full h-full object-cover">
@@ -580,14 +594,14 @@
     <!-- Collapsed Panel Button (Hidden by default) -->
     <!-- Trail Info Panel (Hidden by default) -->
     <div id="trail-info-panel" class="hidden absolute top-16 bottom-4 left-4 md:top-16 md:bottom-4 md:left-4 max-md:inset-x-4 max-md:bottom-4 max-md:top-auto z-40 bg-white rounded-lg shadow-xl w-80 max-md:w-auto flex flex-col overflow-hidden">
-        <div id="trail-info-content" class="flex flex-col flex-1 overflow-y-auto">
+        <div id="trail-info-content" class="flex flex-col flex-1 overflow-hidden">
             <!-- Dynamic content will be loaded here -->
         </div>
     </div>
 
     <!-- Business Detail Panel -->
     <div id="business-panel" class="biz-panel hidden absolute top-16 bottom-4 left-4 md:top-16 md:bottom-4 md:left-4 max-md:inset-x-4 max-md:bottom-4 max-md:top-auto z-40 bg-white rounded-lg shadow-xl w-80 max-md:w-auto flex flex-col overflow-hidden">
-        <div id="business-panel-content" class="flex flex-col flex-1 overflow-y-auto"></div>
+        <div id="business-panel-content" class="flex flex-col flex-1 overflow-hidden"></div>
     </div>
 
     </div>{{-- /map-area --}}
@@ -900,6 +914,14 @@
     display: flex;
     align-items: center;
     justify-content: center;
+    padding: 12px;
+}
+
+.trail-list-image-placeholder img {
+    max-width: 80%;
+    max-height: 80%;
+    object-fit: contain;
+    filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.25));
 }
 
 /* Scrollbar styling */
@@ -1025,17 +1047,18 @@
 
 @media (max-width: 768px) {
     #trail-info-panel {
-        max-height: calc(100vh - 2rem);
         position: fixed !important;
         z-index: 50 !important;
-        /* Override any JavaScript-set left property on mobile */
+        /* Sit just below the mobile filter bar (top:60px + ~48px pills + gap) */
+        top: 115px !important;
+        bottom: 1rem !important;
         left: 1rem !important;
         right: 1rem !important;
-        top: auto !important;
-        bottom: 1rem !important;
+        max-height: none !important;
+        height: auto !important;
         width: auto !important;
     }
-    
+
     /* Add backdrop on mobile when panel is visible */
     #trail-info-panel:not(.hidden)::before {
         content: '';
@@ -1045,7 +1068,7 @@
         z-index: -1;
         pointer-events: none;
     }
-    
+
     /* Ensure content is above backdrop */
     #trail-info-content {
         position: relative;
@@ -1188,6 +1211,23 @@
 }
 
 /* Facility popup styling - Mapbox */
+/* View mode (2D / 3D) sliding options */
+#view-mode-options.is-open {
+    pointer-events: auto;
+    opacity: 1;
+    transform: translate(0, -50%);
+}
+
+.view-mode-option.active {
+    background: linear-gradient(135deg, #10B981 0%, #059669 100%);
+    color: #fff;
+    box-shadow: 0 2px 4px rgba(16, 185, 129, 0.3);
+}
+
+.view-mode-option.active:hover {
+    background: linear-gradient(135deg, #10B981 0%, #059669 100%);
+}
+
 .facility-popup .mapboxgl-popup-content {
     border-radius: 14px;
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.18), 0 2px 8px rgba(0, 0, 0, 0.08);
@@ -1317,13 +1357,15 @@
 
 @media (max-width: 768px) {
     .biz-panel {
-        max-height: calc(100vh - 2rem);
         position: fixed !important;
         z-index: 50 !important;
+        /* Sit just below the mobile filter bar (top:60px + ~48px pills + gap) */
+        top: 115px !important;
+        bottom: 1rem !important;
         left: 1rem !important;
         right: 1rem !important;
-        top: auto !important;
-        bottom: 1rem !important;
+        max-height: none !important;
+        height: auto !important;
         width: auto !important;
     }
 
@@ -1390,9 +1432,20 @@
     align-items: center;
     justify-content: center;
     font-size: 64px;
+    padding: 24px;
+}
+
+.biz-panel-hero-placeholder img {
+    max-width: 70%;
+    max-height: 70%;
+    object-fit: contain;
+    filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.25));
 }
 
 .biz-panel-body {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
     padding: 20px 20px 28px;
     /* Firefox: hide scrollbar by default */
     scrollbar-width: thin;
@@ -2113,7 +2166,7 @@
                 'terrain':   'mapbox://styles/mapbox/outdoors-v12',
                 'outdoors':  'mapbox://styles/mapbox/navigation-day-v1',
             };
-            this.currentMapType = 'standard';
+            this.currentMapType = 'satellite';
 
             // Initialize Mapbox map with 3D terrain
             this.map = new mapboxgl.Map({
@@ -2121,8 +2174,8 @@
                 style: this.mapStyles[this.currentMapType],
                 center: [-127.1698, 54.7804], // [lng, lat]
                 zoom: 10,
-                pitch: 0,
-                bearing: 0,
+                pitch: 60,
+                bearing: -10,
                 attributionControl: false,
             });
 
@@ -2151,7 +2204,7 @@
             this._selectedOriginalEl = null;
             this._locationMarker = null;
             this._locationCircle = null;
-            this._is3D = false;
+            this._is3D = true;
             this._isFlying = false;
             this._flyAnimation = null;
             this._flyTimeout = null;
@@ -2356,6 +2409,27 @@
                     this.clearFilters();
                 });
             }
+
+            // View mode (2D / 3D) — trigger expands the options sliding to the left
+            const viewModeBtn = document.getElementById('toggle-3d-btn');
+            if (viewModeBtn) {
+                viewModeBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    this.toggleViewModeOptions();
+                });
+            }
+            document.querySelectorAll('.view-mode-option').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    this.setViewMode(btn.dataset.viewMode);
+                });
+            });
+            document.addEventListener('click', (e) => {
+                const wrap = document.getElementById('view-mode-control');
+                if (wrap && !wrap.contains(e.target)) {
+                    this.toggleViewModeOptions(false);
+                }
+            });
 
             // Layers dropdown toggle
             document.getElementById('layers-toggle').addEventListener('click', (e) => {
@@ -2714,15 +2788,16 @@
             return '#8B5E3C';
         }
 
-        // Winter: color network-trail routes by difficulty (1=very easy, 2=easy, 3=moderate, 4=hard, 5=very hard)
+        // Winter: color network-trail routes by difficulty
+        // Easy (1-2) → green, Intermediate (3) → blue, Advanced (4-5) → red
         getDifficultyColor(difficulty) {
             const level = parseInt(difficulty, 10);
             switch (level) {
-                case 2: return '#22C55E';            // Easy → green
                 case 1:
-                case 3: return '#F97316';            // Very Easy / Moderate → orange
+                case 2: return '#22C55E';            // Easy → green
+                case 3: return '#3B82F6';            // Intermediate → blue
                 case 4:
-                case 5: return '#EF4444';            // Hard / Very Hard → red
+                case 5: return '#EF4444';            // Advanced → red
                 default: return this.getDistanceColor();
             }
         }
@@ -2748,6 +2823,9 @@
             const features = [];
             trails.forEach(trail => {
                 if (trail.location_type === 'fishing_lake') return;
+                // Trails that belong to a network are represented by a single network marker
+                // on the main map — their routes only show on the dedicated network page.
+                if (trail.trail_network_id) return;
                 if (!trail.route_coordinates || trail.route_coordinates.length === 0) return;
 
                 const sanitized = trail.route_coordinates
@@ -2812,34 +2890,44 @@
 
             // Update activity filters based on season
             this.updateActivityFilters(season);
-            
+
+            // Re-render network markers so seasonal networks are filtered correctly
+            this.renderNetworkMarkers();
+
             // Reload trails with new season
             this.loadTrails(season);
         }
 
-        toggle3D() {
-            this._is3D = !this._is3D;
-            if (this._is3D) {
-                this.map.setTerrain({ source: 'mapbox-dem', exaggeration: 1.5 });
-            } else {
-                this.map.setTerrain(null);
+        toggleViewModeOptions(force) {
+            const opts = document.getElementById('view-mode-options');
+            if (!opts) { return; }
+            const willOpen = typeof force === 'boolean' ? force : !opts.classList.contains('is-open');
+            opts.classList.toggle('is-open', willOpen);
+        }
+
+        setViewMode(mode) {
+            const next3D = mode === '3d';
+            if (next3D !== this._is3D) {
+                this._is3D = next3D;
+                if (this._is3D) {
+                    this.map.setTerrain({ source: 'mapbox-dem', exaggeration: 1.5 });
+                } else {
+                    this.map.setTerrain(null);
+                }
+                this.map.easeTo({
+                    pitch: this._is3D ? 60 : 0,
+                    bearing: this._is3D ? -10 : 0,
+                    duration: 800,
+                });
+                const btn = document.getElementById('toggle-3d-btn');
+                if (btn) {
+                    btn.innerHTML = `<span class="font-bold text-xs leading-none">${this._is3D ? '3D' : '2D'}</span>`;
+                }
             }
-            this.map.easeTo({
-                pitch: this._is3D ? 60 : 0,
-                bearing: this._is3D ? -10 : 0,
-                duration: 800,
+            document.querySelectorAll('.view-mode-option').forEach(b => {
+                b.classList.toggle('active', b.dataset.viewMode === mode);
             });
-            const btn = document.getElementById('toggle-3d-btn');
-            if (btn) {
-                btn.innerHTML = this._is3D
-                    ? `<span class="font-bold text-xs">2D</span>`
-                    : `<span class="font-bold text-xs">3D</span>`;
-                btn.title = this._is3D ? 'Switch to 2D' : 'Switch to 3D';
-                btn.classList.toggle('bg-primary-600', this._is3D);
-                btn.classList.toggle('text-white', this._is3D);
-                btn.classList.toggle('bg-white', !this._is3D);
-                btn.classList.toggle('text-gray-700', !this._is3D);
-            }
+            this.toggleViewModeOptions(false);
         }
 
         switchMapType(mapType) {
@@ -2919,15 +3007,9 @@
 
             const allFilteredTrails = this.filterTrails(this.allTrails);
 
-            // Trails to draw on the map (routes + point markers) — filtered by location filter
-            let mapTrails;
-            if (this.activeLocationFilter === 'business') {
-                mapTrails = [];
-            } else if (this.activeLocationFilter === 'fishing_lake') {
-                mapTrails = allFilteredTrails.filter(t => t.location_type === 'fishing_lake');
-            } else {
-                mapTrails = allFilteredTrails.filter(t => t.location_type !== 'fishing_lake');
-            }
+            // All trails (hiking + fishing lakes) are drawn on the map regardless of the
+            // sidebar's location filter — that filter only narrows the search results panel.
+            const mapTrails = allFilteredTrails;
 
             // Update route GeoJSON source
             const source = this.map.getSource('trail-routes');
@@ -2958,9 +3040,21 @@
                 }
 
                 if (isFishingLake) {
-                    if (!this.overlayMarkers['fishing']) this.overlayMarkers['fishing'] = [];
-                    const marker = this.createTrailMarker(trail, { type: 'fishing', icon: '🎣', color: '#3B82F6' });
-                    if (marker) this.overlayMarkers['fishing'].push(marker);
+                    if (this.currentSeason === 'summer') {
+                        // Default fishing-lake marker in summer
+                        if (!this.overlayMarkers['fishing']) this.overlayMarkers['fishing'] = [];
+                        const marker = this.createTrailMarker(trail, { type: 'fishing', icon: '🐟', color: '#3B82F6' });
+                        if (marker) this.overlayMarkers['fishing'].push(marker);
+                    } else {
+                        // Winter: render the lake under any winter activity it offers (e.g. ice-fishing)
+                        (trail.activities || []).forEach(activity => {
+                            if (this.activeFilters.includes(activity.type)) {
+                                if (!this.overlayMarkers[activity.type]) this.overlayMarkers[activity.type] = [];
+                                const marker = this.createTrailMarker(trail, activity);
+                                if (marker) this.overlayMarkers[activity.type].push(marker);
+                            }
+                        });
+                    }
                 } else if (this.currentSeason === 'summer') {
                     if (this.activeFilters.includes('hiking')) {
                         if (!this.overlayMarkers['hiking']) this.overlayMarkers['hiking'] = [];
@@ -3000,8 +3094,8 @@
             }
         }
 
-        // Unified marker color — light green on satellite, dark teal otherwise
-        get markerColor() { return this.currentMapType === 'satellite' ? '#4ade80' : '#1B3935'; }
+        // Unified marker color — same dark green on every map layer
+        get markerColor() { return '#1B3935'; }
 
         _createMarkerEl(emoji) {
             const el = document.createElement('div');
@@ -3056,7 +3150,7 @@
             }
 
             const isFishingLake = trail.location_type === 'fishing_lake';
-            const emoji = isFishingLake ? '🎣' : (activity.icon || '📍');
+            const emoji = isFishingLake ? '🐟' : (activity.icon || '📍');
 
             const el = this._createMarkerEl(emoji);
             el.dataset.trailId = trail.id;
@@ -3300,13 +3394,12 @@
 
             // Hero image or placeholder
             const imageUrl = trail.preview_photo || (trail.photos && trail.photos.length > 0 ? trail.photos[0].url : null);
-            const heroPlaceholderEmoji = isFishingLake ? '🎣' : '🥾';
             const heroGradient = isFishingLake
                 ? 'linear-gradient(135deg, #0369a1, #0ea5e9)'
                 : 'linear-gradient(135deg, #166534, #22c55e)';
             const hero = imageUrl
                 ? `<div class="biz-panel-hero"><img src="${imageUrl}" alt="${escapeHtml(trail.name)}"></div>`
-                : `<div class="biz-panel-hero" style="background:${heroGradient};"><div class="biz-panel-hero-placeholder">${heroPlaceholderEmoji}</div></div>`;
+                : `<div class="biz-panel-hero" style="background:${heroGradient};"><div class="biz-panel-hero-placeholder"><img src="/images/xplore-smithers-logo.png" alt="Xplore Smithers"></div></div>`;
 
             // Meta badges — type tag + activities
             const metaParts = [];
@@ -3325,6 +3418,28 @@
                 trail.activities.forEach(activity => {
                     metaParts.push(`<span class="biz-panel-dot">·</span><span style="font-size:12px;font-weight:600;background:${activity.color}20;color:${activity.color};padding:2px 8px;border-radius:999px;">${activity.icon} ${activity.name}</span>`);
                 });
+            }
+
+            // Trail network badge — show parent network if this trail belongs to one
+            let networkBadgeHTML = '';
+            if (trail.trail_network_id) {
+                const network = (this.networkData || []).find(n => n.id == trail.trail_network_id);
+                if (network) {
+                    networkBadgeHTML = `
+                        <a href="/trail-networks/${network.slug}" target="_blank" rel="noopener"
+                            style="display:flex;align-items:center;gap:8px;padding:8px 12px;margin-bottom:14px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;text-decoration:none;color:#166534;transition:background 0.15s;"
+                            onmouseover="this.style.background='#dcfce7';" onmouseout="this.style.background='#f0fdf4';">
+                            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="flex-shrink:0;">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-1.447-.894L15 9m0 8V9m0 0V7"/>
+                            </svg>
+                            <span style="font-size:12px;font-weight:600;flex:1;min-width:0;">
+                                Part of <span style="font-weight:700;">${escapeHtml(network.name)}</span>
+                            </span>
+                            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="flex-shrink:0;opacity:0.6;">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
+                            </svg>
+                        </a>`;
+                }
             }
 
             // Action buttons — green theme (border+shadow handled by CSS, icon/label color overrides)
@@ -3443,6 +3558,7 @@
                 <div class="biz-panel-body" style="flex:1;overflow-y:auto;">
                     <h2 class="biz-panel-name">${escapeHtml(trail.name)}</h2>
                     <div class="biz-panel-meta">${metaParts.join('')}</div>
+                    ${networkBadgeHTML}
                     ${actions.length ? `<div class="biz-panel-actions">${actions.join('')}</div>` : ''}
                     <hr class="biz-panel-divider">
                     ${statsHTML}
@@ -3538,22 +3654,6 @@
         focusOnTrailById(trailId) {
             const trail = this.allTrails.find(t => t.id == trailId);
             if (!trail) { return; }
-
-            // Trail belongs to a network — show the network panel instead
-            if (trail.trail_network_id) {
-                const network = (this.networkData || []).find(n => n.id == trail.trail_network_id);
-                if (network) {
-                    const marker = this.networkMarkers[network.id];
-                    if (marker) {
-                        const { lat, lng } = marker.getLngLat();
-                        this._selectMarker(marker.getElement(), lat, lng);
-                        this.map.flyTo({ center: [lng, lat], zoom: 13, duration: 800 });
-                    }
-                    this.showNetworkInfo(network);
-                    return;
-                }
-            }
-
             this.focusOnTrail(trail);
         }
 
@@ -3683,6 +3783,79 @@
             this._clearSelection();
         }
 
+        openFacilityPanel(facility) {
+            const panel = document.getElementById('business-panel');
+            const content = document.getElementById('business-panel-content');
+            if (!panel || !content) { return; }
+
+            // Hero: first photo if available, otherwise Xplore Smithers logo on a green gradient
+            let heroUrl = null;
+            if (facility.media && facility.media.length > 0) {
+                const firstPhoto = facility.media.find(m => m.media_type !== 'video_url' && m.media_type !== 'video') || facility.media[0];
+                heroUrl = firstPhoto.url || firstPhoto.thumbnail_url || null;
+            }
+            const hero = heroUrl
+                ? `<div class="biz-panel-hero"><img src="${heroUrl}" alt="${escapeHtml(facility.name)}"></div>`
+                : `<div class="biz-panel-hero" style="background:linear-gradient(135deg,#166534,#22c55e);"><div class="biz-panel-hero-placeholder"><img src="/images/xplore-smithers-logo.png" alt="Xplore Smithers"></div></div>`;
+
+            const meta = `<span class="biz-panel-type">${facility.icon || '📍'} ${escapeHtml(facility.facility_type_label || 'Facility')}</span>`;
+
+            const actions = `<div class="biz-panel-actions">
+                <a href="https://www.google.com/maps/search/?api=1&query=${facility.latitude},${facility.longitude}" target="_blank" rel="noopener" class="biz-panel-action-btn">
+                    <div class="biz-panel-action-icon">
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                    </div>
+                    <span class="biz-panel-action-label">Directions</span>
+                </a>
+            </div>`;
+
+            // Media gallery (skip the first item if it's already the hero)
+            let mediaHTML = '';
+            if (facility.media && facility.media.length > 0) {
+                const skipFirst = !!heroUrl;
+                const galleryItems = skipFirst ? facility.media.slice(1) : facility.media;
+                if (galleryItems.length > 0) {
+                    mediaHTML = `<hr class="biz-panel-divider">
+                        <div class="facility-media-gallery" style="border-top:none;margin-top:0;padding-top:0;">
+                            <p class="facility-media-count">${galleryItems.length} more ${galleryItems.length === 1 ? 'photo/video' : 'photos/videos'}</p>
+                            <div class="facility-media-grid">`;
+                    galleryItems.slice(0, 4).forEach((media, idx) => {
+                        const realIndex = skipFirst ? idx + 1 : idx;
+                        const isVideo = media.media_type === 'video_url' || media.media_type === 'video';
+                        const thumbnailUrl = media.thumbnail_url || media.url;
+                        const remaining = galleryItems.length - 4;
+                        const overlay = (idx === 3 && remaining > 0) ? `<div class="facility-media-overlay">+${remaining} more</div>` : '';
+                        const videoBadge = isVideo ? '<div class="facility-video-badge">▶</div>' : '';
+                        mediaHTML += `<div class="facility-media-item" onclick="openFacilityMediaModal(${facility.id}, ${realIndex})"><img src="${thumbnailUrl}" class="facility-media-thumbnail">${overlay}${videoBadge}</div>`;
+                    });
+                    mediaHTML += `</div></div>`;
+                }
+            }
+
+            content.innerHTML = `
+                <div style="position:relative;flex-shrink:0;">
+                    ${hero}
+                    <button onclick="document.getElementById('business-panel').classList.add('hidden');window.trailMap?._clearSelection();"
+                            style="position:absolute;top:10px;right:10px;background:rgba(255,255,255,0.92);border:none;cursor:pointer;border-radius:50%;width:34px;height:34px;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(0,0,0,0.18);"
+                            aria-label="Close">
+                        <svg width="16" height="16" fill="none" stroke="#374151" stroke-width="2.5" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                    </button>
+                </div>
+                <div class="biz-panel-body">
+                    <h2 class="biz-panel-name">${escapeHtml(facility.name)}</h2>
+                    <div class="biz-panel-meta">${meta}</div>
+                    ${facility.description ? `<p style="font-size:13px;color:#4b5563;line-height:1.6;margin:0 0 16px;">${escapeHtml(facility.description)}</p>` : ''}
+                    ${actions}
+                    ${mediaHTML}
+                </div>
+            `;
+
+            document.getElementById('trail-info-panel')?.classList.add('hidden');
+            panel.classList.remove('hidden');
+        }
+
         locateMe() {
             const btn = document.getElementById('my-location-btn');
 
@@ -3794,69 +3967,15 @@
                         };
                     }
 
-                    let popupContent = `<div class="facility-popup-content">
-                        <div class="facility-popup-header">
-                            <span class="facility-popup-icon">${facility.icon}</span>
-                            <h3 class="facility-popup-title">${facility.name}</h3>
-                        </div>
-                        <p class="facility-popup-type">${facility.facility_type_label}</p>
-                        ${facility.description ? `
-                            <p class="facility-popup-description">${facility.description}</p>
-                            <button type="button" class="facility-popup-readmore" data-state="collapsed">Read more</button>
-                        ` : ''}`;
-
-                    if (facility.media && facility.media.length > 0) {
-                        popupContent += `<div class="facility-media-gallery">
-                            <p class="facility-media-count">${facility.media_count} ${facility.media_count === 1 ? 'photo/video' : 'photos/videos'}</p>
-                            <div class="facility-media-grid">`;
-                        facility.media.slice(0, 4).forEach((media, index) => {
-                            const isVideo = media.media_type === 'video_url' || media.media_type === 'video';
-                            const thumbnailUrl = media.thumbnail_url || media.url;
-                            const remainingCount = facility.media.length - 4;
-                            const overlay = (index === 3 && remainingCount > 0)
-                                ? `<div class="facility-media-overlay">+${remainingCount} more</div>`
-                                : '';
-                            const videoBadge = isVideo ? '<div class="facility-video-badge">▶</div>' : '';
-                            popupContent += `<div class="facility-media-item" onclick="openFacilityMediaModal(${facility.id}, ${index})"><img src="${thumbnailUrl}" class="facility-media-thumbnail">${overlay}${videoBadge}</div>`;
-                        });
-                        popupContent += `</div></div>`;
-                    }
-                    popupContent += `</div>`;
-
-                    const popup = new mapboxgl.Popup({ maxWidth: '320px', className: 'facility-popup', offset: 28 })
-                        .setHTML(popupContent);
-
-                    // Show the "Read more" button only if the description is actually
-                    // clipped by the 3-line clamp. Runs after the popup is in the DOM.
-                    popup.on('open', () => {
-                        const root = popup.getElement();
-                        if (!root) { return; }
-                        const desc = root.querySelector('.facility-popup-description');
-                        const btn = root.querySelector('.facility-popup-readmore');
-                        if (!desc || !btn) { return; }
-                        // Reset so re-opening after expand still re-evaluates correctly
-                        desc.classList.remove('expanded');
-                        btn.dataset.state = 'collapsed';
-                        btn.textContent = 'Read more';
-                        if (desc.scrollHeight > desc.clientHeight + 1) {
-                            btn.style.display = 'inline';
-                        } else {
-                            btn.style.display = 'none';
-                        }
-                    });
-
                     el.addEventListener('click', (e) => {
                         e.stopPropagation();
                         this._selectMarker(el, facility.latitude, facility.longitude);
-                        popup.setLngLat([facility.longitude, facility.latitude]).addTo(this.map);
+                        this.openFacilityPanel(facility);
                     });
 
                     const marker = new mapboxgl.Marker({ element: el, anchor: 'center' })
-                        .setLngLat([facility.longitude, facility.latitude]);
-
-                    if (this.activeLocationFilter === 'trail') {
-                        marker.addTo(this.map);
-                    }
+                        .setLngLat([facility.longitude, facility.latitude])
+                        .addTo(this.map);
 
                     this.facilityMarkers.push(marker);
                 });
@@ -3866,10 +3985,9 @@
         }
 
         toggleFacilityVisibility() {
-            const show = this.activeLocationFilter === 'trail';
-            (this.facilityMarkers || []).forEach(m => {
-                if (show) { m.addTo(this.map); } else { m.remove(); }
-            });
+            // Facilities are always visible — the sidebar's location filter only narrows
+            // the search results panel, not the map markers. Kept as a no-op for callers.
+            (this.facilityMarkers || []).forEach(m => m.addTo(this.map));
         }
 
         async loadBusinesses() {
@@ -3901,7 +4019,6 @@
             this.businessMarkers = {};
 
             if (!this.showBusinesses) return;
-            if (this.activeLocationFilter !== 'business') return;
 
             (this.businessData || []).forEach(business => {
                 const el = this._createMarkerEl(business.icon || '🏪');
@@ -3943,9 +4060,13 @@
             Object.values(this.networkMarkers).forEach(m => m.remove());
             this.networkMarkers = {};
 
-            if (this.activeLocationFilter !== 'trail') return;
+            const season = this.currentSeason;
 
             (this.networkData || []).forEach(network => {
+                // Hide networks that aren't valid for the current season
+                const networkSeason = network.season || 'both';
+                if (networkSeason !== 'both' && networkSeason !== season) { return; }
+
                 let lat = network.latitude;
                 let lng = network.longitude;
 
@@ -4111,18 +4232,12 @@
                     ? `style="border-left: 4px solid ${this.getDifficultyColor(trail.difficulty)};"`
                     : '';
 
-                // Activity-driven placeholder icon (falls back to 🥾 / 🎣 if no activities)
-                const placeholderActivity = this.getTrailDisplayActivity(trail);
-                const placeholderIcon = trail.location_type === 'fishing_lake'
-                    ? '🎣'
-                    : ((placeholderActivity && placeholderActivity.icon) || '🥾');
-
                 return `
                     <div class="trail-list-card" data-location-type="${trail.location_type}" ${accentStyle} onclick="window.trailMap.focusOnTrailById(${trail.id})">
                         ${imageUrl ?
                             `<img src="${imageUrl}" alt="${trail.name}" class="trail-list-image">` :
                             `<div class="trail-list-image-placeholder" style="background: ${trail.location_type === 'fishing_lake' ? 'linear-gradient(135deg, #0369a1, #0ea5e9)' : 'linear-gradient(135deg, #166534, #22c55e)'};">
-                                <span style="font-size: 2rem;">${placeholderIcon}</span>
+                                <img src="/images/xplore-smithers-logo.png" alt="Xplore Smithers">
                             </div>`
                         }
                         <div class="flex-1 min-w-0">
@@ -4574,16 +4689,13 @@
             }
         }
 
-        // Location type filter buttons
+        // Location type filter buttons — only narrow the search results panel.
+        // Map markers are always shown regardless of which tab is active.
         document.querySelectorAll('.location-filter-btn').forEach(btn => {
             btn.addEventListener('click', function() {
                 activeLocationFilter = this.dataset.locationFilter;
                 if (window.trailMap) {
                     window.trailMap.activeLocationFilter = activeLocationFilter;
-                    window.trailMap.applyFilters();
-                    window.trailMap.renderBusinessMarkers();
-                    window.trailMap.renderNetworkMarkers();
-                    window.trailMap.toggleFacilityVisibility();
                 }
 
                 document.querySelectorAll('.location-filter-btn').forEach(b => {

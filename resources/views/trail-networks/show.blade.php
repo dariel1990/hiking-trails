@@ -44,8 +44,9 @@
 
 <style>
     #network-map {
-        height: calc(100vh - 80px);
-        width: 100%;
+        flex: 1;
+        height: 100%;
+        min-width: 0;
         z-index: 1;
     }
 
@@ -78,27 +79,38 @@
 
     /* Sidebar */
     .network-sidebar {
-        position: absolute;
-        top: 16px;
-        bottom: 16px;
-        left: 20px;
-        z-index: 1000;
-        width: 350px;
-        overflow-y: auto;
+        position: relative;
+        order: -1;
+        z-index: 30;
+        width: 25%;
+        min-width: 320px;
+        max-width: 400px;
+        flex-shrink: 0;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
         background: white;
-        border-radius: 12px;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        border-right: 1px solid #e5e7eb;
         transition: transform 0.3s ease-in-out;
     }
 
     @media (max-width: 768px) {
         .network-sidebar {
-            width: calc(100% - 40px);
-            max-width: 400px;
+            position: fixed;
+            top: 80px;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            width: 100%;
+            max-width: none;
+            min-width: 0;
+            z-index: 9999;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
         }
-        
+
         .network-sidebar.hidden-mobile {
-            transform: translateX(calc(-100% - 40px));
+            transform: translateX(-100%);
         }
     }
 
@@ -321,51 +333,52 @@
 
     /* Sticky sidebar header */
     .network-sidebar .sidebar-header {
-        position: sticky;
-        top: 0;
+        flex-shrink: 0;
         background: white;
         z-index: 10;
         border-bottom: 1px solid #e5e7eb;
     }
 
-    /* Legend positioning */
+    /* Legend positioning — sits at the bottom-right of the map area, beside the zoom control */
     .map-legend {
         position: absolute;
-        top: 6rem;
-        right: 1rem;
+        bottom: .6rem;
+        right: 3rem;
         z-index: 30;
         background: white;
         border-radius: 0.5rem;
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-        padding: 1rem;
+        padding: 0.75rem 1rem;
         max-width: 12rem;
     }
 
     @media (max-width: 768px) {
         .map-legend {
-            top: auto;
-            bottom: 1.5rem;
-            right: auto;
+            bottom: 1rem;
             left: 1rem;
+            right: auto;
         }
     }
 
-    /* Trail Details Card */
+    /* Trail Details Card — biz-panel style */
     .trail-details-card {
         position: absolute;
-        top: 20px;
-        left: 390px; /* 350px sidebar + 40px gap */
+        top: 1rem;
+        bottom: 1rem;
+        left: calc(clamp(320px, 25%, 400px) + 1rem);
         z-index: 999;
-        width: 350px;
-        max-height: calc(100vh - 140px);
-        overflow-y: auto;
-        background: white;
-        border-radius: 12px;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-        transition: all 0.3s ease-in-out;
+        width: 20rem;
+        background: #fff;
+        border-radius: 0.5rem;
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.18);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        font-family: 'Inter', system-ui, sans-serif;
         opacity: 0;
         transform: translateX(-20px);
         pointer-events: none;
+        transition: opacity 0.25s ease, transform 0.25s ease;
     }
 
     .trail-details-card.visible {
@@ -376,41 +389,215 @@
 
     @media (max-width: 768px) {
         .trail-details-card {
-            left: 20px;
-            right: 20px;
+            left: 1rem;
+            right: 1rem;
             width: auto;
-            top: 80px; /* Position below the hamburger button (20px top + 48px button height + 12px gap) */
-            bottom: auto;
-            max-height: calc(100vh - 100px); /* Leave space at bottom */
-            transform: translateY(-20px);
+            top: auto;
+            bottom: 1rem;
+            max-height: 70vh;
+            transform: translateY(20px);
         }
-        
+
         .trail-details-card.visible {
             transform: translateY(0);
         }
     }
 
-    /* Custom scrollbar for trail details */
-    .trail-details-card::-webkit-scrollbar {
-        width: 6px;
+    .tdc-hero {
+        position: relative;
+        flex-shrink: 0;
+        width: 100%;
+        height: 200px;
+        overflow: hidden;
+        background: linear-gradient(135deg, #166534, #22c55e);
     }
 
-    .trail-details-card::-webkit-scrollbar-track {
-        background: #f1f1f1;
-        border-radius: 3px;
+    .tdc-hero img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
     }
 
-    .trail-details-card::-webkit-scrollbar-thumb {
-        background: #888;
-        border-radius: 3px;
+    .tdc-hero-placeholder {
+        width: 100%;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 24px;
+    }
+    .tdc-hero-placeholder img {
+        max-width: 70%;
+        max-height: 70%;
+        object-fit: contain;
+        filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.25));
     }
 
-    .trail-details-card::-webkit-scrollbar-thumb:hover {
-        background: #555;
+    .tdc-close {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        background: rgba(255, 255, 255, 0.92);
+        border: none;
+        cursor: pointer;
+        border-radius: 50%;
+        width: 34px;
+        height: 34px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.18);
+        color: #374151;
+        transition: background 0.15s;
+    }
+
+    .tdc-close:hover { background: #f3f4f6; }
+
+    .tdc-body {
+        flex: 1;
+        overflow-y: auto;
+        padding: 20px 20px 24px;
+        scrollbar-width: thin;
+        scrollbar-color: transparent transparent;
+        transition: scrollbar-color 0.25s ease;
+    }
+    .tdc-body:hover { scrollbar-color: rgba(0,0,0,0.28) transparent; }
+    .tdc-body::-webkit-scrollbar { width: 8px; }
+    .tdc-body::-webkit-scrollbar-track { background: transparent; }
+    .tdc-body::-webkit-scrollbar-thumb {
+        background-color: transparent;
+        border-radius: 999px;
+        border: 2px solid transparent;
+        background-clip: padding-box;
+        transition: background-color 0.25s ease;
+    }
+    .tdc-body:hover::-webkit-scrollbar-thumb { background-color: rgba(0,0,0,0.28); }
+
+    .tdc-name {
+        font-size: 22px;
+        font-weight: 800;
+        color: #111827;
+        line-height: 1.2;
+        margin: 0 0 4px;
+        padding-right: 8px;
+    }
+
+    .tdc-meta {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+        margin-bottom: 14px;
+    }
+
+    .tdc-type {
+        font-size: 13px;
+        font-weight: 600;
+        color: #16a34a;
+    }
+
+    .tdc-dot {
+        color: #d1d5db;
+        font-size: 16px;
+        line-height: 1;
+    }
+
+    .tdc-difficulty-badge {
+        font-size: 12px;
+        font-weight: 700;
+        padding: 2px 10px;
+        border-radius: 999px;
+    }
+
+    .tdc-actions {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 18px;
+    }
+
+    .tdc-action-btn {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 6px;
+        padding: 10px 8px;
+        border-radius: 12px;
+        background: #f0fdf4;
+        border: 1.5px solid #bbf7d0;
+        cursor: pointer;
+        text-decoration: none;
+        font-family: inherit;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+        transition: background 0.15s, border-color 0.15s, box-shadow 0.15s;
+    }
+
+    .tdc-action-btn:hover {
+        background: #dcfce7;
+        border-color: #86efac;
+        box-shadow: 0 2px 8px rgba(22, 163, 74, 0.15);
+    }
+
+    .tdc-action-icon {
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        background: #16a34a;
+        color: #fff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+    }
+    .tdc-action-icon svg { width: 18px; height: 18px; }
+
+    .tdc-action-label {
+        font-size: 11px;
+        font-weight: 600;
+        color: #166534;
+        text-align: center;
+        line-height: 1.2;
+    }
+
+    .tdc-divider {
+        border: none;
+        border-top: 1px solid #f3f4f6;
+        margin: 0 0 16px;
+    }
+
+    .tdc-stats {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+        margin-bottom: 16px;
+    }
+
+    .tdc-stat {
+        border-radius: 10px;
+        padding: 12px;
+        text-align: center;
+    }
+    .tdc-stat-value {
+        font-size: 20px;
+        font-weight: 800;
+        line-height: 1.1;
+    }
+    .tdc-stat-label {
+        font-size: 11px;
+        color: #6b7280;
+        margin-top: 2px;
+    }
+
+    .tdc-description {
+        font-size: 13px;
+        color: #4b5563;
+        line-height: 1.6;
+        margin: 0;
     }
 </style>
 
-<div class="relative">
+<div class="relative flex h-[calc(100vh-80px)] max-md:h-[calc(100dvh-80px)] overflow-hidden">
     @if($network->slug === 'hudson-bay-mountain-ski-ride-smithers')
         <!-- Sponsor Badge - Floating Corner (Trail Network Only - Mobile & Desktop) -->
         <a href="https://bvliving.ca/" target="_blank" rel="noopener noreferrer" class="fixed bottom-3 md:bottom-3 right-12 md:right-12 z-[45]">
@@ -526,9 +713,9 @@
         </div>
 
         <!-- Trails Section -->
-        <div class="bg-white">
+        <div class="bg-white flex-1 min-h-0 flex flex-col">
             <!-- Scrollable Trails Container -->
-            <div class="overflow-y-auto" style="max-height: 320px;">
+            <div class="overflow-y-auto flex-1 min-h-0">
                 @if($network->trails->count() > 0)
                     <div class="p-3 space-y-2" id="trails-container">
                         @foreach($network->trails->sortBy('difficulty_level') as $trail)
@@ -840,43 +1027,8 @@ map.on('load', () => {
     _mapLoaded = true;
     initMapLayers();
 
-    // Add trail center dot markers
     trails.forEach(trail => {
         if (!trail.route_coordinates || !trail.route_coordinates.length) return;
-        const midPoint = trail.route_coordinates[Math.floor(trail.route_coordinates.length / 2)];
-        const color = getDifficultyColor(trail.difficulty_level);
-
-        const el = document.createElement('div');
-        el.className = 'trail-center-dot';
-        el.style.backgroundColor = color;
-        el.dataset.trailId = trail.id;
-        el.title = trail.name;
-        el.addEventListener('click', (e) => { e.stopPropagation(); focusTrail(trail.id); });
-
-        trailCenterMarkers[trail.id] = new mapboxgl.Marker({ element: el, anchor: 'center' })
-            .setLngLat([midPoint[1], midPoint[0]])
-            .addTo(map);
-
-        // Start marker
-        const startCoord = trail.route_coordinates[0];
-        const startEl = document.createElement('div');
-        startEl.className = 'waypoint-start';
-        startEl.style.cssText = 'width:12px;height:12px;border-radius:50%;background:#10b981;border:3px solid white;box-shadow:0 2px 6px rgba(16,185,129,0.5);';
-        const startMarker = new mapboxgl.Marker({ element: startEl, anchor: 'center' })
-            .setLngLat([startCoord[1], startCoord[0]])
-            .setPopup(new mapboxgl.Popup({ offset: 10 }).setText('Start'))
-            .addTo(map);
-
-        // End marker
-        const endCoord = trail.route_coordinates[trail.route_coordinates.length - 1];
-        const endEl = document.createElement('div');
-        endEl.style.cssText = 'width:12px;height:12px;border-radius:50%;background:#ef4444;border:3px solid white;box-shadow:0 2px 6px rgba(239,68,68,0.5);';
-        const endMarker = new mapboxgl.Marker({ element: endEl, anchor: 'center' })
-            .setLngLat([endCoord[1], endCoord[0]])
-            .setPopup(new mapboxgl.Popup({ offset: 10 }).setText('End'))
-            .addTo(map);
-
-        waypointMarkers[trail.id] = [startMarker, endMarker];
 
         // Store trail details data
         if (!window.trailDetailsData) window.trailDetailsData = {};
@@ -896,72 +1048,6 @@ map.on('load', () => {
         map.fitBounds([[Math.min(...lngs), Math.min(...lats)], [Math.max(...lngs), Math.max(...lats)]], { padding: 50, duration: 0 });
     }
 
-    // Load facilities
-    fetch('/api/facilities')
-        .then(r => r.json())
-        .then(facilities => {
-            facilities.forEach(facility => {
-                const el = document.createElement('div');
-                el.style.cssText = 'background:white;color:#059669;padding:6px;border-radius:50%;font-size:18px;box-shadow:0 4px 12px rgba(0,0,0,0.15);border:3px solid #059669;width:38px;height:38px;display:flex;align-items:center;justify-content:center;cursor:pointer;';
-                el.textContent = facility.icon;
-
-                const popup = new mapboxgl.Popup({ maxWidth: '300px', offset: 20 }).setHTML(`
-                    <div style="padding:12px;min-width:200px;">
-                        <div style="display:flex;align-items:center;margin-bottom:8px;">
-                            <span style="font-size:24px;margin-right:8px;">${facility.icon}</span>
-                            <h3 style="margin:0;font-size:16px;font-weight:bold;color:#1f2937;">${facility.name}</h3>
-                        </div>
-                        <p style="margin:0 0 8px 0;font-size:12px;color:#6b7280;"><strong>Type:</strong> ${facility.facility_type.replace(/_/g, ' ').replace(/\w/g, l => l.toUpperCase())}</p>
-                        ${facility.description ? `<p style="margin:0;font-size:13px;color:#4b5563;line-height:1.4;">${facility.description}</p>` : ''}
-                    </div>
-                `);
-
-                const marker = new mapboxgl.Marker({ element: el, anchor: 'center' })
-                    .setLngLat([facility.longitude, facility.latitude])
-                    .setPopup(popup)
-                    .addTo(map);
-                facilityMarkers.push(marker);
-            });
-        })
-        .catch(err => console.error('Error loading facilities:', err));
-
-    // Load highlights
-    fetch('/api/highlights')
-        .then(r => r.json())
-        .then(highlights => {
-            highlights.forEach(highlight => {
-                if (!highlight.coordinates || highlight.coordinates.length < 2) return;
-                const el = document.createElement('div');
-                el.style.cssText = `background-color:${highlight.color || '#8B5CF6'};padding:8px;border-radius:50%;font-size:20px;box-shadow:0 4px 12px rgba(0,0,0,0.15);border:2px solid white;width:40px;height:40px;display:flex;align-items:center;justify-content:center;cursor:pointer;`;
-                el.textContent = highlight.icon || '📍';
-
-                let mediaHTML = '';
-                if (highlight.media && highlight.media.length > 0) {
-                    const m = highlight.media[0];
-                    if (m.media_type === 'photo') {
-                        mediaHTML = `<img src="${m.url}" alt="${highlight.name}" class="w-full h-32 object-cover rounded-lg mb-2 cursor-pointer hover:opacity-90" onclick="event.stopPropagation();openHighlightMediaModal('${m.url}','photo','${highlight.name}')">`;
-                    }
-                }
-
-                const popup = new mapboxgl.Popup({ maxWidth: '300px', offset: 20 }).setHTML(`
-                    <div style="padding:12px;min-width:220px;max-width:280px;">
-                        ${mediaHTML}
-                        <div style="display:flex;align-items:center;margin-bottom:8px;">
-                            <span style="font-size:24px;margin-right:8px;">${highlight.icon || '📍'}</span>
-                            <h3 style="margin:0;font-size:16px;font-weight:bold;color:#1f2937;">${highlight.name}</h3>
-                        </div>
-                        ${highlight.description ? `<p style="margin:0 0 8px 0;font-size:13px;color:#4b5563;line-height:1.4;">${highlight.description}</p>` : ''}
-                    </div>
-                `);
-
-                const marker = new mapboxgl.Marker({ element: el, anchor: 'center' })
-                    .setLngLat([highlight.coordinates[1], highlight.coordinates[0]])
-                    .setPopup(popup)
-                    .addTo(map);
-                highlightMarkers.push(marker);
-            });
-        })
-        .catch(err => console.error('Error loading highlights:', err));
 });
 
 map.on('style.load', () => {
@@ -1042,95 +1128,67 @@ function showTrailDetailsCard(trailId) {
     if (!trail) return;
 
     const card = document.getElementById('trail-details-card');
-    const color = getDifficultyColor(trail.difficulty_level);
     const difficultyLevel = Math.floor(trail.difficulty_level);
-    
     const featuredImage = trail.preview_photo || (trail.photos && trail.photos.length > 0 ? trail.photos[0].url : null);
+    const trailType = trail.trail_type ? trail.trail_type.replace(/[-_]/g, ' ') : 'Trail';
 
-    const cardContent = `
-        <div class="relative">
-            <!-- Close Button -->
-            <button onclick="closeTrailDetailsCard()" class="absolute top-4 right-4 z-10 bg-white rounded-full p-2 shadow-lg hover:bg-gray-100 transition-colors">
-                <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+    const difficultyClass = difficultyLevel <= 2
+        ? 'background:#dcfce7;color:#166534;'
+        : (difficultyLevel == 3
+            ? 'background:#dbeafe;color:#1d4ed8;'
+            : 'background:#fee2e2;color:#991b1b;');
+
+    const stats = [
+        { value: trail.distance_km ?? '—', label: 'Distance (km)', bg: '#eff6ff', color: '#2563eb' },
+        { value: trail.elevation_gain ?? 0, label: 'Elevation (m)', bg: '#f0fdf4', color: '#16a34a' },
+    ];
+
+    const heroHTML = featuredImage
+        ? `<img src="${featuredImage}" alt="${trail.name}">`
+        : `<div class="tdc-hero-placeholder"><img src="/images/xplore-smithers-logo.png" alt="Xplore Smithers"></div>`;
+
+    card.innerHTML = `
+        <div class="tdc-hero">
+            ${heroHTML}
+            <button class="tdc-close" onclick="closeTrailDetailsCard()" aria-label="Close">
+                <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
                 </svg>
             </button>
-
-            <!-- Featured Image -->
-            ${featuredImage ? `
-                <div class="rounded-t-xl overflow-hidden">
-                    <img src="${featuredImage}" 
-                        alt="${trail.name}"
-                        class="w-full h-48 object-cover"
-                        onerror="this.parentElement.innerHTML='<div class=\\'w-full h-48 bg-gradient-to-br from-green-500 to-blue-500 flex items-center justify-center\\'><svg class=\\'w-12 h-12 text-white opacity-75\\' fill=\\'none\\' stroke=\\'currentColor\\' viewBox=\\'0 0 24 24\\'><path stroke-linecap=\\'round\\' stroke-linejoin=\\'round\\' stroke-width=\\'2\\' d=\\'M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z\\'></path></svg></div>'">
-                </div>
-            ` : `
-                <div class="w-full h-48 rounded-t-xl bg-gradient-to-br from-green-500 to-blue-500 flex items-center justify-center">
-                    <svg class="w-12 h-12 text-white opacity-75" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"/>
-                    </svg>
-                </div>
-            `}
-
-            <!-- Content -->
-            <div class="p-6">
-                <!-- Trail Name and Type -->
-                <div class="mb-4">
-                    <h3 class="text-2xl font-bold text-gray-900 mb-2">${trail.name}</h3>
-                    <p class="text-sm text-gray-600 capitalize">
-                        ${trail.trail_type ? trail.trail_type.replace(/-/g, ' ') : 'Trail'}
-                    </p>
-                </div>
-
-                <!-- Stats Grid -->
-                <div class="grid grid-cols-2 gap-3 mb-4">
-                    <div class="bg-gray-50 rounded-lg p-3 border border-gray-200">
-                        <div class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Distance</div>
-                        <div class="text-lg font-bold text-gray-900">${trail.distance_km} km</div>
-                    </div>
-                    <div class="bg-gray-50 rounded-lg p-3 border border-gray-200">
-                        <div class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Difficulty</div>
-                        <div>
-                            <span class="inline-flex items-center px-2 py-1 rounded text-xs font-medium
-                                ${difficultyLevel <= 2 ? 'bg-green-100 text-green-700 ring-1 ring-green-600/20' : ''}
-                                ${difficultyLevel == 3 ? 'bg-blue-100 text-blue-700 ring-1 ring-blue-600/20' : ''}
-                                ${difficultyLevel >= 4 ? 'bg-red-100 text-red-700 ring-1 ring-red-600/20' : ''}">
-                                Level ${trail.difficulty_level}
-                            </span>
-                        </div>
-                    </div>
-                    ${trail.elevation_gain ? `
-                        <div class="bg-gray-50 rounded-lg p-3 border border-gray-200 col-span-2">
-                            <div class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Elevation Gain</div>
-                            <div class="text-lg font-bold text-gray-900">${trail.elevation_gain} m</div>
-                        </div>
-                    ` : ''}
-                </div>
-
-                <!-- Description -->
-                ${trail.description ? `
-                    <div class="mb-4">
-                        <h4 class="text-sm font-semibold text-gray-900 mb-2">Description</h4>
-                        <p class="text-sm text-gray-600 leading-relaxed">${trail.description}</p>
-                    </div>
-                ` : ''}
-
-                <!-- Action Buttons -->
-                <div class="space-y-2">
-                    <a href="/trails/${trail.id}" 
-                       class="block w-full text-center bg-green-600 hover:bg-green-700 text-white px-4 py-3 rounded-lg font-semibold transition-colors">
-                        View Full Trail Details
-                    </a>
-                    <button onclick="closeTrailDetailsCard()" 
-                            class="w-full text-center bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-3 rounded-lg font-semibold transition-colors">
-                        Close
-                    </button>
-                </div>
+        </div>
+        <div class="tdc-body">
+            <h2 class="tdc-name">${trail.name}</h2>
+            <div class="tdc-meta">
+                <span class="tdc-type">🥾 ${trailType.replace(/\b\w/g, c => c.toUpperCase())}</span>
+                <span class="tdc-dot">·</span>
+                <span class="tdc-difficulty-badge" style="${difficultyClass}">Level ${trail.difficulty_level}</span>
             </div>
+            <div class="tdc-actions">
+                <button type="button" onclick="focusTrail(${trail.id})" class="tdc-action-btn">
+                    <div class="tdc-action-icon">
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-1.447-.894L15 9m0 8V9m0 0V7"/></svg>
+                    </div>
+                    <span class="tdc-action-label">View Route</span>
+                </button>
+                <a href="/trails/${trail.id}" target="_blank" rel="noopener" class="tdc-action-btn">
+                    <div class="tdc-action-icon">
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    </div>
+                    <span class="tdc-action-label">Details</span>
+                </a>
+            </div>
+            <hr class="tdc-divider">
+            <div class="tdc-stats">
+                ${stats.map(s => `
+                    <div class="tdc-stat" style="background:${s.bg};">
+                        <div class="tdc-stat-value" style="color:${s.color};">${s.value}</div>
+                        <div class="tdc-stat-label">${s.label}</div>
+                    </div>
+                `).join('')}
+            </div>
+            ${trail.description ? `<p class="tdc-description">${trail.description}</p>` : ''}
         </div>
     `;
-
-    card.innerHTML = cardContent;
     card.classList.add('visible');
 }
 

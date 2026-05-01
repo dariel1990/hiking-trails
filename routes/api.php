@@ -30,6 +30,7 @@ Route::get('/trail-networks', function () {
             'name'        => $network->network_name,
             'slug'        => $network->slug,
             'type'        => $network->type,
+            'season'      => $network->season,
             'icon'        => $network->icon,
             'image'       => $network->image ? asset('storage/'.$network->image) : null,
             'description' => $network->description,

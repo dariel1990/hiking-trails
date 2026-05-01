@@ -41,9 +41,14 @@
             </p>
         </div>
 
-        @if(config('services.android_app.play_store_url'))
+        @php
+            // Hide the Google Play promo when the page is opened inside the Android WebView app.
+            // Android WebViews append "; wv)" to the User-Agent — Chrome/Firefox on Android don't.
+            $isAndroidWebView = str_contains((string) request()->userAgent(), '; wv)');
+        @endphp
+        @if(config('services.android_app.play_store_url') && ! $isAndroidWebView)
         <!-- Mobile App Promo (hero) -->
-        <div class="slide-in-up mb-12 hidden lg:flex flex-col md:flex-row items-center justify-center gap-5 max-w-2xl mx-auto" style="animation-delay: 0.4s;">
+        <div class="slide-in-up mb-12 flex flex-col md:flex-row items-center justify-center gap-5 max-w-2xl mx-auto" style="animation-delay: 0.4s;">
             <a href="{{ config('services.android_app.play_store_url') }}"
                target="_blank"
                rel="noopener"
