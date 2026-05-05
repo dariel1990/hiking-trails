@@ -1,53 +1,78 @@
+@php
+    $isMountainBike = ($type ?? null) === 'mountain_biking';
+    $isSki         = ($type ?? null) === 'ski';
+    $pageIcon      = $isMountainBike ? '🚵' : ($isSki ? '⛷️' : '🗺️');
+    $pageTitle     = $isMountainBike ? 'Mountain Bike Trails' : ($isSki ? 'Ski Trails' : 'Trail Networks');
+    $pageSubtitle  = $isMountainBike
+        ? 'Explore dedicated mountain biking networks with technical singletracks, flow trails, and all-season riding options.'
+        : ($isSki
+            ? 'Discover curated ski systems including Nordic trails, downhill runs, and groomed winter routes.'
+            : 'Discover curated trail systems including ski trails, mountain biking, and organized hiking networks.');
+    $sectionTitle  = $isMountainBike ? 'Mountain Bike Networks' : ($isSki ? 'Ski Trail Systems' : 'Trail Networks');
+    $emptyTitle    = $isMountainBike ? 'No Mountain Bike Trails Yet' : ($isSki ? 'No Ski Trails Yet' : 'No Trail Networks Yet');
+@endphp
+
 @extends('layouts.public')
 
-@section('title', 'Ski Trails')
+@section('title', $pageTitle)
 
 @section('content')
-<!-- Enhanced Hero Section with Wavy Divider -->
+<!-- Hero Section -->
 <section class="relative flex items-center justify-center hero-gradient overflow-hidden">
-    <!-- Background Pattern -->
     <div class="absolute inset-0 bg-pattern-trees opacity-20 z-15"></div>
-    
-    <!-- Enhanced Overlay -->
     <div class="absolute inset-0 bg-black bg-opacity-40 z-20"></div>
-    
-    <!-- Content -->
+
     <div class="relative z-30 text-center text-white max-w-6xl mx-auto px-4 flex flex-col justify-center py-20">
         <!-- Badge -->
         <div class="mb-8 fade-in">
             <span class="inline-flex items-center px-6 py-3 bg-white/25 backdrop-blur-sm rounded-full text-white text-sm font-semibold border border-white/30 shadow-lg">
-                🗺️ {{ $networks->count() }} Ski Trails Available
+                {{ $pageIcon }} {{ $networks->count() }} {{ $pageTitle }} Available
             </span>
         </div>
-        
+
         <!-- Main Headline -->
         <div class="slide-in-up mb-8">
             <h1 class="text-5xl md:text-7xl font-bold leading-tight">
                 <span class="text-white text-shadow-lg">Explore Organized</span><br>
                 <span class="bg-gradient-to-r from-emerald-300 via-sand-200 to-accent-300 bg-clip-text text-transparent">
-                    Ski Trails
+                    {{ $pageTitle }}
                 </span>
             </h1>
         </div>
-        
+
         <!-- Subtitle -->
         <div class="slide-in-up mb-12" style="animation-delay: 0.2s;">
             <p class="text-xl md:text-2xl text-white leading-relaxed max-w-4xl mx-auto text-shadow-md">
-                Discover curated trail systems including Nordic ski trails, downhill ski runs, and organized hiking networks. 
-                Each network offers multiple interconnected trails for extended adventures.
+                {{ $pageSubtitle }}
             </p>
+        </div>
+
+        <!-- Type switcher tabs -->
+        <div class="slide-in-up flex flex-wrap justify-center gap-3" style="animation-delay: 0.3s;">
+            <a href="{{ route('trail-networks.index', ['type' => 'ski']) }}"
+               class="px-5 py-2 rounded-full text-sm font-semibold border-2 transition-all duration-200 {{ $isSki ? 'bg-white text-gray-900 border-white' : 'bg-white/10 border-white/40 text-white hover:bg-white/20' }}">
+                ⛷️ Ski Trails
+            </a>
+            <a href="{{ route('trail-networks.index', ['type' => 'mountain_biking']) }}"
+               class="px-5 py-2 rounded-full text-sm font-semibold border-2 transition-all duration-200 {{ $isMountainBike ? 'bg-white text-gray-900 border-white' : 'bg-white/10 border-white/40 text-white hover:bg-white/20' }}">
+                🚵 Mountain Bike Trails
+            </a>
+            <a href="{{ route('trail-networks.index') }}"
+               class="px-5 py-2 rounded-full text-sm font-semibold border-2 transition-all duration-200 {{ !$isSki && !$isMountainBike ? 'bg-white text-gray-900 border-white' : 'bg-white/10 border-white/40 text-white hover:bg-white/20' }}">
+                🗺️ All Networks
+            </a>
         </div>
     </div>
 </section>
 
-<!-- Enhanced Trail Networks Section -->
+<!-- Trail Networks Section -->
 <section class="section bg-white">
     <div class="max-w-7xl mx-auto px-4">
-        
+
         <!-- Section Header -->
         @if($networks->count() > 0)
         <div class="text-center mb-12">
-            <h2 class="section-title text-forest-600">Ski Trail Systems</h2>
+            <h2 class="section-title text-forest-600">{{ $sectionTitle }}</h2>
             <p class="section-subtitle">
                 Organized trail systems with comprehensive maps, facilities, and detailed information for your adventure.
             </p>
@@ -148,9 +173,9 @@
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/>
                         </svg>
                     </div>
-                    <h3 class="text-2xl font-bold text-gray-900 mb-4">No Ski Trails Yet</h3>
+                    <h3 class="text-2xl font-bold text-gray-900 mb-4">{{ $emptyTitle }}</h3>
                     <p class="text-gray-600 mb-8">
-                        We're curating organized trail systems for you. Check back soon for Nordic skiing, downhill runs, and hiking networks.
+                        We're curating organized trail systems for you. Check back soon for more networks.
                     </p>
                     <a href="{{ route('trails.index') }}" class="btn-primary">
                         Browse Individual Trails
@@ -166,7 +191,7 @@
 @if($networks->count() > 0)
 <section class="section cta-section">
     <div class="max-w-4xl mx-auto px-4 text-center">
-        <h2 class="text-4xl font-bold text-white mb-6">Ready to Explore Ski Trails?</h2>
+        <h2 class="text-4xl font-bold text-white mb-6">Ready to Explore {{ $pageTitle }}?</h2>
         <p class="text-xl text-emerald-100 mb-8">
             Experience organized trail systems with comprehensive maps, facilities, and multiple interconnected routes for extended adventures.
         </p>

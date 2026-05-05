@@ -2150,7 +2150,7 @@
             this.currentSeason = 'summer';
             this.currentDistance = '';
             this.currentDifficulty = '';
-            this.activeFilters = ['hiking', 'fishing', 'camping', 'viewpoint', 'highlights',
+            this.activeFilters = ['hiking', 'fishing', 'camping', 'viewpoint', 'highlights', 'mountain-biking',
                       'snowshoeing', 'ice-fishing', 'cross-country-skiing', 'downhill-skiing'];
             this.allTrails = [];
             this.init();
@@ -2188,7 +2188,7 @@
 
             // Marker storage per activity type (arrays of mapboxgl.Marker)
             this.overlayMarkers = {
-                'hiking': [], 'fishing': [], 'camping': [], 'viewpoint': [], 'highlights': [],
+                'hiking': [], 'fishing': [], 'camping': [], 'viewpoint': [], 'highlights': [], 'mountain-biking': [],
                 'snowshoeing': [], 'ice-fishing': [], 'cross-country-skiing': [], 'downhill-skiing': []
             };
             this.businessMarkers = {};
@@ -2630,7 +2630,7 @@
         updateActivityFilters(season) {
             // Define which activities are available for each season (map overlays)
             const seasonalActivities = {
-                summer: ['hiking', 'fishing', 'camping', 'viewpoint', 'highlights'],
+                summer: ['hiking', 'fishing', 'camping', 'viewpoint', 'highlights', 'mountain-biking'],
                 winter: ['snowshoeing', 'ice-fishing', 'cross-country-skiing', 'downhill-skiing', 'viewpoint', 'highlights'],
             };
 

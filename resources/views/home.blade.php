@@ -93,8 +93,11 @@
             <a href="{{ route('map') }}" class="bg-transparent border-2 border-white text-white hover:bg-white hover:text-gray-900 font-semibold py-4 px-10 rounded-xl transition-all duration-300 text-lg shadow-xl">
                 📍 View Interactive Map
             </a>
-            <a href="{{ route('trail-networks.index') }}" class="bg-transparent border-2 border-white text-white hover:bg-white hover:text-gray-900 font-semibold py-4 px-10 rounded-xl transition-all duration-300 text-lg shadow-xl">
-                🏔️ Ski Trails
+            <a href="{{ route('trail-networks.index', ['type' => 'ski']) }}" class="bg-transparent border-2 border-white text-white hover:bg-white hover:text-gray-900 font-semibold py-4 px-10 rounded-xl transition-all duration-300 text-lg shadow-xl">
+                ⛷️ Ski Trails
+            </a>
+            <a href="{{ route('trail-networks.index', ['type' => 'mountain_biking']) }}" class="bg-transparent border-2 border-white text-white hover:bg-white hover:text-gray-900 font-semibold py-4 px-10 rounded-xl transition-all duration-300 text-lg shadow-xl">
+                🚵 Mountain Bike Trails
             </a>
         </div>
         <!-- Enhanced Search Bar with Better Layout -->
