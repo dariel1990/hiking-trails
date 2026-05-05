@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\TrailFeature;
 use App\Models\TrailNetwork;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
 class TrailNetworkController extends Controller
@@ -11,13 +12,21 @@ class TrailNetworkController extends Controller
     /**
      * Display a listing of all trail networks
      */
-    public function index()
+    public function index(Request $request)
     {
-        $networks = TrailNetwork::withCount('trails')
-            ->orderBy('network_name')
-            ->get();
+        $type = $request->get('type');
 
-        return view('trail-networks.index', compact('networks'));
+        $query = TrailNetwork::withCount('trails')->orderBy('network_name');
+
+        if ($type === 'ski') {
+            $query->whereIn('type', ['nordic_skiing', 'downhill_skiing']);
+        } elseif ($type === 'mountain_biking') {
+            $query->where('type', 'mountain_biking');
+        }
+
+        $networks = $query->get();
+
+        return view('trail-networks.index', compact('networks', 'type'));
     }
 
     /**

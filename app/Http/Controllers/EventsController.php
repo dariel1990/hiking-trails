@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Event;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Carbon\Carbon;
 
 class EventsController extends Controller
@@ -58,6 +59,14 @@ class EventsController extends Controller
         $prevMonth = $firstDayOfMonth->copy()->subMonth();
         $nextMonth = $firstDayOfMonth->copy()->addMonth();
         
+        $slides = collect(Storage::disk('public')->files('slide-show'))
+            ->filter(fn ($f) => preg_match('/\.(jpe?g|png|gif|webp)$/i', $f))
+            ->map(fn ($f) => [
+                'url'  => '/storage/' . $f,
+                'name' => ucwords(str_replace(['-', '_'], ' ', pathinfo($f, PATHINFO_FILENAME))),
+            ])
+            ->values();
+
         return view('events.index', compact(
             'upcomingEvents',
             'calendarEvents',
@@ -71,7 +80,8 @@ class EventsController extends Controller
             'startDayOfWeek',
             'daysInMonth',
             'prevMonth',
-            'nextMonth'
+            'nextMonth',
+            'slides'
         ));
     }
     
