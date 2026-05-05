@@ -3350,6 +3350,16 @@
                 return;
             }
 
+            // On mobile the trail-info panel covers the map, so close it
+            // before drawing the route so the user can actually see it.
+            if (window.matchMedia('(max-width: 767px)').matches) {
+                if (typeof closeTrailInfoPanel === 'function') {
+                    closeTrailInfoPanel();
+                } else {
+                    document.getElementById('trail-info-panel')?.classList.add('hidden');
+                }
+            }
+
             this.highlightTrailRoute(trailId);
 
             // Fit map to route bounds
