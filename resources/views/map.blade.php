@@ -4442,8 +4442,20 @@
             }
 
             const last = coords.length - 1;
-            // Duration scales with route length — ~100ms per point, min 20s
-            const DURATION_MS = Math.max(20000, coords.length * 100);
+            // Constant ground speed: compute total trail distance then derive duration
+            const toRad = d => d * Math.PI / 180;
+            const haversine = (a, b) => {
+                const R = 6371000;
+                const dLat = toRad(b[0] - a[0]);
+                const dLng = toRad(b[1] - a[1]);
+                const s = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(a[0])) * Math.cos(toRad(b[0])) * Math.sin(dLng / 2) ** 2;
+                return 2 * R * Math.atan2(Math.sqrt(s), Math.sqrt(1 - s));
+            };
+            let totalDist = 0;
+            for (let i = 0; i < coords.length - 1; i++) totalDist += haversine(coords[i], coords[i + 1]);
+            const SPEED_MS = 200; // metres per second — same apparent ground speed on all trails
+            const DURATION_MS = (totalDist / SPEED_MS) * 1000;
+            const flyZoom = 16; // fixed zoom keeps pixel speed consistent for all trail lengths
             const startTime = performance.now();
 
             const animate = (now) => {
@@ -4480,7 +4492,7 @@
                                    camA[0] + (camB[0] - camA[0]) * t],
                         bearing:  this._getBearing(cur, next),
                         pitch:    60,
-                        zoom:     15,
+                        zoom:     flyZoom,
                         duration: 150,
                         easing:   x => x,
                     });
