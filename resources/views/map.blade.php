@@ -4406,7 +4406,13 @@
             }
 
             const coords = trail.route_coordinates
-                .map(c => this.sanitizeCoordinates(c))
+                .map(c => {
+                    // Accept [lat, lng] or [lat, lng, elevation] — strip elevation
+                    if (Array.isArray(c) && c.length >= 2 && isFinite(c[0]) && isFinite(c[1])) {
+                        return [c[0], c[1]];
+                    }
+                    return this.sanitizeCoordinates(c);
+                })
                 .filter(c => c !== null);
 
             if (coords.length < 2) {
@@ -4414,7 +4420,8 @@
                 return;
             }
 
-            const smoothed = this.smoothCoordinates(coords, 5, 2);
+            // Use same smoothing as the map route layer so the icon tracks the visible line
+            const smoothed = this.smoothCoordinates(coords, 3, 2);
 
             // Clear UI so the animation has a full map stage
             if (typeof closeTrailInfoPanel === 'function') { closeTrailInfoPanel(); }
@@ -4481,11 +4488,10 @@
         }
 
         _animateAlongTrail(rawCoords) {
-            // Strip any entry that is not a clean [lat, lng] pair with finite numbers
-            const coords = rawCoords.filter(
-                c => Array.isArray(c) && c.length === 2 &&
-                     isFinite(c[0]) && isFinite(c[1])
-            );
+            // Strip any entry that is not a valid [lat, lng] pair (length >= 2 to tolerate elevation triplets)
+            const coords = rawCoords
+                .filter(c => Array.isArray(c) && c.length >= 2 && isFinite(c[0]) && isFinite(c[1]))
+                .map(c => [c[0], c[1]]);
 
             if (coords.length < 2) {
                 this.stopFlyAnimation();
@@ -4532,22 +4538,15 @@
 
                 if (this._hikerMarker) this._hikerMarker.setLngLat([lng, lat]);
 
-                // Camera lags 8 waypoints behind so hiker stays visible ahead
-                const camI   = Math.max(0, i - 8);
-                const camA   = coords[camI];
-                const camB   = coords[Math.min(camI + 1, last)];
-
-                if (camA && camB) {
-                    this.map.easeTo({
-                        center:   [camA[1] + (camB[1] - camA[1]) * t,
-                                   camA[0] + (camB[0] - camA[0]) * t],
-                        bearing:  this._getBearing(cur, next),
-                        pitch:    60,
-                        zoom:     flyZoom,
-                        duration: 150,
-                        easing:   x => x,
-                    });
-                }
+                // Keep camera centered directly on the hiker so the icon is always in the middle
+                this.map.easeTo({
+                    center:   [lng, lat],
+                    bearing:  this._getBearing(cur, next),
+                    pitch:    60,
+                    zoom:     flyZoom,
+                    duration: 150,
+                    easing:   x => x,
+                });
 
                 if (progress < 1) {
                     this._flyAnimation = requestAnimationFrame(animate);
