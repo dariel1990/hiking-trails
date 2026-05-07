@@ -2851,7 +2851,7 @@
             return { type: 'FeatureCollection', features };
         }
 
-        highlightTrailRoute(trailId) {
+        highlightTrailRoute(trailId, { showPanel = true } = {}) {
             // Deselect previous
             if (this._selectedTrailId !== null) {
                 try {
@@ -2870,6 +2870,7 @@
                 );
             } catch(e) { /* ignore */ }
 
+            if (!showPanel) return;
             const trail = this.allTrails.find(t => t.id == trailId);
             if (trail) this.showTrailInfo(trail);
         }
@@ -3142,6 +3143,13 @@
             }
         }
 
+        _isMobileViewport() {
+            return window.matchMedia('(max-width: 1024px)').matches
+                || window.matchMedia('(pointer: coarse)').matches
+                || ('ontouchstart' in window)
+                || /Mobi|Android|iPhone|iPad|iPod|Tablet/i.test(navigator.userAgent);
+        }
+
         createTrailMarker(trail, activity) {
             const coords = this.sanitizeCoordinates(trail.coordinates);
             if (!coords) {
@@ -3345,22 +3353,37 @@
             const trail = this.allTrails.find(t => t.id == trailId);
             if (!trail) return;
 
-            if (!trail.route_coordinates || trail.route_coordinates.length === 0) {
-                this.showToast('Route data is not available for this trail.');
-                return;
-            }
-
-            // On mobile the trail-info panel covers the map, so close it
-            // before drawing the route so the user can actually see it.
-            if (window.matchMedia('(max-width: 767px)').matches) {
+            // On mobile the trail-info / business panels cover the map, so close
+            // them before drawing the route so the user can see it. Desktop keeps
+            // the panel open as a side sidebar.
+            const closePanelOnMobile = () => {
+                if (!this._isMobileViewport()) return;
                 if (typeof closeTrailInfoPanel === 'function') {
                     closeTrailInfoPanel();
                 } else {
                     document.getElementById('trail-info-panel')?.classList.add('hidden');
                 }
+                document.getElementById('business-panel')?.classList.add('hidden');
+            };
+
+            // Fishing lakes are single points — "View Location" centers on the lake.
+            if (trail.location_type === 'fishing_lake') {
+                closePanelOnMobile();
+                const coords = this.sanitizeCoordinates(trail.coordinates);
+                if (coords) {
+                    this.map.flyTo({ center: [coords[1], coords[0]], zoom: 15 });
+                }
+                return;
             }
 
-            this.highlightTrailRoute(trailId);
+            if (!trail.route_coordinates || trail.route_coordinates.length === 0) {
+                this.showToast('Route data is not available for this trail.');
+                return;
+            }
+
+            closePanelOnMobile();
+
+            this.highlightTrailRoute(trailId, { showPanel: false });
 
             // Fit map to route bounds
             const sanitized = trail.route_coordinates
@@ -3457,6 +3480,10 @@
             const trailActionLabel = `style="color:#166534;"`;
             const trailActionBtn = ``;
             const actions = [];
+            // Trails that belong to a network aren't drawn on the main map, so
+            // View Route / Fly Along are no-ops — skip them. The network badge
+            // above already links the user to the network's dedicated page.
+            const isNetworkTrail = !isFishingLake && !!trail.trail_network_id;
             if (isFishingLake) {
                 actions.push(`
                     <button onclick="window.trailMap.viewRoute(${trail.id})" class="biz-panel-action-btn" ${trailActionBtn}>
@@ -3465,7 +3492,7 @@
                         </div>
                         <span class="biz-panel-action-label" ${trailActionLabel}>View Location</span>
                     </button>`);
-            } else {
+            } else if (!isNetworkTrail) {
                 actions.push(`
                     <button onclick="window.trailMap.viewRoute(${trail.id})" class="biz-panel-action-btn" ${trailActionBtn}>
                         <div class="biz-panel-action-icon" ${trailActionIcon}>
@@ -3728,14 +3755,14 @@
                         <span class="biz-panel-action-label">Facebook</span>
                     </a>`);
             }
-            // Always show directions
+            // View Location — flies the map to the business and (on mobile) closes the panel.
             actions.push(`
-                <a href="https://www.google.com/maps/search/?api=1&query=${business.latitude},${business.longitude}" target="_blank" class="biz-panel-action-btn">
+                <button type="button" onclick="window.trailMap.viewBusinessLocation(${business.id})" class="biz-panel-action-btn">
                     <div class="biz-panel-action-icon">
                         <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
                     </div>
-                    <span class="biz-panel-action-label">Directions</span>
-                </a>`);
+                    <span class="biz-panel-action-label">View Location</span>
+                </button>`);
 
             // Info rows
             const infoRows = [];
@@ -3786,6 +3813,20 @@
             document.getElementById('trail-info-panel')?.classList.add('hidden');
 
             panel.classList.remove('hidden');
+        }
+
+        viewBusinessLocation(businessId) {
+            const business = (this.businessData || []).find(b => b.id == businessId);
+            if (!business || business.latitude == null || business.longitude == null) return;
+
+            // On mobile the business panel covers the map — close it so the
+            // marker is actually visible after the flyTo animation. Desktop
+            // keeps the panel open as a sidebar.
+            if (this._isMobileViewport()) {
+                this.closeBusinessPanel();
+            }
+
+            this.map.flyTo({ center: [business.longitude, business.latitude], zoom: 17 });
         }
 
         closeBusinessPanel() {
