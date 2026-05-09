@@ -37,6 +37,7 @@ Route::get('/.well-known/assetlinks.json', function () {
 // PUBLIC ROUTES (No authentication required)
 Route::get('/', [TrailController::class, 'home'])->name('home');
 Route::get('/trails', [TrailController::class, 'index'])->name('trails.index');
+Route::get('/fishing-lakes', [TrailController::class, 'fishingLakes'])->name('fishing-lakes.index');
 Route::get('/trails/{trail}', [TrailController::class, 'show'])->name('trails.show');
 Route::get('/map', [TrailController::class, 'map'])->name('map');
 Route::get('/map-v2', [TrailController::class, 'mapV2'])->name('map.v2');

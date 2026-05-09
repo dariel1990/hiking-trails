@@ -63,13 +63,64 @@ class TrailController extends Controller
     }
 
     /**
-     * Display trail listing page
+     * Display hiking trails listing page
      */
     public function index(Request $request)
     {
+        $hikingTrails = $this->buildListingQuery($request)
+            ->where('location_type', 'trail')
+            ->orderBy('is_featured', 'desc')
+            ->orderBy('name')
+            ->paginate(9, ['*'], 'hiking_page');
+
+        $activities = ActivityType::where('is_active', true)
+            ->orderBy('name')
+            ->get();
+
+        if ($request->ajax_type === 'hiking') {
+            return response()->json([
+                'html' => view('trails._cards', ['trails' => $hikingTrails, 'type' => 'hiking'])->render(),
+                'has_more' => $hikingTrails->hasMorePages(),
+                'next_page' => $hikingTrails->currentPage() + 1,
+            ]);
+        }
+
+        return view('trails.index', compact('hikingTrails', 'activities'));
+    }
+
+    /**
+     * Display fishing lakes listing page
+     */
+    public function fishingLakes(Request $request)
+    {
+        $fishingLakes = $this->buildListingQuery($request)
+            ->where('location_type', 'fishing_lake')
+            ->orderBy('is_featured', 'desc')
+            ->orderBy('name')
+            ->paginate(9, ['*'], 'lake_page');
+
+        $activities = ActivityType::where('is_active', true)
+            ->orderBy('name')
+            ->get();
+
+        if ($request->ajax_type === 'lakes') {
+            return response()->json([
+                'html' => view('trails._cards', ['trails' => $fishingLakes, 'type' => 'lakes'])->render(),
+                'has_more' => $fishingLakes->hasMorePages(),
+                'next_page' => $fishingLakes->currentPage() + 1,
+            ]);
+        }
+
+        return view('fishing-lakes.index', compact('fishingLakes', 'activities'));
+    }
+
+    /**
+     * Build a filtered listing query shared by trail/lake index pages.
+     */
+    private function buildListingQuery(Request $request): \Illuminate\Database\Eloquent\Builder
+    {
         $query = Trail::query();
 
-        // Apply search filter
         if ($request->search) {
             $query->where(function ($q) use ($request) {
                 $q->where('name', 'like', "%{$request->search}%")
@@ -78,12 +129,10 @@ class TrailController extends Controller
             });
         }
 
-        // Apply difficulty filter
         if ($request->difficulty) {
             $query->where('difficulty_level', $request->difficulty);
         }
 
-        // Apply distance filter
         if ($request->distance) {
             switch ($request->distance) {
                 case '0-5':
@@ -101,61 +150,22 @@ class TrailController extends Controller
             }
         }
 
-        // Apply activity filter
         if ($request->activity) {
             $query->whereHas('activities', function ($q) use ($request) {
                 $q->where('slug', $request->activity);
             });
         }
 
-        // Apply season filter
         if ($request->season) {
             $query->whereJsonContains('best_seasons', ucfirst($request->season));
         }
 
-        $mediaWith = ['trailMedia' => function ($q) {
+        return $query->with(['trailMedia' => function ($q) {
             $q->where('media_type', 'photo')
                 ->where(function ($q2) {
                     $q2->where('is_featured', true)->orWhere('sort_order', 0);
                 });
-        }];
-
-        $hikingTrails = (clone $query)
-            ->where('location_type', 'trail')
-            ->with($mediaWith)
-            ->orderBy('is_featured', 'desc')
-            ->orderBy('name')
-            ->paginate(9, ['*'], 'hiking_page');
-
-        $fishingLakes = (clone $query)
-            ->where('location_type', 'fishing_lake')
-            ->with($mediaWith)
-            ->orderBy('is_featured', 'desc')
-            ->orderBy('name')
-            ->paginate(9, ['*'], 'lake_page');
-
-        // Fetch all active activities for the filter dropdown
-        $activities = ActivityType::where('is_active', true)
-            ->orderBy('name')
-            ->get();
-
-        if ($request->ajax_type === 'hiking') {
-            return response()->json([
-                'html' => view('trails._cards', ['trails' => $hikingTrails, 'type' => 'hiking'])->render(),
-                'has_more' => $hikingTrails->hasMorePages(),
-                'next_page' => $hikingTrails->currentPage() + 1,
-            ]);
-        }
-
-        if ($request->ajax_type === 'lakes') {
-            return response()->json([
-                'html' => view('trails._cards', ['trails' => $fishingLakes, 'type' => 'lakes'])->render(),
-                'has_more' => $fishingLakes->hasMorePages(),
-                'next_page' => $fishingLakes->currentPage() + 1,
-            ]);
-        }
-
-        return view('trails.index', compact('hikingTrails', 'fishingLakes', 'activities'));
+        }]);
     }
 
     /**
@@ -213,7 +223,17 @@ class TrailController extends Controller
     /**
      * API endpoint for trail data
      */
-    public function apiIndex(Request $request)
+    public function apiHikingTrails(Request $request)
+    {
+        return $this->apiIndex($request, 'trail');
+    }
+
+    public function apiFishingLakes(Request $request)
+    {
+        return $this->apiIndex($request, 'fishing_lake');
+    }
+
+    public function apiIndex(Request $request, ?string $locationType = null)
     {
         $season = $request->get('season');
 
@@ -229,6 +249,10 @@ class TrailController extends Controller
             'seasonalData',
             'trailNetwork',
         ]);
+
+        if ($locationType) {
+            $query->where('location_type', $locationType);
+        }
 
         // Include active/seasonal trails + always-visible network trails
         $alwaysVisibleNetworkIds = \App\Models\TrailNetwork::where('is_always_visible', true)->pluck('id');

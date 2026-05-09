@@ -81,12 +81,17 @@
                         <span>Home</span>
                         <div class="absolute bottom-0 left-0 w-0 h-0.5 bg-accent-600 group-hover:w-full transition-all duration-300 {{ request()->routeIs('home') ? 'w-full' : '' }}"></div>
                     </a>
-                    <a href="{{ route('trails.index') }}" 
+                    <a href="{{ route('trails.index') }}"
                     class="relative text-forest-700 hover:text-accent-600 font-medium transition-all duration-300 py-2 group {{ request()->routeIs('trails.index') ? 'text-accent-700' : '' }}">
-                        <span>Individual Trails</span>
+                        <span>Hiking Trails</span>
                         <div class="absolute bottom-0 left-0 w-0 h-0.5 bg-accent-600 group-hover:w-full transition-all duration-300 {{ request()->routeIs('trails.index') ? 'w-full' : '' }}"></div>
                     </a>
-                    <a href="{{ route('trail-networks.index') }}" 
+                    <a href="{{ route('fishing-lakes.index') }}"
+                    class="relative text-forest-700 hover:text-accent-600 font-medium transition-all duration-300 py-2 group {{ request()->routeIs('fishing-lakes.index') ? 'text-accent-700' : '' }}">
+                        <span>Fishing Lakes</span>
+                        <div class="absolute bottom-0 left-0 w-0 h-0.5 bg-accent-600 group-hover:w-full transition-all duration-300 {{ request()->routeIs('fishing-lakes.index') ? 'w-full' : '' }}"></div>
+                    </a>
+                    <a href="{{ route('trail-networks.index') }}"
                     class="relative text-forest-700 hover:text-accent-600 font-medium transition-all duration-300 py-2 group {{ request()->routeIs('trail-networks.*') ? 'text-accent-700' : '' }}">
                         <span>Ski Trails</span>
                         <div class="absolute bottom-0 left-0 w-0 h-0.5 bg-accent-600 group-hover:w-full transition-all duration-300 {{ request()->routeIs('trail-networks.*') ? 'w-full' : '' }}"></div>
@@ -125,7 +130,8 @@
                     class="absolute top-full left-0 right-0 bg-white shadow-xl border-t border-gray-100">
                     <div class="py-4 space-y-2">
                         <a href="{{ route('home') }}" class="block px-6 py-3 text-gray-700 hover:bg-emerald-50 hover:text-emerald-600 font-medium transition-colors">Home</a>
-                        <a href="{{ route('trails.index') }}" class="block px-6 py-3 text-gray-700 hover:bg-emerald-50 hover:text-emerald-600 font-medium transition-colors">Individual Trails</a>
+                        <a href="{{ route('trails.index') }}" class="block px-6 py-3 text-gray-700 hover:bg-emerald-50 hover:text-emerald-600 font-medium transition-colors">Hiking Trails</a>
+                        <a href="{{ route('fishing-lakes.index') }}" class="block px-6 py-3 text-gray-700 hover:bg-emerald-50 hover:text-emerald-600 font-medium transition-colors">Fishing Lakes</a>
                         <a href="{{ route('trail-networks.index') }}" class="block px-6 py-3 text-gray-700 hover:bg-emerald-50 hover:text-emerald-600 font-medium transition-colors">Ski Trails</a>
                         <a href="{{ route('map') }}" class="block px-6 py-3 text-gray-700 hover:bg-emerald-50 hover:text-emerald-600 font-medium transition-colors">Interactive Map</a>
                         <a href="{{ route('businesses.public.index') }}" class="block px-6 py-3 text-gray-700 hover:bg-emerald-50 hover:text-emerald-600 font-medium transition-colors">Local Businesses</a>
@@ -234,16 +240,16 @@
                     <h4 class="font-bold text-lg mb-6 text-accent-400">Explore</h4>
                     <ul class="space-y-3 flex flex-col items-center md:items-start">
                         <li><a href="{{ route('trails.index') }}" class="text-gray-300 hover:text-accent-400 transition-colors duration-300 flex items-center space-x-2">
-                            <span>🥾</span><span>All Trails</span>
+                            <span>🥾</span><span>Hiking Trails</span>
+                        </a></li>
+                        <li><a href="{{ route('fishing-lakes.index') }}" class="text-gray-300 hover:text-accent-400 transition-colors duration-300 flex items-center space-x-2">
+                            <span>🐟</span><span>Fishing Lakes</span>
                         </a></li>
                         <li><a href="{{ route('map') }}" class="text-gray-300 hover:text-accent-400 transition-colors duration-300 flex items-center space-x-2">
                             <span>🗺️</span><span>Interactive Map</span>
                         </a></li>
                         <li><a href="{{ route('trails.index', ['difficulty' => 1]) }}" class="text-gray-300 hover:text-accent-400 transition-colors duration-300 flex items-center space-x-2">
                             <span>🌱</span><span>Easy Trails</span>
-                        </a></li>
-                        <li><a href="{{ route('trails.index', ['difficulty' => 3]) }}" class="text-gray-300 hover:text-accent-400 transition-colors duration-300 flex items-center space-x-2">
-                            <span>⛰️</span><span>Challenging Trails</span>
                         </a></li>
                     </ul>
                 </div>

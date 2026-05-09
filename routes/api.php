@@ -14,6 +14,8 @@ Route::get('/user', function (Request $request) {
 
 // API Routes for map data
 Route::get('/trails', [TrailController::class, 'apiIndex']);
+Route::get('/hiking-trails', [TrailController::class, 'apiHikingTrails']);
+Route::get('/fishing-lakes', [TrailController::class, 'apiFishingLakes']);
 Route::get('/trails/{trail}', [TrailController::class, 'apiShow']);
 // Trail Networks API
 Route::get('/trail-networks', function () {
@@ -26,23 +28,23 @@ Route::get('/trail-networks', function () {
         ->filter(fn ($n) => $n->trails->isNotEmpty())
         ->values()
         ->map(fn ($network) => [
-            'id'          => $network->id,
-            'name'        => $network->network_name,
-            'slug'        => $network->slug,
-            'type'        => $network->type,
-            'season'      => $network->season,
-            'icon'        => $network->icon,
-            'image'       => $network->image ? asset('storage/'.$network->image) : null,
+            'id' => $network->id,
+            'name' => $network->network_name,
+            'slug' => $network->slug,
+            'type' => $network->type,
+            'season' => $network->season,
+            'icon' => $network->icon,
+            'image' => $network->image ? asset('storage/'.$network->image) : null,
             'description' => $network->description,
-            'latitude'    => $network->latitude  ? (float) $network->latitude  : null,
-            'longitude'   => $network->longitude ? (float) $network->longitude : null,
+            'latitude' => $network->latitude ? (float) $network->latitude : null,
+            'longitude' => $network->longitude ? (float) $network->longitude : null,
             'website_url' => $network->website_url,
             'trail_count' => $network->trails->count(),
-            'trails'      => $network->trails->map(fn ($t) => [
-                'id'         => $t->id,
-                'name'       => $t->name,
+            'trails' => $network->trails->map(fn ($t) => [
+                'id' => $t->id,
+                'name' => $t->name,
                 'difficulty' => $t->difficulty_level,
-                'distance'   => $t->distance_km,
+                'distance' => $t->distance_km,
             ])->values(),
         ]);
 
