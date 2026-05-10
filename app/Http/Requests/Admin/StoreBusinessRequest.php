@@ -30,7 +30,7 @@ class StoreBusinessRequest extends FormRequest
             'facebook_url' => ['nullable', 'url', 'max:500'],
             'instagram_url' => ['nullable', 'url', 'max:500'],
             'opening_hours' => ['nullable', 'array'],
-            'price_range' => ['nullable', 'in:free,$,$$,$$$'],
+            'price_range' => ['nullable', 'string', 'max:100'],
             'is_seasonal' => ['boolean'],
             'season_open' => ['nullable', 'string', 'max:100'],
             'icon' => ['nullable', 'string', 'max:10'],
