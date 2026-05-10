@@ -1530,6 +1530,13 @@
     color: #4b5563;
     font-style: italic;
     line-height: 1.5;
+    margin: 0 0 12px;
+}
+
+.biz-panel-description {
+    font-size: 13px;
+    color: #6b7280;
+    line-height: 1.6;
     margin: 0 0 18px;
 }
 
@@ -3716,7 +3723,7 @@
 
             const metaParts = [`<span class="biz-panel-type">${business.business_type_label}</span>`];
             if (business.price_range) {
-                metaParts.push(`<span class="biz-panel-dot">·</span><span class="biz-panel-price-badge">${business.price_range}</span>`);
+                metaParts.push(`<span class="biz-panel-dot">·</span><span class="biz-panel-price-badge">Approx ${escapeHtml(business.price_range)}</span>`);
             }
             if (business.is_seasonal && business.season_open) {
                 metaParts.push(`<span class="biz-panel-dot">·</span><span class="biz-panel-seasonal-badge">🗓 ${business.season_open}</span>`);
@@ -3724,6 +3731,10 @@
 
             const tagline = business.tagline
                 ? `<p class="biz-panel-tagline">${business.tagline}</p>`
+                : '';
+
+            const description = business.description
+                ? `<p class="biz-panel-description">${escapeHtml(business.description)}</p>`
                 : '';
 
             // Action buttons
@@ -3804,6 +3815,7 @@
                     <h2 class="biz-panel-name">${escapeHtml(business.name)}</h2>
                     <div class="biz-panel-meta">${metaParts.join('')}</div>
                     ${tagline}
+                    ${description}
                     ${actions.length ? `<div class="biz-panel-actions">${actions.join('')}</div>` : ''}
                     ${infoRows.length ? `<hr class="biz-panel-divider">${infoRows.join('')}` : ''}
                 </div>

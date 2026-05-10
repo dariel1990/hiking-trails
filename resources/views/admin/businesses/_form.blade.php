@@ -261,13 +261,14 @@
 
                 <div class="space-y-2">
                     <label for="price_range" class="text-sm font-medium leading-none">Price Range</label>
-                    <select name="price_range" id="price_range"
-                        class="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
-                        <option value="">Not specified</option>
-                        @foreach(App\Models\Business::getPriceRanges() as $val => $label)
-                            <option value="{{ $val }}" {{ old('price_range', $isEdit ? $business->price_range : '') === $val ? 'selected' : '' }}>{{ $label }}</option>
-                        @endforeach
-                    </select>
+                    <div class="relative">
+                        {{-- <span class="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground pointer-events-none select-none">Approx</span> --}}
+                        <input type="text" name="price_range" id="price_range"
+                            value="{{ old('price_range', $isEdit ? $business->price_range : '') }}"
+                            placeholder="e.g. $25, $10–$20, Free"
+                            class="flex h-10 w-full rounded-md border border-input bg-background pl-16 pr-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
+                    </div>
+                    <p class="text-xs text-muted-foreground">Displayed on the map as "Approx …"</p>
                 </div>
 
                 <div class="pt-2 border-t space-y-3">
