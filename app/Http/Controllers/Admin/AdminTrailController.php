@@ -444,7 +444,9 @@ class AdminTrailController extends Controller
     {
         $trail->load(['media', 'features.media']);
 
-        return view('admin.trails.show', compact('trail'));
+        $facilities = \App\Models\Facility::where('is_active', true)->whereNull('trail_network_id')->orderBy('facility_type')->orderBy('name')->get();
+
+        return view('admin.trails.show', compact('trail', 'facilities'));
     }
 
     /**

@@ -17,6 +17,7 @@ class Facility extends Model
         'description',
         'icon',
         'is_active',
+        'trail_network_id',
     ];
 
     protected $casts = [
@@ -26,6 +27,11 @@ class Facility extends Model
     ];
 
     protected $appends = ['media_count'];
+
+    public function trailNetwork()
+    {
+        return $this->belongsTo(TrailNetwork::class);
+    }
 
     /**
      * Get all media for this facility
@@ -104,7 +110,11 @@ class Facility extends Model
             'water' => '💧',
             'shelter' => '⛺',
             'camping_site' => '🏕️',
-            'point_of_interest' => '📍'
+            'point_of_interest' => '📍',
+            'aid_station' => '🚑',
+            'bridge' => '🌉',
+            'trail_sign' => '🚶',
+            'ttf' => '⚠️',
         ];
 
         return $icons[$this->facility_type] ?? '📍';
@@ -127,6 +137,10 @@ class Facility extends Model
             'shelter' => '⛺ Shelter',
             'camping_site' => '🏕️ Camping Site',
             'point_of_interest' => '📍 Point of Interest',
+            'aid_station' => '🚑 Aid Station',
+            'bridge' => '🌉 Bridge',
+            'trail_sign' => '🚶 Trail Sign',
+            'ttf' => '⚠️ TTF (Technical Trail Feature)',
         ];
     }
 

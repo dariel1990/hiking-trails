@@ -341,6 +341,49 @@
                     </div>
                 </div>
             </div>
+            {{-- Facilities --}}
+            <div class="bg-white rounded-xl shadow-sm border border-gray-200">
+                <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between gap-3">
+                    <div class="flex items-center gap-3">
+                        <div class="w-8 h-8 rounded-lg bg-teal-50 text-teal-600 flex items-center justify-center">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
+                            </svg>
+                        </div>
+                        <div>
+                            <h2 class="text-sm font-semibold text-gray-900">Facilities</h2>
+                            <p class="text-xs text-gray-500">{{ $facilities->count() }} active</p>
+                        </div>
+                    </div>
+                    <a href="{{ route('admin.facilities.create') }}"
+                       class="text-xs font-medium text-green-700 hover:text-green-800">+ Add</a>
+                </div>
+
+                @if($facilities->isEmpty())
+                    <div class="px-6 py-8 text-center text-sm text-gray-500">
+                        <p>No facilities yet.</p>
+                        <a href="{{ route('admin.facilities.create') }}" class="text-green-600 hover:underline mt-1 inline-block">Add the first facility</a>
+                    </div>
+                @else
+                    <div class="divide-y divide-gray-100">
+                        @foreach($facilities as $facility)
+                            <div class="px-6 py-3 flex items-center justify-between gap-3">
+                                <div class="flex items-center gap-3 min-w-0">
+                                    <span class="text-xl leading-none shrink-0">{{ $facility->icon }}</span>
+                                    <div class="min-w-0">
+                                        <p class="text-sm font-medium text-gray-900 truncate">{{ $facility->name }}</p>
+                                        <p class="text-xs text-gray-500">{{ $facility->facility_type_label }}</p>
+                                    </div>
+                                </div>
+                                <a href="{{ route('admin.facilities.edit', $facility) }}"
+                                   class="shrink-0 text-xs text-indigo-600 hover:text-indigo-900">Edit</a>
+                            </div>
+                        @endforeach
+                    </div>
+                @endif
+            </div>
+
         </div>
     </div>
 </div>

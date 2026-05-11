@@ -130,6 +130,21 @@
                             </div>
                         </div>
 
+                        {{-- Trail Network --}}
+                        <div>
+                            <label for="trail_network_id" class="block text-sm font-medium text-gray-700 mb-1.5">Trail Network</label>
+                            <select name="trail_network_id" id="trail_network_id"
+                                    class="block w-full rounded-lg border-gray-400 shadow-sm px-4 py-2.5 focus:border-green-500 focus:ring-green-500">
+                                <option value="">— None (show on main map) —</option>
+                                @foreach($trailNetworks as $network)
+                                    <option value="{{ $network->id }}" {{ old('trail_network_id') == $network->id ? 'selected' : '' }}>
+                                        {{ $network->network_name }}
+                                    </option>
+                                @endforeach
+                            </select>
+                            <p class="mt-1 text-xs text-gray-500">Assign to a trail network to show it only on that network's map.</p>
+                        </div>
+
                         {{-- Description --}}
                         <div>
                             <label for="description" class="block text-sm font-medium text-gray-700 mb-1.5">Description</label>

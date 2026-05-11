@@ -102,6 +102,7 @@ Route::post('/elevation-profile', function (Request $request) {
 
 Route::get('/facilities', function () {
     $facilities = Facility::where('is_active', true)
+        ->whereNull('trail_network_id')
         ->with(['media' => function ($query) {
             $query->orderBy('sort_order')->orderBy('created_at');
         }])

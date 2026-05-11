@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Facility;
 use App\Models\FacilityMedia;
+use App\Models\TrailNetwork;
 use Illuminate\Http\Request;
 
 class FacilityController extends Controller
@@ -27,7 +28,9 @@ class FacilityController extends Controller
      */
     public function create()
     {
-        return view('admin.facilities.create');
+        $trailNetworks = TrailNetwork::orderBy('network_name')->get(['id', 'network_name']);
+
+        return view('admin.facilities.create', compact('trailNetworks'));
     }
 
     /**
@@ -36,13 +39,14 @@ class FacilityController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'facility_type' => 'required|in:parking,toilets,emergency_kit,lodge,viewpoint,info,picnic,water,shelter,camping_site',
+            'facility_type' => ['required', 'in:' . implode(',', array_keys(\App\Models\Facility::getFacilityTypes()))],
             'name' => 'required|string|max:255',
             'latitude' => 'required|numeric|between:-90,90',
             'longitude' => 'required|numeric|between:-180,180',
             'description' => 'nullable|string',
             'icon' => 'nullable|string|max:10',
             'is_active' => 'boolean',
+            'trail_network_id' => 'nullable|exists:trail_networks,id',
             'photos' => 'nullable|array',
             'photos.*' => 'image|mimes:jpg,jpeg,png,webp|max:10240',
             'video_urls' => 'nullable|array',
@@ -50,6 +54,7 @@ class FacilityController extends Controller
         ]);
 
         $validated['is_active'] = $request->has('is_active');
+        $validated['trail_network_id'] = $request->input('trail_network_id') ?: null;
 
         $facility = Facility::create($validated);
 
@@ -74,7 +79,9 @@ class FacilityController extends Controller
             $query->orderBy('sort_order')->orderBy('created_at');
         }]);
 
-        return view('admin.facilities.edit', compact('facility'));
+        $trailNetworks = TrailNetwork::orderBy('network_name')->get(['id', 'network_name']);
+
+        return view('admin.facilities.edit', compact('facility', 'trailNetworks'));
     }
 
     /**
@@ -83,13 +90,14 @@ class FacilityController extends Controller
     public function update(Request $request, Facility $facility)
     {
         $validated = $request->validate([
-            'facility_type' => 'required|in:parking,toilets,emergency_kit,lodge,viewpoint,info,picnic,water,shelter,camping_site',
+            'facility_type' => ['required', 'in:' . implode(',', array_keys(\App\Models\Facility::getFacilityTypes()))],
             'name' => 'required|string|max:255',
             'latitude' => 'required|numeric|between:-90,90',
             'longitude' => 'required|numeric|between:-180,180',
             'description' => 'nullable|string',
             'icon' => 'nullable|string|max:10',
             'is_active' => 'boolean',
+            'trail_network_id' => 'nullable|exists:trail_networks,id',
             'photos' => 'nullable|array',
             'photos.*' => 'image|mimes:jpg,jpeg,png,webp|max:10240',
             'video_urls' => 'nullable|array',
@@ -97,6 +105,7 @@ class FacilityController extends Controller
         ]);
 
         $validated['is_active'] = $request->has('is_active');
+        $validated['trail_network_id'] = $request->input('trail_network_id') ?: null;
 
         $facility->update($validated);
 

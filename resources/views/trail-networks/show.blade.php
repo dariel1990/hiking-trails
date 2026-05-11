@@ -349,7 +349,7 @@
         border-radius: 0.5rem;
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
         padding: 0.75rem 1rem;
-        max-width: 12rem;
+        max-width: 16rem;
     }
 
     @media (max-width: 768px) {
@@ -730,12 +730,27 @@
                                     <div class="flex-1 min-w-0">
                                         <h4 class="font-medium text-gray-900 text-sm truncate trail-name mb-1">{{ $trail->name }}</h4>
                                         <div class="flex items-center gap-2">
-                                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium
-                                                @if($difficultyLevel <= 2) bg-green-100 text-green-700 ring-1 ring-green-600/20
-                                                @elseif($difficultyLevel == 3) bg-blue-100 text-blue-700 ring-1 ring-blue-600/20
-                                                @else bg-red-100 text-red-700 ring-1 ring-red-600/20
-                                                @endif">
-                                                Level {{ $trail->difficulty_level }}
+                                            @php
+                                                $dl = $difficultyLevel;
+                                                $dlLabel = match(true) {
+                                                    $dl == 1 => '🟢 Green',
+                                                    $dl == 2 => '🔵 Blue',
+                                                    $dl == 3 => '⚫ Black Diamond',
+                                                    $dl == 4 => '⚫⚫ Double Black Diamond',
+                                                    $dl >= 5 => '🔴 Proline',
+                                                    default  => "Level {$dl}",
+                                                };
+                                                $dlClass = match(true) {
+                                                    $dl == 1 => 'bg-green-100 text-green-700 ring-1 ring-green-600/20',
+                                                    $dl == 2 => 'bg-blue-100 text-blue-700 ring-1 ring-blue-600/20',
+                                                    $dl == 3 => 'bg-gray-900 text-white ring-1 ring-gray-700',
+                                                    $dl == 4 => 'bg-gray-950 text-white ring-1 ring-gray-700',
+                                                    $dl >= 5 => 'bg-red-100 text-red-700 ring-1 ring-red-600/20',
+                                                    default  => 'bg-gray-100 text-gray-700',
+                                                };
+                                            @endphp
+                                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium {{ $dlClass }}">
+                                                {{ $dlLabel }}
                                             </span>
                                             <span class="text-xs text-gray-500 font-medium">{{ $trail->distance_km }} km</span>
                                         </div>
@@ -845,17 +860,20 @@
     <div class="map-legend">
         <h3 class="text-xs font-semibold text-gray-900 uppercase tracking-wide mb-3">Difficulty</h3>
         <div class="space-y-2">
-            <div class="flex items-center">
-                <div class="w-3 h-3 rounded-full bg-green-500 mr-2 ring-2 ring-green-500/20"></div>
-                <span class="text-xs text-gray-700 font-medium">Easy (1-2)</span>
+            <div class="flex items-center gap-2">
+                <span class="text-xs text-gray-700 font-medium">🟢 Green</span>
             </div>
-            <div class="flex items-center">
-                <div class="w-3 h-3 rounded-full bg-blue-500 mr-2 ring-2 ring-blue-500/20"></div>
-                <span class="text-xs text-gray-700 font-medium">Intermediate (3)</span>
+            <div class="flex items-center gap-2">
+                <span class="text-xs text-gray-700 font-medium">🔵 Blue</span>
             </div>
-            <div class="flex items-center">
-                <div class="w-3 h-3 rounded-full bg-red-500 mr-2 ring-2 ring-red-500/20"></div>
-                <span class="text-xs text-gray-700 font-medium">Advanced (4-5)</span>
+            <div class="flex items-center gap-2">
+                <span class="text-xs text-gray-700 font-medium">⚫ Black Diamond</span>
+            </div>
+            <div class="flex items-center gap-2">
+                <span class="text-xs text-gray-700 font-medium">⚫⚫ Double Black Diamond</span>
+            </div>
+            <div class="flex items-center gap-2">
+                <span class="text-xs text-gray-700 font-medium">🔴 Proline</span>
             </div>
         </div>
     </div>
@@ -890,17 +908,40 @@
 // Network data
 const networkData = @json($network);
 const trails = @json($network->trails);
+const facilitiesData = @json($facilities);
 
 // Difficulty color mapping
 function getDifficultyColor(difficulty) {
     const colors = {
-        1: '#22c55e',
-        2: '#22c55e',
-        3: '#3b82f6',
-        4: '#ef4444',
-        5: '#ef4444',
+        1: '#22c55e', // Green
+        2: '#3b82f6', // Blue
+        3: '#1a1a1a', // Black Diamond
+        4: '#1a1a1a', // Double Black Diamond
+        5: '#ef4444', // Proline (red)
     };
     return colors[Math.floor(difficulty)] || '#6b7280';
+}
+
+function getDifficultyLabel(difficulty) {
+    const labels = {
+        1: 'Green',
+        2: 'Blue',
+        3: 'Black Diamond',
+        4: 'Double Black Diamond',
+        5: 'Proline',
+    };
+    return labels[Math.floor(difficulty)] || `Level ${difficulty}`;
+}
+
+function getDifficultyStyle(difficulty) {
+    const styles = {
+        1: 'background:#dcfce7;color:#166534;',
+        2: 'background:#dbeafe;color:#1d4ed8;',
+        3: 'background:#1a1a1a;color:#ffffff;',
+        4: 'background:#111827;color:#ffffff;',
+        5: 'background:#fee2e2;color:#991b1b;',
+    };
+    return styles[Math.floor(difficulty)] || 'background:#f3f4f6;color:#374151;';
 }
 
 // State
@@ -908,6 +949,8 @@ const trailCenterMarkers = {};
 const waypointMarkers = {};
 let selectedTrailId = null;
 const facilityMarkers = [];
+const FACILITY_NORMAL_STYLE  = 'width:22px;height:22px;background:#fff;border:1.5px solid #6b7280;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,0.2);transition:transform 0.15s ease,box-shadow 0.15s ease,border-color 0.15s ease;';
+const FACILITY_SELECTED_STYLE = 'width:22px;height:22px;background:#fff;border:2.5px solid #eab308;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;cursor:pointer;box-shadow:0 0 0 4px rgba(234,179,8,0.3),0 2px 8px rgba(0,0,0,0.3);transform:scale(1.25);transition:transform 0.15s ease,box-shadow 0.15s ease,border-color 0.15s ease;';
 const highlightMarkers = [];
 let _mapLoaded = false;
 
@@ -964,16 +1007,20 @@ function initMapLayers() {
         map.getSource('trail-routes').setData({ type: 'FeatureCollection', features: trailFeatures });
     }
 
-    // Highlight outline (yellow glow when selected)
+    // Highlight outline (yellow glow when selected or hovered)
     if (!map.getLayer('trail-routes-outline')) {
         map.addLayer({
             id: 'trail-routes-outline',
             type: 'line',
             source: 'trail-routes',
             paint: {
-                'line-color': '#f3fd44',
-                'line-width': 15,
-                'line-opacity': ['case', ['boolean', ['feature-state', 'selected'], false], 1, 0],
+                'line-color': ['case', ['boolean', ['feature-state', 'selected'], false], '#f3fd44', 'rgba(255,255,255,0.6)'],
+                'line-width': ['case', ['boolean', ['feature-state', 'selected'], false], 8, 6],
+                'line-opacity': ['case',
+                    ['boolean', ['feature-state', 'selected'], false], 1,
+                    ['boolean', ['feature-state', 'hovered'], false], 0.7,
+                    0
+                ],
             },
             layout: { 'line-join': 'round', 'line-cap': 'round' },
         });
@@ -987,8 +1034,23 @@ function initMapLayers() {
             source: 'trail-routes',
             paint: {
                 'line-color': ['get', 'color'],
-                'line-width': ['case', ['boolean', ['feature-state', 'selected'], false], 5, 3],
+                'line-width': ['case',
+                    ['boolean', ['feature-state', 'selected'], false], 3.5,
+                    ['boolean', ['feature-state', 'hovered'], false], 3,
+                    1.5
+                ],
             },
+            layout: { 'line-join': 'round', 'line-cap': 'round' },
+        });
+    }
+
+    // Invisible wide hit area for easier clicking
+    if (!map.getLayer('trail-routes-hit')) {
+        map.addLayer({
+            id: 'trail-routes-hit',
+            type: 'line',
+            source: 'trail-routes',
+            paint: { 'line-color': 'transparent', 'line-width': 20 },
             layout: { 'line-join': 'round', 'line-cap': 'round' },
         });
     }
@@ -1010,12 +1072,41 @@ function initMapLayers() {
         });
     }
 
-    // Click trail line → focus
-    map.on('click', 'trail-routes-line', (e) => {
-        if (e.features.length > 0) focusTrail(e.features[0].properties.trailId);
-    });
-    map.on('mouseenter', 'trail-routes-line', () => { map.getCanvas().style.cursor = 'pointer'; });
-    map.on('mouseleave', 'trail-routes-line', () => { map.getCanvas().style.cursor = ''; });
+    // Click / hover handlers (registered once only)
+    if (!window._trailLineClickRegistered) {
+        window._trailLineClickRegistered = true;
+        let hoveredTrailId = null;
+
+        // Click on hit area → show details (skip if a facility was just clicked)
+        ['trail-routes-hit', 'trail-routes-line'].forEach(layer => {
+            map.on('click', layer, (e) => {
+                if (window._facilityClicked) return;
+                if (!e.features.length) return;
+                focusTrail(e.features[0].properties.trailId);
+            });
+        });
+
+        // Hover: set hovered feature state (skip if cursor is over a facility marker)
+        map.on('mousemove', 'trail-routes-hit', (e) => {
+            if (window._facilityClicked) return;
+            map.getCanvas().style.cursor = 'pointer';
+            if (!e.features.length) return;
+            const id = e.features[0].id;
+            if (hoveredTrailId !== null && hoveredTrailId !== id) {
+                map.setFeatureState({ source: 'trail-routes', id: hoveredTrailId }, { hovered: false });
+            }
+            hoveredTrailId = id;
+            map.setFeatureState({ source: 'trail-routes', id: hoveredTrailId }, { hovered: true });
+        });
+
+        map.on('mouseleave', 'trail-routes-hit', () => {
+            map.getCanvas().style.cursor = '';
+            if (hoveredTrailId !== null) {
+                map.setFeatureState({ source: 'trail-routes', id: hoveredTrailId }, { hovered: false });
+                hoveredTrailId = null;
+            }
+        });
+    }
 
     // Restore selected state after style reload
     if (selectedTrailId !== null) {
@@ -1037,7 +1128,44 @@ map.on('load', () => {
             description: trail.description, distance_km: trail.distance_km,
             difficulty_level: trail.difficulty_level, elevation_gain: trail.elevation_gain_m,
             preview_photo: trail.preview_photo, photos: trail.photos,
+            route_coordinates: trail.route_coordinates,
         };
+    });
+
+    // Facility markers
+    window._selectedFacilityEl = null;
+
+    facilitiesData.forEach(facility => {
+        if (!facility.latitude || !facility.longitude) return;
+        const el = document.createElement('div');
+        el.className = 'facility-marker';
+        el.style.cssText = FACILITY_NORMAL_STYLE;
+        el.textContent = facility.icon || '📍';
+        el.addEventListener('click', (e) => {
+            e.stopPropagation();
+            // Guard: prevent the map trail-click handler from also firing
+            window._facilityClicked = true;
+            setTimeout(() => { window._facilityClicked = false; }, 50);
+
+            // Deselect any active trail line
+            if (selectedTrailId !== null) {
+                map.setFeatureState({ source: 'trail-routes', id: selectedTrailId }, { selected: false });
+                selectedTrailId = null;
+            }
+
+            // Remove highlight from previously selected marker
+            if (window._selectedFacilityEl && window._selectedFacilityEl !== el) {
+                window._selectedFacilityEl.style.cssText = FACILITY_NORMAL_STYLE;
+            }
+            // Apply highlight to clicked marker
+            el.style.cssText = FACILITY_SELECTED_STYLE;
+            window._selectedFacilityEl = el;
+            showFacilityDetailsCard(facility);
+        });
+        const marker = new mapboxgl.Marker({ element: el })
+            .setLngLat([facility.longitude, facility.latitude])
+            .addTo(map);
+        facilityMarkers.push(marker);
     });
 
     // Fit map to all trails
@@ -1054,8 +1182,12 @@ map.on('style.load', () => {
     if (_mapLoaded) initMapLayers();
 });
 
-// Close popups when clicking map background
-map.on('click', () => {});
+// Close details card when clicking empty map space
+map.on('click', (e) => {
+    if (!map.queryRenderedFeatures(e.point, { layers: ['trail-routes-hit', 'trail-routes-line'] }).length) {
+        closeTrailDetailsCard();
+    }
+});
 
 // Layers dropdown toggle
 document.getElementById('layers-toggle').addEventListener('click', (e) => {
@@ -1104,21 +1236,20 @@ window.focusTrail = function(trailId) {
     map.setFeatureState({ source: 'trail-routes', id: trailId }, { selected: true });
     selectedTrailId = trailId;
 
-    // Fit bounds to selected trail
+    // Fit map to selected trail bounds
     const trail = trails.find(t => t.id == trailId);
     if (trail && trail.route_coordinates && trail.route_coordinates.length) {
         const coords = trail.route_coordinates;
         const lngs = coords.map(c => c[1]);
         const lats = coords.map(c => c[0]);
         const bounds = [[Math.min(...lngs), Math.min(...lats)], [Math.max(...lngs), Math.max(...lats)]];
-
         map.fitBounds(bounds, window.innerWidth <= 768
-            ? { padding: 50, maxZoom: 16 }
-            : { padding: { top: 50, left: 420, right: 50, bottom: 50 }, maxZoom: 16 }
+            ? { padding: 50, maxZoom: 16, duration: 800 }
+            : { padding: { top: 50, left: 420, right: 50, bottom: 50 }, maxZoom: 16, duration: 800 }
         );
     }
 
-    // Show trail details card
+    // Show trail details card after camera settles
     setTimeout(() => showTrailDetailsCard(trailId), 300);
 };
 
@@ -1132,11 +1263,8 @@ function showTrailDetailsCard(trailId) {
     const featuredImage = trail.preview_photo || (trail.photos && trail.photos.length > 0 ? trail.photos[0].url : null);
     const trailType = trail.trail_type ? trail.trail_type.replace(/[-_]/g, ' ') : 'Trail';
 
-    const difficultyClass = difficultyLevel <= 2
-        ? 'background:#dcfce7;color:#166534;'
-        : (difficultyLevel == 3
-            ? 'background:#dbeafe;color:#1d4ed8;'
-            : 'background:#fee2e2;color:#991b1b;');
+    const difficultyClass = getDifficultyStyle(difficultyLevel);
+    const difficultyLabel = getDifficultyLabel(difficultyLevel);
 
     const stats = [
         { value: trail.distance_km ?? '—', label: 'Distance (km)', bg: '#eff6ff', color: '#2563eb' },
@@ -1161,7 +1289,7 @@ function showTrailDetailsCard(trailId) {
             <div class="tdc-meta">
                 <span class="tdc-type">🥾 ${trailType.replace(/\b\w/g, c => c.toUpperCase())}</span>
                 <span class="tdc-dot">·</span>
-                <span class="tdc-difficulty-badge" style="${difficultyClass}">Level ${trail.difficulty_level}</span>
+                <span class="tdc-difficulty-badge" style="${difficultyClass}">${difficultyLabel}</span>
             </div>
             <div class="tdc-actions">
                 <button type="button" onclick="focusTrail(${trail.id})" class="tdc-action-btn">
@@ -1187,16 +1315,156 @@ function showTrailDetailsCard(trailId) {
                 `).join('')}
             </div>
             ${trail.description ? `<p class="tdc-description">${trail.description}</p>` : ''}
+            <hr class="tdc-divider">
+            <div id="tdc-elevation-section">
+                <p style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:#6b7280;margin:0 0 8px;">Elevation Profile</p>
+                <div id="tdc-elevation-loading" style="text-align:center;padding:16px 0;color:#9ca3af;font-size:12px;">Loading profile…</div>
+                <canvas id="tdc-elevation-canvas" style="display:none;width:100%;height:90px;border-radius:6px;"></canvas>
+                <div id="tdc-elevation-stats" style="display:none;display:none;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px;"></div>
+            </div>
         </div>
     `;
     card.classList.add('visible');
+
+    // Fetch elevation profile after card is shown
+    if (trail.route_coordinates && trail.route_coordinates.length >= 2) {
+        loadTrailElevationProfile(trail.route_coordinates);
+    } else {
+        document.getElementById('tdc-elevation-loading').textContent = 'No route data available.';
+    }
+}
+
+async function loadTrailElevationProfile(routeCoords) {
+    const loadingEl = document.getElementById('tdc-elevation-loading');
+    const canvas    = document.getElementById('tdc-elevation-canvas');
+    const statsEl   = document.getElementById('tdc-elevation-stats');
+    if (!loadingEl || !canvas || !statsEl) return;
+
+    try {
+        const res = await fetch('/api/elevation-profile', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+            },
+            body: JSON.stringify({ coordinates: routeCoords }),
+        });
+
+        if (!res.ok) throw new Error('failed');
+
+        const data = await res.json();
+        if (!data.geometry || !data.geometry.coordinates) throw new Error('no data');
+
+        const coords = data.geometry.coordinates; // [lng, lat, elevation]
+        const elevs  = coords.map(c => c[2]);
+        const maxEl  = Math.max(...elevs);
+        const minEl  = Math.min(...elevs);
+        let gain = 0, loss = 0;
+        for (let i = 1; i < elevs.length; i++) {
+            const diff = elevs[i] - elevs[i - 1];
+            if (diff > 0) gain += diff; else loss += Math.abs(diff);
+        }
+
+        // Draw chart
+        loadingEl.style.display = 'none';
+        canvas.style.display = 'block';
+        const w = canvas.width  = canvas.offsetWidth;
+        const h = canvas.height = 90;
+        const ctx = canvas.getContext('2d');
+        const range = maxEl - minEl || 1;
+        const pad = 4;
+
+        // Gradient fill
+        const grad = ctx.createLinearGradient(0, 0, 0, h);
+        grad.addColorStop(0, 'rgba(59,130,246,0.35)');
+        grad.addColorStop(1, 'rgba(59,130,246,0.02)');
+
+        ctx.beginPath();
+        elevs.forEach((el, i) => {
+            const x = pad + (i / (elevs.length - 1)) * (w - pad * 2);
+            const y = pad + (1 - (el - minEl) / range) * (h - pad * 2);
+            i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+        });
+        ctx.strokeStyle = '#3b82f6';
+        ctx.lineWidth = 2;
+        ctx.lineJoin = 'round';
+        ctx.stroke();
+        ctx.lineTo(w - pad, h);
+        ctx.lineTo(pad, h);
+        ctx.closePath();
+        ctx.fillStyle = grad;
+        ctx.fill();
+
+        // Stats
+        statsEl.style.display = 'grid';
+        statsEl.style.gridTemplateColumns = '1fr 1fr';
+        statsEl.style.gap = '6px';
+        statsEl.style.marginTop = '8px';
+        statsEl.innerHTML = [
+            { label: '▲ Gain', value: `${Math.round(gain)} m`, color: '#16a34a' },
+            { label: '▼ Loss', value: `${Math.round(loss)} m`, color: '#dc2626' },
+            { label: 'Max', value: `${Math.round(maxEl)} m`, color: '#2563eb' },
+            { label: 'Min', value: `${Math.round(minEl)} m`, color: '#6b7280' },
+        ].map(s => `
+            <div style="background:#f9fafb;border-radius:6px;padding:6px 8px;border:1px solid #f3f4f6;">
+                <div style="font-size:13px;font-weight:700;color:${s.color};">${s.value}</div>
+                <div style="font-size:10px;color:#9ca3af;text-transform:uppercase;letter-spacing:.04em;">${s.label}</div>
+            </div>`).join('');
+
+    } catch {
+        if (loadingEl) loadingEl.textContent = 'Elevation data unavailable.';
+    }
 }
 
 // Function to close trail details card
 function closeTrailDetailsCard() {
     const card = document.getElementById('trail-details-card');
     card.classList.remove('visible');
-    // Keep the trail selected - don't deselect it
+
+    // Deselect active trail line
+    if (selectedTrailId !== null) {
+        try { map.setFeatureState({ source: 'trail-routes', id: selectedTrailId }, { selected: false }); } catch(e) {}
+        selectedTrailId = null;
+    }
+
+    // Clear facility highlight
+    if (window._selectedFacilityEl) {
+        window._selectedFacilityEl.style.cssText = FACILITY_NORMAL_STYLE;
+        window._selectedFacilityEl = null;
+    }
+}
+
+// Show facility details in the same card
+function showFacilityDetailsCard(facility) {
+    const card = document.getElementById('trail-details-card');
+    const typeLabel = facility.facility_type.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+
+    card.innerHTML = `
+        <div class="tdc-hero" style="background:linear-gradient(135deg,#134e4a,#0d9488);display:flex;align-items:center;justify-content:center;">
+            <span style="font-size:56px;line-height:1;">${facility.icon || '📍'}</span>
+            <button class="tdc-close" onclick="closeTrailDetailsCard()" aria-label="Close">
+                <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+            </button>
+        </div>
+        <div class="tdc-body">
+            <h2 class="tdc-name">${facility.name}</h2>
+            <div class="tdc-meta">
+                <span class="tdc-type">${typeLabel}</span>
+            </div>
+            <div class="tdc-actions">
+                <button type="button" onclick="map.easeTo({center:[${facility.longitude},${facility.latitude}],zoom:17,duration:800})" class="tdc-action-btn">
+                    <div class="tdc-action-icon">
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                    </div>
+                    <span class="tdc-action-label">View Location</span>
+                </button>
+            </div>
+            ${facility.description ? `<hr class="tdc-divider"><p class="tdc-description">${facility.description}</p>` : ''}
+        </div>
+    `;
+    card.classList.add('visible');
 }
 
 document.addEventListener('DOMContentLoaded', function() {

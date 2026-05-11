@@ -4524,7 +4524,7 @@
             for (let i = 0; i < coords.length - 1; i++) totalDist += haversine(coords[i], coords[i + 1]);
             const SPEED_MS = 200; // metres per second — same apparent ground speed on all trails
             const DURATION_MS = (totalDist / SPEED_MS) * 1000;
-            const flyZoom = 16; // fixed zoom keeps pixel speed consistent for all trail lengths
+            const flyZoom = 14; // fixed zoom keeps pixel speed consistent for all trail lengths
             const startTime = performance.now();
 
             const animate = (now) => {

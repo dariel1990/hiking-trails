@@ -71,7 +71,13 @@ class AdminTrailNetworkController extends Controller
     {
         $trailNetwork->load('trails');
 
-        return view('admin.trail-networks.show', compact('trailNetwork'));
+        $facilities = \App\Models\Facility::where('is_active', true)
+            ->where('trail_network_id', $trailNetwork->id)
+            ->orderBy('facility_type')
+            ->orderBy('name')
+            ->get();
+
+        return view('admin.trail-networks.show', compact('trailNetwork', 'facilities'));
     }
 
     /**
