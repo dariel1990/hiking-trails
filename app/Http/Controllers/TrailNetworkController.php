@@ -102,7 +102,13 @@ class TrailNetworkController extends Controller
 
         $mapboxToken = config('services.mapbox.access_token');
 
-        return view('trail-networks.show', compact('network', 'mapboxToken'));
+        $facilities = \App\Models\Facility::where('is_active', true)
+            ->where('trail_network_id', $network->id)
+            ->orderBy('facility_type')
+            ->orderBy('name')
+            ->get(['id', 'name', 'facility_type', 'latitude', 'longitude', 'description', 'icon']);
+
+        return view('trail-networks.show', compact('network', 'mapboxToken', 'facilities'));
     }
 
     public function trailHighlights()
