@@ -2891,9 +2891,13 @@
             return duplicates;
         }
 
-        /**
-         * Ramer-Douglas-Peucker simplification (client-side).
-         */
+        /* ─────────────────────────────────────────────────────────────────────
+         * SIMPLIFICATION DISABLED FOR TESTING (2026-05-14)
+         * The four methods below (rdpSimplify, _perpendicularDist,
+         * simplifyCoordinates, removeLoopingSegments) cleaned the GPX track
+         * before saving. Disabled to test how the raw track renders/saves.
+         * Restore by deleting the surrounding block-comment markers.
+         * ─────────────────────────────────────────────────────────────────────
         rdpSimplify(points, epsilon) {
             if (points.length < 3) return points;
 
@@ -2925,7 +2929,7 @@
             return Math.sqrt((pt[1]-(a[1]+t*dx))**2 + (pt[0]-(a[0]+t*dy))**2);
         }
 
-        simplifyCoordinates(coordinates, targetCount = 500) {
+        simplifyCoordinates(coordinates, targetCount = 2500) {
             if (coordinates.length <= targetCount) return coordinates;
             let epsilon = 0.00001;
             let result = this.rdpSimplify(coordinates, epsilon);
@@ -2936,7 +2940,7 @@
             return result;
         }
 
-        removeLoopingSegments(coordinates, cellMetres = 80) {
+        removeLoopingSegments(coordinates, cellMetres = 20) {
             if (coordinates.length < 10) return coordinates;
             const cellDeg = cellMetres / 111000;
             const getCell = pt => `${Math.round(pt[0]/cellDeg)},${Math.round(pt[1]/cellDeg)}`;
@@ -2963,6 +2967,7 @@
             if (result[result.length - 1] !== last) result.push(last);
             return result;
         }
+        ──────────────────────────────────────────────────────────────────── */
 
         detectOutAndBack(coordinates) {
             if (coordinates.length < 10) return false;
@@ -3226,12 +3231,11 @@
                         if (rawCoordinates.length < 2) return;
 
                         const isOutAndBack = this.detectOutAndBack(rawCoordinates);
-                        const deduplicated = this.removeLoopingSegments(rawCoordinates);
-                        const simplified = this.simplifyCoordinates(deduplicated, 500);
-                        let displayCoords = simplified;
+                        // Simplification disabled for testing — feed raw GPX coordinates straight through
+                        let displayCoords = rawCoordinates;
 
                         if (isOutAndBack) {
-                            const outbound = this.extractOutboundHalf(simplified);
+                            const outbound = this.extractOutboundHalf(rawCoordinates);
                             displayCoords = outbound.coordinates;
                             this._showOutAndBackNotice(true);
                         } else {
@@ -4774,13 +4778,11 @@
             if (existingRoute && existingRoute.length > 1) {
                 const tb = window.trailBuilder;
 
-                // Apply the same cleanup pipeline as the import flow
+                // Cleanup disabled for testing — render existing route as-stored
                 const isOutAndBack = tb.detectOutAndBack(existingRoute);
-                const deduplicated = tb.removeLoopingSegments(existingRoute);
-                const simplified = tb.simplifyCoordinates(deduplicated, 500);
                 const displayRoute = isOutAndBack
-                    ? tb.extractOutboundHalf(simplified).coordinates
-                    : simplified;
+                    ? tb.extractOutboundHalf(existingRoute).coordinates
+                    : existingRoute;
 
                 if (isOutAndBack) { tb._showOutAndBackNotice(true); }
 

@@ -2393,11 +2393,13 @@
             return duplicates;
         }
 
-        /**
-         * Ramer-Douglas-Peucker simplification (client-side).
-         * Reduces thousands of raw GPX points to a manageable set while
-         * preserving all geometrically significant corners and direction changes.
-         */
+        /* ─────────────────────────────────────────────────────────────────────
+         * SIMPLIFICATION DISABLED FOR TESTING (2026-05-14)
+         * The four methods below (rdpSimplify, _perpendicularDist,
+         * simplifyCoordinates, removeLoopingSegments) cleaned the GPX track
+         * before saving. Disabled to test how the raw track renders/saves.
+         * Restore by deleting the surrounding block-comment markers.
+         * ─────────────────────────────────────────────────────────────────────
         rdpSimplify(points, epsilon) {
             if (points.length < 3) return points;
 
@@ -2429,10 +2431,7 @@
             return Math.sqrt((pt[1]-(a[1]+t*dx))**2 + (pt[0]-(a[0]+t*dy))**2);
         }
 
-        /**
-         * Auto-tune RDP epsilon until we're at or below targetCount points.
-         */
-        simplifyCoordinates(coordinates, targetCount = 500) {
+        simplifyCoordinates(coordinates, targetCount = 2500) {
             if (coordinates.length <= targetCount) return coordinates;
             let epsilon = 0.00001;
             let result = this.rdpSimplify(coordinates, epsilon);
@@ -2443,11 +2442,7 @@
             return result;
         }
 
-        /**
-         * Remove repeated passes through the same ~80m grid cell.
-         * Eliminates circling/looping artifacts from Strava recordings.
-         */
-        removeLoopingSegments(coordinates, cellMetres = 80) {
+        removeLoopingSegments(coordinates, cellMetres = 20) {
             if (coordinates.length < 10) return coordinates;
             const cellDeg = cellMetres / 111000;
             const getCell = pt => `${Math.round(pt[0]/cellDeg)},${Math.round(pt[1]/cellDeg)}`;
@@ -2474,6 +2469,7 @@
             if (result[result.length - 1] !== last) result.push(last);
             return result;
         }
+        ──────────────────────────────────────────────────────────────────── */
 
         /**
          * Detect out-and-back trails using three conditions:
@@ -2670,13 +2666,11 @@
 
                         // Detect on raw coords BEFORE cleanup — circling pattern must be visible
                         const isOutAndBack = this.detectOutAndBack(rawCoordinates);
-                        // Now clean: remove looping artifacts, then RDP
-                        const deduplicated = this.removeLoopingSegments(rawCoordinates);
-                        const simplified = this.simplifyCoordinates(deduplicated, 500);
-                        let displayCoords = simplified;
+                        // Simplification disabled for testing — feed raw GPX coordinates straight through
+                        let displayCoords = rawCoordinates;
 
                         if (isOutAndBack) {
-                            const outbound = this.extractOutboundHalf(simplified);
+                            const outbound = this.extractOutboundHalf(rawCoordinates);
                             displayCoords = outbound.coordinates;
                             this._showOutAndBackNotice(true);
                         } else {

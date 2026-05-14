@@ -2840,9 +2840,9 @@
                     .filter(c => c !== null);
                 if (sanitized.length === 0) return;
 
-                const smoothed = this.smoothCoordinates(sanitized);
+                // Smoothing disabled for testing — render sanitized coords as-is
                 // Mapbox coords are [lng, lat], data is [lat, lng] — swap
-                const mapboxCoords = smoothed.map(c => [c[1], c[0]]);
+                const mapboxCoords = sanitized.map(c => [c[1], c[0]]);
 
                 features.push({
                     type: 'Feature',
@@ -3614,13 +3614,14 @@
             panel.classList.remove('hidden');
         }
 
-        /**
-         * Smooth a coordinate array using a moving average.
-         * Preserves the first and last point so trail endpoints stay accurate.
-         * @param {Array} coords  - Array of [lat, lng] pairs
-         * @param {number} window - Averaging window size (odd number recommended)
-         * @param {number} passes - Number of smoothing passes
-         */
+        /* ─────────────────────────────────────────────────────────────────────
+         * SMOOTHING DISABLED FOR TESTING (2026-05-14)
+         * smoothCoordinates ran a moving-average pass over the polyline before
+         * rendering, which shifted curves off the actual track. Disabled to
+         * draw stored route_coordinates as-is. Restore by removing the
+         * surrounding block-comment markers AND restoring the call sites at
+         * buildRouteGeoJSON() and _flyAlongTrail().
+         * ─────────────────────────────────────────────────────────────────────
         smoothCoordinates(coords, window = 3, passes = 2) {
             if (!coords || coords.length < 3) return coords;
 
@@ -3650,6 +3651,7 @@
 
             return result;
         }
+        ──────────────────────────────────────────────────────────────────── */
 
         sanitizeCoordinates(coords) {
             if (!coords) return null;
@@ -4432,8 +4434,8 @@
                 return;
             }
 
-            // Use same smoothing as the map route layer so the icon tracks the visible line
-            const smoothed = this.smoothCoordinates(coords, 3, 2);
+            // Smoothing disabled for testing — animate over raw coords
+            const smoothed = coords;
 
             // Clear UI so the animation has a full map stage
             if (typeof closeTrailInfoPanel === 'function') { closeTrailInfoPanel(); }

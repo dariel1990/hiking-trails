@@ -618,6 +618,13 @@
         let trailRoute = null;
 
         // Add trail route if available (only for trails, not fishing lakes)
+        /* ─────────────────────────────────────────────────────────────────────
+         * SIMPLIFICATION + SMOOTHING DISABLED FOR TESTING (2026-05-14)
+         * The three helpers below (rdpSimplify, simplifyRoute, smoothCoordinates)
+         * reduced points to 500 and applied a 2-pass moving average before
+         * drawing the polyline. Disabled to render route_coordinates as-stored.
+         * Restore by deleting the surrounding block-comment markers.
+         * ─────────────────────────────────────────────────────────────────────
         function rdpSimplify(points, epsilon) {
             if (points.length < 3) return points;
             let maxDist = 0, maxIndex = 0;
@@ -665,10 +672,12 @@
             }
             return result;
         }
+        ──────────────────────────────────────────────────────────────────── */
 
         if (!isFishingLake && trail.route_coordinates && trail.route_coordinates.length > 0) {
             const routeColor = '#3B82F6';
-            const displayCoords = smoothCoordinates(simplifyRoute(trail.route_coordinates));
+            // Simplification/smoothing disabled — render stored route_coordinates as-is
+            const displayCoords = trail.route_coordinates;
 
             L.polyline(displayCoords, {
                 color: 'white',
