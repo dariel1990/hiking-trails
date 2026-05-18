@@ -2786,8 +2786,19 @@
         }
 
         updateVisibleTrails() {
-            const visibleTrails = this.getVisibleTrails();
-            this.renderTrailList(visibleTrails, this.businessData || []);
+            const allFilteredTrails = this.filterTrails(this.allTrails);
+            let listTrails, listBusinesses;
+            if (this.activeLocationFilter === 'business') {
+                listTrails = [];
+                listBusinesses = this.businessData || [];
+            } else if (this.activeLocationFilter === 'fishing_lake') {
+                listTrails = allFilteredTrails.filter(t => t.location_type === 'fishing_lake');
+                listBusinesses = [];
+            } else {
+                listTrails = allFilteredTrails.filter(t => t.location_type === 'trail');
+                listBusinesses = [];
+            }
+            this.renderTrailList(listTrails, listBusinesses);
         }
 
         // Add this function to your EnhancedTrailMap class
@@ -2813,7 +2824,11 @@
             if (this.currentSeason === 'winter' && trail.trail_network_id) {
                 return this.getDifficultyColor(trail.difficulty);
             }
-            return this.getDistanceColor(trail.distance);
+            const isMountainBike = Array.isArray(trail.activities) && trail.activities.some(a => a.type === 'mountain-biking');
+            if (isMountainBike) {
+                return this.getDistanceColor(trail.distance);
+            }
+            return '#000000';
         }
 
         // For non-fishing trails, pick the activity that should drive the marker icon/colour.
@@ -2840,9 +2855,9 @@
                     .filter(c => c !== null);
                 if (sanitized.length === 0) return;
 
-                const smoothed = this.smoothCoordinates(sanitized);
+                // Smoothing disabled for testing — render sanitized coords as-is
                 // Mapbox coords are [lng, lat], data is [lat, lng] — swap
-                const mapboxCoords = smoothed.map(c => [c[1], c[0]]);
+                const mapboxCoords = sanitized.map(c => [c[1], c[0]]);
 
                 features.push({
                     type: 'Feature',
@@ -3010,13 +3025,23 @@
             });
             Object.keys(this.overlayMarkers).forEach(k => { this.overlayMarkers[k] = []; });
 
-            const visibleTrails = this.getVisibleTrails();
-            this.renderTrailList(visibleTrails, this.businessData || []);
-
             const allFilteredTrails = this.filterTrails(this.allTrails);
 
-            // All trails (hiking + fishing lakes) are drawn on the map regardless of the
-            // sidebar's location filter — that filter only narrows the search results panel.
+            // For the sidebar list, respect the active location filter tab.
+            // The map always shows all filtered trails regardless of which tab is active.
+            let listTrails, listBusinesses;
+            if (this.activeLocationFilter === 'business') {
+                listTrails = [];
+                listBusinesses = this.businessData || [];
+            } else if (this.activeLocationFilter === 'fishing_lake') {
+                listTrails = allFilteredTrails.filter(t => t.location_type === 'fishing_lake');
+                listBusinesses = [];
+            } else {
+                listTrails = allFilteredTrails.filter(t => t.location_type === 'trail');
+                listBusinesses = [];
+            }
+            this.renderTrailList(listTrails, listBusinesses);
+
             const mapTrails = allFilteredTrails;
 
             // Update route GeoJSON source
@@ -3614,13 +3639,14 @@
             panel.classList.remove('hidden');
         }
 
-        /**
-         * Smooth a coordinate array using a moving average.
-         * Preserves the first and last point so trail endpoints stay accurate.
-         * @param {Array} coords  - Array of [lat, lng] pairs
-         * @param {number} window - Averaging window size (odd number recommended)
-         * @param {number} passes - Number of smoothing passes
-         */
+        /* ─────────────────────────────────────────────────────────────────────
+         * SMOOTHING DISABLED FOR TESTING (2026-05-14)
+         * smoothCoordinates ran a moving-average pass over the polyline before
+         * rendering, which shifted curves off the actual track. Disabled to
+         * draw stored route_coordinates as-is. Restore by removing the
+         * surrounding block-comment markers AND restoring the call sites at
+         * buildRouteGeoJSON() and _flyAlongTrail().
+         * ─────────────────────────────────────────────────────────────────────
         smoothCoordinates(coords, window = 3, passes = 2) {
             if (!coords || coords.length < 3) return coords;
 
@@ -3650,6 +3676,7 @@
 
             return result;
         }
+        ──────────────────────────────────────────────────────────────────── */
 
         sanitizeCoordinates(coords) {
             if (!coords) return null;
@@ -4126,8 +4153,18 @@
             const season = this.currentSeason;
 
             (this.networkData || []).forEach(network => {
-                // Hide networks that aren't valid for the current season
-                const networkSeason = network.season || 'both';
+                // Determine effective season — explicit season field wins,
+                // otherwise infer from network type so nordic/downhill = winter,
+                // mountain biking = summer.
+                let networkSeason = network.season || 'both';
+                if (networkSeason === 'both') {
+                    const type = (network.type || '').toLowerCase();
+                    if (type.includes('nordic') || type.includes('downhill') || type.includes('ski')) {
+                        networkSeason = 'winter';
+                    } else if (type.includes('mountain_bik') || type.includes('mountain-bik') || type === 'mountain_biking') {
+                        networkSeason = 'summer';
+                    }
+                }
                 if (networkSeason !== 'both' && networkSeason !== season) { return; }
 
                 let lat = network.latitude;
@@ -4432,8 +4469,8 @@
                 return;
             }
 
-            // Use same smoothing as the map route layer so the icon tracks the visible line
-            const smoothed = this.smoothCoordinates(coords, 3, 2);
+            // Smoothing disabled for testing — animate over raw coords
+            const smoothed = coords;
 
             // Clear UI so the animation has a full map stage
             if (typeof closeTrailInfoPanel === 'function') { closeTrailInfoPanel(); }

@@ -126,7 +126,11 @@ class GpxService
     }
 
     /**
-     * Extract route coordinates from track points and simplify if needed
+     * Extract route coordinates from track points.
+     *
+     * Cleanup (removeLoopingSegments + simplifyRoute) is DISABLED for testing
+     * (2026-05-14) so the GPX track is stored as-is. Restore by uncommenting
+     * the calls below and the helper methods further down in this file.
      *
      * @return array Array of [lat, lng] coordinates
      */
@@ -139,13 +143,10 @@ class GpxService
             $coordinates[] = [$coord['lat'], $coord['lon']];
         }
 
-        // Remove repeated passes through the same area (circling/looping cleanup)
-        $coordinates = $this->removeLoopingSegments($coordinates);
-
-        // RDP simplification to cap point count
-        if (count($coordinates) > 500) {
-            $coordinates = $this->simplifyRoute($coordinates, 500);
-        }
+        // $coordinates = $this->removeLoopingSegments($coordinates);
+        // if (count($coordinates) > 2500) {
+        //     $coordinates = $this->simplifyRoute($coordinates, 2500);
+        // }
 
         return $coordinates;
     }
@@ -364,15 +365,15 @@ class GpxService
         }
     }
 
-    /**
-     * Simplify route using Ramer-Douglas-Peucker algorithm.
-     * Keeps geometrically significant points (corners, direction changes)
-     * rather than uniformly sampling, which produces a much cleaner result
-     * especially for out-and-back trails.
-     *
-     * @param  array  $coordinates  Array of [lat, lng]
-     * @param  int  $targetCount  Approximate max points (epsilon is auto-tuned)
-     */
+    // ─────────────────────────────────────────────────────────────────────
+    // SIMPLIFICATION DISABLED FOR TESTING (2026-05-14)
+    // The four methods below (simplifyRoute, removeLoopingSegments,
+    // rdpSimplify, perpendicularDistance) cleaned the GPX track on save.
+    // Wrapped in a block comment so they remain available for restoration.
+    // To restore: delete this opening marker AND the closing marker
+    // further down, then re-enable the calls in extractRouteCoordinates().
+    // ─────────────────────────────────────────────────────────────────────
+    /*
     private function simplifyRoute(array $coordinates, int $targetCount): array
     {
         $total = count($coordinates);
@@ -394,16 +395,7 @@ class GpxService
         return $result;
     }
 
-    /**
-     * Remove repeated passes through the same area (circling/looping cleanup).
-     * Divides space into ~80m grid cells and keeps at most 2 points per cell
-     * (entry + exit), which eliminates ski-resort-style repeated runs and
-     * GPS drift loops without affecting legitimate trail paths.
-     *
-     * @param  array  $coordinates  Array of [lat, lng]
-     * @param  float  $cellMetres  Grid cell size in metres
-     */
-    public function removeLoopingSegments(array $coordinates, float $cellMetres = 80.0): array
+    public function removeLoopingSegments(array $coordinates, float $cellMetres = 20.0): array
     {
         if (count($coordinates) < 10) {
             return $coordinates;
@@ -447,12 +439,6 @@ class GpxService
         return $result;
     }
 
-    /**
-     * Ramer-Douglas-Peucker recursive simplification
-     *
-     * @param  array  $points  Array of [lat, lng]
-     * @param  float  $epsilon  Tolerance in degrees
-     */
     private function rdpSimplify(array $points, float $epsilon): array
     {
         $n = count($points);
@@ -486,13 +472,6 @@ class GpxService
         return [$start, $end];
     }
 
-    /**
-     * Perpendicular distance from a point to a line segment (in degrees, fast approximation)
-     *
-     * @param  array  $point  [lat, lng]
-     * @param  array  $lineStart  [lat, lng]
-     * @param  array  $lineEnd  [lat, lng]
-     */
     private function perpendicularDistance(array $point, array $lineStart, array $lineEnd): float
     {
         $dx = $lineEnd[1] - $lineStart[1];
@@ -516,6 +495,10 @@ class GpxService
 
         return sqrt(($point[1] - $nearestX) ** 2 + ($point[0] - $nearestY) ** 2);
     }
+    */
+    // ─────────────────────────────────────────────────────────────────────
+    // END SIMPLIFICATION-DISABLED BLOCK
+    // ─────────────────────────────────────────────────────────────────────
 
     /**
      * Detect whether a track is an out-and-back trail.
