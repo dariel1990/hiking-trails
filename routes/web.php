@@ -12,6 +12,7 @@ use App\Http\Controllers\BusinessPublicController;
 use App\Http\Controllers\EventsController;
 use App\Http\Controllers\TrailController;
 use App\Http\Controllers\TrailNetworkController;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Route;
 
 // Android App Links — Digital Asset Links file
@@ -155,3 +156,20 @@ Route::get('/events', [EventsController::class, 'index'])->name('events.index');
 Route::get('/events/{event}', [EventsController::class, 'show'])->name('events.show');
 Route::get('/events/{event}/calendar', [EventsController::class, 'downloadCalendar'])->name('events.calendar');
 Route::get('/events/{event}/details', [EventsController::class, 'getEventDetails'])->name('events.details');
+
+// Utility — clear cached config (useful on hosts without CLI access)
+// Route::get('/config-clear', function () {
+//     Artisan::call('config:clear');
+
+//     return Artisan::output();
+// })->name('config.clear');
+
+// // Utility — run only the subscriptions table migration
+// Route::get('/migrate-subscriptions', function () {
+//     Artisan::call('migrate', [
+//         '--path' => 'database/migrations/2026_05_18_144124_create_subscriptions_table.php',
+//         '--force' => true,
+//     ]);
+
+//     return Artisan::output();
+// })->name('migrate.subscriptions');

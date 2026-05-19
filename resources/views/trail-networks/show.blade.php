@@ -1137,10 +1137,17 @@ map.on('load', () => {
 
     facilitiesData.forEach(facility => {
         if (!facility.latitude || !facility.longitude) return;
+        // Outer element is owned by Mapbox (it writes the positioning transform
+        // here every frame). The inner element carries all visual styling, the
+        // selected-state scale, and transitions — Mapbox never touches it, so
+        // transitioning its transform no longer fights the map positioning.
         const el = document.createElement('div');
         el.className = 'facility-marker';
-        el.style.cssText = FACILITY_NORMAL_STYLE;
-        el.textContent = facility.icon || '📍';
+        const inner = document.createElement('div');
+        inner.className = 'facility-marker-inner';
+        inner.style.cssText = FACILITY_NORMAL_STYLE;
+        inner.textContent = facility.icon || '📍';
+        el.appendChild(inner);
         el.addEventListener('click', (e) => {
             e.stopPropagation();
             // Guard: prevent the map trail-click handler from also firing
@@ -1154,12 +1161,12 @@ map.on('load', () => {
             }
 
             // Remove highlight from previously selected marker
-            if (window._selectedFacilityEl && window._selectedFacilityEl !== el) {
+            if (window._selectedFacilityEl && window._selectedFacilityEl !== inner) {
                 window._selectedFacilityEl.style.cssText = FACILITY_NORMAL_STYLE;
             }
             // Apply highlight to clicked marker
-            el.style.cssText = FACILITY_SELECTED_STYLE;
-            window._selectedFacilityEl = el;
+            inner.style.cssText = FACILITY_SELECTED_STYLE;
+            window._selectedFacilityEl = inner;
             showFacilityDetailsCard(facility);
         });
         const marker = new mapboxgl.Marker({ element: el })
