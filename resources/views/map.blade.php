@@ -190,40 +190,67 @@
                     </div>
                 </div>
 
-                <!-- Features -->
+                <!-- Map Layers -->
                 <div class="mb-6 border-t pt-6">
-                    <h4 class="font-semibold text-base mb-3">Features</h4>
+                    <div class="flex items-center justify-between mb-3">
+                        <h4 class="font-semibold text-base">Map Layers</h4>
+                        <label class="flex items-center gap-2 cursor-pointer text-sm text-gray-500">
+                            <input type="checkbox" class="section-toggle w-4 h-4" data-target="layer-checkbox" checked>
+                            <span class="select-none">All</span>
+                        </label>
+                    </div>
                     <div class="grid grid-cols-2 gap-2">
                         <label class="flex items-center cursor-pointer hover:bg-gray-50 p-3 rounded-lg">
-                            <input type="checkbox" value="waterfall" class="feature-checkbox w-5 h-5">
+                            <input type="checkbox" id="show-businesses-checkbox" class="layer-checkbox w-5 h-5" value="businesses" checked>
+                            <span class="ml-3 text-sm">🏪 Businesses</span>
+                        </label>
+                        <label class="flex items-center cursor-pointer hover:bg-gray-50 p-3 rounded-lg">
+                            <input type="checkbox" id="show-facilities-checkbox" class="layer-checkbox w-5 h-5" value="facilities" checked>
+                            <span class="ml-3 text-sm">📍 Facilities</span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Features -->
+                <div class="mb-6 border-t pt-6">
+                    <div class="flex items-center justify-between mb-3">
+                        <h4 class="font-semibold text-base">Features</h4>
+                        <label class="flex items-center gap-2 cursor-pointer text-sm text-gray-500">
+                            <input type="checkbox" class="section-toggle w-4 h-4" data-target="feature-checkbox" checked>
+                            <span class="select-none">All</span>
+                        </label>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2">
+                        <label class="flex items-center cursor-pointer hover:bg-gray-50 p-3 rounded-lg">
+                            <input type="checkbox" value="waterfall" class="feature-checkbox w-5 h-5" checked>
                             <span class="ml-3 text-sm">💧 Waterfall</span>
                         </label>
                         <label class="flex items-center cursor-pointer hover:bg-gray-50 p-3 rounded-lg">
-                            <input type="checkbox" value="viewpoint" class="feature-checkbox w-5 h-5">
+                            <input type="checkbox" value="viewpoint" class="feature-checkbox w-5 h-5" checked>
                             <span class="ml-3 text-sm">👁️ Viewpoint</span>
                         </label>
                         <label class="flex items-center cursor-pointer hover:bg-gray-50 p-3 rounded-lg">
-                            <input type="checkbox" value="wildlife" class="feature-checkbox w-5 h-5">
+                            <input type="checkbox" value="wildlife" class="feature-checkbox w-5 h-5" checked>
                             <span class="ml-3 text-sm">🦌 Wildlife</span>
                         </label>
                         <label class="flex items-center cursor-pointer hover:bg-gray-50 p-3 rounded-lg">
-                            <input type="checkbox" value="lake" class="feature-checkbox w-5 h-5">
+                            <input type="checkbox" value="lake" class="feature-checkbox w-5 h-5" checked>
                             <span class="ml-3 text-sm">🏞️ Lake</span>
                         </label>
                         <label class="flex items-center cursor-pointer hover:bg-gray-50 p-3 rounded-lg">
-                            <input type="checkbox" value="summit" class="feature-checkbox w-5 h-5">
+                            <input type="checkbox" value="summit" class="feature-checkbox w-5 h-5" checked>
                             <span class="ml-3 text-sm">⛰️ Summit</span>
                         </label>
                         <label class="flex items-center cursor-pointer hover:bg-gray-50 p-3 rounded-lg">
-                            <input type="checkbox" value="bridge" class="feature-checkbox w-5 h-5">
+                            <input type="checkbox" value="bridge" class="feature-checkbox w-5 h-5" checked>
                             <span class="ml-3 text-sm">🌉 Bridge</span>
                         </label>
                         <label class="flex items-center cursor-pointer hover:bg-gray-50 p-3 rounded-lg">
-                            <input type="checkbox" value="forest" class="feature-checkbox w-5 h-5">
+                            <input type="checkbox" value="forest" class="feature-checkbox w-5 h-5" checked>
                             <span class="ml-3 text-sm">🌲 Forest</span>
                         </label>
                         <label class="flex items-center cursor-pointer hover:bg-gray-50 p-3 rounded-lg">
-                            <input type="checkbox" value="camping" class="feature-checkbox w-5 h-5">
+                            <input type="checkbox" value="camping" class="feature-checkbox w-5 h-5" checked>
                             <span class="ml-3 text-sm">⛺ Camping</span>
                         </label>
                     </div>
@@ -231,15 +258,22 @@
 
                 <!-- Activities -->
                 <div class="mb-6 border-t pt-6">
-                    <h4 class="font-semibold text-base mb-3">Activities</h4>
+                    <div class="flex items-center justify-between mb-3">
+                        <h4 class="font-semibold text-base">Activities</h4>
+                        <label class="flex items-center gap-2 cursor-pointer text-sm text-gray-500">
+                            <input type="checkbox" class="section-toggle w-4 h-4" data-target="activity-checkbox" checked>
+                            <span class="select-none">All</span>
+                        </label>
+                    </div>
                     <div class="grid grid-cols-2 gap-2">
                         @foreach($activities as $activity)
                         <label class="flex items-center cursor-pointer hover:bg-gray-50 p-3 rounded-lg" data-activity-label>
-                            <input 
-                                type="checkbox" 
-                                value="{{ $activity->slug }}" 
+                            <input
+                                type="checkbox"
+                                value="{{ $activity->slug }}"
                                 class="activity-checkbox w-5 h-5"
                                 data-season-applicable="{{ $activity->season_applicable ?? 'both' }}"
+                                {{ $activity->slug !== 'mountain-biking' ? 'checked' : '' }}
                             >
                             <span class="ml-3 text-sm">
                                 @if($activity->icon)
@@ -2043,12 +2077,46 @@
     });
 
     // Advanced Filters State
+    // Section "All" toggle — checks/unchecks every child checkbox in the group
+    document.querySelectorAll('.section-toggle').forEach(toggle => {
+        toggle.addEventListener('change', function () {
+            const targetClass = this.dataset.target;
+            document.querySelectorAll('.' + targetClass).forEach(cb => {
+                cb.checked = this.checked;
+            });
+            updateSectionToggleState(targetClass);
+            updateFilterCountBadge();
+        });
+    });
+
+    // Keep the "All" toggle in sync when individual checkboxes change
+    function updateSectionToggleState(targetClass) {
+        const checkboxes = Array.from(document.querySelectorAll('.' + targetClass));
+        const visibleCheckboxes = checkboxes.filter(cb => !cb.closest('label')?.classList.contains('hidden'));
+        if (visibleCheckboxes.length === 0) return;
+        const allChecked = visibleCheckboxes.every(cb => cb.checked);
+        const noneChecked = visibleCheckboxes.every(cb => !cb.checked);
+        const toggle = document.querySelector(`.section-toggle[data-target="${targetClass}"]`);
+        if (!toggle) return;
+        toggle.checked = allChecked;
+        toggle.indeterminate = !allChecked && !noneChecked;
+    }
+
+    // Patch individual checkbox change to update their section toggle
+    document.querySelectorAll('.layer-checkbox, .feature-checkbox, .activity-checkbox').forEach(cb => {
+        cb.addEventListener('change', function () {
+            const cls = Array.from(this.classList).find(c => c.endsWith('-checkbox') && c !== 'w-5' && c !== 'h-5');
+            if (cls) updateSectionToggleState(cls);
+            updateFilterCountBadge();
+        });
+    });
+
     let advancedFilters = {
         trailType: '',
         duration: '',
         elevation: '',
-        features: [],
-        activities: []
+        features: Array.from(document.querySelectorAll('.feature-checkbox:checked')).map(cb => cb.value),
+        activities: Array.from(document.querySelectorAll('.activity-checkbox:checked')).map(cb => cb.value),
     };
 
     // Open All Filters Modal
@@ -2085,6 +2153,14 @@
         // Close modal
         document.getElementById('all-filters-modal').classList.add('hidden');
 
+        // Close any open trail/business detail panels
+        document.getElementById('trail-info-panel')?.classList.add('hidden');
+        document.getElementById('business-panel')?.classList.add('hidden');
+        if (window.trailMap) {
+            window.trailMap._clearSelection();
+            window.trailMap._selectedTrailId = null;
+        }
+
         // Update filter count badge
         updateFilterCountBadge();
 
@@ -2094,43 +2170,55 @@
         }
     }
 
-    // Clear All Filters
+    // Clear All Filters — restores default checked state
     function clearAllFilters() {
         // Reset all radio buttons
         document.querySelectorAll('.trail-type-radio[value=""]')[0].checked = true;
         document.querySelectorAll('.duration-radio[value=""]')[0].checked = true;
         document.querySelectorAll('.elevation-radio[value=""]')[0].checked = true;
 
-        // Uncheck all checkboxes
-        document.querySelectorAll('.feature-checkbox').forEach(cb => cb.checked = false);
-        document.querySelectorAll('.activity-checkbox').forEach(cb => cb.checked = false);
+        // Restore default: layer checkboxes on, all features checked, all activities checked except mountain biking
+        const bizCb = document.getElementById('show-businesses-checkbox');
+        const facCb = document.getElementById('show-facilities-checkbox');
+        if (bizCb) bizCb.checked = true;
+        if (facCb) facCb.checked = true;
+        document.querySelectorAll('.feature-checkbox').forEach(cb => { cb.checked = true; });
+        document.querySelectorAll('.activity-checkbox').forEach(cb => {
+            cb.checked = cb.value !== 'mountain-biking';
+        });
 
-        // Reset filters state
+        // Reset filters state to match restored checkboxes
         advancedFilters = {
             trailType: '',
             duration: '',
             elevation: '',
-            features: [],
-            activities: []
+            features: Array.from(document.querySelectorAll('.feature-checkbox:checked')).map(cb => cb.value),
+            activities: Array.from(document.querySelectorAll('.activity-checkbox:checked')).map(cb => cb.value),
         };
 
         // Update badge
         updateFilterCountBadge();
 
-        // Apply filters (will show all)
+        // Apply filters
         if (window.trailMap) {
             window.trailMap.applyAdvancedFilters(advancedFilters);
         }
     }
 
-    // Update Filter Count Badge
+    // Update Filter Count Badge — counts checked activities, features, and map layers
     function updateFilterCountBadge() {
         let count = 0;
-        if (advancedFilters.trailType) count++;
-        if (advancedFilters.duration) count++;
-        if (advancedFilters.elevation) count++;
-        count += advancedFilters.features.length;
-        count += advancedFilters.activities.length;
+
+        // Checked visible activity checkboxes
+        document.querySelectorAll('.activity-checkbox:checked').forEach(cb => {
+            if (!cb.closest('label')?.classList.contains('hidden')) count++;
+        });
+
+        // Checked feature checkboxes
+        document.querySelectorAll('.feature-checkbox:checked').forEach(() => count++);
+
+        // Checked layer checkboxes
+        document.querySelectorAll('.layer-checkbox:checked').forEach(() => count++);
 
         const badge = document.getElementById('filter-count-badge');
         const badgeMobile = document.getElementById('filter-count-badge-mobile');
@@ -2157,7 +2245,7 @@
             this.currentSeason = 'summer';
             this.currentDistance = '';
             this.currentDifficulty = '';
-            this.activeFilters = ['hiking', 'fishing', 'camping', 'viewpoint', 'highlights', 'mountain-biking',
+            this.activeFilters = ['hiking', 'fishing', 'camping', 'viewpoint', 'highlights',
                       'snowshoeing', 'ice-fishing', 'cross-country-skiing', 'downhill-skiing'];
             this.allTrails = [];
             this.init();
@@ -2203,6 +2291,7 @@
             this.networkData = [];
             this.facilityMarkers = [];
             this.showBusinesses = true;
+            this.showFacilities = true;
             this.currentTrails = [];
             this.businessData = [];
             this.activeLocationFilter = 'trail';
@@ -2387,9 +2476,7 @@
             // Close panels when clicking map background
             this.map.on('click', (e) => {
                 if (!e.features || e.features.length === 0) {
-                    this.closeBusinessPanel();
-                    document.getElementById('trail-info-panel')?.classList.add('hidden');
-                    this._clearSelection();
+                    this.closeAllPanels();
                 }
             });
 
@@ -2637,7 +2724,7 @@
         updateActivityFilters(season) {
             // Define which activities are available for each season (map overlays)
             const seasonalActivities = {
-                summer: ['hiking', 'fishing', 'camping', 'viewpoint', 'highlights', 'mountain-biking'],
+                summer: ['hiking', 'fishing', 'camping', 'viewpoint', 'highlights'],
                 winter: ['snowshoeing', 'ice-fishing', 'cross-country-skiing', 'downhill-skiing', 'viewpoint', 'highlights'],
             };
 
@@ -2676,6 +2763,11 @@
                     cb.disabled = false;
                 }
             });
+
+            // Re-sync the Activities section toggle after season change
+            if (typeof updateSectionToggleState === 'function') {
+                updateSectionToggleState('activity-checkbox');
+            }
 
             // If the user had previously selected activities that are no longer valid for the season,
             // remove them from the active advanced filters state.
@@ -2745,32 +2837,31 @@
             }
 
             // Features filter (OR logic - trail must have ANY of the selected features)
+            // Features: trails with no highlights always pass; trails with highlights need at least one checked match
             if (advancedFilters.features.length > 0) {
-                if (!trail.highlights || trail.highlights.length === 0) {
-                    return false;
-                }
-                
-                const trailFeatureTypes = trail.highlights.map(h => h.type);
-                const hasAnyFeature = advancedFilters.features.some(feature => 
-                    trailFeatureTypes.includes(feature)
-                );
-                
-                if (!hasAnyFeature) {
-                    return false;
+                if (trail.highlights && trail.highlights.length > 0) {
+                    const trailFeatureTypes = trail.highlights.map(h => h.type);
+                    const hasAnyFeature = advancedFilters.features.some(feature =>
+                        trailFeatureTypes.includes(feature)
+                    );
+                    if (!hasAnyFeature) {
+                        return false;
+                    }
                 }
             }
 
-            // Activities filter (AND logic - trail must have ALL selected activities)
-            if (advancedFilters.activities.length > 0) {
-                if (!trail.activities || trail.activities.length === 0) {
+            // Activities filter: trails that have activities must match at least one checked activity.
+            // If the activities list is empty (user unchecked everything), hide all trails with activities.
+            // Only unclassified trails (no activities at all) pass when the list is empty.
+            const trailActivities = Array.isArray(trail.activities) ? trail.activities : [];
+            if (trailActivities.length > 0) {
+                if (advancedFilters.activities.length === 0) {
                     return false;
                 }
-                
-                const trailActivityTypes = trail.activities.map(a => a.type || a.slug || a.name);
-                const hasAnyActivity = advancedFilters.activities.some(activity => 
+                const trailActivityTypes = trailActivities.map(a => a.type || a.slug || a.name).filter(Boolean);
+                const hasAnyActivity = advancedFilters.activities.some(activity =>
                     trailActivityTypes.includes(activity)
                 );
-                
                 if (!hasAnyActivity) {
                     return false;
                 }
@@ -2781,8 +2872,16 @@
 
         applyAdvancedFilters(filters) {
             // This method is called from the global applyAllFilters function
-            // Trigger a re-render of the map and list
+            // Trigger a re-render of the map, list, and layer visibility
+            const bizCb = document.getElementById('show-businesses-checkbox');
+            const facCb = document.getElementById('show-facilities-checkbox');
+            this.showBusinesses = bizCb ? bizCb.checked : true;
+            this.showFacilities = facCb ? facCb.checked : true;
+
             this.applyFilters();
+            this.renderNetworkMarkers();
+            this.renderBusinessMarkers();
+            this.renderFacilityMarkers();
         }
 
         updateVisibleTrails() {
@@ -3173,6 +3272,22 @@
                 this._selectedOriginalEl.style.visibility = '';
                 this._selectedOriginalEl = null;
             }
+            // Clear route line highlight
+            if (this._selectedTrailId !== null) {
+                try {
+                    this.map.setFeatureState(
+                        { source: 'trail-routes', id: this._selectedTrailId },
+                        { selected: false }
+                    );
+                } catch (e) { /* ignore if source not ready */ }
+                this._selectedTrailId = null;
+            }
+        }
+
+        closeAllPanels() {
+            document.getElementById('trail-info-panel')?.classList.add('hidden');
+            this.closeBusinessPanel();
+            this._clearSelection();
         }
 
         _isMobileViewport() {
@@ -3197,7 +3312,7 @@
             el.addEventListener('click', (e) => {
                 e.stopPropagation();
                 this._selectMarker(el, coords[0], coords[1]);
-                this.focusOnTrail(trail);
+                this.focusOnTrail(trail, { activateLine: true });
             });
 
             // [lng, lat] for Mapbox
@@ -3695,37 +3810,34 @@
             return null;
         }
 
-        focusOnTrail(trail) {
-            if (!trail || !trail.coordinates) {
-                console.warn('Trail has no coordinates:', trail);
-                return;
-            }
+        focusOnTrail(trail, { flyToTrail = false, activateLine = false } = {}) {
+            if (!trail) { return; }
 
-            // Reflect selection on the map marker (in case this was triggered by a list click)
+            // Highlight the marker
             const markerEl = document.querySelector(`.selectable-marker-el[data-trail-id="${trail.id}"]`);
             const coords = this.sanitizeCoordinates(trail.coordinates);
             if (markerEl && coords) {
                 this._selectMarker(markerEl, coords[0], coords[1]);
             }
 
+            // Activate the route line only when clicking directly on the map icon
+            if (activateLine && trail.location_type !== 'fishing_lake') {
+                try { this.highlightTrailRoute(trail.id, { showPanel: false }); } catch(e) {}
+            }
+
+            // Open the info panel
             this.showTrailInfo(trail);
 
-            const isFishingLake = trail.location_type === 'fishing_lake';
-            if (!isFishingLake && trail.route_coordinates && trail.route_coordinates.length > 1) {
-                try {
-                    this.highlightTrailRoute(trail.id);
-                    const sanitized = trail.route_coordinates
-                        .map(c => this.sanitizeCoordinates(c)).filter(c => c !== null);
-                } catch (error) {
-                    console.error('Error focusing trail route:', error);
-                }
+            // Fly to start coordinates when triggered from the list
+            if (flyToTrail && coords) {
+                this.map.flyTo({ center: [coords[1], coords[0]], zoom: 14, duration: 800 });
             }
         }
 
         focusOnTrailById(trailId) {
             const trail = this.allTrails.find(t => t.id == trailId);
             if (!trail) { return; }
-            this.focusOnTrail(trail);
+            this.focusOnTrail(trail, { activateLine: true });
         }
 
         focusOnBusiness(businessId) {
@@ -4064,9 +4176,9 @@
                     });
 
                     const marker = new mapboxgl.Marker({ element: el, anchor: 'center' })
-                        .setLngLat([facility.longitude, facility.latitude])
-                        .addTo(this.map);
+                        .setLngLat([facility.longitude, facility.latitude]);
 
+                    if (this.showFacilities) { marker.addTo(this.map); }
                     this.facilityMarkers.push(marker);
                 });
             } catch (error) {
@@ -4074,10 +4186,14 @@
             }
         }
 
-        toggleFacilityVisibility() {
-            // Facilities are always visible — the sidebar's location filter only narrows
-            // the search results panel, not the map markers. Kept as a no-op for callers.
-            (this.facilityMarkers || []).forEach(m => m.addTo(this.map));
+        renderFacilityMarkers() {
+            (this.facilityMarkers || []).forEach(m => {
+                if (this.showFacilities) {
+                    m.addTo(this.map);
+                } else {
+                    m.remove();
+                }
+            });
         }
 
         async loadBusinesses() {
@@ -4166,6 +4282,12 @@
                     }
                 }
                 if (networkSeason !== 'both' && networkSeason !== season) { return; }
+
+                // Hide mountain biking network unless mountain-biking is checked in filters
+                const networkType = (network.type || '').toLowerCase();
+                if (networkType.includes('mountain_bik') || networkType.includes('mountain-bik') || networkType === 'mountain_biking') {
+                    if (!advancedFilters.activities.includes('mountain-biking')) { return; }
+                }
 
                 let lat = network.latitude;
                 let lng = network.longitude;
@@ -4740,6 +4862,25 @@
     function initMap() {
         window.trailMap = new EnhancedTrailMap();
         const trailMap = window.trailMap;
+
+        // Deselect trail when clicking outside the map and outside interactive UI elements
+        document.addEventListener('click', (e) => {
+            if (!window.trailMap) return;
+
+            // Ignore clicks inside the map canvas (handled by the Mapbox click handler)
+            if (document.getElementById('main-map')?.contains(e.target)) return;
+            // Ignore clicks on trail/business detail panels
+            if (document.getElementById('trail-info-panel')?.contains(e.target)) return;
+            if (document.getElementById('business-panel')?.contains(e.target)) return;
+            // Ignore clicks on trail/business/network list cards (they open details)
+            if (e.target.closest('.trail-list-card, .business-list-card')) return;
+            // Ignore clicks on filter dropdowns and modals
+            if (e.target.closest('#all-filters-modal, #distance-dropdown, #difficulty-dropdown-external, #distance-dropdown-mobile, #difficulty-dropdown-mobile')) return;
+            // Ignore clicks on filter buttons themselves
+            if (e.target.closest('.filter-pill, .season-btn, .season-btn-mobile, .location-filter-btn')) return;
+
+            window.trailMap.closeAllPanels();
+        });
 
         const searchInput = document.getElementById('trail-list-search');
         const clearSearchBtn = document.getElementById('clear-trail-search-btn');
