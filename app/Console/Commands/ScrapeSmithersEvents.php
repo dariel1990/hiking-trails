@@ -2,16 +2,17 @@
 
 namespace App\Console\Commands;
 
-use Illuminate\Console\Command;
-use Illuminate\Support\Facades\Http;
-use Symfony\Component\DomCrawler\Crawler;
 use App\Models\Event;
 use Carbon\Carbon;
 use Exception;
+use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Http;
+use Symfony\Component\DomCrawler\Crawler;
 
 class ScrapeSmithersEvents extends Command
 {
     protected $signature = 'events:scrape {--debug : Show debug information} {--force : Force scrape and auto-cleanup}';
+
     protected $description = 'Scrape events from SmithersEvents.com';
 
     public function handle()
@@ -29,7 +30,10 @@ class ScrapeSmithersEvents extends Command
 
         try {
             $url = 'https://smithersevents.com/';
-            $html = Http::timeout(30)->get($url)->body();
+            $html = Http::timeout(30)
+                ->withHeaders(['User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'])
+                ->get($url)
+                ->body();
             $crawler = new Crawler($html);
 
             $stats = [
@@ -40,13 +44,14 @@ class ScrapeSmithersEvents extends Command
 
             // Find all event articles
             $eventNodes = $crawler->filter('section.event-list article.clearfix');
-            
+
             if ($eventNodes->count() === 0) {
                 $this->error('No events found on SmithersEvents.com');
+
                 return 1;
             }
 
-            $this->info('Found ' . $eventNodes->count() . ' events. Processing...');
+            $this->info('Found '.$eventNodes->count().' events. Processing...');
             $this->newLine();
 
             $bar = $this->output->createProgressBar($eventNodes->count());
@@ -57,15 +62,15 @@ class ScrapeSmithersEvents extends Command
                     // Extract data from visible elements
                     $title = $node->filter('h3 a')->count() ? trim($node->filter('h3 a')->text()) : null;
                     $eventUrl = $node->filter('h3 a')->count() ? $node->filter('h3 a')->attr('href') : null;
-                    
+
                     // Make URL absolute
-                    if ($eventUrl && !filter_var($eventUrl, FILTER_VALIDATE_URL)) {
-                        $eventUrl = 'https://smithersevents.com' . $eventUrl;
+                    if ($eventUrl && ! filter_var($eventUrl, FILTER_VALIDATE_URL)) {
+                        $eventUrl = 'https://smithersevents.com'.$eventUrl;
                     }
 
                     $dateText = $node->filter('p.event-date')->count() ? trim($node->filter('p.event-date')->text()) : null;
                     $location = $node->filter('p.event-location')->count() ? trim($node->filter('p.event-location')->text()) : null;
-                    
+
                     // Get description (last paragraph)
                     $description = null;
                     $paragraphs = $node->filter('p');
@@ -100,15 +105,16 @@ class ScrapeSmithersEvents extends Command
                     $times = $this->extractTimes($dateText);
 
                     // Generate source_id
-                    $sourceId = $eventUrl ? 'smithers-' . md5($eventUrl) : 'smithers-' . md5($finalTitle . '-' . $parsedStartDate);
+                    $sourceId = $eventUrl ? 'smithers-'.md5($eventUrl) : 'smithers-'.md5($finalTitle.'-'.$parsedStartDate);
 
                     // Skip if missing required fields
-                    if (!$finalTitle || !$parsedStartDate) {
+                    if (! $finalTitle || ! $parsedStartDate) {
                         if ($this->option('debug')) {
                             $this->newLine();
                             $this->warn("Skipping event #{$index}: Missing title or date");
                         }
                         $bar->advance();
+
                         return;
                     }
 
@@ -136,7 +142,7 @@ class ScrapeSmithersEvents extends Command
                     if ($existingEvent) {
                         $existingEvent->update($eventData);
                         $stats['updated']++;
-                        
+
                         if ($this->option('debug')) {
                             $this->newLine();
                             $this->line("✓ Updated: {$finalTitle}");
@@ -147,7 +153,7 @@ class ScrapeSmithersEvents extends Command
                     } else {
                         Event::create($eventData);
                         $stats['new']++;
-                        
+
                         if ($this->option('debug')) {
                             $this->newLine();
                             $this->line("✓ Created: {$finalTitle}");
@@ -161,7 +167,7 @@ class ScrapeSmithersEvents extends Command
                     $stats['errors']++;
                     if ($this->option('debug')) {
                         $this->newLine();
-                        $this->error("Error processing event #{$index}: " . $e->getMessage());
+                        $this->error("Error processing event #{$index}: ".$e->getMessage());
                     }
                 }
 
@@ -190,10 +196,11 @@ class ScrapeSmithersEvents extends Command
             return 0;
 
         } catch (Exception $e) {
-            $this->error('Failed to scrape events: ' . $e->getMessage());
+            $this->error('Failed to scrape events: '.$e->getMessage());
             if ($this->option('debug')) {
                 $this->error($e->getTraceAsString());
             }
+
             return 1;
         }
     }
@@ -203,7 +210,7 @@ class ScrapeSmithersEvents extends Command
      */
     protected function parseDate($dateString)
     {
-        if (!$dateString) {
+        if (! $dateString) {
             return null;
         }
 
@@ -211,8 +218,10 @@ class ScrapeSmithersEvents extends Command
             $dateString = trim($dateString);
             if (preg_match('/^(\d{2})-(\d{2})-(\d{4})/', $dateString, $matches)) {
                 $date = Carbon::createFromFormat('d-m-Y', "{$matches[1]}-{$matches[2]}-{$matches[3]}");
+
                 return $date->format('Y-m-d');
             }
+
             return null;
         } catch (Exception $e) {
             return null;
@@ -229,7 +238,7 @@ class ScrapeSmithersEvents extends Command
             'end_time' => null,
         ];
 
-        if (!$dateText) {
+        if (! $dateText) {
             return $result;
         }
 
@@ -238,7 +247,7 @@ class ScrapeSmithersEvents extends Command
             if (preg_match('/(\d{1,2}:\d{2}\s*(?:am|pm))\s*-\s*(\d{1,2}:\d{2}\s*(?:am|pm))/i', $dateText, $matches)) {
                 $startTime = Carbon::parse(trim($matches[1]));
                 $result['start_time'] = $startTime->format('H:i:s');
-                
+
                 $endTime = Carbon::parse(trim($matches[2]));
                 $result['end_time'] = $endTime->format('H:i:s');
             }
@@ -262,7 +271,7 @@ class ScrapeSmithersEvents extends Command
         $this->info('═══════════════════════════════════════');
         $this->info('           SCRAPING RESULTS            ');
         $this->info('═══════════════════════════════════════');
-        
+
         $this->table(
             ['Status', 'Count'],
             [

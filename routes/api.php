@@ -1,5 +1,8 @@
 <?php
 
+use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\BillingController;
+use App\Http\Controllers\Api\EntitlementController;
 use App\Http\Controllers\TrailController;
 use App\Http\Controllers\TrailNetworkController;
 use App\Models\Business;
@@ -11,6 +14,28 @@ use Illuminate\Support\Facades\Route;
 Route::get('/user', function (Request $request) {
     return $request->user();
 })->middleware('auth:sanctum');
+
+/*
+ * XploreSmithers Android app — auth, entitlements & Play billing.
+ * Contract: see "Laravel Backend — Auth & Subscription API Spec".
+ */
+Route::prefix('auth')->group(function () {
+    Route::post('/register', [AuthController::class, 'register'])->middleware('throttle:6,1');
+    Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:6,1');
+    Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth:sanctum');
+});
+
+Route::middleware('auth:sanctum')->group(function () {
+    Route::get('/me', [AuthController::class, 'me']);
+    Route::get('/me/entitlements', [EntitlementController::class, 'show']);
+
+    // Phase B (deferred) — wiring in place, Google verification stubbed.
+    Route::post('/billing/verify-purchase', [BillingController::class, 'verifyPurchase'])
+        ->middleware('throttle:10,1');
+});
+
+// Google Real-Time Developer Notifications (Pub/Sub push) — public, secret-gated.
+Route::post('/billing/rtdn', [BillingController::class, 'rtdn']);
 
 // API Routes for map data
 Route::get('/trails', [TrailController::class, 'apiIndex']);

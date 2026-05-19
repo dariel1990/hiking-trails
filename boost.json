@@ -1,0 +1,14 @@
+{
+    "agents": [
+        "claude_code",
+        "opencode"
+    ],
+    "editors": [
+        "claude_code",
+        "codex",
+        "opencode",
+        "vscode"
+    ],
+    "guidelines": [],
+    "herd_mcp": true
+}

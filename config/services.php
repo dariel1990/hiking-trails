@@ -44,6 +44,12 @@ return [
         'access_token' => env('MAPBOX_ACCESS_TOKEN'),
     ],
 
+    'google_play' => [
+        'package_name' => env('GOOGLE_PLAY_PACKAGE_NAME', 'com.xploresmithers.app'),
+        'service_account_json' => env('GOOGLE_PLAY_SERVICE_ACCOUNT_JSON'),
+        'rtdn_token' => env('GOOGLE_PLAY_RTDN_TOKEN'),
+    ],
+
     'android_app' => [
         'package_name' => env('ANDROID_APP_PACKAGE_NAME'),
         'play_store_url' => env('ANDROID_APP_PLAY_STORE_URL'),
