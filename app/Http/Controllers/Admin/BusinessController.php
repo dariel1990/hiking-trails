@@ -7,6 +7,7 @@ use App\Http\Requests\Admin\StoreBusinessRequest;
 use App\Http\Requests\Admin\UpdateBusinessRequest;
 use App\Models\Business;
 use App\Models\BusinessMedia;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -85,6 +86,46 @@ class BusinessController extends Controller
 
         return redirect()->route('admin.businesses.index')
             ->with('success', 'Business deleted successfully.');
+    }
+
+    public function bulkAction(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'action' => ['required', 'string', 'in:delete,activate,deactivate'],
+            'ids' => ['required', 'array', 'min:1'],
+            'ids.*' => ['integer', 'exists:businesses,id'],
+        ]);
+
+        $ids = $validated['ids'];
+        $count = count($ids);
+        $message = '';
+
+        switch ($validated['action']) {
+            case 'delete':
+                Business::query()->whereIn('id', $ids)->get()->each->delete();
+                $message = "{$count} business(es) deleted successfully.";
+                break;
+            case 'activate':
+                Business::query()->whereIn('id', $ids)->update(['is_active' => true]);
+                $message = "{$count} business(es) marked active.";
+                break;
+            case 'deactivate':
+                Business::query()->whereIn('id', $ids)->update(['is_active' => false]);
+                $message = "{$count} business(es) marked inactive.";
+                break;
+        }
+
+        return redirect()->route('admin.businesses.index')->with('success', $message);
+    }
+
+    public function toggleActive(Business $business): JsonResponse
+    {
+        $business->update(['is_active' => ! $business->is_active]);
+
+        return response()->json([
+            'success' => true,
+            'is_active' => $business->is_active,
+        ]);
     }
 
     public function deleteMedia(Business $business, BusinessMedia $media): mixed

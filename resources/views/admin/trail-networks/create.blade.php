@@ -342,6 +342,8 @@
                         </div>
                     </div>
                 </div>
+
+                @include('admin.trail-networks._sponsors-section', ['sponsors' => []])
             </div>
         </div>
     </form>

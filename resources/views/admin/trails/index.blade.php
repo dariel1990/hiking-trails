@@ -67,12 +67,25 @@
                     </select>
                 </div>
 
+                <div class="grid gap-2 min-w-[160px]">
+                    <label class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                        Activity
+                    </label>
+                    <select name="activity"
+                            class="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50">
+                        <option value="">All Activities</option>
+                        @foreach($activityFilterOptions as $activity)
+                            <option value="{{ $activity->id }}" {{ (string) request('activity') === (string) $activity->id ? 'selected' : '' }}>{{ $activity->name }}</option>
+                        @endforeach
+                    </select>
+                </div>
+
                 <div class="flex gap-2">
                     <button type="submit"
                             class="inline-flex items-center justify-center rounded-md bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2 text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50">
                         Filter
                     </button>
-                    @if(request('search') || request('status') || request('location_type'))
+                    @if(request('search') || request('status') || request('location_type') || request('activity'))
                         <a href="{{ route('admin.trails.index') }}"
                            class="inline-flex items-center justify-center rounded-md border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2 text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50">
                             Clear
@@ -84,11 +97,51 @@
     </div>
 
     <!-- Trails Table Card -->
-    <div class="rounded-lg border bg-card text-card-foreground shadow-sm">
+    <div class="rounded-lg border bg-card text-card-foreground shadow-sm"
+         x-data="{ selected: [], action: '', get allIds() { return Array.from(document.querySelectorAll('input.trail-row-checkbox')).map(el => el.value); }, toggleAll(e) { this.selected = e.target.checked ? this.allIds : []; } }">
+
+        <!-- Bulk Actions Bar -->
+        <div class="flex flex-wrap items-center justify-between gap-3 border-b px-4 py-3 bg-muted/30"
+             x-show="selected.length > 0" x-cloak>
+            <div class="text-sm">
+                <span class="font-medium" x-text="selected.length"></span>
+                selected
+            </div>
+            <form method="POST" action="{{ route('admin.trails.bulk-action') }}" class="flex items-center gap-2"
+                  @submit="if (!action || selected.length === 0) { $event.preventDefault(); return; } if (action === 'delete' && !confirm('Delete ' + selected.length + ' selected trail(s)? This cannot be undone.')) { $event.preventDefault(); }">
+                @csrf
+                <template x-for="id in selected" :key="id">
+                    <input type="hidden" name="ids[]" :value="id">
+                </template>
+                <select name="action" x-model="action"
+                        class="flex h-9 items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
+                    <option value="">Bulk action…</option>
+                    <option value="activate">Mark Active</option>
+                    <option value="deactivate">Mark Inactive</option>
+                    <option value="delete">Delete</option>
+                </select>
+                <button type="submit"
+                        class="inline-flex items-center justify-center rounded-md bg-primary text-primary-foreground hover:bg-primary/90 h-9 px-4 py-2 text-sm font-medium ring-offset-background transition-colors disabled:pointer-events-none disabled:opacity-50"
+                        :disabled="!action">
+                    Apply
+                </button>
+                <button type="button" @click="selected = []; action = ''"
+                        class="inline-flex items-center justify-center rounded-md border border-input bg-background hover:bg-accent hover:text-accent-foreground h-9 px-3 py-2 text-sm font-medium">
+                    Clear
+                </button>
+            </form>
+        </div>
+
         <div class="relative w-full overflow-auto">
             <table class="w-full caption-bottom text-sm">
                 <thead class="[&_tr]:border-b">
                     <tr class="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted">
+                        <th class="h-12 w-10 px-4 text-left align-middle font-medium text-muted-foreground">
+                            <input type="checkbox" aria-label="Select all"
+                                   class="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                                   @change="toggleAll($event)"
+                                   :checked="selected.length > 0 && selected.length === allIds.length">
+                        </th>
                         <th class="h-12 px-4 text-left align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0">
                             Trail
                         </th>
@@ -109,6 +162,10 @@
                 <tbody class="[&_tr:last-child]:border-0">
                     @forelse($trails as $trail)
                     <tr class="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted">
+                        <td class="p-4 align-middle">
+                            <input type="checkbox" class="trail-row-checkbox h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                                   value="{{ $trail->id }}" x-model="selected" aria-label="Select trail {{ $trail->name }}">
+                        </td>
                         <td class="p-4 align-middle [&:has([role=checkbox])]:pr-0">
                             <div class="flex items-center gap-3">
                                 <div class="relative h-10 w-10 overflow-hidden rounded-lg">
@@ -124,6 +181,12 @@
                                 </div>
                                 <div class="space-y-1">
                                     <div class="font-medium leading-none">{{ $trail->name }}</div>
+                                    @php
+                                        $trailActivity = $trail->activities->first();
+                                    @endphp
+                                    @if($trailActivity)
+                                        <div class="text-xs text-muted-foreground">{{ $trailActivity->name }}</div>
+                                    @endif
                                     @if($trail->is_featured)
                                         <div class="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 border-transparent bg-secondary text-secondary-foreground hover:bg-secondary/80">
                                             ⭐ Featured
@@ -133,15 +196,24 @@
                             </div>
                         </td>
                         <td class="p-4 align-middle [&:has([role=checkbox])]:pr-0">
-                            @if($trail->location_type === 'fishing_lake')
-                                <span class="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold bg-blue-100 text-blue-800 border-transparent">
-                                    🐟 Fishing Lake
-                                </span>
-                            @else
-                                <span class="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold bg-green-100 text-green-800 border-transparent">
-                                    🥾 Hiking Trail
-                                </span>
-                            @endif
+                            <div class="space-y-1">
+                                @if($trail->location_type === 'fishing_lake')
+                                    <span class="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold bg-blue-100 text-blue-800 border-transparent">
+                                        🐟 Fishing Lake
+                                    </span>
+                                @else
+                                    <span class="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold bg-green-100 text-green-800 border-transparent">
+                                        🥾 Hiking Trail
+                                    </span>
+                                @endif
+                                @if($trail->trailNetwork)
+                                    <div class="text-xs text-muted-foreground">
+                                        <a href="{{ route('admin.trail-networks.show', $trail->trailNetwork) }}" class="hover:underline">{{ $trail->trailNetwork->network_name }}</a>
+                                    </div>
+                                @else
+                                    <div class="text-xs text-gray-400 italic">Standalone</div>
+                                @endif
+                            </div>
                         </td>
                         <td class="p-4 align-middle [&:has([role=checkbox])]:pr-0">
                             @if($trail->location_type === 'fishing_lake')
@@ -172,10 +244,23 @@
                                     'seasonal' => ['class' => 'border-transparent bg-yellow-100 text-yellow-800', 'icon' => '⏰']
                                 ];
                                 $config = $statusConfig[$trail->status] ?? ['class' => 'border-transparent bg-gray-100 text-gray-800', 'icon' => '?'];
+                                $isActive = $trail->status === 'active';
                             @endphp
-                            <div class="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 {{ $config['class'] }}">
-                                <span class="mr-1">{{ $config['icon'] }}</span>
-                                {{ ucfirst($trail->status) }}
+                            <div class="flex items-center gap-3">
+                                <div class="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors {{ $config['class'] }}">
+                                    <span class="mr-1">{{ $config['icon'] }}</span>
+                                    {{ ucfirst($trail->status) }}
+                                </div>
+                                <form method="POST" action="{{ route('admin.trails.toggle-status', $trail) }}" class="trail-toggle-status-form inline-block">
+                                    @csrf
+                                    @method('PATCH')
+                                    <button type="submit" role="switch"
+                                            aria-checked="{{ $isActive ? 'true' : 'false' }}"
+                                            title="{{ $isActive ? 'Mark inactive' : 'Mark active' }}"
+                                            class="relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 {{ $isActive ? 'bg-green-500' : 'bg-gray-300' }}">
+                                        <span class="pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition-transform {{ $isActive ? 'translate-x-4' : 'translate-x-0' }}"></span>
+                                    </button>
+                                </form>
                             </div>
                         </td>
                         <td class="p-4 align-middle [&:has([role=checkbox])]:pr-0">
@@ -234,7 +319,7 @@
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="5" class="p-12 text-center">
+                        <td colspan="6" class="p-12 text-center">
                             <div class="flex flex-col items-center justify-center space-y-4">
                                 <div class="rounded-full bg-muted p-3">
                                     <svg class="h-8 w-8 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">

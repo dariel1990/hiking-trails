@@ -42,9 +42,19 @@ class AdminTrailController extends Controller
             $query->where('location_type', $request->location_type);
         }
 
-        $trails = $query->latest()->paginate(15);
+        if ($request->activity) {
+            $query->whereHas('activities', function ($q) use ($request) {
+                $q->where('activity_types.id', $request->activity);
+            });
+        }
 
-        return view('admin.trails.index', compact('trails'));
+        $trails = $query->with(['activities:id,name,slug', 'trailNetwork:id,network_name,slug'])->latest()->paginate(15);
+
+        $activityFilterOptions = ActivityType::where('is_active', true)
+            ->orderBy('name')
+            ->get(['id', 'name']);
+
+        return view('admin.trails.index', compact('trails', 'activityFilterOptions'));
     }
 
     /**
@@ -98,8 +108,7 @@ class AdminTrailController extends Controller
             'trail_video_urls.*' => 'nullable|url|max:500',
             'highlight_media_*' => 'nullable|file|mimes:jpeg,png,jpg,gif|max:10240',
             'highlight_video_url_*' => 'nullable|url|max:500',
-            'activities' => 'nullable|array',
-            'activities.*' => 'integer|exists:activity_types,id',
+            'activity_id' => 'nullable|integer|exists:activity_types,id',
             'activity_notes' => 'nullable|string|max:1000',
             'seasonal' => 'nullable|array',
             'seasonal.*.conditions' => 'nullable|string|max:255',
@@ -151,7 +160,7 @@ class AdminTrailController extends Controller
             'parking_info' => 'Parking Information',
             'safety_notes' => 'Safety Notes',
             'photos.*' => 'Photo',
-            'activities.*' => 'Activity',
+            'activity_id' => 'Activity',
             'activity_notes' => 'Activity Notes',
             'trail_network_id' => 'Trail Network',
             // Trail-specific
@@ -259,16 +268,15 @@ class AdminTrailController extends Controller
         // Create the trail
         $trail = Trail::create($data);
 
-        // Handle Activities
-        if ($request->has('activities') && is_array($request->activities)) {
-            // Activities now come as IDs from the form
-            $syncData = [];
-            foreach ($request->activities as $activityId) {
-                $syncData[$activityId] = [
+        // Handle Activity (single)
+        if ($request->filled('activity_id')) {
+            $trail->activities()->sync([
+                (int) $request->activity_id => [
                     'activity_notes' => $request->activity_notes,
-                ];
-            }
-            $trail->activities()->sync($syncData);
+                ],
+            ]);
+        } else {
+            $trail->activities()->detach();
         }
 
         // Handle Seasonal Data
@@ -540,8 +548,7 @@ class AdminTrailController extends Controller
             'deleted_photos' => 'nullable|string',
             'deleted_features' => 'nullable|string',
             'featured_photo_id' => 'nullable|integer',
-            'activities' => 'nullable|array',
-            'activities.*' => 'integer|exists:activity_types,id',
+            'activity_id' => 'nullable|integer|exists:activity_types,id',
             'activity_notes' => 'nullable|string|max:1000',
             'seasonal' => 'nullable|array',
             'seasonal.*.conditions' => 'nullable|string|max:255',
@@ -592,7 +599,7 @@ class AdminTrailController extends Controller
             'parking_info' => 'Parking Information',
             'safety_notes' => 'Safety Notes',
             'photos.*' => 'Photo',
-            'activities.*' => 'Activity',
+            'activity_id' => 'Activity',
             'activity_notes' => 'Activity Notes',
             'trail_network_id' => 'Trail Network',
             // Trail-specific
@@ -707,18 +714,14 @@ class AdminTrailController extends Controller
         // dd($data);
         $trail->update($data);
 
-        // Update Activities
-        if ($request->has('activities') && is_array($request->activities)) {
-            // Activities now come as IDs from the form
-            $syncData = [];
-            foreach ($request->activities as $activityId) {
-                $syncData[$activityId] = [
+        // Update Activity (single)
+        if ($request->filled('activity_id')) {
+            $trail->activities()->sync([
+                (int) $request->activity_id => [
                     'activity_notes' => $request->activity_notes,
-                ];
-            }
-            $trail->activities()->sync($syncData);
+                ],
+            ]);
         } else {
-            // If no activities selected, detach all
             $trail->activities()->detach();
         }
 
@@ -1286,5 +1289,53 @@ class AdminTrailController extends Controller
             // Return with error message
             return redirect()->back()->with('error', 'Failed to update featured status. Please try again.');
         }
+    }
+
+    /**
+     * Toggle a trail's active/inactive status (active <-> closed).
+     */
+    public function toggleStatus(Trail $trail): \Illuminate\Http\RedirectResponse
+    {
+        $trail->status = $trail->status === 'active' ? 'closed' : 'active';
+        $trail->save();
+
+        $message = $trail->status === 'active'
+            ? "Trail '{$trail->name}' is now active."
+            : "Trail '{$trail->name}' is now inactive.";
+
+        return redirect()->back()->with('success', $message);
+    }
+
+    /**
+     * Apply a bulk action (delete, activate, deactivate) to selected trails.
+     */
+    public function bulkAction(Request $request): \Illuminate\Http\RedirectResponse
+    {
+        $validated = $request->validate([
+            'action' => ['required', 'string', 'in:delete,activate,deactivate'],
+            'ids' => ['required', 'array', 'min:1'],
+            'ids.*' => ['integer', 'exists:trails,id'],
+        ]);
+
+        $ids = $validated['ids'];
+        $count = count($ids);
+        $message = '';
+
+        switch ($validated['action']) {
+            case 'delete':
+                Trail::query()->whereIn('id', $ids)->get()->each->delete();
+                $message = "{$count} trail(s) deleted successfully.";
+                break;
+            case 'activate':
+                Trail::query()->whereIn('id', $ids)->update(['status' => 'active']);
+                $message = "{$count} trail(s) marked active.";
+                break;
+            case 'deactivate':
+                Trail::query()->whereIn('id', $ids)->update(['status' => 'closed']);
+                $message = "{$count} trail(s) marked inactive.";
+                break;
+        }
+
+        return redirect()->route('admin.trails.index')->with('success', $message);
     }
 }

@@ -108,10 +108,37 @@
                 </div>
             </div>
         @else
+            <form id="bulk-form" method="POST" action="{{ route('admin.businesses.bulk-action') }}" class="hidden">
+                @csrf
+                <input type="hidden" name="action" id="bulk-action-input" value="">
+                <div id="bulk-ids-container"></div>
+            </form>
+            <div id="bulk-action-bar" style="display: none;" class="items-center justify-between gap-4 px-6 py-3 border-b bg-blue-50">
+                <div class="text-sm font-medium text-blue-900">
+                    <span id="bulk-selected-count">0</span> selected
+                </div>
+                <div class="flex items-center gap-2">
+                    <button type="button" onclick="submitBulkAction('activate')"
+                        class="inline-flex items-center justify-center rounded-md border border-input bg-white hover:bg-green-50 hover:text-green-700 h-9 px-3 text-sm font-medium transition-colors">
+                        Mark Active
+                    </button>
+                    <button type="button" onclick="submitBulkAction('deactivate')"
+                        class="inline-flex items-center justify-center rounded-md border border-input bg-white hover:bg-gray-100 h-9 px-3 text-sm font-medium transition-colors">
+                        Mark Inactive
+                    </button>
+                    <button type="button" onclick="submitBulkAction('delete')"
+                        class="inline-flex items-center justify-center rounded-md bg-red-600 text-white hover:bg-red-700 h-9 px-3 text-sm font-medium transition-colors">
+                        Delete
+                    </button>
+                </div>
+            </div>
             <div class="overflow-x-auto">
                 <table class="w-full text-sm">
                     <thead>
                         <tr class="border-b bg-muted/50">
+                            <th class="h-12 px-4 text-left font-medium text-muted-foreground w-10">
+                                <input type="checkbox" id="select-all" class="h-4 w-4 rounded border-input">
+                            </th>
                             <th class="h-12 px-6 text-left font-medium text-muted-foreground">Business</th>
                             <th class="h-12 px-4 text-left font-medium text-muted-foreground">Type</th>
                             <th class="h-12 px-4 text-left font-medium text-muted-foreground">Address</th>
@@ -123,6 +150,10 @@
                     <tbody class="divide-y">
                         @foreach($businesses as $business)
                             <tr class="hover:bg-muted/30 transition-colors">
+                                <td class="px-4 py-4">
+                                    <input type="checkbox" data-id="{{ $business->id }}"
+                                        class="row-checkbox h-4 w-4 rounded border-input">
+                                </td>
                                 <td class="px-6 py-4">
                                     <div class="flex items-center gap-3">
                                         <div class="flex h-10 w-10 items-center justify-center rounded-full bg-muted text-lg flex-shrink-0">
@@ -145,14 +176,21 @@
                                     {{ $business->address ?? '—' }}
                                 </td>
                                 <td class="px-4 py-4">
-                                    <div class="flex flex-col gap-1">
-                                        @if($business->is_active)
-                                            <span class="inline-flex items-center rounded-full border border-transparent bg-green-100 px-2.5 py-0.5 text-xs font-semibold text-green-800">Active</span>
-                                        @else
-                                            <span class="inline-flex items-center rounded-full border border-transparent bg-gray-100 px-2.5 py-0.5 text-xs font-semibold text-gray-600">Inactive</span>
-                                        @endif
+                                    <div class="flex flex-col gap-2">
+                                        <button type="button"
+                                            data-toggle-active="{{ $business->id }}"
+                                            data-active="{{ $business->is_active ? '1' : '0' }}"
+                                            title="Click to toggle"
+                                            class="toggle-active group inline-flex items-center gap-2">
+                                            <span class="relative inline-flex h-5 w-9 items-center rounded-full transition-colors {{ $business->is_active ? 'bg-green-500' : 'bg-gray-300' }}">
+                                                <span class="inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform {{ $business->is_active ? 'translate-x-4' : 'translate-x-0.5' }}"></span>
+                                            </span>
+                                            <span class="toggle-label text-xs font-semibold {{ $business->is_active ? 'text-green-700' : 'text-gray-500' }}">
+                                                {{ $business->is_active ? 'Active' : 'Inactive' }}
+                                            </span>
+                                        </button>
                                         @if($business->is_featured)
-                                            <span class="inline-flex items-center rounded-full border border-transparent bg-yellow-100 px-2.5 py-0.5 text-xs font-semibold text-yellow-800">★ Featured</span>
+                                            <span class="inline-flex items-center rounded-full border border-transparent bg-yellow-100 px-2.5 py-0.5 text-xs font-semibold text-yellow-800 w-fit">★ Featured</span>
                                         @endif
                                     </div>
                                 </td>
@@ -210,6 +248,97 @@ function confirmDelete(event, name) {
 
 function closeConfirmModal() {
     document.getElementById('confirm-modal').classList.add('hidden');
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+    const selectAll = document.getElementById('select-all');
+    const rowCheckboxes = document.querySelectorAll('.row-checkbox');
+    const bar = document.getElementById('bulk-action-bar');
+    const countEl = document.getElementById('bulk-selected-count');
+
+    function updateBar() {
+        const selected = document.querySelectorAll('.row-checkbox:checked');
+        countEl.textContent = selected.length;
+        bar.style.display = selected.length === 0 ? 'none' : 'flex';
+        if (selectAll) {
+            selectAll.checked = selected.length > 0 && selected.length === rowCheckboxes.length;
+            selectAll.indeterminate = selected.length > 0 && selected.length < rowCheckboxes.length;
+        }
+    }
+
+    if (selectAll) {
+        selectAll.addEventListener('change', function () {
+            rowCheckboxes.forEach(cb => { cb.checked = selectAll.checked; });
+            updateBar();
+        });
+    }
+    rowCheckboxes.forEach(cb => cb.addEventListener('change', updateBar));
+
+    document.querySelectorAll('.toggle-active').forEach(btn => {
+        btn.addEventListener('click', async function () {
+            if (btn.disabled) { return; }
+            btn.disabled = true;
+            const id = btn.dataset.toggleActive;
+            try {
+                const res = await fetch(`/admin/businesses/${id}/toggle-active`, {
+                    method: 'PATCH',
+                    headers: {
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                });
+                if (!res.ok) { throw new Error('Request failed'); }
+                const data = await res.json();
+                const active = !!data.is_active;
+                btn.dataset.active = active ? '1' : '0';
+                const pill = btn.querySelector('span.relative');
+                const knob = pill.querySelector('span');
+                const label = btn.querySelector('.toggle-label');
+                pill.classList.toggle('bg-green-500', active);
+                pill.classList.toggle('bg-gray-300', !active);
+                knob.classList.toggle('translate-x-4', active);
+                knob.classList.toggle('translate-x-0.5', !active);
+                label.textContent = active ? 'Active' : 'Inactive';
+                label.classList.toggle('text-green-700', active);
+                label.classList.toggle('text-gray-500', !active);
+            } catch (err) {
+                alert('Failed to update status.');
+            } finally {
+                btn.disabled = false;
+            }
+        });
+    });
+});
+
+function submitBulkAction(action) {
+    const form = document.getElementById('bulk-form');
+    const selected = document.querySelectorAll('.row-checkbox:checked');
+    if (selected.length === 0) { return; }
+
+    const labels = {
+        delete: { title: 'Delete selected businesses?', msg: 'This will permanently delete ' + selected.length + ' business(es) and all their media. This cannot be undone.' },
+        activate: { title: 'Mark ' + selected.length + ' business(es) as Active?', msg: 'They will become visible on the map.' },
+        deactivate: { title: 'Mark ' + selected.length + ' business(es) as Inactive?', msg: 'They will be hidden from the map.' },
+    };
+    const cfg = labels[action];
+
+    document.getElementById('confirm-modal-title').textContent = cfg.title;
+    document.getElementById('confirm-modal-message').textContent = cfg.msg;
+    document.getElementById('confirm-modal-action').onclick = () => {
+        document.getElementById('bulk-action-input').value = action;
+        const container = document.getElementById('bulk-ids-container');
+        container.innerHTML = '';
+        selected.forEach(cb => {
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = 'ids[]';
+            input.value = cb.dataset.id;
+            container.appendChild(input);
+        });
+        form.submit();
+    };
+    document.getElementById('confirm-modal').classList.remove('hidden');
 }
 </script>
 @endsection

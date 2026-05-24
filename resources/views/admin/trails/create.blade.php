@@ -145,12 +145,11 @@
         <div class="rounded-lg border bg-card text-card-foreground shadow-sm">
             <div class="p-6 space-y-6">
                 <div class="space-y-2">
-                    <h3 class="text-lg font-semibold">Activities & Features</h3>
-                    <p class="text-sm text-muted-foreground">What activities are available?</p>
+                    <h3 class="text-lg font-semibold">Activity</h3>
+                    <p class="text-sm text-muted-foreground">Select the activity for this trail.</p>
                 </div>
-                
+
                 <div class="space-y-4">
-                    <!-- Summer Activities -->
                     @php
                         $summerActivities = $activities->filter(function($activity) {
                             return $activity->season_applicable === 'summer' || $activity->season_applicable === 'both';
@@ -158,17 +157,18 @@
                         $winterActivities = $activities->filter(function($activity) {
                             return $activity->season_applicable === 'winter' || $activity->season_applicable === 'both';
                         });
+                        $defaultActivityId = old('activity_id', optional($activities->firstWhere('slug', 'hiking'))->id);
                     @endphp
-                    
+
                     @if($summerActivities->count() > 0)
                     <div>
                         <div class="text-sm font-medium text-gray-700 mb-3">Summer Activities</div>
                         <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
                             @foreach($summerActivities as $activity)
                             <label class="flex items-start gap-3 p-4 rounded-lg border border-input bg-background hover:bg-accent hover:text-accent-foreground cursor-pointer transition-colors">
-                                <input type="checkbox" name="activities[]" value="{{ $activity->id }}" 
-                                       class="mt-1 h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
-                                       {{ $activity->slug === 'hiking' ? 'checked' : '' }}>
+                                <input type="radio" name="activity_id" value="{{ $activity->id }}"
+                                       class="mt-1 h-4 w-4 border-gray-300 text-primary focus:ring-primary"
+                                       {{ (int) $defaultActivityId === $activity->id ? 'checked' : '' }}>
                                 <div class="space-y-1">
                                     <div class="text-sm font-medium">{{ $activity->name }}</div>
                                     <div class="text-xs text-muted-foreground">
@@ -184,15 +184,16 @@
                         </div>
                     </div>
                     @endif
-                    
+
                     @if($winterActivities->where('season_applicable', 'winter')->count() > 0)
                     <div>
                         <div class="text-sm font-medium text-gray-700 mb-3">Winter Activities</div>
                         <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
                             @foreach($winterActivities->where('season_applicable', 'winter') as $activity)
                             <label class="flex items-start gap-3 p-4 rounded-lg border border-input bg-background hover:bg-accent hover:text-accent-foreground cursor-pointer transition-colors">
-                                <input type="checkbox" name="activities[]" value="{{ $activity->id }}" 
-                                       class="mt-1 h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary">
+                                <input type="radio" name="activity_id" value="{{ $activity->id }}"
+                                       class="mt-1 h-4 w-4 border-gray-300 text-primary focus:ring-primary"
+                                       {{ (int) $defaultActivityId === $activity->id ? 'checked' : '' }}>
                                 <div class="space-y-1">
                                     <div class="text-sm font-medium">{{ $activity->name }}</div>
                                     <div class="text-xs text-muted-foreground">

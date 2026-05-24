@@ -384,6 +384,58 @@
                 @endif
             </div>
 
+            {{-- Sponsorships --}}
+            <div class="bg-white rounded-xl shadow-sm border border-gray-200">
+                <div class="px-6 py-4 border-b border-gray-100 flex items-center gap-3">
+                    <div class="w-8 h-8 rounded-lg bg-yellow-50 text-yellow-600 flex items-center justify-center">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                  d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.286 3.957a1 1 0 00.95.69h4.162c.969 0 1.371 1.24.588 1.81l-3.37 2.449a1 1 0 00-.364 1.118l1.287 3.957c.3.922-.755 1.688-1.539 1.118l-3.37-2.449a1 1 0 00-1.175 0l-3.37 2.449c-.783.57-1.838-.196-1.539-1.118l1.287-3.957a1 1 0 00-.364-1.118L2.05 9.384c-.783-.57-.38-1.81.588-1.81h4.163a1 1 0 00.95-.69l1.286-3.957z"/>
+                        </svg>
+                    </div>
+                    <div class="flex-1">
+                        <h2 class="text-sm font-semibold text-gray-900">Sponsorships</h2>
+                        <p class="text-xs text-gray-500">{{ $trailNetwork->sponsors->count() }} configured</p>
+                    </div>
+                    <a href="{{ route('admin.trail-networks.edit', $trailNetwork) }}#sponsors"
+                       class="text-xs text-green-700 hover:text-green-800 font-semibold">Manage</a>
+                </div>
+                @if($trailNetwork->sponsors->count() > 0)
+                    <ul class="divide-y divide-gray-100">
+                        @foreach($trailNetwork->sponsors as $sponsor)
+                            <li class="px-6 py-4 flex items-center gap-4">
+                                <div class="flex-shrink-0 w-12 h-12 rounded-lg bg-gray-50 border border-gray-200 flex items-center justify-center overflow-hidden">
+                                    <img src="{{ $sponsor->logoUrl() }}" alt="{{ $sponsor->name }} logo" class="w-full h-full object-contain">
+                                </div>
+                                <div class="flex-1 min-w-0">
+                                    <p class="text-sm font-semibold text-gray-900 truncate">
+                                        {{ $sponsor->name }}
+                                        @if($sponsor->tagline)
+                                            <span class="text-xs text-gray-500 font-normal">· {{ $sponsor->tagline }}</span>
+                                        @endif
+                                    </p>
+                                    @if($sponsor->url)
+                                        <a href="{{ $sponsor->url }}" target="_blank" rel="noopener noreferrer"
+                                           class="text-xs text-blue-600 hover:underline truncate block">{{ $sponsor->url }}</a>
+                                    @endif
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <span class="text-[10px] font-medium px-2 py-0.5 rounded-full {{ $sponsor->is_active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600' }}">
+                                        {{ $sponsor->is_active ? 'Active' : 'Hidden' }}
+                                    </span>
+                                </div>
+                            </li>
+                        @endforeach
+                    </ul>
+                @else
+                    <div class="px-6 py-8 text-center text-sm text-gray-500">
+                        <p>No sponsorships configured.</p>
+                        <a href="{{ route('admin.trail-networks.edit', $trailNetwork) }}"
+                           class="text-green-600 hover:underline mt-2 inline-block">Add a sponsor</a>
+                    </div>
+                @endif
+            </div>
+
         </div>
     </div>
 </div>

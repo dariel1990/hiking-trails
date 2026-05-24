@@ -73,9 +73,11 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::resource('users', UserController::class)->only(['index', 'create', 'store', 'edit', 'update', 'destroy']);
 
         // Trail management
+        Route::post('/trails/bulk-action', [AdminTrailController::class, 'bulkAction'])->name('trails.bulk-action');
         Route::resource('trails', AdminTrailController::class);
         Route::resource('activity-types', ActivityTypeController::class);
         Route::patch('/trails/{trail}/toggle-featured', [AdminTrailController::class, 'toggleFeatured'])->name('trails.toggle-featured')->middleware('throttle:10,1');
+        Route::patch('/trails/{trail}/toggle-status', [AdminTrailController::class, 'toggleStatus'])->name('trails.toggle-status')->middleware('throttle:10,1');
 
         // Add the trail networks routes here
         Route::resource('trail-networks', AdminTrailNetworkController::class)
@@ -110,6 +112,10 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::patch('/facilities/{facility}/media/{media}/caption', [FacilityController::class, 'updateMediaCaption'])
             ->name('facilities.media.caption');
         // Businesses Management
+        Route::post('/businesses/bulk-action', [BusinessController::class, 'bulkAction'])
+            ->name('businesses.bulk-action');
+        Route::patch('/businesses/{business}/toggle-active', [BusinessController::class, 'toggleActive'])
+            ->name('businesses.toggle-active');
         Route::resource('businesses', BusinessController::class)
             ->names([
                 'index' => 'businesses.index',
@@ -173,3 +179,20 @@ Route::get('/events/{event}/details', [EventsController::class, 'getEventDetails
 
 //     return Artisan::output();
 // })->name('migrate.subscriptions');
+
+// Utility — run the trail-network sponsorship migrations (remove after deploy)
+Route::get('/migrate-sponsorships', function () {
+    Artisan::call('migrate', [
+        '--path' => 'database/migrations/2026_05_20_000908_create_trail_network_sponsors_table.php',
+        '--force' => true,
+    ]);
+    $createOutput = Artisan::output();
+
+    Artisan::call('migrate', [
+        '--path' => 'database/migrations/2026_05_20_001536_backfill_hudson_bay_mountain_sponsorship.php',
+        '--force' => true,
+    ]);
+    $backfillOutput = Artisan::output();
+
+    return nl2br(e($createOutput."\n".$backfillOutput));
+})->name('migrate.sponsorships');

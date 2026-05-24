@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
 
 class TrailNetwork extends Model
@@ -58,5 +59,18 @@ class TrailNetwork extends Model
     public function activeFacilities()
     {
         return $this->hasMany(Facility::class)->where('is_active', true);
+    }
+
+    public function sponsors(): HasMany
+    {
+        return $this->hasMany(TrailNetworkSponsor::class)->orderBy('sort_order')->orderBy('id');
+    }
+
+    public function activeSponsors(): HasMany
+    {
+        return $this->hasMany(TrailNetworkSponsor::class)
+            ->where('is_active', true)
+            ->orderBy('sort_order')
+            ->orderBy('id');
     }
 }

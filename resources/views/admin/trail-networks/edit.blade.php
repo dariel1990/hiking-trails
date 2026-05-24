@@ -344,6 +344,8 @@
                         </div>
                     </div>
                 </div>
+
+                @include('admin.trail-networks._sponsors-section', ['sponsors' => $trailNetwork->sponsors])
             </div>
         </div>
     </form>

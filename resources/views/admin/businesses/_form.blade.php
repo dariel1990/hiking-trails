@@ -273,18 +273,21 @@
 
                 <div class="pt-2 border-t space-y-3">
                     <div class="flex items-center space-x-2">
+                        <input type="hidden" name="is_active" value="0">
                         <input type="checkbox" name="is_active" id="is_active" value="1"
                             {{ old('is_active', $isEdit ? $business->is_active : true) ? 'checked' : '' }}
                             class="h-4 w-4 rounded border-input text-primary focus:ring-ring">
                         <label for="is_active" class="text-sm font-medium leading-none">Active (visible on map)</label>
                     </div>
                     <div class="flex items-center space-x-2">
+                        <input type="hidden" name="is_featured" value="0">
                         <input type="checkbox" name="is_featured" id="is_featured" value="1"
                             {{ old('is_featured', $isEdit ? $business->is_featured : false) ? 'checked' : '' }}
                             class="h-4 w-4 rounded border-input text-primary focus:ring-ring">
                         <label for="is_featured" class="text-sm font-medium leading-none">Featured</label>
                     </div>
                     <div class="flex items-center space-x-2">
+                        <input type="hidden" name="is_seasonal" value="0">
                         <input type="checkbox" name="is_seasonal" id="is_seasonal" value="1"
                             {{ old('is_seasonal', $isEdit ? $business->is_seasonal : false) ? 'checked' : '' }}
                             onchange="document.getElementById('season_open_wrap').classList.toggle('hidden', !this.checked)"
