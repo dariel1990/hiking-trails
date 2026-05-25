@@ -4,6 +4,7 @@ use App\Http\Controllers\Admin\ActivityTypeController;
 use App\Http\Controllers\Admin\AdminController;
 use App\Http\Controllers\Admin\AdminTrailController;
 use App\Http\Controllers\Admin\AdminTrailNetworkController;
+use App\Http\Controllers\Admin\AdminTrailPhotoController;
 use App\Http\Controllers\Admin\BusinessController;
 use App\Http\Controllers\Admin\FacilityController;
 use App\Http\Controllers\Admin\MediaController;
@@ -65,7 +66,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
     Route::post('/login', [AdminController::class, 'login'])->name('login.post');
 
     // Protected admin routes
-    Route::middleware(['auth', 'admin', 'throttle:10,1'])->group(function () {
+    Route::middleware(['auth', 'admin', 'throttle:300,1'])->group(function () {
         Route::post('/logout', [AdminController::class, 'logout'])->name('logout');
         Route::get('/dashboard', [AdminController::class, 'dashboard'])->name('dashboard');
 
@@ -76,8 +77,8 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::post('/trails/bulk-action', [AdminTrailController::class, 'bulkAction'])->name('trails.bulk-action');
         Route::resource('trails', AdminTrailController::class);
         Route::resource('activity-types', ActivityTypeController::class);
-        Route::patch('/trails/{trail}/toggle-featured', [AdminTrailController::class, 'toggleFeatured'])->name('trails.toggle-featured')->middleware('throttle:10,1');
-        Route::patch('/trails/{trail}/toggle-status', [AdminTrailController::class, 'toggleStatus'])->name('trails.toggle-status')->middleware('throttle:10,1');
+        Route::patch('/trails/{trail}/toggle-featured', [AdminTrailController::class, 'toggleFeatured'])->name('trails.toggle-featured')->middleware('throttle:300,1');
+        Route::patch('/trails/{trail}/toggle-status', [AdminTrailController::class, 'toggleStatus'])->name('trails.toggle-status')->middleware('throttle:300,1');
 
         // Add the trail networks routes here
         Route::resource('trail-networks', AdminTrailNetworkController::class)
@@ -134,6 +135,12 @@ Route::prefix('admin')->name('admin.')->group(function () {
             ->name('businesses.media.order');
         Route::patch('/businesses/{business}/media/{media}/caption', [BusinessController::class, 'updateMediaCaption'])
             ->name('businesses.media.caption');
+
+        // Community trail photos — moderation
+        Route::get('/trail-photos', [AdminTrailPhotoController::class, 'index'])->name('trail-photos.index');
+        Route::patch('/trail-photos/{trailPhoto}', [AdminTrailPhotoController::class, 'update'])->name('trail-photos.update');
+        Route::delete('/trail-photos/{trailPhoto}', [AdminTrailPhotoController::class, 'destroy'])->name('trail-photos.destroy');
+        Route::post('/trail-photos/bulk', [AdminTrailPhotoController::class, 'bulkUpdate'])->name('trail-photos.bulk');
 
         // Global Media Library
         Route::get('/media', [MediaController::class, 'index'])->name('media.index');

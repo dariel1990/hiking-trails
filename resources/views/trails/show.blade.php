@@ -219,8 +219,7 @@
 @include('partials.sponsor-banners', ['network' => $trail->trailNetwork])
 <!-- Hero Section -->
 <div class="relative h-[60vh] bg-gray-900 overflow-hidden">
-   
-    @include('partials.sponsor-badges', ['network' => $trail->trailNetwork])
+
     @if($trail->media && $trail->media->count() > 0)
         <img src="{{ $trail->media->first()->url }}" 
              alt="{{ $trail->name }}" 
@@ -828,8 +827,30 @@
                             <p class="text-gray-600">No photos available yet</p>
                         </div>
                     @endif
+
+                    {{-- Community Photos — submissions from visitors --}}
+                    <div class="mt-10 pt-8 border-t border-gray-200">
+                        <div class="mb-5 flex items-center gap-3">
+                            <span class="inline-flex items-center rounded-full bg-emerald-100 text-emerald-800 px-3 py-1 text-xs font-semibold uppercase tracking-wider">
+                                Community
+                            </span>
+                            <p class="text-sm text-gray-500">Photos shared by fellow hikers — moderated before going live.</p>
+                        </div>
+
+                        <!-- Community Photos Carousel -->
+                        @include('partials.trail-photo-carousel', ['trail' => $trail])
+
+                        <!-- Community Photo Submission CTA -->
+                        <div class="bg-emerald-50 border border-emerald-200 rounded-lg p-4 mt-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                            <div>
+                                <p class="font-semibold text-emerald-900">Have you been here?</p>
+                                <p class="text-sm text-emerald-800">Share a photo with the community. All submissions are reviewed before going live.</p>
+                            </div>
+                            @include('partials.trail-photo-upload-modal', ['trail' => $trail])
+                        </div>
+                    </div>
                 </div>
-                
+
                 <!-- Getting There Tab -->
                 <div id="planning-tab" class="tab-content">
                     <div class="prose prose-lg max-w-none space-y-0">

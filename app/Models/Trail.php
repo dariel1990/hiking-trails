@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Trail extends Model
 {
@@ -319,6 +320,24 @@ class Trail extends Model
     public function trailNetwork()
     {
         return $this->belongsTo(TrailNetwork::class);
+    }
+
+    /**
+     * All user-submitted photos for this trail (any status).
+     */
+    public function photos(): HasMany
+    {
+        return $this->hasMany(TrailPhoto::class);
+    }
+
+    /**
+     * Only approved photos, newest first — for the public carousel.
+     */
+    public function approvedPhotos(): HasMany
+    {
+        return $this->hasMany(TrailPhoto::class)
+            ->where('status', TrailPhoto::STATUS_APPROVED)
+            ->latest();
     }
 
     /**

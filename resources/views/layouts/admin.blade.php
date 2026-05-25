@@ -108,6 +108,18 @@
                             </svg>
                             Media
                         </a>
+
+                        <a href="{{ route('admin.trail-photos.index') }}" class="nav-item {{ request()->routeIs('admin.trail-photos.*') ? 'nav-item-active' : '' }}">
+                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 16.5V7.5A2.5 2.5 0 0 1 5.5 5h2.379a1 1 0 0 0 .707-.293l1.121-1.121A1 1 0 0 1 10.414 3.293H13.586a1 1 0 0 1 .707.293l1.121 1.121A1 1 0 0 0 16.121 5H18.5A2.5 2.5 0 0 1 21 7.5v9a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 16.5Z"/>
+                                <circle cx="12" cy="12" r="3.5" stroke-width="2"/>
+                            </svg>
+                            Community Photos
+                            @php($pendingPhotoCount = \App\Models\TrailPhoto::pending()->count())
+                            @if($pendingPhotoCount > 0)
+                                <span class="ml-auto bg-amber-100 text-amber-800 text-xs px-2 py-0.5 rounded-full font-semibold">{{ $pendingPhotoCount }}</span>
+                            @endif
+                        </a>
                         
                         <a href="#" class="nav-item">
                             <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">

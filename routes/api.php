@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\BillingController;
 use App\Http\Controllers\Api\EntitlementController;
+use App\Http\Controllers\Api\TrailPhotoController;
 use App\Http\Controllers\TrailController;
 use App\Http\Controllers\TrailNetworkController;
 use App\Models\Business;
@@ -20,8 +21,8 @@ Route::get('/user', function (Request $request) {
  * Contract: see "Laravel Backend — Auth & Subscription API Spec".
  */
 Route::prefix('auth')->group(function () {
-    Route::post('/register', [AuthController::class, 'register'])->middleware('throttle:6,1');
-    Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:6,1');
+    Route::post('/register', [AuthController::class, 'register'])->middleware('throttle:300,1');
+    Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:300,1');
     Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth:sanctum');
 });
 
@@ -31,11 +32,18 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Phase B (deferred) — wiring in place, Google verification stubbed.
     Route::post('/billing/verify-purchase', [BillingController::class, 'verifyPurchase'])
-        ->middleware('throttle:10,1');
+        ->middleware('throttle:300,1');
 });
 
 // Google Real-Time Developer Notifications (Pub/Sub push) — public, secret-gated.
 Route::post('/billing/rtdn', [BillingController::class, 'rtdn']);
+
+// Community trail photo submission — public, rate-limited, gated by reCAPTCHA + admin moderation.
+Route::post('/trail-photos', [TrailPhotoController::class, 'store'])
+    ->middleware('throttle:5,60');
+
+// Public list of approved photos for a trail (powers the carousel on the trail details page).
+Route::get('/trail-photos', [TrailPhotoController::class, 'index']);
 
 // API Routes for map data
 Route::get('/trails', [TrailController::class, 'apiIndex']);
