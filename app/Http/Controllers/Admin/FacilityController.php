@@ -7,6 +7,7 @@ use App\Models\Facility;
 use App\Models\FacilityMedia;
 use App\Models\TrailNetwork;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 
 class FacilityController extends Controller
 {
@@ -39,12 +40,13 @@ class FacilityController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'facility_type' => ['required', 'in:' . implode(',', array_keys(\App\Models\Facility::getFacilityTypes()))],
+            'facility_type' => ['required', 'in:'.implode(',', array_keys(Facility::getFacilityTypes()))],
             'name' => 'required|string|max:255',
             'latitude' => 'required|numeric|between:-90,90',
             'longitude' => 'required|numeric|between:-180,180',
             'description' => 'nullable|string',
             'icon' => 'nullable|string|max:10',
+            'icon_image' => 'nullable|image|mimes:jpg,jpeg,png,webp,gif|max:2048',
             'is_active' => 'boolean',
             'trail_network_id' => 'nullable|exists:trail_networks,id',
             'photos' => 'nullable|array',
@@ -55,6 +57,13 @@ class FacilityController extends Controller
 
         $validated['is_active'] = $request->has('is_active');
         $validated['trail_network_id'] = $request->input('trail_network_id') ?: null;
+
+        if ($request->hasFile('icon_image')) {
+            $validated['icon_image'] = $request->file('icon_image')->store('facility-icons', 'public');
+            $validated['icon'] = null;
+        } else {
+            unset($validated['icon_image']);
+        }
 
         $facility = Facility::create($validated);
 
@@ -90,12 +99,14 @@ class FacilityController extends Controller
     public function update(Request $request, Facility $facility)
     {
         $validated = $request->validate([
-            'facility_type' => ['required', 'in:' . implode(',', array_keys(\App\Models\Facility::getFacilityTypes()))],
+            'facility_type' => ['required', 'in:'.implode(',', array_keys(Facility::getFacilityTypes()))],
             'name' => 'required|string|max:255',
             'latitude' => 'required|numeric|between:-90,90',
             'longitude' => 'required|numeric|between:-180,180',
             'description' => 'nullable|string',
             'icon' => 'nullable|string|max:10',
+            'icon_image' => 'nullable|image|mimes:jpg,jpeg,png,webp,gif|max:2048',
+            'remove_icon_image' => 'nullable|boolean',
             'is_active' => 'boolean',
             'trail_network_id' => 'nullable|exists:trail_networks,id',
             'photos' => 'nullable|array',
@@ -106,6 +117,22 @@ class FacilityController extends Controller
 
         $validated['is_active'] = $request->has('is_active');
         $validated['trail_network_id'] = $request->input('trail_network_id') ?: null;
+        unset($validated['remove_icon_image']);
+
+        if ($request->hasFile('icon_image')) {
+            if ($facility->icon_image) {
+                Storage::disk('public')->delete($facility->icon_image);
+            }
+            $validated['icon_image'] = $request->file('icon_image')->store('facility-icons', 'public');
+            $validated['icon'] = null;
+        } elseif ($request->boolean('remove_icon_image')) {
+            if ($facility->icon_image) {
+                Storage::disk('public')->delete($facility->icon_image);
+            }
+            $validated['icon_image'] = null;
+        } else {
+            unset($validated['icon_image']);
+        }
 
         $facility->update($validated);
 

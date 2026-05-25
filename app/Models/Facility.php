@@ -16,6 +16,7 @@ class Facility extends Model
         'longitude',
         'description',
         'icon',
+        'icon_image',
         'is_active',
         'trail_network_id',
     ];

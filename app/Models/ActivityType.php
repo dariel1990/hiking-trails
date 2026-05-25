@@ -6,12 +6,12 @@ use Illuminate\Database\Eloquent\Model;
 
 class ActivityType extends Model
 {
-    protected $fillable = ['name', 'slug', 'icon', 'color', 'description', 'season_applicable', 'is_active'];
+    protected $fillable = ['name', 'slug', 'icon', 'icon_image', 'color', 'description', 'season_applicable', 'is_active'];
 
     public function trails()
     {
         return $this->belongsToMany(Trail::class, 'trail_activities')
-                    ->withPivot(['activity_notes', 'activity_specific_data'])
-                    ->withTimestamps();
+            ->withPivot(['activity_notes', 'activity_specific_data'])
+            ->withTimestamps();
     }
 }

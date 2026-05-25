@@ -113,6 +113,32 @@
                                 @error('icon')
                                     <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                                 @enderror
+
+                                <!-- Image Upload -->
+                                <div class="mt-3 pt-3 border-t border-gray-100" x-data="{ imagePreview: null }">
+                                    <p class="text-xs font-medium text-gray-600 mb-2">Or upload PNG/JPG icon <span class="text-gray-400 font-normal">(overrides emoji)</span></p>
+                                    <div class="flex items-center gap-3">
+                                        <div class="w-11 h-11 flex-shrink-0 rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 flex items-center justify-center overflow-hidden">
+                                            <template x-if="imagePreview">
+                                                <img :src="imagePreview" class="w-full h-full object-cover rounded-lg">
+                                            </template>
+                                            <template x-if="!imagePreview">
+                                                <svg class="w-5 h-5 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                                                </svg>
+                                            </template>
+                                        </div>
+                                        <div class="flex-1">
+                                            <input type="file" name="icon_image" accept="image/*"
+                                                   @change="const f=$event.target.files[0]; if(f){ const r=new FileReader(); r.onload=e=>imagePreview=e.target.result; r.readAsDataURL(f); } else { imagePreview=null; }"
+                                                   class="block w-full text-sm text-gray-500 file:mr-3 file:py-2 file:px-3 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-gray-100 file:text-gray-700 hover:file:bg-gray-200 cursor-pointer">
+                                        </div>
+                                    </div>
+                                    <p class="mt-1 text-xs text-gray-400">PNG, JPG, WebP · Max 2 MB</p>
+                                    @error('icon_image')
+                                        <p class="text-sm text-red-500">{{ $message }}</p>
+                                    @enderror
+                                </div>
                             </div>
 
                             <div>

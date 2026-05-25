@@ -1086,7 +1086,12 @@ map.on('load', () => {
         const inner = document.createElement('div');
         inner.className = 'facility-marker-inner';
         inner.style.cssText = FACILITY_NORMAL_STYLE;
-        inner.textContent = facility.icon || '📍';
+        if (facility.icon_image_url) {
+            inner.style.overflow = 'hidden';
+            inner.innerHTML = `<img src="${facility.icon_image_url}" alt="" style="width:16px;height:16px;object-fit:cover;border-radius:50%;">`;
+        } else {
+            inner.textContent = facility.icon || '📍';
+        }
         el.appendChild(inner);
         el.addEventListener('click', (e) => {
             e.stopPropagation();
@@ -1388,7 +1393,9 @@ function showFacilityDetailsCard(facility) {
 
     card.innerHTML = `
         <div class="tdc-hero" style="background:linear-gradient(135deg,#134e4a,#0d9488);display:flex;align-items:center;justify-content:center;">
-            <span style="font-size:56px;line-height:1;">${facility.icon || '📍'}</span>
+            ${facility.icon_image_url
+                ? `<img src="${facility.icon_image_url}" alt="" style="width:80px;height:80px;object-fit:cover;border-radius:50%;border:3px solid rgba(255,255,255,0.3);">`
+                : `<span style="font-size:56px;line-height:1;">${facility.icon || '📍'}</span>`}
             <button class="tdc-close" onclick="closeTrailDetailsCard()" aria-label="Close">
                 <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>

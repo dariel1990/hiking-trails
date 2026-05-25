@@ -7,6 +7,7 @@ use App\Http\Controllers\TrailController;
 use App\Http\Controllers\TrailNetworkController;
 use App\Models\Business;
 use App\Models\Facility;
+use App\Models\TrailNetwork;
 use App\Services\RouteService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -44,7 +45,7 @@ Route::get('/fishing-lakes', [TrailController::class, 'apiFishingLakes']);
 Route::get('/trails/{trail}', [TrailController::class, 'apiShow']);
 // Trail Networks API
 Route::get('/trail-networks', function () {
-    $networks = \App\Models\TrailNetwork::with(['trails' => function ($q) {
+    $networks = TrailNetwork::with(['trails' => function ($q) {
         $q->select('id', 'trail_network_id', 'name', 'difficulty_level', 'distance_km', 'status')
             ->whereIn('status', ['active', 'seasonal'])
             ->orderBy('difficulty_level');
@@ -85,7 +86,7 @@ Route::post('/calculate-route', function (Request $request) {
     ]);
 
     // Add debugging
-    \Log::info('Route calculation request:', $request->all());
+    Log::info('Route calculation request:', $request->all());
 
     $routeService = new RouteService;
     $route = $routeService->calculateRoute(
@@ -96,7 +97,7 @@ Route::post('/calculate-route', function (Request $request) {
     );
 
     if (! $route) {
-        \Log::error('Route calculation failed for coordinates', $request->all());
+        Log::error('Route calculation failed for coordinates', $request->all());
 
         return response()->json([
             'error' => 'Unable to calculate route',
@@ -107,7 +108,7 @@ Route::post('/calculate-route', function (Request $request) {
         ], 400);
     }
 
-    \Log::info('Route calculation successful');
+    Log::info('Route calculation successful');
 
     return response()->json($route);
 });
@@ -145,6 +146,7 @@ Route::get('/facilities', function () {
             'latitude' => $facility->latitude,
             'longitude' => $facility->longitude,
             'icon' => $facility->icon,
+            'icon_image_url' => $facility->icon_image ? asset('storage/'.$facility->icon_image) : null,
             'media_count' => $facility->media_count,
             'media' => $facility->media->map(function ($media) {
                 // For photos: use file_path directly with asset() like admin blade

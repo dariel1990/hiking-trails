@@ -3229,12 +3229,14 @@
         // Unified marker color — same dark green on every map layer
         get markerColor() { return '#1B3935'; }
 
-        _createMarkerEl(emoji) {
+        _createMarkerEl(emoji, iconImageUrl = null) {
             const el = document.createElement('div');
             el.className = 'selectable-marker-el';
             el.dataset.emoji = emoji;
-            el.style.cssText = `background-color:${this.markerColor};width:32px;height:32px;border-radius:50%;border:2px solid #ffffff;box-shadow:0 2px 8px rgba(0,0,0,0.4);display:flex;align-items:center;justify-content:center;font-size:15px;cursor:pointer;line-height:1;`;
-            if (emoji === '🥾') {
+            el.style.cssText = `background-color:${this.markerColor};width:32px;height:32px;border-radius:50%;border:2px solid #ffffff;box-shadow:0 2px 8px rgba(0,0,0,0.4);display:flex;align-items:center;justify-content:center;font-size:15px;cursor:pointer;line-height:1;overflow:hidden;`;
+            if (iconImageUrl) {
+                el.innerHTML = `<img src="${iconImageUrl}" alt="" style="width:22px;height:22px;object-fit:cover;border-radius:50%;">`;
+            } else if (emoji === '🥾') {
                 el.innerHTML = `<img src="{{ asset('images/hiking-boot.png') }}" alt="Hiking trail" style="width:21px;height:21px;display:block;object-fit:contain;">`;
             } else {
                 el.textContent = emoji;
@@ -3310,8 +3312,9 @@
 
             const isFishingLake = trail.location_type === 'fishing_lake';
             const emoji = isFishingLake ? '🐟' : (activity.icon || '📍');
+            const iconImageUrl = isFishingLake ? null : (activity.icon_image_url || null);
 
-            const el = this._createMarkerEl(emoji);
+            const el = this._createMarkerEl(emoji, iconImageUrl);
             el.dataset.trailId = trail.id;
             el.addEventListener('click', (e) => {
                 e.stopPropagation();
@@ -4163,7 +4166,7 @@
                 const facilities = await response.json();
 
                 facilities.forEach(facility => {
-                    const el = this._createMarkerEl(facility.icon || '📍');
+                    const el = this._createMarkerEl(facility.icon || '📍', facility.icon_image_url || null);
 
                     // Cache the full media list so the modal carousel can navigate it
                     if (facility.media && facility.media.length) {

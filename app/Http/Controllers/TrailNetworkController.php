@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Facility;
 use App\Models\TrailFeature;
 use App\Models\TrailNetwork;
 use Illuminate\Http\Request;
@@ -102,11 +103,17 @@ class TrailNetworkController extends Controller
 
         $mapboxToken = config('services.mapbox.access_token');
 
-        $facilities = \App\Models\Facility::where('is_active', true)
+        $facilities = Facility::where('is_active', true)
             ->where('trail_network_id', $network->id)
             ->orderBy('facility_type')
             ->orderBy('name')
-            ->get(['id', 'name', 'facility_type', 'latitude', 'longitude', 'description', 'icon']);
+            ->get(['id', 'name', 'facility_type', 'latitude', 'longitude', 'description', 'icon', 'icon_image'])
+            ->map(function ($facility) {
+                $data = $facility->toArray();
+                $data['icon_image_url'] = $facility->icon_image ? asset('storage/'.$facility->icon_image) : null;
+
+                return $data;
+            });
 
         return view('trail-networks.show', compact('network', 'mapboxToken', 'facilities'));
     }
