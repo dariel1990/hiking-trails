@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\ActivityType;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class ActivityTypeController extends Controller
@@ -55,18 +56,23 @@ class ActivityTypeController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'slug' => 'required|string|max:255|unique:activity_types,slug',
-            'icon' => 'required|string|max:10',
+            'icon' => 'nullable|string|max:10',
+            'icon_image' => 'nullable|image|mimes:jpg,jpeg,png,webp,gif|max:2048',
             'color' => 'required|string|max:7|regex:/^#[0-9A-Fa-f]{6}$/',
             'description' => 'nullable|string|max:500',
             'season_applicable' => 'required|in:summer,winter,both',
             'is_active' => 'boolean',
         ]);
 
-        // Ensure slug is lowercase and hyphenated
         $validated['slug'] = Str::slug($validated['slug']);
-
-        // Handle checkbox: if not present in request, set to false
         $validated['is_active'] = $request->has('is_active') ? true : false;
+
+        if ($request->hasFile('icon_image')) {
+            $validated['icon_image'] = $request->file('icon_image')->store('activity-type-icons', 'public');
+            $validated['icon'] = null;
+        } else {
+            unset($validated['icon_image']);
+        }
 
         ActivityType::create($validated);
 
@@ -92,18 +98,33 @@ class ActivityTypeController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'slug' => 'required|string|max:255|unique:activity_types,slug,'.$activityType->id,
-            'icon' => 'required|string|max:10',
+            'icon' => 'nullable|string|max:10',
+            'icon_image' => 'nullable|image|mimes:jpg,jpeg,png,webp,gif|max:2048',
+            'remove_icon_image' => 'nullable|boolean',
             'color' => 'required|string|max:7|regex:/^#[0-9A-Fa-f]{6}$/',
             'description' => 'nullable|string|max:500',
             'season_applicable' => 'required|in:summer,winter,both',
             'is_active' => 'boolean',
         ]);
 
-        // Ensure slug is lowercase and hyphenated
         $validated['slug'] = Str::slug($validated['slug']);
-
-        // Handle checkbox: if not present in request, set to false
         $validated['is_active'] = $request->has('is_active') ? true : false;
+        unset($validated['remove_icon_image']);
+
+        if ($request->hasFile('icon_image')) {
+            if ($activityType->icon_image) {
+                Storage::disk('public')->delete($activityType->icon_image);
+            }
+            $validated['icon_image'] = $request->file('icon_image')->store('activity-type-icons', 'public');
+            $validated['icon'] = null;
+        } elseif ($request->boolean('remove_icon_image')) {
+            if ($activityType->icon_image) {
+                Storage::disk('public')->delete($activityType->icon_image);
+            }
+            $validated['icon_image'] = null;
+        } else {
+            unset($validated['icon_image']);
+        }
 
         $activityType->update($validated);
 

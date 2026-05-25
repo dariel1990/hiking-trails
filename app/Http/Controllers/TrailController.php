@@ -4,8 +4,11 @@ namespace App\Http\Controllers;
 
 use App\Models\ActivityType;
 use App\Models\Trail;
+use App\Models\TrailNetwork;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class TrailController extends Controller
 {
@@ -117,7 +120,7 @@ class TrailController extends Controller
     /**
      * Build a filtered listing query shared by trail/lake index pages.
      */
-    private function buildListingQuery(Request $request): \Illuminate\Database\Eloquent\Builder
+    private function buildListingQuery(Request $request): Builder
     {
         $query = Trail::query();
 
@@ -255,7 +258,7 @@ class TrailController extends Controller
         }
 
         // Include active/seasonal trails + always-visible network trails
-        $alwaysVisibleNetworkIds = \App\Models\TrailNetwork::where('is_always_visible', true)->pluck('id');
+        $alwaysVisibleNetworkIds = TrailNetwork::where('is_always_visible', true)->pluck('id');
         $query->where(function ($q) use ($alwaysVisibleNetworkIds) {
             $q->whereIn('status', ['active', 'seasonal']);
             if ($alwaysVisibleNetworkIds->isNotEmpty()) {
@@ -351,6 +354,7 @@ class TrailController extends Controller
                     'type' => $activity->slug,
                     'name' => $activity->name,
                     'icon' => $activity->icon,
+                    'icon_image_url' => $activity->icon_image ? asset('storage/'.$activity->icon_image) : null,
                     'color' => $activity->color,
                 ];
             });
@@ -410,7 +414,7 @@ class TrailController extends Controller
             return [
                 'id' => $trail->id,
                 'name' => $trail->name,
-                'description' => $trail->description ? \Illuminate\Support\Str::limit(strip_tags($trail->description), 150) : null,
+                'description' => $trail->description ? Str::limit(strip_tags($trail->description), 150) : null,
                 'location' => $trail->location,
                 'location_type' => $trail->location_type,
                 'coordinates' => $coordinates,
