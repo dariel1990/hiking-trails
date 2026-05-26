@@ -136,10 +136,8 @@
                                     Choose another
                                 </button>
                             </div>
-                            <div class="bg-gray-900 rounded-xl overflow-hidden border border-gray-200 shadow-inner">
-                                <div class="max-h-[40vh]">
-                                    <img x-ref="cropImage" alt="Photo to crop" class="block max-w-full">
-                                </div>
+                            <div class="bg-gray-900 rounded-xl overflow-hidden border border-gray-200 shadow-inner" style="height: 45vh; min-height: 280px; max-height: 500px;">
+                                <img x-ref="cropImage" alt="Photo to crop" style="display: block; max-width: 100%;">
                             </div>
                             <p class="text-xs text-gray-500">Drag the crop area or pinch/scroll to zoom. The framed area is what will appear in the carousel.</p>
                         </div>
@@ -294,21 +292,46 @@
                             this.errorMessage = 'Photo must be 8 MB or smaller.';
                             return;
                         }
+                        this.errorMessage = '';
+                        this.destroyCropper();
+                        this.hasFile = true;
+
                         const reader = new FileReader();
                         reader.onload = (e) => {
-                            const img = this.$refs.cropImage;
-                            img.src = e.target.result;
-                            this.hasFile = true;
-                            this.errorMessage = '';
-                            this.$nextTick(() => this.initCropper(img));
+                            const dataUrl = e.target.result;
+                            this.$nextTick(() => {
+                                const img = this.$refs.cropImage;
+                                if (!img) {
+                                    return;
+                                }
+                                let started = false;
+                                const start = () => {
+                                    if (started) {
+                                        return;
+                                    }
+                                    started = true;
+                                    img.onload = null;
+                                    requestAnimationFrame(() => this.initCropper(img));
+                                };
+                                img.onload = start;
+                                img.src = dataUrl;
+                                if (img.complete && img.naturalWidth > 0) {
+                                    start();
+                                }
+                            });
                         };
                         reader.readAsDataURL(file);
                     },
 
-                    initCropper(img) {
+                    initCropper(img, attempt = 0) {
                         this.destroyCropper();
                         if (typeof Cropper === 'undefined') {
                             this.errorMessage = 'Photo editor failed to load. Please refresh and try again.';
+                            return;
+                        }
+                        const parent = img.parentElement;
+                        if (parent && parent.offsetWidth === 0 && attempt < 10) {
+                            requestAnimationFrame(() => this.initCropper(img, attempt + 1));
                             return;
                         }
                         this.cropper = new Cropper(img, {
@@ -396,6 +419,8 @@
                                 return;
                             }
 
+                            this.destroyCropper();
+                            this.hasFile = false;
                             this.successMessage = 'Thanks — your photo is awaiting review.';
                             setTimeout(() => this.close(), 2600);
                         } catch (err) {
