@@ -4,15 +4,23 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\ActivityType;
+use App\Models\Facility;
+use App\Models\SeasonalTrailData;
 use App\Models\Trail;
 use App\Models\TrailFeature;
 use App\Models\TrailMedia;
+use App\Models\TrailNetwork;
 use App\Services\GpxService;
 use Exception;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Intervention\Image\Drivers\Gd\Driver;
+use Intervention\Image\ImageManager;
 
 class AdminTrailController extends Controller
 {
@@ -66,7 +74,7 @@ class AdminTrailController extends Controller
         $activities = ActivityType::where('is_active', true)
             ->orderBy('name')
             ->get();
-        $trailNetworks = \App\Models\TrailNetwork::orderBy('network_name')->get();
+        $trailNetworks = TrailNetwork::orderBy('network_name')->get();
 
         // Fetch all existing trails with their coordinates for map display
         $existingTrails = Trail::select('id', 'name', 'route_coordinates', 'status')
@@ -103,7 +111,7 @@ class AdminTrailController extends Controller
             'safety_notes' => 'nullable|string',
             'is_featured' => 'boolean',
             'photos' => 'nullable|array',
-            'photos.*' => 'image|mimes:jpeg,png,jpg,gif|max:10240',
+            'photos.*' => 'image|mimes:jpeg,png,jpg,gif|max:51200',
             'trail_video_urls' => 'nullable|array',
             'trail_video_urls.*' => 'nullable|url|max:500',
             'highlight_media_*' => 'nullable|file|mimes:jpeg,png,jpg,gif|max:10240',
@@ -284,7 +292,7 @@ class AdminTrailController extends Controller
             foreach ($request->seasonal as $season => $seasonData) {
                 // Save if there's any content OR if recommended checkbox was explicitly set
                 if (! empty($seasonData['conditions']) || ! empty($seasonData['notes']) || isset($seasonData['recommended'])) {
-                    \App\Models\SeasonalTrailData::create([
+                    SeasonalTrailData::create([
                         'trail_id' => $trail->id,
                         'season' => $season,
                         'trail_conditions' => $seasonData['conditions'] ?? null,
@@ -302,17 +310,16 @@ class AdminTrailController extends Controller
             $featuredPhotoIndex = (int) $request->input('featured_photo_index', 0);
 
             foreach ($request->file('photos') as $index => $photo) {
-                $filename = Str::random(40).'.'.$photo->getClientOriginalExtension();
-                $path = $photo->storeAs('trail-photos', $filename, 'public');
+                $compressed = $this->compressAndStorePhoto($photo, 'trail-photos');
 
                 TrailMedia::create([
                     'trail_id' => $trail->id,
                     'media_type' => 'photo',
-                    'filename' => $filename,
+                    'filename' => $compressed['filename'],
                     'original_name' => $photo->getClientOriginalName(),
-                    'storage_path' => $path,
-                    'file_size' => $photo->getSize(),
-                    'mime_type' => $photo->getMimeType(),
+                    'storage_path' => $compressed['path'],
+                    'file_size' => $compressed['file_size'],
+                    'mime_type' => 'image/webp',
                     'sort_order' => $index,
                     'is_featured' => $index === $featuredPhotoIndex,
                     'uploaded_by' => auth()->id(),
@@ -382,20 +389,17 @@ class AdminTrailController extends Controller
                     // Handle photo file if exists for this highlight
                     if (isset($highlightData['mediaIndex']) && $request->hasFile("highlight_media_{$highlightData['mediaIndex']}")) {
                         $mediaFile = $request->file("highlight_media_{$highlightData['mediaIndex']}");
-
-                        // Generate filename and store (photos only)
-                        $filename = Str::random(40).'.'.$mediaFile->getClientOriginalExtension();
-                        $path = $mediaFile->storeAs('trail-photos', $filename, 'public');
+                        $compressed = $this->compressAndStorePhoto($mediaFile, 'trail-photos');
 
                         // Create media record
                         $media = TrailMedia::create([
                             'trail_id' => $trail->id,
                             'media_type' => 'photo',
-                            'filename' => $filename,
+                            'filename' => $compressed['filename'],
                             'original_name' => $mediaFile->getClientOriginalName(),
-                            'storage_path' => $path,
-                            'file_size' => $mediaFile->getSize(),
-                            'mime_type' => $mediaFile->getMimeType(),
+                            'storage_path' => $compressed['path'],
+                            'file_size' => $compressed['file_size'],
+                            'mime_type' => 'image/webp',
                             'sort_order' => 0,
                             'is_featured' => false,
                             'uploaded_by' => auth()->id(),
@@ -452,7 +456,7 @@ class AdminTrailController extends Controller
     {
         $trail->load(['media', 'features.media']);
 
-        $facilities = \App\Models\Facility::where('is_active', true)->whereNull('trail_network_id')->orderBy('facility_type')->orderBy('name')->get();
+        $facilities = Facility::where('is_active', true)->whereNull('trail_network_id')->orderBy('facility_type')->orderBy('name')->get();
 
         return view('admin.trails.show', compact('trail', 'facilities'));
     }
@@ -470,11 +474,11 @@ class AdminTrailController extends Controller
         }, 'media', 'seasonalData', 'activities']);
 
         // Fetch all active activities for the form
-        $activities = \App\Models\ActivityType::where('is_active', true)
+        $activities = ActivityType::where('is_active', true)
             ->orderBy('name')
             ->get();
 
-        $trailNetworks = \App\Models\TrailNetwork::orderBy('network_name')->get();
+        $trailNetworks = TrailNetwork::orderBy('network_name')->get();
 
         // Fetch all existing trails with their coordinates for map display
         $existingTrails = Trail::select('id', 'name', 'route_coordinates', 'status')
@@ -540,7 +544,7 @@ class AdminTrailController extends Controller
             'safety_notes' => 'nullable|string',
             'is_featured' => 'boolean',
             'photos' => 'nullable|array',
-            'photos.*' => 'image|mimes:jpeg,png,jpg,gif|max:10240',
+            'photos.*' => 'image|mimes:jpeg,png,jpg,gif|max:51200',
             'trail_video_urls' => 'nullable|array',
             'trail_video_urls.*' => 'nullable|url|max:500',
             'highlight_media_*' => 'nullable|file|mimes:jpeg,png,jpg,gif|max:10240',
@@ -732,7 +736,7 @@ class AdminTrailController extends Controller
             foreach ($request->seasonal as $season => $seasonData) {
                 // Save if there's any content OR if recommended checkbox was explicitly set
                 if (! empty($seasonData['conditions']) || ! empty($seasonData['notes']) || isset($seasonData['recommended'])) {
-                    \App\Models\SeasonalTrailData::create([
+                    SeasonalTrailData::create([
                         'trail_id' => $trail->id,
                         'season' => $season,
                         'trail_conditions' => $seasonData['conditions'] ?? null,
@@ -787,18 +791,17 @@ class AdminTrailController extends Controller
                             }
 
                             // STEP 2: Upload and attach new photo
-                            $filename = Str::random(40).'.'.$mediaFile->getClientOriginalExtension();
-                            $path = $mediaFile->storeAs('trail-photos', $filename, 'public');
+                            $compressed = $this->compressAndStorePhoto($mediaFile, 'trail-photos');
 
                             // Create media record
                             $media = TrailMedia::create([
                                 'trail_id' => $trail->id,
                                 'media_type' => 'photo',
-                                'filename' => $filename,
+                                'filename' => $compressed['filename'],
                                 'original_name' => $mediaFile->getClientOriginalName(),
-                                'storage_path' => $path,
-                                'file_size' => $mediaFile->getSize(),
-                                'mime_type' => $mediaFile->getMimeType(),
+                                'storage_path' => $compressed['path'],
+                                'file_size' => $compressed['file_size'],
+                                'mime_type' => 'image/webp',
                                 'sort_order' => 0,
                                 'is_featured' => false,
                                 'uploaded_by' => auth()->id(),
@@ -880,20 +883,17 @@ class AdminTrailController extends Controller
                     // Handle photo file if exists for this highlight
                     if (isset($highlightData['mediaIndex']) && $request->hasFile("highlight_media_{$highlightData['mediaIndex']}")) {
                         $mediaFile = $request->file("highlight_media_{$highlightData['mediaIndex']}");
-
-                        // Generate filename and store (photos only)
-                        $filename = Str::random(40).'.'.$mediaFile->getClientOriginalExtension();
-                        $path = $mediaFile->storeAs('trail-photos', $filename, 'public');
+                        $compressed = $this->compressAndStorePhoto($mediaFile, 'trail-photos');
 
                         // Create media record
                         $media = TrailMedia::create([
                             'trail_id' => $trail->id,
                             'media_type' => 'photo',
-                            'filename' => $filename,
+                            'filename' => $compressed['filename'],
                             'original_name' => $mediaFile->getClientOriginalName(),
-                            'storage_path' => $path,
-                            'file_size' => $mediaFile->getSize(),
-                            'mime_type' => $mediaFile->getMimeType(),
+                            'storage_path' => $compressed['path'],
+                            'file_size' => $compressed['file_size'],
+                            'mime_type' => 'image/webp',
                             'sort_order' => 0,
                             'is_featured' => false,
                             'uploaded_by' => auth()->id(),
@@ -1004,19 +1004,18 @@ class AdminTrailController extends Controller
             $maxSortOrder = $trail->media()->max('sort_order') ?? -1;
 
             foreach ($request->file('photos') as $index => $photo) {
-                $filename = Str::random(40).'.'.$photo->getClientOriginalExtension();
-                $path = $photo->storeAs('trail-photos', $filename, 'public');
+                $compressed = $this->compressAndStorePhoto($photo, 'trail-photos');
 
                 TrailMedia::create([
                     'trail_id' => $trail->id,
                     'media_type' => 'photo',
-                    'filename' => $filename,
+                    'filename' => $compressed['filename'],
                     'original_name' => $photo->getClientOriginalName(),
-                    'storage_path' => $path,
-                    'file_size' => $photo->getSize(),
-                    'mime_type' => $photo->getMimeType(),
+                    'storage_path' => $compressed['path'],
+                    'file_size' => $compressed['file_size'],
+                    'mime_type' => 'image/webp',
                     'sort_order' => $maxSortOrder + $index + 1,
-                    'is_featured' => false, // Don't auto-feature new photos
+                    'is_featured' => false,
                     'uploaded_by' => auth()->id(),
                 ]);
             }
@@ -1103,7 +1102,7 @@ class AdminTrailController extends Controller
     /**
      * Preview GPX calculations before saving
      *
-     * @return \Illuminate\Http\JsonResponse
+     * @return JsonResponse
      */
     public function previewGpx(Request $request)
     {
@@ -1171,7 +1170,7 @@ class AdminTrailController extends Controller
     /**
      * Compare new GPX with existing trail data
      *
-     * @return \Illuminate\Http\JsonResponse
+     * @return JsonResponse
      */
     public function compareGpx(Request $request, Trail $trail)
     {
@@ -1247,6 +1246,26 @@ class AdminTrailController extends Controller
     }
 
     /**
+     * Compress and store a photo upload as WebP, scaled down to max 1920×1080.
+     *
+     * @return array{filename: string, path: string, file_size: int}
+     */
+    private function compressAndStorePhoto(UploadedFile $photo, string $directory): array
+    {
+        $manager = new ImageManager(new Driver);
+        $image = $manager->read($photo->getRealPath());
+        $image->scaleDown(width: 1920, height: 1080);
+
+        $filename = Str::random(40).'.webp';
+        $path = $directory.'/'.$filename;
+        $webpData = (string) $image->toWebp(85);
+
+        Storage::disk('public')->put($path, $webpData);
+
+        return ['filename' => $filename, 'path' => $path, 'file_size' => strlen($webpData)];
+    }
+
+    /**
      * Detect video provider from URL
      */
     private function detectVideoProvider(string $url): string
@@ -1279,7 +1298,7 @@ class AdminTrailController extends Controller
             // Return with success message
             return redirect()->back()->with('success', $message);
 
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             // Log the error
             \Log::error('Failed to toggle featured status for trail: '.$trail->id, [
                 'error' => $e->getMessage(),
@@ -1294,7 +1313,7 @@ class AdminTrailController extends Controller
     /**
      * Toggle a trail's active/inactive status (active <-> closed).
      */
-    public function toggleStatus(Trail $trail): \Illuminate\Http\RedirectResponse
+    public function toggleStatus(Trail $trail): RedirectResponse
     {
         $trail->status = $trail->status === 'active' ? 'closed' : 'active';
         $trail->save();
@@ -1309,7 +1328,7 @@ class AdminTrailController extends Controller
     /**
      * Apply a bulk action (delete, activate, deactivate) to selected trails.
      */
-    public function bulkAction(Request $request): \Illuminate\Http\RedirectResponse
+    public function bulkAction(Request $request): RedirectResponse
     {
         $validated = $request->validate([
             'action' => ['required', 'string', 'in:delete,activate,deactivate'],

@@ -14,13 +14,6 @@
         </div>
     </div>
 
-    {{-- Flash --}}
-    @if(session('success'))
-        <div class="rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">
-            {{ session('success') }}
-        </div>
-    @endif
-
     {{-- Stats --}}
     <div class="grid gap-4 md:grid-cols-6">
         <div class="rounded-lg border bg-card text-card-foreground shadow-sm p-6">

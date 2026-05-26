@@ -1216,7 +1216,7 @@
                             <p class="mt-2 text-sm text-muted-foreground">
                                 <span class="font-semibold text-primary">Click to upload</span> or drag and drop
                             </p>
-                            <p class="text-xs text-muted-foreground mt-1">PNG, JPG, GIF up to 10MB</p>
+                            <p class="text-xs text-muted-foreground mt-1">PNG, JPG, GIF up to 50MB</p>
                         </div>
                     </div>
                     
@@ -4084,8 +4084,8 @@
                     return;
                 }
 
-                if (file.size > 10 * 1024 * 1024) {
-                    alert(`${file.name} is too large. Maximum size is 10MB`);
+                if (file.size > 50 * 1024 * 1024) {
+                    alert(`${file.name} is too large. Maximum size is 50MB`);
                     return;
                 }
 

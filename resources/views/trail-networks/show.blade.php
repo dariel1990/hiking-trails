@@ -170,6 +170,11 @@
     .facility-marker {
         background: transparent !important;
         border: none !important;
+        width: 22px;
+        height: 22px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
     }
 
 
@@ -888,8 +893,8 @@ const trailCenterMarkers = {};
 const waypointMarkers = {};
 let selectedTrailId = null;
 const facilityMarkers = [];
-const FACILITY_NORMAL_STYLE  = 'width:22px;height:22px;background:#fff;border:1.5px solid #6b7280;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,0.2);transition:transform 0.15s ease,box-shadow 0.15s ease,border-color 0.15s ease;';
-const FACILITY_SELECTED_STYLE = 'width:22px;height:22px;background:#fff;border:2.5px solid #eab308;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;cursor:pointer;box-shadow:0 0 0 4px rgba(234,179,8,0.3),0 2px 8px rgba(0,0,0,0.3);transform:scale(1.25);transition:transform 0.15s ease,box-shadow 0.15s ease,border-color 0.15s ease;';
+const FACILITY_NORMAL_STYLE  = 'width:22px;height:22px;background:#fff;border:1.5px solid #6b7280;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,0.2);transition:box-shadow 0.15s ease,border-color 0.15s ease;';
+const FACILITY_SELECTED_STYLE = 'width:22px;height:22px;background:#fff;border:2.5px solid #eab308;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;cursor:pointer;box-shadow:0 0 0 4px rgba(234,179,8,0.3),0 2px 8px rgba(0,0,0,0.3);transform:scale(1.25);transition:box-shadow 0.15s ease,border-color 0.15s ease;';
 const highlightMarkers = [];
 let _mapLoaded = false;
 
@@ -927,11 +932,8 @@ const trailFeatures = trails
     }));
 
 function initMapLayers() {
-    // 3D terrain
-    if (!map.getSource('mapbox-dem')) {
-        map.addSource('mapbox-dem', { type: 'raster-dem', url: 'mapbox://mapbox.mapbox-terrain-dem-v1', tileSize: 512, maxzoom: 14 });
-    }
-    map.setTerrain({ source: 'mapbox-dem', exaggeration: 1.5 });
+    // Terrain intentionally disabled — 3D terrain causes HTML marker drift during pan.
+    // This page uses a flat 2D view with no pitch toggle.
 
     // Arrow image
     const arrowSVG = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 14 14"><polygon points="13,7 5,3 7,7 5,11" fill="white"/></svg>`;
@@ -1113,7 +1115,7 @@ map.on('load', () => {
             window._selectedFacilityEl = inner;
             showFacilityDetailsCard(facility);
         });
-        const marker = new mapboxgl.Marker({ element: el })
+        const marker = new mapboxgl.Marker({ element: el, anchor: 'center' })
             .setLngLat([facility.longitude, facility.latitude])
             .addTo(map);
         facilityMarkers.push(marker);
@@ -1484,17 +1486,19 @@ document.addEventListener('DOMContentLoaded', function() {
             e.stopPropagation();
             sidebar.classList.remove('hidden-mobile');
             toggleBtn.classList.add('hidden');
+            setTimeout(() => map.resize(), 310);
         });
-        
+
         // Hide sidebar when close button is clicked
         closeBtn.addEventListener('click', function(e) {
             e.preventDefault();
             e.stopPropagation();
-            
+
             if (isMobile()) {
                 // On mobile: close sidebar and show hamburger
                 sidebar.classList.add('hidden-mobile');
                 toggleBtn.classList.remove('hidden');
+                setTimeout(() => map.resize(), 310);
             } else {
                 // On desktop: navigate to index
                 window.location.href = "{{ route('trail-networks.index') }}";

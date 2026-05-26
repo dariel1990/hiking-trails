@@ -49,15 +49,6 @@
         </div>
     </div>
 
-    {{-- Flash messages --}}
-    @if(session('success'))
-        <div class="mb-6 flex items-start gap-3 px-4 py-3 rounded-lg border border-green-200 bg-green-50 text-green-800">
-            <svg class="w-5 h-5 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-            </svg>
-            <p class="text-sm">{{ session('success') }}</p>
-        </div>
-    @endif
 
     @if(session('error'))
         <div class="mb-6 flex items-start gap-3 px-4 py-3 rounded-lg border border-red-200 bg-red-50 text-red-800">

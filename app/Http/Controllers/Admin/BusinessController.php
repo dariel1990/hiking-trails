@@ -10,7 +10,12 @@ use App\Models\BusinessMedia;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Illuminate\View\View;
+use Intervention\Image\Drivers\Gd\Driver;
+use Intervention\Image\ImageManager;
 
 class BusinessController extends Controller
 {
@@ -166,7 +171,7 @@ class BusinessController extends Controller
         return redirect()->back()->with('success', 'Primary media updated successfully.');
     }
 
-    public function updateMediaOrder(Request $request, Business $business): \Illuminate\Http\JsonResponse
+    public function updateMediaOrder(Request $request, Business $business): JsonResponse
     {
         $request->validate([
             'media_order' => 'required|array',
@@ -198,7 +203,7 @@ class BusinessController extends Controller
     {
         if ($request->hasFile('photos')) {
             foreach ($request->file('photos') as $index => $photo) {
-                $path = $photo->store('businesses/'.$business->id.'/photos', 'public');
+                $path = $this->compressAndStorePhoto($photo, 'businesses/'.$business->id.'/photos');
 
                 BusinessMedia::create([
                     'business_id' => $business->id,
@@ -210,6 +215,18 @@ class BusinessController extends Controller
                 ]);
             }
         }
+    }
+
+    private function compressAndStorePhoto(UploadedFile $photo, string $directory): string
+    {
+        $manager = new ImageManager(new Driver);
+        $image = $manager->read($photo->getRealPath());
+        $image->scaleDown(width: 1920, height: 1080);
+
+        $path = $directory.'/'.Str::random(40).'.webp';
+        Storage::disk('public')->put($path, (string) $image->toWebp(85));
+
+        return $path;
     }
 
     /**

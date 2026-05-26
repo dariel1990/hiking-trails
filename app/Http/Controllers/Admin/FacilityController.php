@@ -7,7 +7,11 @@ use App\Models\Facility;
 use App\Models\FacilityMedia;
 use App\Models\TrailNetwork;
 use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
+use Intervention\Image\Drivers\Gd\Driver;
+use Intervention\Image\ImageManager;
 
 class FacilityController extends Controller
 {
@@ -50,7 +54,7 @@ class FacilityController extends Controller
             'is_active' => 'boolean',
             'trail_network_id' => 'nullable|exists:trail_networks,id',
             'photos' => 'nullable|array',
-            'photos.*' => 'image|mimes:jpg,jpeg,png,webp|max:10240',
+            'photos.*' => 'image|mimes:jpg,jpeg,png,webp|max:51200',
             'video_urls' => 'nullable|array',
             'video_urls.*' => 'nullable|url|max:500',
         ]);
@@ -110,7 +114,7 @@ class FacilityController extends Controller
             'is_active' => 'boolean',
             'trail_network_id' => 'nullable|exists:trail_networks,id',
             'photos' => 'nullable|array',
-            'photos.*' => 'image|mimes:jpg,jpeg,png,webp|max:10240',
+            'photos.*' => 'image|mimes:jpg,jpeg,png,webp|max:51200',
             'video_urls' => 'nullable|array',
             'video_urls.*' => 'nullable|url|max:500',
         ]);
@@ -167,7 +171,7 @@ class FacilityController extends Controller
     {
         if ($request->hasFile('photos')) {
             foreach ($request->file('photos') as $index => $photo) {
-                $path = $photo->store('facilities/'.$facility->id.'/photos', 'public');
+                $path = $this->compressAndStorePhoto($photo, 'facilities/'.$facility->id.'/photos');
 
                 FacilityMedia::create([
                     'facility_id' => $facility->id,
@@ -179,6 +183,18 @@ class FacilityController extends Controller
                 ]);
             }
         }
+    }
+
+    private function compressAndStorePhoto(UploadedFile $photo, string $directory): string
+    {
+        $manager = new ImageManager(new Driver);
+        $image = $manager->read($photo->getRealPath());
+        $image->scaleDown(width: 1920, height: 1080);
+
+        $path = $directory.'/'.Str::random(40).'.webp';
+        Storage::disk('public')->put($path, (string) $image->toWebp(85));
+
+        return $path;
     }
 
     /**

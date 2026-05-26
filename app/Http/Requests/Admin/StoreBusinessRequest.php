@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Admin;
 
+use App\Models\Business;
 use Illuminate\Foundation\Http\FormRequest;
 
 class StoreBusinessRequest extends FormRequest
@@ -18,7 +19,7 @@ class StoreBusinessRequest extends FormRequest
     {
         return [
             'name' => ['required', 'string', 'max:255'],
-            'business_type' => ['required', 'string', 'in:'.implode(',', array_keys(\App\Models\Business::getBusinessTypes()))],
+            'business_type' => ['required', 'string', 'in:'.implode(',', array_keys(Business::getBusinessTypes()))],
             'description' => ['nullable', 'string'],
             'tagline' => ['nullable', 'string', 'max:255'],
             'address' => ['nullable', 'string', 'max:500'],
@@ -37,7 +38,7 @@ class StoreBusinessRequest extends FormRequest
             'is_featured' => ['boolean'],
             'is_active' => ['boolean'],
             'photos' => ['nullable', 'array'],
-            'photos.*' => ['image', 'max:10240'],
+            'photos.*' => ['image', 'max:51200'],
             'photo_captions' => ['nullable', 'array'],
             'video_urls' => ['nullable', 'array'],
             'video_urls.*' => ['nullable', 'url'],
