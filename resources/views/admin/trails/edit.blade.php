@@ -24,7 +24,7 @@
         </div>
     </div>
 
-    <form action="{{ route('admin.trails.update', $trail) }}" method="POST" enctype="multipart/form-data" class="space-y-8" x-data="{ locationType: '{{ old('location_type', $trail->location_type ?? 'trail') }}', fishSpecies: {{ old('fish_species', $trail->fish_species) ? json_encode(old('fish_species', $trail->fish_species)) : '[]' }}, bestFishingSeason: '{{ old('best_fishing_season', $trail->best_fishing_season ?? '') }}', bestSeasons: {{ old('best_seasons', $trail->best_seasons) ? json_encode(old('best_seasons', $trail->best_seasons)) : json_encode(['Spring', 'Summer', 'Fall']) }} }">
+    <form action="{{ route('admin.trails.update', $trail) }}" method="POST" enctype="multipart/form-data" class="space-y-8" x-data="{ locationType: '{{ old('location_type', $trail->location_type ?? 'trail') }}', fishSpecies: {{ old('fish_species', $trail->fish_species) ? json_encode(old('fish_species', $trail->fish_species)) : '[]' }}, bestFishingSeason: '{{ old('best_fishing_season', $trail->best_fishing_season ?? '') }}', bestSeasons: {{ old('best_seasons', $trail->best_seasons) ? json_encode(old('best_seasons', $trail->best_seasons)) : '[]' }} }">
         @csrf
         @method('PUT')
 

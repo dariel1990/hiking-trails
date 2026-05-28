@@ -20,7 +20,7 @@
         </div>
     </div>
 
-    <form action="{{ route('admin.trails.store') }}" method="POST" enctype="multipart/form-data" class="space-y-8" x-data="{ locationType: '{{ old('location_type', 'trail') }}', fishSpecies: {{ old('fish_species') ? json_encode(old('fish_species')) : '[]' }}, bestFishingSeason: '{{ old('best_fishing_season') }}', bestSeasons: {{ old('best_seasons') ? json_encode(old('best_seasons')) : json_encode(['Spring', 'Summer', 'Fall']) }} }">
+    <form action="{{ route('admin.trails.store') }}" method="POST" enctype="multipart/form-data" class="space-y-8" x-data="{ locationType: '{{ old('location_type', 'trail') }}', fishSpecies: {{ old('fish_species') ? json_encode(old('fish_species')) : '[]' }}, bestFishingSeason: '{{ old('best_fishing_season') }}', bestSeasons: {{ old('best_seasons') ? json_encode(old('best_seasons')) : '[]' }} }">
         @csrf
 
         <!-- Validation Errors Display -->
@@ -832,7 +832,7 @@
                             </div>
                             <label class="flex items-center gap-2 cursor-pointer">
                                 <input type="checkbox" name="seasonal[spring][recommended]" value="1"
-                                       {{ old('seasonal.spring.recommended', true) ? 'checked' : '' }}
+                                       {{ old('seasonal.spring.recommended', false) ? 'checked' : '' }}
                                        class="h-4 w-4 rounded border-green-400 text-green-600 focus:ring-green-500">
                                 <span class="text-xs font-medium text-green-700">Recommended</span>
                             </label>
@@ -889,7 +889,7 @@
                             </div>
                             <label class="flex items-center gap-2 cursor-pointer">
                                 <input type="checkbox" name="seasonal[summer][recommended]" value="1"
-                                       {{ old('seasonal.summer.recommended', true) ? 'checked' : '' }}
+                                       {{ old('seasonal.summer.recommended', false) ? 'checked' : '' }}
                                        class="h-4 w-4 rounded border-yellow-400 text-yellow-600 focus:ring-yellow-500">
                                 <span class="text-xs font-medium text-yellow-700">Recommended</span>
                             </label>
@@ -946,7 +946,7 @@
                             </div>
                             <label class="flex items-center gap-2 cursor-pointer">
                                 <input type="checkbox" name="seasonal[fall][recommended]" value="1"
-                                       {{ old('seasonal.fall.recommended', true) ? 'checked' : '' }}
+                                       {{ old('seasonal.fall.recommended', false) ? 'checked' : '' }}
                                        class="h-4 w-4 rounded border-orange-400 text-orange-600 focus:ring-orange-500">
                                 <span class="text-xs font-medium text-orange-700">Recommended</span>
                             </label>

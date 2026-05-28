@@ -323,9 +323,41 @@
         max-width: 16rem;
     }
 
+    /* When a sponsor banner occupies the bottom, lift the legend just above it */
+    .map-legend--top {
+        bottom: 5.5rem;
+        right: 3rem;
+    }
+
+    .legend-label {
+        font-size: 0.75rem;
+        font-weight: 500;
+        color: #374151;
+    }
+
     @media (max-width: 768px) {
         .map-legend {
             bottom: 1rem;
+            left: 1rem;
+            right: auto;
+            padding: 0.4rem 0.6rem;
+        }
+
+        .map-legend h3 {
+            font-size: 0.6rem;
+            margin-bottom: 0.3rem;
+        }
+
+        .legend-label {
+            font-size: 0.65rem;
+        }
+
+        .map-legend .space-y-1 > * + * {
+            margin-top: 0.15rem;
+        }
+
+        .map-legend--top {
+            bottom: 5.5rem;
             left: 1rem;
             right: auto;
         }
@@ -801,23 +833,23 @@
     </div>
 
     <!-- Legend - Responsive Positioning -->
-    <div class="map-legend">
-        <h3 class="text-xs font-semibold text-gray-900 uppercase tracking-wide mb-3">Difficulty</h3>
-        <div class="space-y-2">
-            <div class="flex items-center gap-2">
-                <span class="text-xs text-gray-700 font-medium">🟢 Green</span>
+    <div class="map-legend {{ ($network->activeSponsors->count() > 0) ? 'map-legend--top' : '' }}">
+        <h3 class="text-xs font-semibold text-gray-900 uppercase tracking-wide mb-2">Difficulty</h3>
+        <div class="space-y-1">
+            <div class="flex items-center gap-1.5">
+                <span class="legend-label">🟢 Green</span>
             </div>
-            <div class="flex items-center gap-2">
-                <span class="text-xs text-gray-700 font-medium">🔵 Blue</span>
+            <div class="flex items-center gap-1.5">
+                <span class="legend-label">🔵 Blue</span>
             </div>
-            <div class="flex items-center gap-2">
-                <span class="text-xs text-gray-700 font-medium">⚫ Black Diamond</span>
+            <div class="flex items-center gap-1.5">
+                <span class="legend-label">⚫ Black Diamond</span>
             </div>
-            <div class="flex items-center gap-2">
-                <span class="text-xs text-gray-700 font-medium">⚫⚫ Double Black Diamond</span>
+            <div class="flex items-center gap-1.5">
+                <span class="legend-label">⚫⚫ Double Black</span>
             </div>
-            <div class="flex items-center gap-2">
-                <span class="text-xs text-gray-700 font-medium">🔴 Proline</span>
+            <div class="flex items-center gap-1.5">
+                <span class="legend-label">🔴 Proline</span>
             </div>
         </div>
     </div>
