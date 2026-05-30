@@ -37,7 +37,7 @@ class TrailNetworkController extends Controller
     {
         $network = TrailNetwork::where('slug', $slug)
             ->with(['trails' => function ($query) {
-                $query->select('id', 'trail_network_id', 'name', 'description', 'difficulty_level', 'distance_km', 'elevation_gain_m', 'estimated_time_hours', 'trail_type', 'route_coordinates', 'status')
+                $query->select('id', 'trail_network_id', 'name', 'description', 'difficulty_level', 'distance_km', 'elevation_gain_m', 'estimated_time_hours', 'trail_type', 'route_coordinates', 'start_coordinates', 'status')
                     ->with(['trailMedia' => function ($q) {
                         $q->where('media_type', 'photo')
                             ->where(function ($q2) {

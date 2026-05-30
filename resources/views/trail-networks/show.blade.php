@@ -392,17 +392,7 @@
 
     @media (max-width: 768px) {
         .trail-details-card {
-            left: 1rem;
-            right: 1rem;
-            width: auto;
-            top: auto;
-            bottom: 1rem;
-            max-height: 70vh;
-            transform: translateY(20px);
-        }
-
-        .trail-details-card.visible {
-            transform: translateY(0);
+            display: none !important;
         }
     }
 
@@ -832,6 +822,25 @@
         </div>
     </div>
 
+    <!-- Mobile Bottom Card (mobile only, same style as main map) -->
+    <div id="network-mobile-card" class="hidden fixed bottom-0 inset-x-0 z-[1000] bg-white md:hidden"
+         style="border-radius:16px 16px 0 0;box-shadow:0 -4px 24px rgba(0,0,0,0.18);"
+         ontouchstart="event.stopPropagation()" onclick="event.stopPropagation()">
+        <div class="w-10 h-1 bg-gray-300 rounded-full mx-auto mt-3"></div>
+        <div class="flex items-center px-4 pt-3 pb-2 gap-3">
+            <div class="w-[68px] h-[68px] rounded-xl overflow-hidden flex-shrink-0 bg-gray-100">
+                <img id="nmc-img" src="" alt="" class="hidden w-full h-full object-cover">
+                <div id="nmc-placeholder" class="w-full h-full flex items-center justify-center text-2xl"></div>
+            </div>
+            <div class="flex-1 min-w-0">
+                <h3 id="nmc-name" class="font-bold text-gray-900 text-[15px] leading-tight truncate"></h3>
+                <div id="nmc-meta" class="flex items-center gap-1.5 mt-1 flex-wrap"></div>
+                <p id="nmc-stats" class="text-xs text-gray-500 mt-0.5"></p>
+            </div>
+        </div>
+        <div id="nmc-actions" class="flex gap-2 px-4 pb-5 pt-1"></div>
+    </div>
+
     <!-- Legend - Responsive Positioning -->
     <div class="map-legend {{ ($network->activeSponsors->count() > 0) ? 'map-legend--top' : '' }}">
         <h3 class="text-xs font-semibold text-gray-900 uppercase tracking-wide mb-2">Difficulty</h3>
@@ -885,6 +894,8 @@
 const networkData = @json($network);
 const trails = @json($network->trails);
 const facilitiesData = @json($facilities);
+const hasSponsors = {{ $network->activeSponsors->count() > 0 ? 'true' : 'false' }};
+const isMobileDevice = () => window.innerWidth <= 768;
 
 // Difficulty color mapping
 function getDifficultyColor(difficulty) {
@@ -1154,11 +1165,16 @@ map.on('load', () => {
     });
 
     // Fit map to all trails
-    const allCoords = trails.filter(t => t.route_coordinates && t.route_coordinates.length).flatMap(t => t.route_coordinates);
+    const allCoords = trails
+        .filter(t => t.route_coordinates && t.route_coordinates.length)
+        .flatMap(t => t.route_coordinates);
     if (allCoords.length) {
         const lngs = allCoords.map(c => c[1]);
         const lats = allCoords.map(c => c[0]);
-        map.fitBounds([[Math.min(...lngs), Math.min(...lats)], [Math.max(...lngs), Math.max(...lats)]], { padding: 50, duration: 0 });
+        map.fitBounds(
+            [[Math.min(...lngs), Math.min(...lats)], [Math.max(...lngs), Math.max(...lats)]],
+            { padding: 50, duration: 0 }
+        );
     }
 
 });
@@ -1171,6 +1187,7 @@ map.on('style.load', () => {
 map.on('click', (e) => {
     if (!map.queryRenderedFeatures(e.point, { layers: ['trail-routes-hit', 'trail-routes-line'] }).length) {
         closeTrailDetailsCard();
+        closeNetworkMobileCard();
     }
 });
 
@@ -1238,8 +1255,86 @@ window.focusTrail = function(trailId) {
     setTimeout(() => showTrailDetailsCard(trailId), 300);
 };
 
+// ── Mobile bottom card helpers ────────────────────────────────────────────────
+function getSponsorHeight() {
+    const stack = document.querySelector('.sponsor-bnr-stack');
+    if (!stack) return 0;
+    const visible = Array.from(stack.querySelectorAll('.sponsor-bnr')).filter(b => b.style.display !== 'none');
+    return visible.length > 0 ? stack.offsetHeight : 0;
+}
+
+function updateMobileCardPosition() {
+    const card = document.getElementById('network-mobile-card');
+    if (!card || card.classList.contains('hidden')) return;
+    card.style.bottom = getSponsorHeight() + 'px';
+}
+
+function showNetworkMobileCard({ imageUrl, placeholderIcon, placeholderBg, name, metaHtml, statsText, actionsHtml }) {
+    const card = document.getElementById('network-mobile-card');
+    const img = document.getElementById('nmc-img');
+    const placeholder = document.getElementById('nmc-placeholder');
+    if (imageUrl) {
+        img.src = imageUrl;
+        img.classList.remove('hidden');
+        placeholder.classList.add('hidden');
+    } else {
+        img.classList.add('hidden');
+        placeholder.classList.remove('hidden');
+        placeholder.textContent = placeholderIcon || '🥾';
+        placeholder.style.background = placeholderBg || 'linear-gradient(135deg,#166534,#22c55e)';
+    }
+    document.getElementById('nmc-name').textContent = name;
+    document.getElementById('nmc-meta').innerHTML = metaHtml || '';
+    document.getElementById('nmc-stats').textContent = statsText || '';
+    document.getElementById('nmc-actions').innerHTML = actionsHtml || '';
+    card.style.bottom = getSponsorHeight() + 'px';
+    card.classList.remove('hidden');
+}
+
+function closeNetworkMobileCard() {
+    document.getElementById('network-mobile-card').classList.add('hidden');
+}
+
+function showMobileTrailCard(trailId) {
+    const trail = window.trailDetailsData[trailId];
+    if (!trail) return;
+    const btnClass = 'flex-1 flex items-center justify-center gap-1.5 py-2 px-2 rounded-lg text-xs font-semibold border border-gray-200 bg-gray-50 text-gray-700 transition-colors';
+    const diffLevel = Math.floor(trail.difficulty_level);
+    const diffColor = getDifficultyColor(diffLevel);
+    const diffLabel = getDifficultyLabel(diffLevel);
+    const trailType = trail.trail_type ? trail.trail_type.replace(/[-_]/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) : 'Trail';
+    const parts = [];
+    if (trail.distance_km) parts.push(`${parseFloat(trail.distance_km).toFixed(1)} km`);
+    if (trail.elevation_gain) parts.push(`${trail.elevation_gain}m gain`);
+    showNetworkMobileCard({
+        imageUrl: trail.preview_photo || null,
+        placeholderIcon: '🥾',
+        placeholderBg: 'linear-gradient(135deg,#166534,#22c55e)',
+        name: trail.name,
+        metaHtml: `<span style="width:9px;height:9px;border-radius:50%;background:${diffColor};display:inline-block;flex-shrink:0;"></span><span style="font-size:12px;font-weight:600;color:#374151;">${diffLabel}</span><span style="color:#d1d5db;font-size:11px;">·</span><span style="font-size:12px;color:#6b7280;">${trailType}</span>`,
+        statsText: parts.join(' · '),
+        actionsHtml: `<button type="button" onclick="focusTrail(${trail.id})" class="${btnClass}"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-1.447-.894L15 9m0 8V9m0 0V7"/></svg>Route</button><a href="/trails/${trail.id}" class="${btnClass}"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>Details</a>`,
+    });
+}
+
+function showMobileFacilityCard(facility) {
+    const btnClass = 'flex-1 flex items-center justify-center gap-1.5 py-2 px-2 rounded-lg text-xs font-semibold border border-gray-200 bg-gray-50 text-gray-700 transition-colors';
+    const typeLabel = facility.facility_type.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+    showNetworkMobileCard({
+        imageUrl: facility.icon_image_url || null,
+        placeholderIcon: facility.icon || '📍',
+        placeholderBg: 'linear-gradient(135deg,#134e4a,#0d9488)',
+        name: facility.name,
+        metaHtml: `<span style="font-size:12px;font-weight:600;color:#0d9488;">${typeLabel}</span>`,
+        statsText: facility.description || '',
+        actionsHtml: `<button type="button" onclick="map.easeTo({center:[${facility.longitude},${facility.latitude}],zoom:17,duration:800})" class="${btnClass}"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>Location</button>`,
+    });
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
 // Function to show trail details in card
 function showTrailDetailsCard(trailId) {
+    if (isMobileDevice()) { showMobileTrailCard(trailId); return; }
     const trail = window.trailDetailsData[trailId];
     if (!trail) return;
 
@@ -1421,6 +1516,7 @@ function closeTrailDetailsCard() {
 
 // Show facility details in the same card
 function showFacilityDetailsCard(facility) {
+    if (isMobileDevice()) { showMobileFacilityCard(facility); return; }
     const card = document.getElementById('trail-details-card');
     const typeLabel = facility.facility_type.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
 
@@ -1459,6 +1555,15 @@ document.addEventListener('DOMContentLoaded', function() {
         const difficulty = parseInt(badge.dataset.difficulty);
         const color = getDifficultyColor(difficulty);
         badge.style.backgroundColor = color;
+    });
+
+    // Intercept sponsor close buttons so the mobile card adjusts position
+    document.querySelectorAll('.sponsor-bnr__close').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const banner = this.closest('[data-sponsor-banner]');
+            if (banner) banner.style.display = 'none';
+            setTimeout(updateMobileCardPosition, 50);
+        }, true); // capture phase so it fires before the inline onclick
     });
 });
 

@@ -289,8 +289,8 @@
         <span>Stop Fly Along</span>
     </button>
 
-    <!-- Bottom-right custom controls (sit above Mapbox zoom) -->
-    <div class="absolute bottom-24 right-2.5 z-30 flex flex-col gap-1.5">
+    <!-- Bottom-right custom controls (sit above Mapbox zoom) — on mobile move to top-right below layers -->
+    <div class="absolute bottom-24 right-2.5 max-md:bottom-auto max-md:top-[182px] max-md:right-4 z-30 flex flex-col gap-1.5">
         <!-- 3D Toggle -->
         <div id="view-mode-control" class="relative" style="width:29px;height:29px;">
             <!-- Sliding options pill (appears to the left of the button) -->
@@ -326,8 +326,8 @@
         </button>
     </div>
 
-    <!-- Map Type Selector - Top Right on Desktop, Bottom Left on Mobile -->
-    <div class="absolute top-4 right-4 max-md:top-auto max-md:right-auto max-md:bottom-8 max-md:left-4 z-30">
+    <!-- Map Type Selector - Top Right (desktop) / Below filter bar (mobile) -->
+    <div class="absolute top-4 right-4 max-md:top-28 z-30">
         <div class="relative">
             <!-- Toggle Button -->
             <button id="layers-toggle" class="bg-white rounded-lg shadow-lg p-3 hover:bg-gray-50 transition-colors">
@@ -337,7 +337,7 @@
             </button>
 
             <!-- Dropdown Menu - Opens to the right on mobile, down on desktop -->
-            <div id="layers-dropdown" class="hidden absolute left-full md:left-auto bottom-0 md:bottom-auto md:top-full md:right-0 ml-2 md:ml-0 md:mt-2 bg-white rounded-lg shadow-xl border border-gray-200 overflow-hidden" style="min-width: 200px;">
+            <div id="layers-dropdown" class="hidden absolute top-full right-0 mt-2 bg-white rounded-lg shadow-xl border border-gray-200 overflow-hidden" style="min-width: 200px;">
                 <div class="p-2">
                     <div class="text-xs font-semibold text-gray-500 uppercase tracking-wider px-3 py-2">Map Style</div>
                     <div class="grid grid-cols-2 gap-2 mb-2">
@@ -403,14 +403,14 @@
     <!-- Filter Bar — Season toggle + single Filters button -->
     <div id="filter-bar" class="absolute top-16 md:top-3 left-0 right-0 z-30 md:right-16 pointer-events-none">
         <div class="px-3 pointer-events-auto">
-            <div class="flex items-center gap-2">
+            <div class="flex items-center gap-2 max-md:w-full max-md:items-stretch">
                 <!-- Season -->
-                <div class="flex gap-0.5 bg-white rounded-2xl p-1 shadow-md border border-gray-200 flex-shrink-0">
-                    <button data-season="summer" class="season-btn active px-3 py-1.5 rounded-xl text-xs font-semibold transition-all">☀️ Summer</button>
-                    <button data-season="winter" class="season-btn px-3 py-1.5 rounded-xl text-xs font-semibold transition-all">❄️ Winter</button>
+                <div class="flex gap-0.5 bg-white rounded-2xl p-1 max-md:p-0.5 shadow-md border border-gray-200 flex-shrink-0 max-md:[flex:6] max-md:items-stretch">
+                    <button data-season="summer" class="season-btn active flex items-center justify-center max-md:flex-1 px-3 py-1.5 max-md:py-0 rounded-xl text-xs font-semibold transition-all">☀️ Summer</button>
+                    <button data-season="winter" class="season-btn flex items-center justify-center max-md:flex-1 px-3 py-1.5 max-md:py-0 rounded-xl text-xs font-semibold transition-all">❄️ Winter</button>
                 </div>
                 <!-- Filters -->
-                <button id="all-filters-btn" class="flex items-center gap-1.5 bg-white rounded-2xl px-3 py-2 shadow-md border border-gray-200 text-xs font-semibold text-gray-700 hover:bg-gray-50 transition-all flex-shrink-0">
+                <button id="all-filters-btn" class="flex items-center justify-center gap-1.5 bg-white rounded-2xl px-3 py-2 shadow-md border border-gray-200 text-xs font-semibold text-gray-700 hover:bg-gray-50 transition-all flex-shrink-0 max-md:[flex:4]">
                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4h18M6 10h12M9 16h6"/>
                     </svg>
@@ -432,6 +432,26 @@
     <!-- Business Detail Panel -->
     <div id="business-panel" class="biz-panel hidden absolute top-16 bottom-4 left-4 md:top-16 md:bottom-4 md:left-4 max-md:inset-x-4 max-md:bottom-4 max-md:top-auto z-40 bg-white rounded-lg shadow-xl w-80 max-md:w-auto flex flex-col overflow-hidden">
         <div id="business-panel-content" class="flex flex-col flex-1 overflow-hidden"></div>
+    </div>
+
+    <!-- Mobile Trail Bottom Card (mobile only) -->
+    <div id="mobile-trail-card" class="md:hidden hidden fixed bottom-0 inset-x-0 z-50 bg-white" style="border-radius:16px 16px 0 0;box-shadow:0 -4px 24px rgba(0,0,0,0.18);"
+         ontouchstart="event.stopPropagation()" onclick="event.stopPropagation()">
+        <div class="w-10 h-1 bg-gray-300 rounded-full mx-auto mt-3"></div>
+        <!-- Main row -->
+        <div class="flex items-center px-4 pt-3 pb-2 gap-3">
+            <div class="w-[68px] h-[68px] rounded-xl overflow-hidden flex-shrink-0 bg-gray-100">
+                <img id="mobile-trail-img" src="" alt="" class="hidden w-full h-full object-cover">
+                <div id="mobile-trail-placeholder" class="w-full h-full flex items-center justify-center text-2xl"></div>
+            </div>
+            <div class="flex-1 min-w-0">
+                <h3 id="mobile-trail-name" class="font-bold text-gray-900 text-[15px] leading-tight truncate"></h3>
+                <div id="mobile-trail-diff-row" class="flex items-center gap-1.5 mt-1"></div>
+                <p id="mobile-trail-stats" class="text-xs text-gray-500 mt-0.5"></p>
+            </div>
+        </div>
+        <!-- Action buttons -->
+        <div id="mobile-trail-actions" class="flex gap-2 px-4 pb-5 pt-1"></div>
     </div>
 
     </div>{{-- /map-area --}}
@@ -876,35 +896,14 @@
 }
 
 @media (max-width: 768px) {
-    #trail-info-panel {
-        position: fixed !important;
-        z-index: 50 !important;
-        /* Sit just below the mobile filter bar (top:60px + ~48px pills + gap) */
-        top: 115px !important;
-        bottom: 1rem !important;
-        left: 1rem !important;
-        right: 1rem !important;
-        max-height: none !important;
-        height: auto !important;
-        width: auto !important;
+    #trail-info-panel,
+    #business-panel {
+        display: none !important;
     }
-
-    /* Add backdrop on mobile when panel is visible */
-    #trail-info-panel:not(.hidden)::before {
-        content: '';
-        position: fixed;
-        inset: 0;
-        background: rgba(0, 0, 0, 0.5);
-        z-index: -1;
-        pointer-events: none;
-    }
-
-    /* Ensure content is above backdrop */
-    #trail-info-content {
-        position: relative;
-        z-index: 1;
-        background: white;
-        border-radius: 0.5rem;
+    .trail-desc-text,
+    .biz-panel-description,
+    .mobile-hide-desc {
+        display: none !important;
     }
 }
 
@@ -2141,6 +2140,7 @@
             this._selectedTrailId = null;
             this._selectedPinMarker = null;
             this._selectedOriginalEl = null;
+            this._mobileCardTrailId = null;
             this._locationMarker = null;
             this._locationCircle = null;
             this._is3D = false;
@@ -2233,13 +2233,13 @@
                     source: 'trail-routes',
                     paint: {
                         'line-color': '#F5CBA7',
-                        'line-width': 15,
+                        'line-width': 8,
                         'line-opacity': ['case', ['boolean', ['feature-state', 'selected'], false], 1, 0],
                     },
                 });
             }
 
-            // Visible route layer
+            // Visible route layer — only shown when trail is selected
             if (!this.map.getLayer('trail-routes-line')) {
                 this.map.addLayer({
                     id: 'trail-routes-line',
@@ -2247,13 +2247,13 @@
                     source: 'trail-routes',
                     paint: {
                         'line-color': ['get', 'color'],
-                        'line-width': ['case', ['boolean', ['feature-state', 'selected'], false], 4, 3],
-                        'line-opacity': 1,
+                        'line-width': 4,
+                        'line-opacity': ['case', ['boolean', ['feature-state', 'selected'], false], 1, 0],
                     },
                 });
             }
 
-            // Direction arrow layer
+            // Direction arrow layer — only shown when trail is selected
             if (!this.map.getLayer('trail-routes-arrows')) {
                 this.map.addLayer({
                     id: 'trail-routes-arrows',
@@ -2266,6 +2266,9 @@
                         'icon-size': 0.9,
                         'icon-allow-overlap': true,
                         'icon-ignore-placement': true,
+                    },
+                    paint: {
+                        'icon-opacity': ['case', ['boolean', ['feature-state', 'selected'], false], 1, 0],
                     },
                 });
             }
@@ -2320,6 +2323,8 @@
             this.map.on('click', (e) => {
                 if (!e.features || e.features.length === 0) {
                     this.closeAllPanels();
+                    // Mobile card closes only on deliberate map tap (not from button actions)
+                    closeMobileTrailCard();
                 }
             });
 
@@ -3126,7 +3131,69 @@
             `;
         }
 
+        _showMobileCard({ imageUrl, placeholderIcon, placeholderBg, name, metaHtml, statsText, actionsHtml }) {
+            const img = document.getElementById('mobile-trail-img');
+            const placeholder = document.getElementById('mobile-trail-placeholder');
+            if (imageUrl) {
+                img.src = imageUrl;
+                img.classList.remove('hidden');
+                placeholder.classList.add('hidden');
+            } else {
+                img.classList.add('hidden');
+                placeholder.classList.remove('hidden');
+                placeholder.textContent = placeholderIcon || '📍';
+                placeholder.style.background = placeholderBg || 'linear-gradient(135deg,#4b5563,#1f2937)';
+            }
+            document.getElementById('mobile-trail-name').textContent = name;
+            document.getElementById('mobile-trail-diff-row').innerHTML = metaHtml || '';
+            document.getElementById('mobile-trail-stats').textContent = statsText || '';
+            document.getElementById('mobile-trail-actions').innerHTML = actionsHtml || '';
+            document.getElementById('trail-info-panel')?.classList.add('hidden');
+            document.getElementById('business-panel')?.classList.add('hidden');
+            document.getElementById('mobile-trail-card').classList.remove('hidden');
+        }
+
+        showMobileHighlightCard(trail, highlight) {
+            const btnClass = 'flex-1 flex items-center justify-center gap-1.5 py-2 px-2 rounded-lg text-xs font-semibold border border-gray-200 bg-gray-50 hover:bg-gray-100 text-gray-700 transition-colors';
+            const firstPhoto = highlight.media?.find(m => m.media_type === 'photo');
+            const coordsJson = JSON.stringify(highlight.coordinates);
+            const color = highlight.color || '#16a34a';
+            this._showMobileCard({
+                imageUrl: firstPhoto?.url || null,
+                placeholderIcon: highlight.icon || '📍',
+                placeholderBg: `linear-gradient(135deg,${color}cc,${color})`,
+                name: highlight.name,
+                metaHtml: `<span style="font-size:12px;font-weight:600;color:${color};">${highlight.icon || ''} ${escapeHtml(highlight.type.replace(/_/g, ' '))}</span><span style="color:#d1d5db;font-size:11px;">·</span><span style="font-size:12px;color:#6b7280;">on ${escapeHtml(trail.name)}</span>`,
+                statsText: highlight.description || '',
+                actionsHtml: `<button type="button" onclick="window.trailMap.viewHighlight(${trail.id},${coordsJson})" class="${btnClass}"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>Center</button><a href="/trails/${trail.id}" class="${btnClass}"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-1.447-.894L15 9m0 8V9m0 0V7"/></svg>Full Trail</a>`,
+            });
+        }
+
+        showMobileNetworkCard(network) {
+            const btnClass = 'flex-1 flex items-center justify-center gap-1.5 py-2 px-2 rounded-lg text-xs font-semibold border border-gray-200 bg-gray-50 hover:bg-gray-100 text-gray-700 transition-colors';
+            const type = (network.type || '').toLowerCase();
+            let icon = network.icon || '🏔️';
+            if (!network.icon) {
+                if (type.includes('ski') || type.includes('snow')) icon = '⛷️';
+                else if (type.includes('hike') || type.includes('hiking')) icon = '🥾';
+                else if (type.includes('bike') || type.includes('cycling')) icon = '🚵';
+            }
+            this._showMobileCard({
+                imageUrl: network.image || null,
+                placeholderIcon: icon,
+                placeholderBg: 'linear-gradient(135deg,#14532d,#166534)',
+                name: network.name || network.network_name || '',
+                metaHtml: `<span style="font-size:12px;font-weight:600;color:#166534;">Trail Network</span>${network.trail_count ? `<span style="color:#d1d5db;font-size:11px;">·</span><span style="font-size:12px;color:#6b7280;">${network.trail_count} trails</span>` : ''}`,
+                statsText: network.description || '',
+                actionsHtml: `<a href="/trail-networks/${network.slug}" class="${btnClass}"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>View Network</a>`,
+            });
+        }
+
         showHighlightInfo(trail, highlight) {
+            if (this._isMobileViewport()) {
+                this.showMobileHighlightCard(trail, highlight);
+                return;
+            }
             const panel = document.getElementById('trail-info-panel');
             const content = document.getElementById('trail-info-content');
 
@@ -3260,22 +3327,16 @@
             const trail = this.allTrails.find(t => t.id == trailId);
             if (!trail) return;
 
-            // On mobile the trail-info / business panels cover the map, so close
-            // them before drawing the route so the user can see it. Desktop keeps
-            // the panel open as a side sidebar.
-            const closePanelOnMobile = () => {
-                if (!this._isMobileViewport()) return;
-                if (typeof closeTrailInfoPanel === 'function') {
-                    closeTrailInfoPanel();
-                } else {
-                    document.getElementById('trail-info-panel')?.classList.add('hidden');
-                }
-                document.getElementById('business-panel')?.classList.add('hidden');
-            };
+            const isMobile = this._isMobileViewport();
 
-            // Fishing lakes are single points — "View Location" centers on the lake.
+            // On desktop only: close business panel if it's covering the map.
+            // On mobile we keep the bottom card open so the user can still see trail info.
+            if (!isMobile) {
+                document.getElementById('business-panel')?.classList.add('hidden');
+            }
+
+            // Fishing lakes are single points — center on the lake.
             if (trail.location_type === 'fishing_lake') {
-                closePanelOnMobile();
                 const coords = this.sanitizeCoordinates(trail.coordinates);
                 if (coords) {
                     this.map.flyTo({ center: [coords[1], coords[0]], zoom: 15 });
@@ -3288,11 +3349,10 @@
                 return;
             }
 
-            closePanelOnMobile();
-
+            // Highlight the route line (same as PC)
             this.highlightTrailRoute(trailId, { showPanel: false });
 
-            // Fit map to route bounds
+            // Fit map to route bounds — on mobile add extra bottom padding for the card
             const sanitized = trail.route_coordinates
                 .map(c => this.sanitizeCoordinates(c)).filter(c => c !== null);
             if (sanitized.length > 0) {
@@ -3301,7 +3361,24 @@
                 this.map.fitBounds([
                     [Math.min(...lngs), Math.min(...lats)],
                     [Math.max(...lngs), Math.max(...lats)]
-                ], { padding: 40, maxZoom: 18 });
+                ], {
+                    padding: isMobile
+                        ? { top: 60, bottom: 200, left: 30, right: 30 }
+                        : 60,
+                    maxZoom: 13,
+                });
+            }
+
+            // On mobile: ensure the card stays visible and the line is re-applied
+            // after any touch events that may have bled through to the map canvas
+            if (isMobile) {
+                setTimeout(() => {
+                    document.getElementById('mobile-trail-card')?.classList.remove('hidden');
+                    this.map.setFeatureState(
+                        { source: 'trail-routes', id: trailId },
+                        { selected: true }
+                    );
+                }, 100);
             }
         }
 
@@ -3318,7 +3395,96 @@
             }
         }
 
+        showMobileTrailCard(trail) {
+            this._mobileCardTrailId = trail.id;
+            const isFishingLake = trail.location_type === 'fishing_lake';
+            const isNetworkTrail = !isFishingLake && !!trail.trail_network_id;
+            const difficultyLabels = { 1: 'Very Easy', 2: 'Easy', 3: 'Moderate', 4: 'Hard', 5: 'Very Hard' };
+            const difficultyColors = { 1: '#22C55E', 2: '#22C55E', 3: '#3B82F6', 4: '#EF4444', 5: '#EF4444' };
+
+            // Thumbnail
+            const img = document.getElementById('mobile-trail-img');
+            const placeholder = document.getElementById('mobile-trail-placeholder');
+            if (trail.preview_photo) {
+                img.src = trail.preview_photo;
+                img.classList.remove('hidden');
+                placeholder.classList.add('hidden');
+            } else {
+                img.classList.add('hidden');
+                placeholder.classList.remove('hidden');
+                placeholder.textContent = isFishingLake ? '🐟' : '🥾';
+                placeholder.style.background = isFishingLake
+                    ? 'linear-gradient(135deg,#0369a1,#0ea5e9)'
+                    : 'linear-gradient(135deg,#166534,#22c55e)';
+            }
+
+            // Name
+            document.getElementById('mobile-trail-name').textContent = trail.name;
+
+            // Difficulty + activities (hiking) | Fish species (fishing lake)
+            const diffRow = document.getElementById('mobile-trail-diff-row');
+            if (!isFishingLake) {
+                const diffLevel = Math.round(parseFloat(trail.difficulty));
+                let html = '';
+                if (diffLevel >= 1 && diffLevel <= 5) {
+                    html += `<span style="width:9px;height:9px;border-radius:50%;background:${difficultyColors[diffLevel]};display:inline-block;flex-shrink:0;"></span><span style="font-size:12px;font-weight:600;color:#374151;">${difficultyLabels[diffLevel]}</span>`;
+                }
+                if (trail.activities && trail.activities.length > 0) {
+                    trail.activities.forEach(a => {
+                        if (html) html += `<span style="color:#d1d5db;font-size:11px;">·</span>`;
+                        html += `<span style="font-size:12px;color:#6b7280;">${a.icon || ''} ${a.name}</span>`;
+                    });
+                }
+                diffRow.innerHTML = html;
+            } else if (trail.fish_species && trail.fish_species.length > 0) {
+                diffRow.innerHTML = trail.fish_species
+                    .map(s => `<span style="display:inline-flex;align-items:center;border-radius:999px;padding:1px 8px;font-size:11px;font-weight:500;background:#dbeafe;color:#1e40af;">${s}</span>`)
+                    .join('');
+            } else {
+                diffRow.innerHTML = '';
+            }
+
+            // Stats: distance · elevation gain · time
+            const statsEl = document.getElementById('mobile-trail-stats');
+            if (isFishingLake) {
+                statsEl.textContent = trail.fishing_distance_from_town ? `${trail.fishing_distance_from_town} km from Smithers` : '';
+            } else {
+                const parts = [];
+                if (trail.distance) parts.push(`${parseFloat(trail.distance).toFixed(1)} km`);
+                if (trail.elevation_gain) parts.push(`${trail.elevation_gain}m gain`);
+                if (trail.estimated_time) {
+                    const h = parseFloat(trail.estimated_time);
+                    parts.push(`Est. ${Number.isInteger(h) ? h : h.toFixed(1)} hr`);
+                }
+                statsEl.textContent = parts.join(' · ');
+            }
+
+            // Action buttons
+            const btnClass = 'flex-1 flex items-center justify-center gap-1.5 py-2 px-2 rounded-lg text-xs font-semibold border border-gray-200 bg-gray-50 hover:bg-gray-100 text-gray-700 transition-colors';
+            const actions = [];
+            if (isFishingLake) {
+                actions.push(`<button type="button" onclick="window.trailMap.viewRoute(${trail.id})" class="${btnClass}"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>Location</button>`);
+            } else if (!isNetworkTrail) {
+                actions.push(`<button type="button" onclick="window.trailMap.viewRoute(${trail.id})" class="${btnClass}"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-1.447-.894L15 9m0 8V9m0 0V7"/></svg>Route</button>`);
+                if (trail.route_coordinates && trail.route_coordinates.length > 1) {
+                    actions.push(`<button type="button" onclick="window.trailMap.flyAlongTrail(${trail.id})" class="${btnClass}"><svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M13.49 5.48c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm-3.6 13.9 1-4.4 2.1 2v6h2v-7.5l-2.1-2 .6-3c1.3 1.5 3.3 2.5 5.5 2.5v-2c-1.9 0-3.5-1-4.3-2.4l-1-1.6c-.4-.6-1-1-1.7-1-.3 0-.5.1-.8.1l-5.2 2.2v4.7h2v-3.4l1.8-.7-1.6 8.1-4.9-1-.4 2 7 1.4z"/></svg>Fly Along</button>`);
+                }
+            }
+            actions.push(`<a href="/trails/${trail.id}" class="${btnClass}"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>Details</button>`);
+            document.getElementById('mobile-trail-actions').innerHTML = actions.join('');
+
+            document.getElementById('business-panel')?.classList.add('hidden');
+            document.getElementById('trail-info-panel')?.classList.add('hidden');
+            document.getElementById('mobile-trail-card').classList.remove('hidden');
+        }
+
         showTrailInfo(trail) {
+            if (this._isMobileViewport()) {
+                this.showMobileTrailCard(trail);
+                return;
+            }
+
+
             const panel = document.getElementById('trail-info-panel');
             const content = document.getElementById('trail-info-content');
 
@@ -3506,7 +3672,7 @@
                     ${actions.length ? `<div class="biz-panel-actions">${actions.join('')}</div>` : ''}
                     <hr class="biz-panel-divider">
                     ${statsHTML}
-                    ${trail.description ? `<p style="font-size:13px;color:#4b5563;line-height:1.6;margin:0 0 4px;">${escapeHtml(trail.description)}</p>` : ''}
+                    ${trail.description ? `<p class="trail-desc-text" style="font-size:13px;color:#4b5563;line-height:1.6;margin:0 0 4px;">${escapeHtml(trail.description)}</p>` : ''}
                     ${highlightsHTML}
                 </div>
             `;
@@ -3611,7 +3777,71 @@
             }
         }
 
+        showMobileBusinessCard(business) {
+            const btnClass = 'flex-1 flex items-center justify-center gap-1.5 py-2 px-2 rounded-lg text-xs font-semibold border border-gray-200 bg-gray-50 hover:bg-gray-100 text-gray-700 transition-colors';
+            const img = document.getElementById('mobile-trail-img');
+            const placeholder = document.getElementById('mobile-trail-placeholder');
+            if (business.photo_url) {
+                img.src = business.photo_url;
+                img.classList.remove('hidden');
+                placeholder.classList.add('hidden');
+            } else {
+                img.classList.add('hidden');
+                placeholder.classList.remove('hidden');
+                placeholder.textContent = business.icon || '🏪';
+                placeholder.style.background = 'linear-gradient(135deg,#1e40af,#3b82f6)';
+            }
+            document.getElementById('mobile-trail-name').textContent = business.name;
+            const diffRow = document.getElementById('mobile-trail-diff-row');
+            let typeHtml = `<span style="font-size:12px;font-weight:600;color:#2563eb;">${escapeHtml(business.business_type_label || '')}</span>`;
+            if (business.price_range) typeHtml += `<span style="color:#d1d5db;font-size:11px;">·</span><span style="font-size:12px;color:#6b7280;">Approx ${escapeHtml(business.price_range)}</span>`;
+            if (business.is_seasonal && business.season_open) typeHtml += `<span style="color:#d1d5db;font-size:11px;">·</span><span style="font-size:12px;color:#92400e;">🗓 ${escapeHtml(business.season_open)}</span>`;
+            diffRow.innerHTML = typeHtml;
+            document.getElementById('mobile-trail-stats').textContent = business.tagline || '';
+            const actions = [];
+            actions.push(`<button type="button" onclick="window.trailMap.map.flyTo({center:[${business.longitude},${business.latitude}],zoom:17,duration:800})" class="${btnClass}"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>Location</button>`);
+            if (business.phone) actions.push(`<a href="tel:${business.phone}" class="${btnClass}"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/></svg>Call</a>`);
+            if (business.website) actions.push(`<a href="${business.website}" target="_blank" rel="noopener" class="${btnClass}"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"/></svg>Website</a>`);
+            document.getElementById('mobile-trail-actions').innerHTML = actions.join('');
+            document.getElementById('trail-info-panel')?.classList.add('hidden');
+            document.getElementById('business-panel')?.classList.add('hidden');
+            document.getElementById('mobile-trail-card').classList.remove('hidden');
+        }
+
+        showMobileFacilityCard(facility) {
+            const btnClass = 'flex-1 flex items-center justify-center gap-1.5 py-2 px-2 rounded-lg text-xs font-semibold border border-gray-200 bg-gray-50 hover:bg-gray-100 text-gray-700 transition-colors';
+            const img = document.getElementById('mobile-trail-img');
+            const placeholder = document.getElementById('mobile-trail-placeholder');
+            let heroUrl = null;
+            if (facility.media && facility.media.length > 0) {
+                const first = facility.media.find(m => m.media_type !== 'video_url' && m.media_type !== 'video') || facility.media[0];
+                heroUrl = first.url || first.thumbnail_url || null;
+            }
+            if (heroUrl) {
+                img.src = heroUrl;
+                img.classList.remove('hidden');
+                placeholder.classList.add('hidden');
+            } else {
+                img.classList.add('hidden');
+                placeholder.classList.remove('hidden');
+                placeholder.textContent = facility.icon || '📍';
+                placeholder.style.background = 'linear-gradient(135deg,#166534,#22c55e)';
+            }
+            document.getElementById('mobile-trail-name').textContent = facility.name;
+            document.getElementById('mobile-trail-diff-row').innerHTML = `<span style="font-size:12px;font-weight:600;color:#166534;">${escapeHtml(facility.facility_type_label || 'Facility')}</span>`;
+            document.getElementById('mobile-trail-stats').textContent = facility.description || '';
+            const actions = [`<a href="https://www.google.com/maps/search/?api=1&query=${facility.latitude},${facility.longitude}" target="_blank" rel="noopener" class="${btnClass}"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>Directions</a>`];
+            document.getElementById('mobile-trail-actions').innerHTML = actions.join('');
+            document.getElementById('trail-info-panel')?.classList.add('hidden');
+            document.getElementById('business-panel')?.classList.add('hidden');
+            document.getElementById('mobile-trail-card').classList.remove('hidden');
+        }
+
         openBusinessPanel(business) {
+            if (this._isMobileViewport()) {
+                this.showMobileBusinessCard(business);
+                return;
+            }
             const panel = document.getElementById('business-panel');
             const content = document.getElementById('business-panel-content');
             if (!panel || !content) { return; }
@@ -3746,6 +3976,10 @@
         }
 
         openFacilityPanel(facility) {
+            if (this._isMobileViewport()) {
+                this.showMobileFacilityCard(facility);
+                return;
+            }
             const panel = document.getElementById('business-panel');
             const content = document.getElementById('business-panel-content');
             if (!panel || !content) { return; }
@@ -3808,7 +4042,7 @@
                 <div class="biz-panel-body">
                     <h2 class="biz-panel-name">${escapeHtml(facility.name)}</h2>
                     <div class="biz-panel-meta">${meta}</div>
-                    ${facility.description ? `<p style="font-size:13px;color:#4b5563;line-height:1.6;margin:0 0 16px;">${escapeHtml(facility.description)}</p>` : ''}
+                    ${facility.description ? `<p class="mobile-hide-desc" style="font-size:13px;color:#4b5563;line-height:1.6;margin:0 0 16px;">${escapeHtml(facility.description)}</p>` : ''}
                     ${actions}
                     ${mediaHTML}
                 </div>
@@ -4107,6 +4341,10 @@
         }
 
         showNetworkInfo(network) {
+            if (this._isMobileViewport()) {
+                this.showMobileNetworkCard(network);
+                return;
+            }
             const panel = document.getElementById('trail-info-panel');
             const content = document.getElementById('trail-info-content');
             if (!panel || !content) { return; }
@@ -4580,9 +4818,16 @@
 
     // Global function to close trail info panel
     function closeTrailInfoPanel() {
-        const panel = document.getElementById('trail-info-panel');
-        panel.classList.add('hidden');
-        if (window.trailMap) { window.trailMap._clearSelection(); }
+        document.getElementById('trail-info-panel')?.classList.add('hidden');
+        closeMobileTrailCard();
+    }
+
+    function closeMobileTrailCard() {
+        document.getElementById('mobile-trail-card')?.classList.add('hidden');
+        if (window.trailMap) {
+            window.trailMap._clearSelection();
+            window.trailMap._mobileCardTrailId = null;
+        }
     }
 
      // Global function to handle trail card clicks
