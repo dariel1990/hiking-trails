@@ -7,13 +7,14 @@ document.addEventListener('DOMContentLoaded', function () {
     const defaultLat = parseFloat(document.getElementById('latitude').value) || 54.7804;
     const defaultLng = parseFloat(document.getElementById('longitude').value) || -127.1698;
 
-    const map = new mapboxgl.Map({
+    window.coordinateMap = new mapboxgl.Map({
         container: 'coordinate-map',
-        style: 'mapbox://styles/mapbox/streets-v12',
+        style: 'mapbox://styles/mapbox/standard',
         center: [defaultLng, defaultLat],
         zoom: 14,
         attributionControl: false,
     });
+    const map = window.coordinateMap;
 
     map.addControl(new mapboxgl.NavigationControl({ showCompass: false }), 'bottom-right');
 
@@ -150,9 +151,60 @@ function addVideoUrlField() {
 
 // Init icon preview
 updateBusinessIcon();
+
+const adminMapStyles = {
+    'standard':  'mapbox://styles/mapbox/standard',
+    'satellite': 'mapbox://styles/mapbox/satellite-streets-v12',
+    'terrain':   'mapbox://styles/mapbox/outdoors-v12',
+    'outdoors':  'mapbox://styles/mapbox/navigation-day-v1',
+};
+
+function switchMapStyle(mapType) {
+    if (!window.coordinateMap) { return; }
+    window.coordinateMap.setStyle(adminMapStyles[mapType] || adminMapStyles['standard']);
+    document.querySelectorAll('.admin-layer-card').forEach(function (b) {
+        b.classList.toggle('active', b.dataset.mapType === mapType);
+    });
+    document.getElementById('admin-layers-dropdown').classList.add('hidden');
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+    var toggle = document.getElementById('admin-layers-toggle');
+    var dropdown = document.getElementById('admin-layers-dropdown');
+    if (toggle && dropdown) {
+        toggle.addEventListener('click', function (e) {
+            e.stopPropagation();
+            dropdown.classList.toggle('hidden');
+        });
+        document.addEventListener('click', function (e) {
+            if (!dropdown.contains(e.target) && !toggle.contains(e.target)) {
+                dropdown.classList.add('hidden');
+            }
+        });
+        document.querySelectorAll('.admin-layer-card').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                switchMapStyle(this.dataset.mapType);
+            });
+        });
+    }
+});
 </script>
 
 <style>
 .search-result-item { transition: background-color 0.15s ease; }
 .search-result-item:hover { background-color: hsl(var(--muted)); }
+
+.admin-layer-card {
+    position: relative; cursor: pointer; border-radius: 0.5rem;
+    overflow: hidden; border: 2px solid transparent;
+    display: flex; flex-direction: column; align-items: center;
+    transition: all 0.2s; background: none; padding: 0;
+}
+.admin-layer-card:hover { border-color: #93C5FD; }
+.admin-layer-card.active { border-color: #2563EB; box-shadow: 0 0 0 3px rgba(37,99,235,0.1); }
+.admin-layer-preview { width: 100%; height: 70px; border-radius: 0.375rem; overflow: hidden; }
+.admin-layer-preview img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.admin-layer-label { display: block; font-size: 0.75rem; font-weight: 500; color: #374151; text-align: center; margin-top: 0.5rem; padding: 0 0.25rem 0.375rem; }
+.admin-layer-check { position: absolute; top: 4px; right: 4px; width: 20px; height: 20px; color: white; background: #2563EB; border-radius: 50%; padding: 2px; display: none; }
+.admin-layer-card.active .admin-layer-check { display: block; }
 </style>

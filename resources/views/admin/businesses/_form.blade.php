@@ -159,7 +159,46 @@
                     <div id="search-results-dropdown" class="hidden absolute z-50 mt-1 w-full max-w-xl bg-white rounded-md shadow-lg border border-gray-200 max-h-60 overflow-y-auto"></div>
                 </div>
 
-                <div id="coordinate-map" class="w-full h-[350px] rounded-md border border-input relative z-0"></div>
+                <div class="relative">
+                    <div id="coordinate-map" class="w-full h-[350px] rounded-md border border-input z-0"></div>
+                    <div class="absolute top-2 right-2 z-10">
+                        <div class="relative">
+                            <button id="admin-layers-toggle" type="button"
+                                class="bg-white rounded-lg shadow-md p-2 hover:bg-gray-50 transition-colors border border-gray-200">
+                                <svg class="w-5 h-5 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 0v10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2z"/>
+                                </svg>
+                            </button>
+                            <div id="admin-layers-dropdown" class="hidden absolute top-full right-0 mt-1 bg-white rounded-lg shadow-xl border border-gray-200 overflow-hidden z-50" style="min-width:200px;">
+                                <div class="p-2">
+                                    <div class="text-xs font-semibold text-gray-500 uppercase tracking-wider px-3 py-2">Map Style</div>
+                                    <div class="grid grid-cols-2 gap-2 mb-1">
+                                        <button type="button" class="admin-layer-card active" data-map-type="standard">
+                                            <div class="admin-layer-preview"><img src="{{ asset('images/map-layers/standard.png') }}" alt="Standard"></div>
+                                            <span class="admin-layer-label">Standard</span>
+                                            <svg class="admin-layer-check" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+                                        </button>
+                                        <button type="button" class="admin-layer-card" data-map-type="satellite">
+                                            <div class="admin-layer-preview"><img src="{{ asset('images/map-layers/satellite.png') }}" alt="Satellite"></div>
+                                            <span class="admin-layer-label">Satellite</span>
+                                            <svg class="admin-layer-check" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+                                        </button>
+                                        <button type="button" class="admin-layer-card" data-map-type="terrain">
+                                            <div class="admin-layer-preview"><img src="{{ asset('images/map-layers/terrain.png') }}" alt="Terrain"></div>
+                                            <span class="admin-layer-label">Terrain</span>
+                                            <svg class="admin-layer-check" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+                                        </button>
+                                        <button type="button" class="admin-layer-card" data-map-type="outdoors">
+                                            <div class="admin-layer-preview"><img src="{{ asset('images/map-layers/outdoor.png') }}" alt="Outdoors"></div>
+                                            <span class="admin-layer-label">Outdoors</span>
+                                            <svg class="admin-layer-check" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
 
                 <div class="grid grid-cols-2 gap-4">
                     <div class="space-y-2">

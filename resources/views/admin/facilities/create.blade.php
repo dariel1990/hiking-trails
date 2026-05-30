@@ -284,7 +284,46 @@
                         </div>
 
                         {{-- Map --}}
-                        <div id="coordinate-map" class="w-full h-[420px] border-y border-gray-100 relative z-0"></div>
+                        <div class="relative">
+                            <div id="coordinate-map" class="w-full h-[420px] border-y border-gray-100 z-0"></div>
+                            <div class="absolute top-2 right-2 z-10">
+                                <div class="relative">
+                                    <button id="admin-layers-toggle" type="button"
+                                        class="bg-white rounded-lg shadow-md p-2 hover:bg-gray-50 transition-colors border border-gray-200">
+                                        <svg class="w-5 h-5 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 0v10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2z"/>
+                                        </svg>
+                                    </button>
+                                    <div id="admin-layers-dropdown" class="hidden absolute top-full right-0 mt-1 bg-white rounded-lg shadow-xl border border-gray-200 overflow-hidden z-50" style="min-width:200px;">
+                                        <div class="p-2">
+                                            <div class="text-xs font-semibold text-gray-500 uppercase tracking-wider px-3 py-2">Map Style</div>
+                                            <div class="grid grid-cols-2 gap-2 mb-1">
+                                                <button type="button" class="admin-layer-card active" data-map-type="standard">
+                                                    <div class="admin-layer-preview"><img src="{{ asset('images/map-layers/standard.png') }}" alt="Standard"></div>
+                                                    <span class="admin-layer-label">Standard</span>
+                                                    <svg class="admin-layer-check" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+                                                </button>
+                                                <button type="button" class="admin-layer-card" data-map-type="satellite">
+                                                    <div class="admin-layer-preview"><img src="{{ asset('images/map-layers/satellite.png') }}" alt="Satellite"></div>
+                                                    <span class="admin-layer-label">Satellite</span>
+                                                    <svg class="admin-layer-check" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+                                                </button>
+                                                <button type="button" class="admin-layer-card" data-map-type="terrain">
+                                                    <div class="admin-layer-preview"><img src="{{ asset('images/map-layers/terrain.png') }}" alt="Terrain"></div>
+                                                    <span class="admin-layer-label">Terrain</span>
+                                                    <svg class="admin-layer-check" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+                                                </button>
+                                                <button type="button" class="admin-layer-card" data-map-type="outdoors">
+                                                    <div class="admin-layer-preview"><img src="{{ asset('images/map-layers/outdoor.png') }}" alt="Outdoors"></div>
+                                                    <span class="admin-layer-label">Outdoors</span>
+                                                    <svg class="admin-layer-check" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
 
                         {{-- Coordinates --}}
                         <div class="px-6 py-4 grid grid-cols-2 gap-4 bg-gray-50/50">
@@ -346,13 +385,14 @@ document.addEventListener('DOMContentLoaded', function () {
     const defaultLat = parseFloat(document.getElementById('latitude').value) || 54.7804;
     const defaultLng = parseFloat(document.getElementById('longitude').value) || -127.1698;
 
-    const map = new mapboxgl.Map({
+    window.coordinateMap = new mapboxgl.Map({
         container: 'coordinate-map',
-        style: 'mapbox://styles/mapbox/streets-v12',
+        style: 'mapbox://styles/mapbox/standard',
         center: [defaultLng, defaultLat],
         zoom: 11,
         attributionControl: false,
     });
+    const map = window.coordinateMap;
 
     map.addControl(new mapboxgl.NavigationControl({ showCompass: false }), 'bottom-right');
 
@@ -440,7 +480,39 @@ document.addEventListener('DOMContentLoaded', function () {
             loadingIndicator.classList.add('hidden');
         }
     }
+
+    // Map style toggle
+    var layersToggle = document.getElementById('admin-layers-toggle');
+    var layersDropdown = document.getElementById('admin-layers-dropdown');
+    layersToggle.addEventListener('click', function (e) {
+        e.stopPropagation();
+        layersDropdown.classList.toggle('hidden');
+    });
+    document.addEventListener('click', function (e) {
+        if (!layersDropdown.contains(e.target) && !layersToggle.contains(e.target)) {
+            layersDropdown.classList.add('hidden');
+        }
+    });
+    document.querySelectorAll('.admin-layer-card').forEach(function (btn) {
+        btn.addEventListener('click', function () { switchMapStyle(this.dataset.mapType); });
+    });
 });
+
+const adminMapStyles = {
+    'standard':  'mapbox://styles/mapbox/standard',
+    'satellite': 'mapbox://styles/mapbox/satellite-streets-v12',
+    'terrain':   'mapbox://styles/mapbox/outdoors-v12',
+    'outdoors':  'mapbox://styles/mapbox/navigation-day-v1',
+};
+
+function switchMapStyle(mapType) {
+    if (!window.coordinateMap) { return; }
+    window.coordinateMap.setStyle(adminMapStyles[mapType] || adminMapStyles['standard']);
+    document.querySelectorAll('.admin-layer-card').forEach(function (b) {
+        b.classList.toggle('active', b.dataset.mapType === mapType);
+    });
+    document.getElementById('admin-layers-dropdown').classList.add('hidden');
+}
 
 // Photo preview
 function handlePhotoSelection(input) {
@@ -479,5 +551,16 @@ function addVideoUrlField() {
     container.appendChild(div);
 }
 </script>
+
+<style>
+.admin-layer-card { position: relative; cursor: pointer; border-radius: 0.5rem; overflow: hidden; border: 2px solid transparent; display: flex; flex-direction: column; align-items: center; transition: all 0.2s; background: none; padding: 0; }
+.admin-layer-card:hover { border-color: #93C5FD; }
+.admin-layer-card.active { border-color: #2563EB; box-shadow: 0 0 0 3px rgba(37,99,235,0.1); }
+.admin-layer-preview { width: 100%; height: 70px; border-radius: 0.375rem; overflow: hidden; }
+.admin-layer-preview img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.admin-layer-label { display: block; font-size: 0.75rem; font-weight: 500; color: #374151; text-align: center; margin-top: 0.5rem; padding: 0 0.25rem 0.375rem; }
+.admin-layer-check { position: absolute; top: 4px; right: 4px; width: 20px; height: 20px; color: white; background: #2563EB; border-radius: 50%; padding: 2px; display: none; }
+.admin-layer-card.active .admin-layer-check { display: block; }
+</style>
 
 @endsection
