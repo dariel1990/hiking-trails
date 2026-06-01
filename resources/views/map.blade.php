@@ -297,11 +297,11 @@
             <div id="view-mode-options"
                 class="absolute right-full top-1/2 -translate-y-1/2 mr-2 flex items-center gap-1 bg-white rounded-full p-1 shadow-md border border-gray-300 pointer-events-none opacity-0 -translate-x-2 transition-all duration-200">
                 <button type="button" data-view-mode="2d"
-                    class="view-mode-option active px-3 py-1 rounded-full text-xs font-bold text-gray-500 hover:bg-gray-100 transition-colors leading-none">
+                    class="view-mode-option px-3 py-1 rounded-full text-xs font-bold text-gray-500 hover:bg-gray-100 transition-colors leading-none">
                     2D
                 </button>
                 <button type="button" data-view-mode="3d"
-                    class="view-mode-option px-3 py-1 rounded-full text-xs font-bold text-gray-500 hover:bg-gray-100 transition-colors leading-none">
+                    class="view-mode-option active px-3 py-1 rounded-full text-xs font-bold text-gray-500 hover:bg-gray-100 transition-colors leading-none">
                     3D
                 </button>
             </div>
@@ -310,7 +310,7 @@
                 title="Change view"
                 class="bg-white text-gray-700 shadow-md hover:bg-gray-50 transition-colors border border-gray-300"
                 style="width:29px;height:29px;display:flex;align-items:center;justify-content:center;border-radius:4px;">
-                <span class="font-bold text-xs leading-none">2D</span>
+                <span class="font-bold text-xs leading-none">3D</span>
             </button>
         </div>
         <!-- My Location -->
@@ -437,9 +437,16 @@
     <!-- Mobile Trail Bottom Card (mobile only) -->
     <div id="mobile-trail-card" class="md:hidden hidden fixed bottom-0 inset-x-0 z-50 bg-white" style="border-radius:16px 16px 0 0;box-shadow:0 -4px 24px rgba(0,0,0,0.18);"
          ontouchstart="event.stopPropagation()" onclick="event.stopPropagation()">
-        <div class="w-10 h-1 bg-gray-300 rounded-full mx-auto mt-3"></div>
+        <div class="relative flex items-center justify-center pt-3 pb-0 px-4">
+            <div class="w-10 h-1 bg-gray-300 rounded-full"></div>
+            <button onclick="closeMobileTrailCard()" class="absolute right-3 top-2 p-1 text-gray-400 hover:text-gray-600" aria-label="Close">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+            </button>
+        </div>
         <!-- Main row -->
-        <div class="flex items-center px-4 pt-3 pb-2 gap-3">
+        <div class="flex items-center px-4 pt-2 pb-2 gap-3">
             <div class="w-[68px] h-[68px] rounded-xl overflow-hidden flex-shrink-0 bg-gray-100">
                 <img id="mobile-trail-img" src="" alt="" class="hidden w-full h-full object-cover">
                 <div id="mobile-trail-placeholder" class="w-full h-full flex items-center justify-center text-2xl"></div>
@@ -2111,8 +2118,8 @@
                 style: this.mapStyles[this.currentMapType],
                 center: [-127.1698, 54.7804], // [lng, lat]
                 zoom: 10,
-                pitch: 0,
-                bearing: 0,
+                pitch: 60,
+                bearing: -10,
                 attributionControl: false,
             });
 
@@ -2143,7 +2150,7 @@
             this._mobileCardTrailId = null;
             this._locationMarker = null;
             this._locationCircle = null;
-            this._is3D = false;
+            this._is3D = true;
             this._isFlying = false;
             this._flyAnimation = null;
             this._flyTimeout = null;
@@ -2684,6 +2691,10 @@
             const isMountainBike = Array.isArray(trail.activities) && trail.activities.some(a => a.type === 'mountain-biking');
             if (isMountainBike) {
                 return this.getDistanceColor(trail.distance);
+            }
+            const isKayak = Array.isArray(trail.activities) && trail.activities.some(a => a.type === 'kayak');
+            if (isKayak) {
+                return '#3B82F6';
             }
             return '#000000';
         }

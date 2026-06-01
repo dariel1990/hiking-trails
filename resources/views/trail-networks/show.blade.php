@@ -956,7 +956,7 @@ mapboxgl.accessToken = '{{ $mapboxToken }}';
 const map = new mapboxgl.Map({
     container: 'network-map',
     style: mapStyles[currentMapType],
-    center: [networkData.longitude, networkData.latitude],
+    center: [networkData.longitude || -127.2, networkData.latitude || 54.7],
     zoom: 13,
     attributionControl: false,
 });
@@ -1164,20 +1164,8 @@ map.on('load', () => {
         facilityMarkers.push(marker);
     });
 
-    // Fit map to all trails
-    const allCoords = trails
-        .filter(t => t.route_coordinates && t.route_coordinates.length)
-        .flatMap(t => t.route_coordinates);
-    if (allCoords.length) {
-        const lngs = allCoords.map(c => c[1]);
-        const lats = allCoords.map(c => c[0]);
-        map.fitBounds(
-            [[Math.min(...lngs), Math.min(...lats)], [Math.max(...lngs), Math.max(...lats)]],
-            { padding: 50, duration: 0 }
-        );
-    }
-
 });
+
 
 map.on('style.load', () => {
     if (_mapLoaded) initMapLayers();
