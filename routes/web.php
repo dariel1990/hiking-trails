@@ -6,6 +6,7 @@ use App\Http\Controllers\Admin\AdminTrailController;
 use App\Http\Controllers\Admin\AdminTrailNetworkController;
 use App\Http\Controllers\Admin\AdminTrailPhotoController;
 use App\Http\Controllers\Admin\BusinessController;
+use App\Http\Controllers\Admin\CarouselSlideController;
 use App\Http\Controllers\Admin\FacilityController;
 use App\Http\Controllers\Admin\MediaController;
 use App\Http\Controllers\Admin\UserController;
@@ -91,6 +92,13 @@ Route::prefix('admin')->name('admin.')->group(function () {
                 'update' => 'trail-networks.update',
                 'destroy' => 'trail-networks.destroy',
             ]);
+
+        // Carousel Slides Management
+        Route::get('carousel', [CarouselSlideController::class, 'index'])->name('carousel.index');
+        Route::post('carousel', [CarouselSlideController::class, 'store'])->name('carousel.store');
+        Route::post('carousel/import', [CarouselSlideController::class, 'import'])->name('carousel.import');
+        Route::patch('carousel/{carousel}', [CarouselSlideController::class, 'update'])->name('carousel.update');
+        Route::delete('carousel/{carousel}', [CarouselSlideController::class, 'destroy'])->name('carousel.destroy');
 
         // Facilities Management (Standalone - Global)
         Route::resource('facilities', FacilityController::class)
