@@ -289,6 +289,26 @@
         <span>Stop Fly Along</span>
     </button>
 
+    <!-- Live stats counter — shown only during fly-along -->
+    <div id="fly-stats-overlay"
+         class="hidden absolute top-4 z-40 rounded-2xl overflow-hidden pointer-events-none"
+         style="right:90px;background:rgba(0,0,0,0.68);backdrop-filter:blur(10px);min-width:190px;box-shadow:0 4px 24px rgba(0,0,0,0.35);">
+        <div style="padding:8px 14px 6px;border-bottom:1px solid rgba(255,255,255,0.07);">
+            <span style="font-size:9px;letter-spacing:0.12em;color:rgba(255,255,255,0.4);text-transform:uppercase;font-weight:700;">Trail Progress</span>
+        </div>
+        <div style="padding:8px 14px 12px;display:flex;gap:18px;align-items:flex-end;">
+            <div>
+                <div style="font-size:24px;font-weight:800;color:#fff;line-height:1;font-variant-numeric:tabular-nums;" id="fly-stat-dist">0.0</div>
+                <div style="font-size:10px;color:rgba(255,255,255,0.45);margin-top:3px;">km traveled</div>
+            </div>
+            <div style="width:1px;height:32px;background:rgba(255,255,255,0.1);flex-shrink:0;"></div>
+            <div>
+                <div style="font-size:24px;font-weight:800;color:#60a5fa;line-height:1;font-variant-numeric:tabular-nums;" id="fly-stat-elev">0</div>
+                <div style="font-size:10px;color:rgba(255,255,255,0.45);margin-top:3px;">m gain</div>
+            </div>
+        </div>
+    </div>
+
     <!-- Bottom-right custom controls (sit above Mapbox zoom) — on mobile move to top-right below layers -->
     <div class="absolute bottom-24 right-2.5 max-md:bottom-auto max-md:top-[182px] max-md:right-4 z-30 flex flex-col gap-1.5">
         <!-- 3D Toggle -->
@@ -2155,6 +2175,7 @@
             this._flyAnimation = null;
             this._flyTimeout = null;
             this._hikerMarker = null;
+            this._flyTrailId = null;
 
             this.setupEventListeners();
             this.updateActivityFilters(this.currentSeason);
@@ -2239,7 +2260,7 @@
                     type: 'line',
                     source: 'trail-routes',
                     paint: {
-                        'line-color': '#F5CBA7',
+                        'line-color': '#000000',
                         'line-width': 8,
                         'line-opacity': ['case', ['boolean', ['feature-state', 'selected'], false], 1, 0],
                     },
@@ -2276,6 +2297,65 @@
                     },
                     paint: {
                         'icon-opacity': ['case', ['boolean', ['feature-state', 'selected'], false], 1, 0],
+                    },
+                });
+            }
+
+            // Dedicated source for fly-along — lineMetrics:true enables line-gradient
+            if (!this.map.getSource('fly-draw')) {
+                this.map.addSource('fly-draw', {
+                    type: 'geojson',
+                    lineMetrics: true,
+                    data: { type: 'FeatureCollection', features: [] },
+                });
+            }
+            // Green base — full unwalked trail
+            if (!this.map.getLayer('fly-draw-base')) {
+                this.map.addLayer({
+                    id: 'fly-draw-base',
+                    type: 'line',
+                    source: 'fly-draw',
+                    layout: { 'line-cap': 'round', 'line-join': 'round' },
+                    paint: {
+                        'line-color': '#22c55e',
+                        'line-width': 4,
+                        'line-opacity': 0,
+                        'line-trim-offset': [0, 0],
+                    },
+                });
+            }
+            // Blue glow behind the walked portion
+            if (!this.map.getLayer('fly-draw-glow')) {
+                this.map.addLayer({
+                    id: 'fly-draw-glow',
+                    type: 'line',
+                    source: 'fly-draw',
+                    layout: { 'line-cap': 'round', 'line-join': 'round' },
+                    paint: {
+                        'line-gradient': ['interpolate', ['linear'], ['line-progress'],
+                            0, '#60a5fa', 1, '#60a5fa',
+                        ],
+                        'line-width': 16,
+                        'line-blur': 8,
+                        'line-opacity': 0,
+                        'line-trim-offset': [0, 1],
+                    },
+                });
+            }
+            // Crisp blue progress line
+            if (!this.map.getLayer('fly-draw-progress')) {
+                this.map.addLayer({
+                    id: 'fly-draw-progress',
+                    type: 'line',
+                    source: 'fly-draw',
+                    layout: { 'line-cap': 'round', 'line-join': 'round' },
+                    paint: {
+                        'line-gradient': ['interpolate', ['linear'], ['line-progress'],
+                            0, '#3b82f6', 1, '#3b82f6',
+                        ],
+                        'line-width': 5,
+                        'line-opacity': 0,
+                        'line-trim-offset': [0, 1],
                     },
                 });
             }
@@ -2688,15 +2768,7 @@
             if (this.currentSeason === 'winter' && trail.trail_network_id) {
                 return this.getDifficultyColor(trail.difficulty);
             }
-            const isMountainBike = Array.isArray(trail.activities) && trail.activities.some(a => a.type === 'mountain-biking');
-            if (isMountainBike) {
-                return this.getDistanceColor(trail.distance);
-            }
-            const isKayak = Array.isArray(trail.activities) && trail.activities.some(a => a.type === 'kayak');
-            if (isKayak) {
-                return '#3B82F6';
-            }
-            return '#000000';
+            return '#22c55e';
         }
 
         // For non-fishing trails, pick the activity that should drive the marker icon/colour.
@@ -4605,11 +4677,12 @@
 
             const coords = trail.route_coordinates
                 .map(c => {
-                    // Accept [lat, lng] or [lat, lng, elevation] — strip elevation
+                    // Preserve elevation as 3rd element when present — used for the gradient
                     if (Array.isArray(c) && c.length >= 2 && isFinite(c[0]) && isFinite(c[1])) {
-                        return [c[0], c[1]];
+                        return c.length >= 3 && isFinite(c[2]) ? [c[0], c[1], c[2]] : [c[0], c[1], null];
                     }
-                    return this.sanitizeCoordinates(c);
+                    const s = this.sanitizeCoordinates(c);
+                    return s ? [s[0], s[1], null] : null;
                 })
                 .filter(c => c !== null);
 
@@ -4620,6 +4693,9 @@
 
             // Smoothing disabled for testing — animate over raw coords
             const smoothed = coords;
+
+            // Remember which trail is flying so we can re-highlight it on stop
+            this._flyTrailId = trailId;
 
             // Clear UI so the animation has a full map stage
             if (typeof closeTrailInfoPanel === 'function') { closeTrailInfoPanel(); }
@@ -4645,30 +4721,51 @@
             const beginAnimation = () => {
                 if (!this._isFlying) return;
 
-                // Place hiker marker at trail start
                 if (this._hikerMarker) { this._hikerMarker.remove(); this._hikerMarker = null; }
-                this._hikerMarker = new mapboxgl.Marker({ element: this._createHikerMarkerEl(), anchor: 'center' })
-                    .setLngLat([smoothed[0][1], smoothed[0][0]])
-                    .addTo(this.map);
 
-                // Fit full trail into view, then begin animation once camera settles
+                // Switch trail to green fly-along style
+                this._activateFlyTrailLayers(trailId, smoothed);
+
+                // ── Phase 1: top-down 2D overview (pitch 0°) ─────────────────
                 const lngs = smoothed.map(c => c[1]);
                 const lats = smoothed.map(c => c[0]);
                 this.map.fitBounds(
                     [[Math.min(...lngs), Math.min(...lats)], [Math.max(...lngs), Math.max(...lats)]],
-                    { padding: 80, maxZoom: 14, duration: 1500 }
+                    { padding: 80, maxZoom: 13, pitch: 0, bearing: 0, duration: 800 }
                 );
 
+                // ── Phase 2: tilt into 3D, zoom to trail start ────────────────
+                // flyTo pitches from 0° → 60° and zooms in — the "drop into terrain" moment
                 this._flyTimeout = setTimeout(() => {
                     this._flyTimeout = null;
                     if (!this._isFlying) return;
-                    this._animateAlongTrail(smoothed);
-                }, 1800);
+
+                    const initialBearing = this._getBearing(
+                        smoothed[0],
+                        smoothed[Math.min(30, smoothed.length - 1)]
+                    );
+                    this.map.flyTo({
+                        center:   [smoothed[0][1], smoothed[0][0]],
+                        zoom:     15.5,
+                        pitch:    60,
+                        bearing:  initialBearing,
+                        duration: 1600,
+                        easing:   t => t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t,
+                    });
+
+                    // ── Phase 3: trail-following loop starts after tilt completes
+                    this._flyTimeout = setTimeout(() => {
+                        this._flyTimeout = null;
+                        if (!this._isFlying) return;
+                        this._animateAlongTrail(smoothed, trail.elevation_gain);
+                    }, 1800);
+                }, 1000);
             };
 
             if (needsStyleSwitch) {
-                // Wait for the new style to fully load before placing the marker / fitting bounds
-                this.map.once('idle', beginAnimation);
+                // style.load fires as soon as the style JSON is applied — much faster than
+                // 'idle' which waits for every satellite tile to finish rendering (1-3s extra)
+                this.map.once('style.load', beginAnimation);
             } else {
                 beginAnimation();
             }
@@ -4685,11 +4782,10 @@
             return el;
         }
 
-        _animateAlongTrail(rawCoords) {
-            // Strip any entry that is not a valid [lat, lng] pair (length >= 2 to tolerate elevation triplets)
+        _animateAlongTrail(rawCoords, trailElevGain = 0) {
             const coords = rawCoords
                 .filter(c => Array.isArray(c) && c.length >= 2 && isFinite(c[0]) && isFinite(c[1]))
-                .map(c => [c[0], c[1]]);
+                .map(c => [c[0], c[1], (c.length >= 3 && isFinite(c[2])) ? c[2] : null]);
 
             if (coords.length < 2) {
                 this.stopFlyAnimation();
@@ -4697,7 +4793,6 @@
             }
 
             const last = coords.length - 1;
-            // Constant ground speed: compute total trail distance then derive duration
             const toRad = d => d * Math.PI / 180;
             const haversine = (a, b) => {
                 const R = 6371000;
@@ -4706,45 +4801,136 @@
                 const s = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(a[0])) * Math.cos(toRad(b[0])) * Math.sin(dLng / 2) ** 2;
                 return 2 * R * Math.atan2(Math.sqrt(s), Math.sqrt(1 - s));
             };
-            let totalDist = 0;
-            for (let i = 0; i < coords.length - 1; i++) totalDist += haversine(coords[i], coords[i + 1]);
-            const SPEED_MS = 200; // metres per second — same apparent ground speed on all trails
+
+            // Pre-compute cumulative distances and elevation gain per waypoint
+            const cumDist     = [0];
+            const cumElevGain = [0];
+            for (let i = 0; i < last; i++) {
+                cumDist.push(cumDist[i] + haversine(coords[i], coords[i + 1]));
+                const rise = (coords[i + 1][2] != null && coords[i][2] != null)
+                    ? Math.max(0, coords[i + 1][2] - coords[i][2])
+                    : 0;
+                cumElevGain.push(cumElevGain[i] + rise);
+            }
+            const totalDist = cumDist[last];
+
+            const SPEED_MS    = 300;
             const DURATION_MS = (totalDist / SPEED_MS) * 1000;
-            const flyZoom = 14; // fixed zoom keeps pixel speed consistent for all trail lengths
-            const startTime = performance.now();
+            const flyZoom     = 15.5;
+            const startTime   = performance.now();
+
+            // Binary-search helper — returns index lo such that cumDist[lo] <= d
+            const findSeg = (d) => {
+                d = Math.max(0, Math.min(d, totalDist));
+                let lo = 0, hi = last;
+                while (lo < hi - 1) {
+                    const mid = (lo + hi) >> 1;
+                    if (cumDist[mid] <= d) { lo = mid; } else { hi = mid; }
+                }
+                return lo;
+            };
+
+            // Returns [lat, lng] at exact distance d along the trail
+            const posAtDist = (d) => {
+                const lo = findSeg(d);
+                const segLen = cumDist[lo + 1] - cumDist[lo];
+                const t = segLen > 0 ? (Math.max(0, Math.min(d, totalDist)) - cumDist[lo]) / segLen : 0;
+                return [
+                    coords[lo][0] + (coords[lo + 1][0] - coords[lo][0]) * t,
+                    coords[lo][1] + (coords[lo + 1][1] - coords[lo][1]) * t,
+                ];
+            };
+
+            // Returns cumulative elevation gain at distance d.
+            // If per-point elevation data exists use it; otherwise fall back to
+            // distributing the trail's known total elevation_gain proportionally
+            // so the counter always shows a meaningful number.
+            const totalElevGain = cumElevGain[last];
+            const knownGain     = parseFloat(trailElevGain) || 0;
+            const hasElevData   = totalElevGain > 0;
+
+            const elevGainAtDist = hasElevData
+                ? (d) => {
+                    const lo     = findSeg(d);
+                    const segLen = cumDist[lo + 1] - cumDist[lo];
+                    const t      = segLen > 0 ? (Math.max(0, Math.min(d, totalDist)) - cumDist[lo]) / segLen : 0;
+                    const segRise = (coords[lo + 1][2] != null && coords[lo][2] != null)
+                        ? Math.max(0, coords[lo + 1][2] - coords[lo][2]) : 0;
+                    return cumElevGain[lo] + segRise * t;
+                }
+                : (d) => (totalDist > 0 ? (d / totalDist) * knownGain : 0);
+
+            // ── Phase 3 camera state ─────────────────────────────────────────
+            // Position, bearing and zoom are all smoothed so zigzags produce no
+            // visible camera movement — only genuine long turns register.
+            const initPos  = posAtDist(0);
+            let smoothLat  = initPos[0];
+            let smoothLng  = initPos[1];
+            let smoothBear = this._getBearing(coords[0], coords[Math.min(30, last)]);
+            let smoothZoom = flyZoom;
+            let prevTime   = null;
+            const POS_HL     = 700;  // ms — heavy position smoothing, ultra-fluid camera glide
+            const BEARING_HL = 6000; // ms — barely turns, only major bends register
+            const ZOOM_HL    = 2500; // ms — imperceptibly slow zoom drift
+
+            const distEl = document.getElementById('fly-stat-dist');
+            const elevEl = document.getElementById('fly-stat-elev');
 
             const animate = (now) => {
                 if (!this._isFlying) return;
 
-                const progress  = Math.min((now - startTime) / DURATION_MS, 1);
-                const rawIndex  = progress * last;
-                const i         = Math.min(Math.floor(rawIndex), last);
-                const t         = rawIndex - i;
+                const dt            = prevTime !== null ? Math.min(now - prevTime, 100) : 16;
+                prevTime            = now;
+                const progress      = Math.min((now - startTime) / DURATION_MS, 1);
+                const distTravelled = progress * totalDist;
 
-                const cur  = coords[i];
-                const next = coords[Math.min(i + 1, last)];
+                // Exact trail tip (used for stats + progress fill)
+                const [lat, lng] = posAtDist(distTravelled);
 
-                // Guard: skip frame if either point is somehow missing
-                if (!cur || !next) {
-                    this._flyAnimation = requestAnimationFrame(animate);
-                    return;
+                // Smooth camera position — filters out rapid left/right zigzag panning
+                const posAlpha = 1 - Math.pow(0.5, dt / POS_HL);
+                smoothLat += (lat - smoothLat) * posAlpha;
+                smoothLng += (lng - smoothLng) * posAlpha;
+
+                // Bearing from 500 m behind → 1000 m ahead (1500 m window).
+                // Zigzag legs are tiny vs this span so they don't affect the angle.
+                const [behindLat, behindLng] = posAtDist(Math.max(0, distTravelled - 500));
+                const [aheadLat,  aheadLng]  = posAtDist(distTravelled + 1000);
+                const targetBear = this._getBearing([behindLat, behindLng], [aheadLat, aheadLng]);
+
+                // Extremely slow bearing lerp — only genuine long bends register
+                const bearAlpha = 1 - Math.pow(0.5, dt / BEARING_HL);
+                const bearDelta = ((targetBear - smoothBear + 540) % 360) - 180;
+                smoothBear = (smoothBear + bearDelta * bearAlpha + 360) % 360;
+
+                // Zoom variation by elevation grade — smoothed so it never snaps
+                const lo       = findSeg(distTravelled);
+                const hi       = findSeg(Math.min(distTravelled + 150, totalDist));
+                const rise     = (coords[hi][2] != null && coords[lo][2] != null)
+                    ? Math.max(0, coords[hi][2] - coords[lo][2]) : 0;
+                const run      = cumDist[hi] - cumDist[lo];
+                const grade    = run > 0 ? (rise / run) * 100 : 0;
+                const targetZoom = grade > 8 ? 16.5 : grade < 3 ? 14.5 : flyZoom;
+                const zoomAlpha  = 1 - Math.pow(0.5, dt / ZOOM_HL);
+                smoothZoom      += (targetZoom - smoothZoom) * zoomAlpha;
+
+                this.map.jumpTo({
+                    center:  [smoothLng, smoothLat],
+                    bearing: smoothBear,
+                    pitch:   55,
+                    zoom:    smoothZoom,
+                });
+
+                // Progress fill: base trims back (unwalked), glow+progress grow forward (walked)
+                if (this.map.getLayer('fly-draw-progress')) {
+                    this.map.setPaintProperty('fly-draw-base',     'line-trim-offset', [0, progress]);
+                    this.map.setPaintProperty('fly-draw-glow',     'line-trim-offset', [progress, 1]);
+                    this.map.setPaintProperty('fly-draw-progress', 'line-trim-offset', [progress, 1]);
                 }
 
-                // Interpolate hiker position smoothly between waypoints
-                const lng = cur[1]  + (next[1]  - cur[1])  * t;
-                const lat = cur[0]  + (next[0]  - cur[0])  * t;
-
-                if (this._hikerMarker) this._hikerMarker.setLngLat([lng, lat]);
-
-                // Keep camera centered directly on the hiker so the icon is always in the middle
-                this.map.easeTo({
-                    center:   [lng, lat],
-                    bearing:  this._getBearing(cur, next),
-                    pitch:    60,
-                    zoom:     flyZoom,
-                    duration: 150,
-                    easing:   x => x,
-                });
+                // Live stats counter
+                if (distEl) distEl.textContent = (distTravelled / 1000).toFixed(1);
+                if (elevEl) elevEl.textContent  = Math.round(elevGainAtDist(distTravelled));
 
                 if (progress < 1) {
                     this._flyAnimation = requestAnimationFrame(animate);
@@ -4785,6 +4971,13 @@
                 this._hikerMarker = null;
             }
 
+            // Restore original trail colors, then re-highlight the trail line
+            this._deactivateFlyTrailLayers();
+            if (this._flyTrailId != null) {
+                this.highlightTrailRoute(this._flyTrailId, { showPanel: false });
+                this._flyTrailId = null;
+            }
+
             const stopBtn = document.getElementById('fly-stop-overlay-btn');
             if (stopBtn) { stopBtn.classList.add('hidden'); }
 
@@ -4799,6 +4992,138 @@
 
             this.map.easeTo({ pitch: 0, bearing: 0, duration: 1000 });
             this._updateFlyButton(false);
+        }
+
+        _activateFlyTrailLayers(trailId, coords) {
+            if (!this.map.getSource('fly-draw')) { return; }
+
+            // Load this trail's geometry into the dedicated lineMetrics source
+            const mapboxCoords = coords.map(c =>
+                c[2] != null ? [c[1], c[0], c[2]] : [c[1], c[0]]
+            );
+            this.map.getSource('fly-draw').setData({
+                type: 'FeatureCollection',
+                features: [{ type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: mapboxCoords } }],
+            });
+
+            // Solid blue for the walking progress line
+            const blueGradient = ['interpolate', ['linear'], ['line-progress'], 0, '#3b82f6', 1, '#3b82f6'];
+            const blueGlow     = ['interpolate', ['linear'], ['line-progress'], 0, '#60a5fa', 1, '#60a5fa'];
+            if (this.map.getLayer('fly-draw-progress')) {
+                this.map.setPaintProperty('fly-draw-progress', 'line-gradient', blueGradient);
+                this.map.setPaintProperty('fly-draw-glow',     'line-gradient', blueGlow);
+            }
+
+            // Reset trim offsets: base shows full trail, progress/glow start at nothing
+            this.map.setPaintProperty('fly-draw-base',     'line-trim-offset', [0, 0]);
+            this.map.setPaintProperty('fly-draw-glow',     'line-trim-offset', [0, 1]);
+            this.map.setPaintProperty('fly-draw-progress', 'line-trim-offset', [0, 1]);
+            this.map.setPaintProperty('fly-draw-base',     'line-opacity', 0.35);
+            this.map.setPaintProperty('fly-draw-glow',     'line-opacity', 0.3);
+            this.map.setPaintProperty('fly-draw-progress', 'line-opacity', 1);
+
+            // Hide original trail layers
+            this.map.setPaintProperty('trail-routes-line',    'line-opacity', 0);
+            this.map.setPaintProperty('trail-routes-outline', 'line-opacity', 0);
+            this.map.setPaintProperty('trail-routes-arrows',  'icon-opacity', 0);
+
+            // Reduce terrain exaggeration — high values amplify camera altitude bounce on steep terrain
+            if (this.map.getTerrain()) {
+                this.map.setTerrain({ source: 'mapbox-dem', exaggeration: 0.5 });
+            }
+
+            // Reset and show stats overlay
+            const distEl = document.getElementById('fly-stat-dist');
+            const elevEl = document.getElementById('fly-stat-elev');
+            if (distEl) distEl.textContent = '0.0';
+            if (elevEl) elevEl.textContent = '0';
+            document.getElementById('fly-stats-overlay')?.classList.remove('hidden');
+        }
+
+        _deactivateFlyTrailLayers() {
+            if (!this.map.getSource('fly-draw')) { return; }
+            ['fly-draw-base', 'fly-draw-glow', 'fly-draw-progress'].forEach(id => {
+                if (this.map.getLayer(id)) {
+                    this.map.setPaintProperty(id, 'line-opacity', 0);
+                }
+            });
+            // Clear the source so no stale geometry lingers
+            this.map.getSource('fly-draw').setData({ type: 'FeatureCollection', features: [] });
+
+            // Restore original layer opacity expressions
+            const lineOpacity = ['case', ['boolean', ['feature-state', 'selected'], false], 1, 0];
+            this.map.setPaintProperty('trail-routes-line',    'line-opacity', lineOpacity);
+            this.map.setPaintProperty('trail-routes-outline', 'line-opacity', lineOpacity);
+            this.map.setPaintProperty('trail-routes-arrows',  'icon-opacity', lineOpacity);
+
+            document.getElementById('fly-stats-overlay')?.classList.add('hidden');
+
+            // Restore terrain exaggeration to normal
+            if (this._is3D && this.map.getTerrain()) {
+                this.map.setTerrain({ source: 'mapbox-dem', exaggeration: 1.5 });
+            }
+        }
+
+        _buildElevationGradient(coords) {
+            // Elevation grade → color: green (flat) → cyan (moderate) → blue (steep)
+            const gradeColor = (pct) => {
+                if (pct < 5)  return '#22c55e'; // green — gentle / flat
+                if (pct < 12) return '#00cfff'; // cyan  — moderate climb
+                return '#3b82f6';               // blue  — steep climb
+            };
+
+            const hasElev = coords.some(c => c[2] != null && isFinite(c[2]));
+            if (!hasElev) {
+                return ['interpolate', ['linear'], ['line-progress'], 0, '#22c55e', 1, '#3b82f6'];
+            }
+
+            const toRad = d => d * Math.PI / 180;
+            const haversine = (a, b) => {
+                const R = 6371000;
+                const dLat = toRad(b[0] - a[0]);
+                const dLng = toRad(b[1] - a[1]);
+                const s = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(a[0])) * Math.cos(toRad(b[0])) * Math.sin(dLng / 2) ** 2;
+                return 2 * R * Math.atan2(Math.sqrt(s), Math.sqrt(1 - s));
+            };
+
+            const cumDist = [0];
+            for (let i = 0; i < coords.length - 1; i++) {
+                cumDist.push(cumDist[i] + haversine(coords[i], coords[i + 1]));
+            }
+            const totalDist = cumDist[coords.length - 1];
+            if (totalDist === 0) {
+                return ['interpolate', ['linear'], ['line-progress'], 0, '#22c55e', 1, '#3b82f6'];
+            }
+
+            // Build gradient stops — smooth grade over a ±5-point window to avoid flickering
+            const WINDOW = 5;
+            const stops = [];
+            for (let i = 0; i < coords.length; i++) {
+                const lo = Math.max(0, i - WINDOW);
+                const hi = Math.min(coords.length - 1, i + WINDOW);
+                let grade = 0;
+                if (hi > lo && coords[hi][2] != null && coords[lo][2] != null) {
+                    const rise = Math.max(0, coords[hi][2] - coords[lo][2]);
+                    const run  = cumDist[hi] - cumDist[lo];
+                    if (run > 0) grade = (rise / run) * 100;
+                }
+                const progress = cumDist[i] / totalDist;
+                // Clamp to [0, 1] and deduplicate consecutive identical stops
+                const p = Math.max(0, Math.min(1, progress));
+                const color = gradeColor(grade);
+                if (stops.length === 0 || stops[stops.length - 1] !== color || p === 1) {
+                    if (stops.length > 0 && stops[stops.length - 2] === p) {
+                        stops[stops.length - 1] = color; // overwrite same-progress duplicate
+                    } else {
+                        stops.push(p, color);
+                    }
+                }
+            }
+            // Guarantee first stop at 0 and last stop at 1 (interpolate requires them)
+            if (stops[0] !== 0) stops.unshift(0, '#22c55e');
+            if (stops[stops.length - 2] !== 1) stops.push(1, stops[stops.length - 1]);
+
+            return ['interpolate', ['linear'], ['line-progress'], ...stops];
         }
 
         _updateFlyButton(isFlying) {
