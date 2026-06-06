@@ -191,7 +191,7 @@
     
     /* Elevation Profile Chart */
     #elevation-chart {
-        height: 250px;
+        height: 400px;
     }
     
     /* Rich content from Quill editor */
@@ -205,6 +205,25 @@
     .trail-description ol, .rich-content ol { list-style: decimal; padding-left: 1.5rem; margin-bottom: 1rem; }
     .trail-description li, .rich-content li { margin-bottom: 0.25rem; }
     .trail-description a, .rich-content a { color: #059669; text-decoration: underline; }
+
+    /* Map style layer cards */
+    .detail-layer-card {
+        position: relative;
+        cursor: pointer;
+        border-radius: 0.5rem;
+        overflow: hidden;
+        transition: all 0.2s;
+        border: 2px solid transparent;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    }
+    .detail-layer-card:hover { border-color: #93C5FD; }
+    .detail-layer-card.active { border-color: #2563EB; box-shadow: 0 0 0 3px rgba(37,99,235,0.1); }
+    .detail-layer-card .layer-preview { width: 100%; height: 60px; border-radius: 0.375rem; overflow: hidden; }
+    .detail-layer-card .layer-label { display: block; font-size: 0.75rem; font-weight: 500; color: #374151; text-align: center; margin-top: 0.375rem; padding: 0 0.25rem 0.25rem; }
+    .detail-layer-card .layer-checkmark { position: absolute; top: 4px; right: 4px; width: 18px; height: 18px; color: white; background-color: #2563EB; border-radius: 50%; padding: 2px; display: none; }
+    .detail-layer-card.active .layer-checkmark { display: block; }
 
     /* Print Styles */
     @media print {
@@ -685,6 +704,54 @@
                                 @endif
                             </div>
 
+                            <!-- Map Style Switcher -->
+                            <div class="absolute top-4 right-4 z-10">
+                                <div class="relative">
+                                    <button id="detail-layers-toggle"
+                                        title="Change Map Style"
+                                        class="bg-white rounded-lg shadow-lg p-2 hover:bg-gray-50 transition-colors">
+                                        <svg class="w-5 h-5 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 0v10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2z"/>
+                                        </svg>
+                                    </button>
+                                    <div id="detail-layers-dropdown" class="hidden absolute top-full right-0 mt-2 bg-white rounded-lg shadow-xl border border-gray-200 overflow-hidden" style="min-width:200px;">
+                                        <div class="p-2">
+                                            <div class="text-xs font-semibold text-gray-500 uppercase tracking-wider px-3 py-2">Map Style</div>
+                                            <div class="grid grid-cols-2 gap-2">
+                                                <button class="detail-layer-card" data-style="mapbox://styles/mapbox/standard">
+                                                    <div class="layer-preview">
+                                                        <img src="{{ asset('images/map-layers/standard.png') }}" alt="Standard" class="w-full h-full object-cover">
+                                                    </div>
+                                                    <span class="layer-label">Standard</span>
+                                                    <svg class="layer-checkmark" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+                                                </button>
+                                                <button class="detail-layer-card" data-style="mapbox://styles/mapbox/satellite-streets-v12">
+                                                    <div class="layer-preview">
+                                                        <img src="{{ asset('images/map-layers/satellite.png') }}" alt="Satellite" class="w-full h-full object-cover">
+                                                    </div>
+                                                    <span class="layer-label">Satellite</span>
+                                                    <svg class="layer-checkmark" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+                                                </button>
+                                                <button class="detail-layer-card active" data-style="mapbox://styles/mapbox/outdoors-v12">
+                                                    <div class="layer-preview">
+                                                        <img src="{{ asset('images/map-layers/terrain.png') }}" alt="Terrain" class="w-full h-full object-cover">
+                                                    </div>
+                                                    <span class="layer-label">Terrain</span>
+                                                    <svg class="layer-checkmark" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+                                                </button>
+                                                <button class="detail-layer-card" data-style="mapbox://styles/mapbox/navigation-day-v1">
+                                                    <div class="layer-preview">
+                                                        <img src="{{ asset('images/map-layers/outdoor.png') }}" alt="Outdoors" class="w-full h-full object-cover">
+                                                    </div>
+                                                    <span class="layer-label">Outdoors</span>
+                                                    <svg class="layer-checkmark" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
                             <!-- Stop fly-along button (shown only during animation) -->
                             <button id="fly-stop-btn"
                                     class="hidden absolute bottom-8 left-3 z-40 bg-white border border-red-200 text-red-700 hover:bg-red-50 rounded-full shadow-lg px-4 py-2 text-sm font-semibold flex items-center gap-2 transition-colors">
@@ -724,7 +791,7 @@
                                 Refresh Profile
                             </button>
                         </div>
-                        <div id="elevation-chart" class="w-full h-48 bg-gray-50 rounded-lg border hidden">
+                        <div id="elevation-chart" class="w-full bg-gray-50 rounded-lg border hidden">
                             <canvas id="elevation-canvas" class="w-full h-full"></canvas>
                         </div>
                         <div id="elevation-stats" class="hidden text-sm text-gray-600 grid grid-cols-4 gap-3 mt-3">
@@ -1659,7 +1726,7 @@ function initTrailMap() {
 
     const map = new mapboxgl.Map({
         container: 'trail-detail-map',
-        style: 'mapbox://styles/mapbox/satellite-streets-v12',
+        style: 'mapbox://styles/mapbox/outdoors-v12',
         center: initialCenter,
         zoom: isFishingLake ? 11 : 13,
         pitch: 0,
@@ -1852,6 +1919,73 @@ function initTrailMap() {
             this.classList.toggle('border-gray-300', !_is3D);
         });
     }
+
+    // ── Map Style Switcher ───────────────────────────────────────────────────
+    const layersToggle = document.getElementById('detail-layers-toggle');
+    const layersDropdown = document.getElementById('detail-layers-dropdown');
+
+    layersToggle?.addEventListener('click', (e) => {
+        e.stopPropagation();
+        layersDropdown.classList.toggle('hidden');
+    });
+
+    document.addEventListener('click', (e) => {
+        if (!layersToggle?.contains(e.target) && !layersDropdown?.contains(e.target)) {
+            layersDropdown?.classList.add('hidden');
+        }
+    });
+
+    document.querySelectorAll('.detail-layer-card').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const style = btn.dataset.style;
+            if (!style) return;
+
+            document.querySelectorAll('.detail-layer-card').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            layersDropdown.classList.add('hidden');
+
+            map.setStyle(style);
+            map.once('styledata', () => {
+                if (!map.getSource('mapbox-dem')) {
+                    map.addSource('mapbox-dem', {
+                        type: 'raster-dem',
+                        url: 'mapbox://mapbox.mapbox-terrain-dem-v1',
+                        tileSize: 512,
+                        maxzoom: 14,
+                    });
+                }
+                if (_is3D) {
+                    map.setTerrain({ source: 'mapbox-dem', exaggeration: 1.5 });
+                }
+
+                if (!isFishingLake && trail.route_coordinates && trail.route_coordinates.length > 0) {
+                    const geojsonCoords = trail.route_coordinates.map(c => [c[1], c[0]]);
+                    if (!map.getSource('trail-route')) {
+                        map.addSource('trail-route', {
+                            type: 'geojson',
+                            data: { type: 'Feature', geometry: { type: 'LineString', coordinates: geojsonCoords } },
+                        });
+                    }
+                    if (!map.getLayer('trail-route-line')) {
+                        map.addLayer({ id: 'trail-route-line', type: 'line', source: 'trail-route', paint: { 'line-color': '#10B981', 'line-width': 4, 'line-opacity': 1 }, layout: { 'line-join': 'round', 'line-cap': 'round' } });
+                    }
+                    if (!map.hasImage('trail-arrow')) {
+                        const arrowSVG = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 14 14"><polygon points="13,7 5,3 7,7 5,11" fill="white"/></svg>`;
+                        const arrowImg = new Image(14, 14);
+                        arrowImg.onload = () => {
+                            map.addImage('trail-arrow', arrowImg);
+                            if (!map.getLayer('trail-route-arrows')) {
+                                map.addLayer({ id: 'trail-route-arrows', type: 'symbol', source: 'trail-route', layout: { 'symbol-placement': 'line', 'symbol-spacing': 120, 'icon-image': 'trail-arrow', 'icon-size': 1, 'icon-allow-overlap': true, 'icon-ignore-placement': true } });
+                            }
+                        };
+                        arrowImg.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(arrowSVG);
+                    } else if (!map.getLayer('trail-route-arrows')) {
+                        map.addLayer({ id: 'trail-route-arrows', type: 'symbol', source: 'trail-route', layout: { 'symbol-placement': 'line', 'symbol-spacing': 120, 'icon-image': 'trail-arrow', 'icon-size': 1, 'icon-allow-overlap': true, 'icon-ignore-placement': true } });
+                    }
+                }
+            });
+        });
+    });
 
     // ── Fly Along Trail ──────────────────────────────────────────────────────
 
@@ -2257,7 +2391,7 @@ function initTrailMap() {
             statDivs[3].textContent = Math.round(totalLoss) + 'm';
         }
 
-        drawElevationChart(canvas, coordinates);
+        requestAnimationFrame(() => drawElevationChart(canvas, coordinates));
     }
 
     function drawElevationChart(canvas, coordinates) {
@@ -2273,6 +2407,8 @@ function initTrailMap() {
         const minElev = Math.min(...elevations);
         const maxElev = Math.max(...elevations);
         const elevRange = maxElev - minElev || 1;
+        const paddingTop = 40;
+        const drawHeight = height - paddingTop;
 
         // Draw elevation line
         ctx.beginPath();
@@ -2281,7 +2417,7 @@ function initTrailMap() {
 
         elevations.forEach((elevation, index) => {
             const x = (index / (elevations.length - 1)) * width;
-            const y = height - ((elevation - minElev) / elevRange) * height;
+            const y = paddingTop + drawHeight - ((elevation - minElev) / elevRange) * drawHeight;
             
             if (index === 0) {
                 ctx.moveTo(x, y);
