@@ -1477,6 +1477,8 @@
     line-height: 1.2;
 }
 
+@keyframes spin { to { transform: rotate(360deg); } }
+
 .biz-panel-divider {
     border: none;
     border-top: 1px solid #f3f4f6;
@@ -2799,6 +2801,11 @@
                 // Mapbox coords are [lng, lat], data is [lat, lng] — swap
                 const mapboxCoords = sanitized.map(c => [c[1], c[0]]);
 
+                // Out-and-back: mirror so arrows go forward on the way out and back on the return
+                const displayCoords = trail.trail_type === 'out-and-back'
+                    ? [...mapboxCoords, ...[...mapboxCoords].reverse()]
+                    : mapboxCoords;
+
                 features.push({
                     type: 'Feature',
                     id: trail.id,
@@ -2807,7 +2814,7 @@
                         color: this.getRouteColor(trail),
                         status: trail.status || 'active',
                     },
-                    geometry: { type: 'LineString', coordinates: mapboxCoords },
+                    geometry: { type: 'LineString', coordinates: displayCoords },
                 });
             });
             return { type: 'FeatureCollection', features };
@@ -3756,11 +3763,226 @@
                     <hr class="biz-panel-divider">
                     ${statsHTML}
                     ${trail.description ? `<p class="trail-desc-text" style="font-size:13px;color:#4b5563;line-height:1.6;margin:0 0 4px;">${escapeHtml(trail.description)}</p>` : ''}
+                    ${trail.route_coordinates && trail.route_coordinates.length > 1 ? `
+                    <hr class="biz-panel-divider">
+                    <div style="margin-bottom:4px;">
+                        <div style="font-size:12px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:10px;">Elevation Profile</div>
+                        <div id="panel-elev-wrap-${trail.id}" style="position:relative;background:#f9fafb;border-radius:10px;overflow:hidden;height:130px;border:1px solid #e5e7eb;">
+                            <canvas id="panel-elev-canvas-${trail.id}" style="width:100%;height:100%;display:block;"></canvas>
+                            <div id="panel-elev-loading-${trail.id}" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;">
+                                <div style="width:20px;height:20px;border:2px solid #d1d5db;border-top-color:#2C5F5D;border-radius:50%;animation:spin 0.8s linear infinite;"></div>
+                            </div>
+                        </div>
+                    </div>` : ''}
                     ${highlightsHTML}
                 </div>
             `;
 
             panel.classList.remove('hidden');
+            if (trail.route_coordinates && trail.route_coordinates.length > 1) {
+                requestAnimationFrame(() => this.loadPanelElevation(trail));
+            }
+        }
+
+        async loadPanelElevation(trail) {
+            const canvas  = document.getElementById(`panel-elev-canvas-${trail.id}`);
+            const loading = document.getElementById(`panel-elev-loading-${trail.id}`);
+            if (!canvas) return;
+
+            let coordinates = null;
+            const hasElev = trail.route_coordinates[0].length >= 3;
+
+            if (hasElev) {
+                coordinates = trail.route_coordinates.map(c => [c[1], c[0], c[2]]);
+            } else {
+                try {
+                    const res = await fetch('/api/elevation-profile', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '' },
+                        body: JSON.stringify({ coordinates: trail.route_coordinates.map(c => [c[0], c[1]]) }),
+                    });
+                    if (res.ok) {
+                        const data = await res.json();
+                        if (data.geometry && data.geometry.coordinates) {
+                            // API returns [lat, lng, elev] — convert to [lng, lat, elev] for GeoJSON
+                            coordinates = data.geometry.coordinates.map(c => [c[1], c[0], c[2]]);
+                        }
+                    }
+                } catch (e) { /* silent fail */ }
+            }
+
+            if (loading) loading.style.display = 'none';
+            if (!coordinates || coordinates.length < 2) return;
+
+            // Build display coords — mirror for out-and-back
+            const isOutAndBack = trail.trail_type === 'out-and-back';
+            const displayCoords = isOutAndBack
+                ? [...coordinates, ...[...coordinates].reverse()]
+                : coordinates;
+
+            const elevations = displayCoords.map(c => c[2]).filter(e => e != null);
+            if (elevations.length < 2) return;
+
+            // Cumulative distance (km) at each display coordinate
+            const toRad = d => d * Math.PI / 180;
+            const distances = [0];
+            for (let i = 1; i < displayCoords.length; i++) {
+                const [lng1, lat1] = displayCoords[i - 1];
+                const [lng2, lat2] = displayCoords[i];
+                const dLat = toRad(lat2 - lat1), dLng = toRad(lng2 - lng1);
+                const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
+                distances.push(distances[i - 1] + 6371 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
+            }
+
+            const wrap = document.getElementById(`panel-elev-wrap-${trail.id}`);
+            canvas.width  = wrap ? wrap.offsetWidth  : 300;
+            canvas.height = wrap ? wrap.offsetHeight : 130;
+
+            const minE = Math.min(...elevations), maxE = Math.max(...elevations);
+            const range = maxE - minE || 1;
+            const PADDING_TOP = 16;
+
+            // ── Draw chart (base + optional hover overlay) ──────────────────
+            const drawChart = (hoverIdx = -1) => {
+                const ctx = canvas.getContext('2d');
+                const w = canvas.width, h = canvas.height;
+                const drawH = h - PADDING_TOP;
+
+                ctx.clearRect(0, 0, w, h);
+
+                const grad = ctx.createLinearGradient(0, PADDING_TOP, 0, h);
+                grad.addColorStop(0, 'rgba(44,95,93,0.18)');
+                grad.addColorStop(1, 'rgba(44,95,93,0.02)');
+
+                ctx.beginPath();
+                ctx.strokeStyle = '#2C5F5D';
+                ctx.lineWidth = 2;
+                elevations.forEach((e, i) => {
+                    const x = (i / (elevations.length - 1)) * w;
+                    const y = PADDING_TOP + drawH - ((e - minE) / range) * drawH;
+                    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+                });
+                ctx.stroke();
+                ctx.lineTo(w, h); ctx.lineTo(0, h); ctx.closePath();
+                ctx.fillStyle = grad;
+                ctx.fill();
+
+                if (hoverIdx >= 0 && hoverIdx < elevations.length) {
+                    const e = elevations[hoverIdx];
+                    const x = (hoverIdx / (elevations.length - 1)) * w;
+                    const y = PADDING_TOP + drawH - ((e - minE) / range) * drawH;
+
+                    // Dashed vertical line
+                    ctx.beginPath();
+                    ctx.strokeStyle = 'rgba(44,95,93,0.35)';
+                    ctx.lineWidth = 1;
+                    ctx.setLineDash([3, 3]);
+                    ctx.moveTo(x, 0); ctx.lineTo(x, h);
+                    ctx.stroke();
+                    ctx.setLineDash([]);
+
+                    // Circle on the line
+                    ctx.beginPath();
+                    ctx.arc(x, y, 5, 0, Math.PI * 2);
+                    ctx.fillStyle = '#2C5F5D';
+                    ctx.fill();
+                    ctx.strokeStyle = '#fff';
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+
+                    // Tooltip: Elevation + Distance
+                    const elevLabel = 'Elevation: ' + Math.round(e) + 'm';
+                    // const distLabel = 'Distance: ' + distances[hoverIdx].toFixed(1) + 'km';
+                    ctx.font = 'bold 10px Inter, system-ui, sans-serif';
+                    const boxW = ctx.measureText(elevLabel).width + 12;
+                    const boxH = 18; // const boxH = 30;
+                    let bx = x - boxW / 2;
+                    bx = Math.max(2, Math.min(w - boxW - 2, bx));
+                    const by = Math.max(2, y - boxH - 8);
+
+                    ctx.fillStyle = 'rgba(17,24,39,0.82)';
+                    ctx.beginPath();
+                    ctx.rect(bx, by, boxW, boxH);
+                    ctx.fill();
+
+                    ctx.fillStyle = '#fff';
+                    ctx.font = 'bold 10px Inter, system-ui, sans-serif';
+                    ctx.fillText(elevLabel, bx + 6, by + 12);
+                    // ctx.fillStyle = '#9ca3af';
+                    // ctx.font = '10px Inter, system-ui, sans-serif';
+                    // ctx.fillText(distLabel, bx + 6, by + 23);
+                }
+            };
+
+            drawChart();
+
+
+            // ── Mapbox hover point + progress line ───────────────────────────
+            const HOVER_SOURCE = 'elev-hover-point';
+            const HOVER_LAYER  = 'elev-hover-layer';
+
+            const ensureHoverLayer = () => {
+                if (!this.map.getSource(HOVER_SOURCE)) {
+                    this.map.addSource(HOVER_SOURCE, {
+                        type: 'geojson',
+                        data: { type: 'FeatureCollection', features: [] },
+                    });
+                }
+                if (!this.map.getLayer(HOVER_LAYER)) {
+                    this.map.addLayer({
+                        id: HOVER_LAYER,
+                        type: 'circle',
+                        source: HOVER_SOURCE,
+                        paint: {
+                            'circle-radius': 9,
+                            'circle-color': '#fff',
+                            'circle-stroke-width': 3,
+                            'circle-stroke-color': '#2C5F5D',
+                        },
+                    });
+                }
+            };
+
+            const setMapPoint = (lng, lat) => {
+                try {
+                    ensureHoverLayer();
+                    this.map.getSource(HOVER_SOURCE).setData({
+                        type: 'FeatureCollection',
+                        features: [{ type: 'Feature', geometry: { type: 'Point', coordinates: [lng, lat] } }],
+                    });
+                } catch (err) {
+                    console.error('[elev-scrub] setMapPoint failed:', err);
+                }
+            };
+
+            const clearMapPoint = () => {
+                try {
+                    this.map.getSource(HOVER_SOURCE)?.setData({ type: 'FeatureCollection', features: [] });
+                } catch (_) {}
+                drawChart();
+            };
+
+            const getIdx = (clientX) => {
+                const rect = canvas.getBoundingClientRect();
+                const frac = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+                return Math.round(frac * (elevations.length - 1));
+            };
+
+            const onScrub = (clientX) => {
+                const idx = getIdx(clientX);
+                drawChart(idx);
+                const coord = displayCoords[idx];
+                if (coord) setMapPoint(coord[0], coord[1]);
+            };
+
+            // canvas is fresh from innerHTML on every panel open — attach directly
+            canvas.style.cursor = 'crosshair';
+            canvas.addEventListener('mousemove', e => onScrub(e.clientX));
+            canvas.addEventListener('mouseleave', clearMapPoint);
+            canvas.addEventListener('touchmove', e => { e.preventDefault(); onScrub(e.touches[0].clientX); }, { passive: false });
+            canvas.addEventListener('touchend', clearMapPoint);
+
+            drawChart();
         }
 
         /* ─────────────────────────────────────────────────────────────────────
@@ -5156,6 +5378,10 @@
     function closeTrailInfoPanel() {
         document.getElementById('trail-info-panel')?.classList.add('hidden');
         closeMobileTrailCard();
+        // Clear elevation hover marker from map
+        try {
+            window.trailMap?.map?.getSource('elev-hover-point')?.setData({ type: 'FeatureCollection', features: [] });
+        } catch (_) {}
     }
 
     function closeMobileTrailCard() {

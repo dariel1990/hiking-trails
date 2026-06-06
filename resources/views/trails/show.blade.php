@@ -69,12 +69,12 @@
     }
     
     .tab-button:hover {
-        color: #10b981;
+        color: #2C5F5D;
     }
-    
+
     .tab-button.active {
-        color: #10b981;
-        border-bottom-color: #10b981;
+        color: #2C5F5D;
+        border-bottom-color: #2C5F5D;
     }
     
     .tab-content {
@@ -175,12 +175,13 @@
         padding: 1.5rem;
         border-radius: 1rem;
         box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        border-top: 3px solid #2C5F5D;
         transition: all 0.3s ease;
     }
-    
+
     .stat-card:hover {
         transform: translateY(-4px);
-        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        box-shadow: 0 10px 15px -3px rgba(44, 95, 93, 0.15);
     }
     
     /* Map Container */
@@ -323,7 +324,7 @@
                     @endif
                     
                     @if($trail->isTrail())
-                        <span class="px-6 py-3 bg-white/95 backdrop-blur text-emerald-600 rounded-full font-bold text-lg">
+                        <span class="px-6 py-3 bg-white/95 backdrop-blur text-forest-600 rounded-full font-bold text-lg">
                             Level {{ $trail->difficulty_level }}/5
                         </span>
                     @else
@@ -379,17 +380,17 @@
                     <div class="text-xs font-semibold {{ $difficultyColor }} mt-1">{{ $trail->difficulty_text }}</div>
                 </div>
                 <div class="stat-card text-center">
-                    <div class="text-4xl font-bold text-blue-600 mb-1">{{ $trail->distance_km }}</div>
+                    <div class="text-4xl font-bold text-forest-600 mb-1">{{ $trail->distance_km }}</div>
                     <div class="text-sm font-medium text-gray-600">Distance</div>
                     <div class="text-xs text-gray-500 mt-1">kilometres</div>
                 </div>
                 <div class="stat-card text-center">
-                    <div class="text-4xl font-bold text-orange-600 mb-1">{{ number_format($trail->elevation_gain_m) }}</div>
+                    <div class="text-4xl font-bold text-accent-500 mb-1">{{ number_format($trail->elevation_gain_m) }}</div>
                     <div class="text-sm font-medium text-gray-600">Elevation Gain</div>
                     <div class="text-xs text-gray-500 mt-1">metres</div>
                 </div>
                 <div class="stat-card text-center">
-                    <div class="text-4xl font-bold text-purple-600 mb-1">{{ $trail->estimated_time_hours }}</div>
+                    <div class="text-4xl font-bold text-emerald-400 mb-1">{{ $trail->estimated_time_hours }}</div>
                     <div class="text-sm font-medium text-gray-600">Est. Time</div>
                     <div class="text-xs text-gray-500 mt-1">hours</div>
                 </div>
@@ -775,7 +776,7 @@
                                     </div>
                                     <div style="width:1px;height:32px;background:rgba(255,255,255,0.1);flex-shrink:0;"></div>
                                     <div>
-                                        <div style="font-size:24px;font-weight:800;color:#60a5fa;line-height:1;font-variant-numeric:tabular-nums;" id="fly-stat-elev">0</div>
+                                        <div style="font-size:24px;font-weight:800;color:#4A9B8E;line-height:1;font-variant-numeric:tabular-nums;" id="fly-stat-elev">0</div>
                                         <div style="font-size:10px;color:rgba(255,255,255,0.45);margin-top:3px;">m gain</div>
                                     </div>
                                 </div>
@@ -787,30 +788,12 @@
                     <div class="mt-8">
                         <div class="flex items-center justify-between mb-4">
                             <h3 class="text-2xl font-bold text-gray-900">Elevation Profile</h3>
-                            <button type="button" id="load-elevation" class="text-sm text-blue-600 hover:text-blue-800 font-medium">
+                            <button type="button" id="load-elevation" class="text-sm text-forest-600 hover:text-forest-800 font-medium">
                                 Refresh Profile
                             </button>
                         </div>
                         <div id="elevation-chart" class="w-full bg-gray-50 rounded-lg border hidden">
                             <canvas id="elevation-canvas" class="w-full h-full"></canvas>
-                        </div>
-                        <div id="elevation-stats" class="hidden text-sm text-gray-600 grid grid-cols-4 gap-3 mt-3">
-                            <div class="text-center">
-                                <div class="font-bold text-lg">-</div>
-                                <div class="text-xs">Max Elevation</div>
-                            </div>
-                            <div class="text-center">
-                                <div class="font-bold text-lg">-</div>
-                                <div class="text-xs">Min Elevation</div>
-                            </div>
-                            <div class="text-center">
-                                <div class="font-bold text-lg" id="elevation-gain-display">-</div>
-                                <div class="text-xs">Elevation Gain</div>
-                            </div>
-                            <div class="text-center">
-                                <div class="font-bold text-lg">-</div>
-                                <div class="text-xs">Elevation Loss</div>
-                            </div>
                         </div>
                     </div>
                 </div>
@@ -953,27 +936,27 @@
                         <h2 class="text-forest-700">Getting There</h2>
 
                         @if($trail->directions)
-                        <div class="bg-blue-50 border-l-4 border-blue-500 p-6 rounded-r-lg mb-6">
-                            <h3 class="flex items-center text-blue-900 mb-3 font-semibold">
+                        <div class="bg-forest-50 border-l-4 border-forest-600 p-6 rounded-r-lg mb-6">
+                            <h3 class="flex items-center text-forest-900 mb-3 font-semibold">
                                 <svg class="w-5 h-5 mr-2 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                                     <path fill-rule="evenodd" d="M10.293 15.707a1 1 0 010-1.414L14.586 10l-4.293-4.293a1 1 0 111.414-1.414l5 5a1 1 0 010 1.414l-5 5a1 1 0 01-1.414 0z" clip-rule="evenodd" />
                                 </svg>
                                 Directions
                             </h3>
-                            <div class="text-blue-900 rich-content">{!! $trail->directions !!}</div>
+                            <div class="text-forest-800 rich-content">{!! $trail->directions !!}</div>
                         </div>
                         @endif
 
                         @if($trail->parking_info)
-                        <div class="bg-green-50 border-l-4 border-green-500 p-6 rounded-r-lg mb-6">
-                            <h3 class="flex items-center text-green-900 mb-3 font-semibold">
+                        <div class="bg-emerald-50 border-l-4 border-emerald-500 p-6 rounded-r-lg mb-6">
+                            <h3 class="flex items-center text-emerald-900 mb-3 font-semibold">
                                 <svg class="w-5 h-5 mr-2 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                                     <path d="M8 16.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zM15 16.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0z"/>
                                     <path d="M3 4a1 1 0 00-1 1v10a1 1 0 001 1h1.05a2.5 2.5 0 014.9 0H10a1 1 0 001-1V5a1 1 0 00-1-1H3zM14 7a1 1 0 00-1 1v6.05A2.5 2.5 0 0115.95 16H17a1 1 0 001-1V8a1 1 0 00-1-1h-3z"/>
                                 </svg>
                                 Parking
                             </h3>
-                            <div class="text-green-900 rich-content">{!! $trail->parking_info !!}</div>
+                            <div class="text-emerald-900 rich-content">{!! $trail->parking_info !!}</div>
                         </div>
                         @endif
 
@@ -1085,16 +1068,16 @@
 
                             <!-- Location Info Card -->
                             @if($trail->fishing_location || $trail->fishing_distance_from_town)
-                            <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-5">
+                            <div class="bg-forest-50 border border-forest-200 rounded-lg p-4 mb-5">
                                 @if($trail->fishing_location)
                                 <div class="mb-2">
-                                    <div class="text-xs text-blue-600 font-semibold uppercase tracking-wide mb-1">Location</div>
+                                    <div class="text-xs text-forest-600 font-semibold uppercase tracking-wide mb-1">Location</div>
                                     <div class="text-sm font-bold text-gray-900">{{ $trail->fishing_location }}</div>
                                 </div>
                                 @endif
                                 @if($trail->fishing_distance_from_town)
                                 <div class="flex items-start gap-2">
-                                    <svg class="w-4 h-4 text-blue-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <svg class="w-4 h-4 text-forest-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
                                     </svg>
@@ -1138,24 +1121,24 @@
                                 @endif
 
                                 <!-- Views - Always show beside Best Season -->
-                                <div class="bg-cyan-50 border border-cyan-200 rounded-lg p-3">
+                                <div class="bg-forest-50 border border-forest-200 rounded-lg p-3">
                                     <div class="flex items-center gap-1.5 mb-1">
-                                        <svg class="w-3.5 h-3.5 text-cyan-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <svg class="w-3.5 h-3.5 text-forest-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
                                         </svg>
-                                        <span class="text-xs font-semibold text-cyan-700 uppercase tracking-wide">Views</span>
+                                        <span class="text-xs font-semibold text-forest-700 uppercase tracking-wide">Views</span>
                                     </div>
                                     <div class="text-sm font-bold text-gray-900">{{ number_format($trail->view_count ?? 0) }}</div>
                                 </div>
 
                                 @if($trail->best_fishing_time)
-                                <div class="col-span-2 bg-indigo-50 border border-indigo-200 rounded-lg p-3">
+                                <div class="col-span-2 bg-emerald-50 border border-emerald-200 rounded-lg p-3">
                                     <div class="flex items-center gap-1.5 mb-1.5">
-                                        <svg class="w-3.5 h-3.5 text-indigo-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <svg class="w-3.5 h-3.5 text-emerald-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
                                         </svg>
-                                        <span class="text-xs font-semibold text-indigo-700 uppercase tracking-wide">Best Time to Fish</span>
+                                        <span class="text-xs font-semibold text-emerald-700 uppercase tracking-wide">Best Time to Fish</span>
                                     </div>
                                     <div class="text-sm text-gray-700 leading-relaxed">{{ $trail->best_fishing_time }}</div>
                                 </div>
@@ -1199,7 +1182,7 @@
                                 <dt class="text-gray-600 font-medium mb-2">Best Seasons</dt>
                                 <dd class="flex flex-wrap gap-2">
                                     @foreach($trail->best_seasons as $season)
-                                        <span class="px-3 py-1 bg-blue-50 text-blue-700 rounded-full text-sm font-medium">
+                                        <span class="px-3 py-1 bg-forest-50 text-forest-700 border border-forest-200 rounded-full text-sm font-medium capitalize">
                                             {{ $season }}
                                         </span>
                                     @endforeach
@@ -1221,12 +1204,12 @@
                             @if($trail->start_coordinates)
                             <a href="https://www.google.com/maps/dir/Hazelton,+BC/{{ $trail->start_coordinates[0] }},{{ $trail->start_coordinates[1] }}" 
                                target="_blank"
-                               class="block w-full bg-blue-600 hover:bg-blue-700 text-white py-3 px-4 rounded-lg font-semibold transition-all duration-200 transform hover:scale-105 text-center">
+                               class="block w-full bg-forest-600 hover:bg-forest-700 text-white py-3 px-4 rounded-lg font-semibold transition-all duration-200 transform hover:scale-105 text-center">
                                 Get Directions
                             </a>
                             @endif
                             
-                            <button id="download-gpx-btn" class="w-full bg-gray-600 hover:bg-gray-700 text-white py-3 px-4 rounded-lg font-semibold transition-all duration-200">
+                            <button id="download-gpx-btn" class="w-full bg-white border-2 border-forest-600 text-forest-600 hover:bg-forest-600 hover:text-white py-3 px-4 rounded-lg font-semibold transition-all duration-200">
                                 Download GPX
                             </button>
 
@@ -1310,7 +1293,7 @@
     <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden transform transition-all"
          onclick="event.stopPropagation()">
         <!-- Modal Header -->
-        <div class="bg-gradient-to-r from-emerald-500 to-emerald-600 px-6 py-4 flex justify-between items-center">
+        <div class="bg-gradient-to-r from-forest-600 to-emerald-400 px-6 py-4 flex justify-between items-center">
             <h3 class="text-xl font-bold text-white">Share This Trail</h3>
             <button id="close-share-modal" 
                     class="text-white hover:text-gray-200 transition-colors">
@@ -1716,6 +1699,7 @@ function initTrailMap() {
     let _hikerMarker = null;
     let _flyTrailId = null;
     let _highlightMarkers = [];
+    let _elevDisplayCoords = null;  // set by displayElevationProfile for scrubbing
 
     // ── Mapbox init ──────────────────────────────────────────────────────────
     mapboxgl.accessToken = '{{ $mapboxToken }}';
@@ -1753,6 +1737,11 @@ function initTrailMap() {
         if (!isFishingLake && trail.route_coordinates && trail.route_coordinates.length > 0) {
             const geojsonCoords = trail.route_coordinates.map(c => [c[1], c[0]]);
 
+            // Out-and-back: mirror so arrows reverse on the return leg
+            const displayCoords = trail.trail_type === 'out-and-back'
+                ? [...geojsonCoords, ...[...geojsonCoords].reverse()]
+                : geojsonCoords;
+
             const arrowSVG = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 14 14"><polygon points="13,7 5,3 7,7 5,11" fill="white"/></svg>`;
             const arrowImg = new Image(14, 14);
             arrowImg.onload = () => { if (!map.hasImage('trail-arrow')) map.addImage('trail-arrow', arrowImg); };
@@ -1760,7 +1749,7 @@ function initTrailMap() {
 
             map.addSource('trail-route', {
                 type: 'geojson',
-                data: { type: 'Feature', geometry: { type: 'LineString', coordinates: geojsonCoords } },
+                data: { type: 'Feature', geometry: { type: 'LineString', coordinates: displayCoords } },
             });
 
             map.addLayer({
@@ -1856,7 +1845,7 @@ function initTrailMap() {
                 source: 'fly-draw',
                 layout: { 'line-cap': 'round', 'line-join': 'round' },
                 paint: {
-                    'line-gradient': ['interpolate', ['linear'], ['line-progress'], 0, '#60a5fa', 1, '#60a5fa'],
+                    'line-gradient': ['interpolate', ['linear'], ['line-progress'], 0, '#4A9B8E', 1, '#4A9B8E'],
                     'line-width': 16, 'line-blur': 8, 'line-opacity': 0, 'line-trim-offset': [0, 1],
                 },
             });
@@ -1960,10 +1949,13 @@ function initTrailMap() {
 
                 if (!isFishingLake && trail.route_coordinates && trail.route_coordinates.length > 0) {
                     const geojsonCoords = trail.route_coordinates.map(c => [c[1], c[0]]);
+                    const displayCoords = trail.trail_type === 'out-and-back'
+                        ? [...geojsonCoords, ...[...geojsonCoords].reverse()]
+                        : geojsonCoords;
                     if (!map.getSource('trail-route')) {
                         map.addSource('trail-route', {
                             type: 'geojson',
-                            data: { type: 'Feature', geometry: { type: 'LineString', coordinates: geojsonCoords } },
+                            data: { type: 'Feature', geometry: { type: 'LineString', coordinates: displayCoords } },
                         });
                     }
                     if (!map.getLayer('trail-route-line')) {
@@ -1982,6 +1974,11 @@ function initTrailMap() {
                     } else if (!map.getLayer('trail-route-arrows')) {
                         map.addLayer({ id: 'trail-route-arrows', type: 'symbol', source: 'trail-route', layout: { 'symbol-placement': 'line', 'symbol-spacing': 120, 'icon-image': 'trail-arrow', 'icon-size': 1, 'icon-allow-overlap': true, 'icon-ignore-placement': true } });
                     }
+                }
+
+                // Re-add hover layer after style change if elevation was loaded
+                if (_elevDisplayCoords && _elevDisplayCoords.length > 1) {
+                    ensureShowHoverLayer();
                 }
             });
         });
@@ -2024,8 +2021,8 @@ function initTrailMap() {
             features: [{ type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: mapboxCoords } }],
         });
 
-        const blueGradient = ['interpolate', ['linear'], ['line-progress'], 0, '#3b82f6', 1, '#3b82f6'];
-        const blueGlow     = ['interpolate', ['linear'], ['line-progress'], 0, '#60a5fa', 1, '#60a5fa'];
+        const blueGradient = ['interpolate', ['linear'], ['line-progress'], 0, '#2C5F5D', 1, '#4A9B8E'];
+        const blueGlow     = ['interpolate', ['linear'], ['line-progress'], 0, '#4A9B8E', 1, '#4A9B8E'];
         if (map.getLayer('fly-draw-progress')) {
             map.setPaintProperty('fly-draw-progress', 'line-gradient', blueGradient);
             map.setPaintProperty('fly-draw-glow',     'line-gradient', blueGlow);
@@ -2300,7 +2297,6 @@ function initTrailMap() {
         if (!trail.route_coordinates || trail.route_coordinates.length < 2) {
             console.log('No route data available for elevation profile');
             document.getElementById('elevation-chart').classList.add('hidden');
-            document.getElementById('elevation-stats').classList.add('hidden');
             return;
         }
 
@@ -2333,13 +2329,13 @@ function initTrailMap() {
                     console.warn('Failed to load elevation profile from API');
                     document.getElementById('load-elevation').textContent = 'Elevation data unavailable';
                     document.getElementById('elevation-chart').classList.add('hidden');
-                    document.getElementById('elevation-stats').classList.add('hidden');
+                    document.getElementById('elevation-stats').classList.add('hidden'); document.getElementById('elevation-stats').classList.remove('grid');
                 }
             } catch (error) {
                 console.error('Error loading elevation profile:', error);
                 document.getElementById('load-elevation').textContent = 'Failed to load elevation';
                 document.getElementById('elevation-chart').classList.add('hidden');
-                document.getElementById('elevation-stats').classList.add('hidden');
+                document.getElementById('elevation-stats').classList.add('hidden'); document.getElementById('elevation-stats').classList.remove('grid');
             }
         } else {
             // Use existing elevation data from route coordinates
@@ -2355,46 +2351,40 @@ function initTrailMap() {
 
     function displayElevationProfile(elevationData) {
         const chart = document.getElementById('elevation-chart');
-        const stats = document.getElementById('elevation-stats');
         const canvas = document.getElementById('elevation-canvas');
-        
+
         if (!canvas || !elevationData.geometry || !elevationData.geometry.coordinates) {
             console.log('Invalid elevation data');
             return;
         }
 
-        const coordinates = elevationData.geometry.coordinates;
-        
+        // API returns [lat, lng, elev] — convert to [lng, lat, elev] for GeoJSON map use
+        const coordinates = elevationData.geometry.coordinates.map(c => [c[1], c[0], c[2]]);
+
         // Check if coordinates have elevation data (z-coordinate)
         if (coordinates[0].length < 3) {
             console.log('No elevation data in coordinates');
             chart.classList.add('hidden');
-            stats.classList.add('hidden');
             return;
         }
 
         chart.classList.remove('hidden');
-        stats.classList.remove('hidden');
 
-        const elevations = coordinates.map(coord => coord[2]);
-        const maxElev = Math.max(...elevations);
-        const minElev = Math.min(...elevations);
-        const totalGain = calculateElevationGain(coordinates);
-        const totalLoss = calculateElevationLoss(coordinates);
+        // Out-and-back: mirror coordinates so the chart shows the return leg
+        const isOutAndBack = trail.trail_type === 'out-and-back';
+        const displayCoordinates = isOutAndBack
+            ? [...coordinates, ...[...coordinates].reverse()]
+            : coordinates;
 
-        // Update stats display
-        const statDivs = stats.querySelectorAll('.font-bold');
-        if (statDivs.length >= 4) {
-            statDivs[0].textContent = Math.round(maxElev) + 'm';
-            statDivs[1].textContent = Math.round(minElev) + 'm';
-            statDivs[2].textContent = Math.round(totalGain) + 'm';
-            statDivs[3].textContent = Math.round(totalLoss) + 'm';
-        }
+        _elevDisplayCoords = displayCoordinates;
 
-        requestAnimationFrame(() => drawElevationChart(canvas, coordinates));
+        requestAnimationFrame(() => {
+            drawElevationChart(canvas, displayCoordinates);
+            attachElevScrub(canvas);
+        });
     }
 
-    function drawElevationChart(canvas, coordinates) {
+    function drawElevationChart(canvas, coordinates, hoverIdx = -1) {
         const ctx = canvas.getContext('2d');
         const width = canvas.width = canvas.offsetWidth;
         const height = canvas.height = canvas.offsetHeight;
@@ -2410,30 +2400,132 @@ function initTrailMap() {
         const paddingTop = 40;
         const drawHeight = height - paddingTop;
 
-        // Draw elevation line
+        // Cumulative distance (km) at each coordinate
+        const toRad = d => d * Math.PI / 180;
+        const distances = [0];
+        for (let i = 1; i < coordinates.length; i++) {
+            const [lng1, lat1] = coordinates[i - 1];
+            const [lng2, lat2] = coordinates[i];
+            const dLat = toRad(lat2 - lat1), dLng = toRad(lng2 - lng1);
+            const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
+            distances.push(distances[i - 1] + 6371 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
+        }
+
         ctx.beginPath();
-        ctx.strokeStyle = '#10B981';
+        ctx.strokeStyle = '#2C5F5D';
         ctx.lineWidth = 2;
 
         elevations.forEach((elevation, index) => {
             const x = (index / (elevations.length - 1)) * width;
             const y = paddingTop + drawHeight - ((elevation - minElev) / elevRange) * drawHeight;
-            
-            if (index === 0) {
-                ctx.moveTo(x, y);
-            } else {
-                ctx.lineTo(x, y);
-            }
+            if (index === 0) { ctx.moveTo(x, y); } else { ctx.lineTo(x, y); }
         });
 
         ctx.stroke();
 
-        // Fill area under curve
+        const grad = ctx.createLinearGradient(0, paddingTop, 0, height);
+        grad.addColorStop(0, 'rgba(44,95,93,0.18)');
+        grad.addColorStop(1, 'rgba(44,95,93,0.02)');
         ctx.lineTo(width, height);
         ctx.lineTo(0, height);
         ctx.closePath();
-        ctx.fillStyle = 'rgba(16, 185, 129, 0.1)';
+        ctx.fillStyle = grad;
         ctx.fill();
+
+        if (hoverIdx >= 0 && hoverIdx < elevations.length) {
+            const e = elevations[hoverIdx];
+            const x = (hoverIdx / (elevations.length - 1)) * width;
+            const y = paddingTop + drawHeight - ((e - minElev) / elevRange) * drawHeight;
+
+            ctx.beginPath();
+            ctx.strokeStyle = 'rgba(44,95,93,0.35)';
+            ctx.lineWidth = 1;
+            ctx.setLineDash([4, 4]);
+            ctx.moveTo(x, 0); ctx.lineTo(x, height);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            ctx.beginPath();
+            ctx.arc(x, y, 6, 0, Math.PI * 2);
+            ctx.fillStyle = '#2C5F5D';
+            ctx.fill();
+            ctx.strokeStyle = '#fff';
+            ctx.lineWidth = 2.5;
+            ctx.stroke();
+
+            // Tooltip: Elevation + Distance
+            const elevLabel = 'Elevation: ' + Math.round(e) + 'm';
+            // const distLabel = 'Distance: ' + distances[hoverIdx].toFixed(1) + 'km';
+            ctx.font = 'bold 11px Inter, system-ui, sans-serif';
+            const boxW = ctx.measureText(elevLabel).width + 14;
+            const boxH = 20; // const boxH = 34;
+            let bx = x - boxW / 2;
+            bx = Math.max(2, Math.min(width - boxW - 2, bx));
+            const by = Math.max(2, y - boxH - 10);
+
+            ctx.fillStyle = 'rgba(17,24,39,0.82)';
+            ctx.beginPath();
+            ctx.rect(bx, by, boxW, boxH);
+            ctx.fill();
+
+            ctx.fillStyle = '#fff';
+            ctx.font = 'bold 11px Inter, system-ui, sans-serif';
+            ctx.fillText(elevLabel, bx + 7, by + 14);
+            // ctx.fillStyle = '#9ca3af';
+            // ctx.font = '11px Inter, system-ui, sans-serif';
+            // ctx.fillText(distLabel, bx + 7, by + 27);
+        }
+    }
+
+    // ── Elevation scrubbing — syncs canvas hover to map ──────────────────────
+    const SHOW_HOVER_SOURCE = 'show-hover-point';
+    const SHOW_HOVER_LAYER  = 'show-hover-layer';
+
+    function ensureShowHoverLayer() {
+        if (!map.getSource(SHOW_HOVER_SOURCE)) {
+            map.addSource(SHOW_HOVER_SOURCE, { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
+        }
+        if (!map.getLayer(SHOW_HOVER_LAYER)) {
+            map.addLayer({
+                id: SHOW_HOVER_LAYER,
+                type: 'circle',
+                source: SHOW_HOVER_SOURCE,
+                paint: { 'circle-radius': 10, 'circle-color': '#fff', 'circle-stroke-width': 3, 'circle-stroke-color': '#2C5F5D' },
+            });
+        }
+    }
+
+    function attachElevScrub(canvas) {
+        const onScrub = (clientX) => {
+            const coords = _elevDisplayCoords;
+            if (!coords || coords.length < 2) return;
+            const rect = canvas.getBoundingClientRect();
+            const frac = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+            const idx = Math.round(frac * (coords.length - 1));
+            drawElevationChart(canvas, coords, idx);
+            const c = coords[idx];
+            if (!c) return;
+            try {
+                ensureShowHoverLayer();
+                map.getSource(SHOW_HOVER_SOURCE).setData({
+                    type: 'FeatureCollection',
+                    features: [{ type: 'Feature', geometry: { type: 'Point', coordinates: [c[0], c[1]] } }],
+                });
+            } catch (_) {}
+        };
+
+        const onLeave = () => {
+            if (_elevDisplayCoords) drawElevationChart(canvas, _elevDisplayCoords);
+            try {
+                map.getSource(SHOW_HOVER_SOURCE)?.setData({ type: 'FeatureCollection', features: [] });
+            } catch (_) {}
+        };
+
+        canvas.style.cursor = 'crosshair';
+        canvas.addEventListener('mousemove', e => onScrub(e.clientX));
+        canvas.addEventListener('mouseleave', onLeave);
+        canvas.addEventListener('touchmove', e => { e.preventDefault(); onScrub(e.touches[0].clientX); }, { passive: false });
+        canvas.addEventListener('touchend', onLeave);
     }
 
     function calculateElevationGain(coordinates) {
