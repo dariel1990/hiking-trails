@@ -684,9 +684,38 @@
                                 </button>
                                 @endif
                             </div>
+
+                            <!-- Stop fly-along button (shown only during animation) -->
+                            <button id="fly-stop-btn"
+                                    class="hidden absolute bottom-8 left-3 z-40 bg-white border border-red-200 text-red-700 hover:bg-red-50 rounded-full shadow-lg px-4 py-2 text-sm font-semibold flex items-center gap-2 transition-colors">
+                                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                                    <rect x="6" y="6" width="12" height="12" rx="2"/>
+                                </svg>
+                                <span>Stop Fly Along</span>
+                            </button>
+
+                            <!-- Live stats overlay (shown only during animation) -->
+                            <div id="fly-stats-overlay"
+                                 class="hidden absolute top-4 z-40 rounded-2xl overflow-hidden pointer-events-none"
+                                 style="right:10px;background:rgba(0,0,0,0.68);backdrop-filter:blur(10px);min-width:190px;box-shadow:0 4px 24px rgba(0,0,0,0.35);">
+                                <div style="padding:8px 14px 6px;border-bottom:1px solid rgba(255,255,255,0.07);">
+                                    <span style="font-size:9px;letter-spacing:0.12em;color:rgba(255,255,255,0.4);text-transform:uppercase;font-weight:700;">Trail Progress</span>
+                                </div>
+                                <div style="padding:8px 14px 12px;display:flex;gap:18px;align-items:flex-end;">
+                                    <div>
+                                        <div style="font-size:24px;font-weight:800;color:#fff;line-height:1;font-variant-numeric:tabular-nums;" id="fly-stat-dist">0.0</div>
+                                        <div style="font-size:10px;color:rgba(255,255,255,0.45);margin-top:3px;">km traveled</div>
+                                    </div>
+                                    <div style="width:1px;height:32px;background:rgba(255,255,255,0.1);flex-shrink:0;"></div>
+                                    <div>
+                                        <div style="font-size:24px;font-weight:800;color:#60a5fa;line-height:1;font-variant-numeric:tabular-nums;" id="fly-stat-elev">0</div>
+                                        <div style="font-size:10px;color:rgba(255,255,255,0.45);margin-top:3px;">m gain</div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
-                    
+
                     <!-- Elevation Profile -->
                     <div class="mt-8">
                         <div class="flex items-center justify-between mb-4">
@@ -1618,6 +1647,7 @@ function initTrailMap() {
     let _flyAnimation = null;
     let _flyTimeout = null;
     let _hikerMarker = null;
+    let _flyTrailId = null;
     let _highlightMarkers = [];
 
     // ── Mapbox init ──────────────────────────────────────────────────────────
@@ -1735,6 +1765,48 @@ function initTrailMap() {
                 .setPopup(popup).addTo(map);
         }
 
+        // Dedicated source for fly-along — lineMetrics:true enables line-gradient
+        if (!map.getSource('fly-draw')) {
+            map.addSource('fly-draw', {
+                type: 'geojson',
+                lineMetrics: true,
+                data: { type: 'FeatureCollection', features: [] },
+            });
+        }
+        if (!map.getLayer('fly-draw-base')) {
+            map.addLayer({
+                id: 'fly-draw-base',
+                type: 'line',
+                source: 'fly-draw',
+                layout: { 'line-cap': 'round', 'line-join': 'round' },
+                paint: { 'line-color': '#22c55e', 'line-width': 4, 'line-opacity': 0, 'line-trim-offset': [0, 0] },
+            });
+        }
+        if (!map.getLayer('fly-draw-glow')) {
+            map.addLayer({
+                id: 'fly-draw-glow',
+                type: 'line',
+                source: 'fly-draw',
+                layout: { 'line-cap': 'round', 'line-join': 'round' },
+                paint: {
+                    'line-gradient': ['interpolate', ['linear'], ['line-progress'], 0, '#60a5fa', 1, '#60a5fa'],
+                    'line-width': 16, 'line-blur': 8, 'line-opacity': 0, 'line-trim-offset': [0, 1],
+                },
+            });
+        }
+        if (!map.getLayer('fly-draw-progress')) {
+            map.addLayer({
+                id: 'fly-draw-progress',
+                type: 'line',
+                source: 'fly-draw',
+                layout: { 'line-cap': 'round', 'line-join': 'round' },
+                paint: {
+                    'line-gradient': ['interpolate', ['linear'], ['line-progress'], 0, '#3b82f6', 1, '#3b82f6'],
+                    'line-width': 5, 'line-opacity': 0, 'line-trim-offset': [0, 1],
+                },
+            });
+        }
+
         if (trail.highlights && trail.highlights.length > 0) {
             trail.highlights.forEach(feature => {
                 if (!feature.coordinates) return;
@@ -1782,47 +1854,15 @@ function initTrailMap() {
     }
 
     // ── Fly Along Trail ──────────────────────────────────────────────────────
-    function smoothCoords(coords, win, passes) {
-        if (!coords || coords.length < 3) return coords;
-        let result = coords;
-        const half = Math.floor(win / 2);
-        for (let p = 0; p < passes; p++) {
-            const s = [result[0]];
-            for (let i = 1; i < result.length - 1; i++) {
-                const lo = Math.max(0, i - half), hi = Math.min(result.length - 1, i + half);
-                let sLat = 0, sLng = 0, cnt = 0;
-                for (let j = lo; j <= hi; j++) { sLat += result[j][0]; sLng += result[j][1]; cnt++; }
-                s.push([sLat / cnt, sLng / cnt]);
-            }
-            s.push(result[result.length - 1]);
-            result = s;
-        }
-        return result;
-    }
 
     function getBearing(start, end) {
         const toRad = d => d * Math.PI / 180;
-        const dLng = toRad(end[1] - start[1]);
-        const lat1 = toRad(start[0]), lat2 = toRad(end[0]);
+        const dLng  = toRad(end[1] - start[1]);
+        const lat1  = toRad(start[0]);
+        const lat2  = toRad(end[0]);
         const x = Math.sin(dLng) * Math.cos(lat2);
         const y = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLng);
         return (Math.atan2(x, y) * 180 / Math.PI + 360) % 360;
-    }
-
-    function createHikerEl() {
-        const el = document.createElement('div');
-        el.style.cssText = 'width:36px;height:36px;border-radius:50%;background-color:#2563EB;border:3px solid #fff;box-shadow:0 2px 10px rgba(0,0,0,0.45);display:flex;align-items:center;justify-content:center;pointer-events:none;user-select:none;';
-        el.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="white"><path d="M13.49 5.48c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm-3.6 13.9 1-4.4 2.1 2v6h2v-7.5l-2.1-2 .6-3c1.3 1.5 3.3 2.5 5.5 2.5v-2c-1.9 0-3.5-1-4.3-2.4l-1-1.6c-.4-.6-1-1-1.7-1-.3 0-.5.1-.8.1l-5.2 2.2v4.7h2v-3.4l1.8-.7-1.6 8.1-4.9-1-.4 2 7 1.4z"/></svg>`;
-        return el;
-    }
-
-    function stopFlyAnimation() {
-        _isFlying = false;
-        if (_flyTimeout) { clearTimeout(_flyTimeout); _flyTimeout = null; }
-        if (_flyAnimation) { cancelAnimationFrame(_flyAnimation); _flyAnimation = null; }
-        if (_hikerMarker) { _hikerMarker.remove(); _hikerMarker = null; }
-        map.easeTo({ pitch: 0, bearing: 0, duration: 1000 });
-        updateFlyBtn(false);
     }
 
     function updateFlyBtn(isFlying) {
@@ -1841,68 +1881,273 @@ function initTrailMap() {
         }
     }
 
-    function flyAlongTrail() {
-        if (!trail.route_coordinates || trail.route_coordinates.length < 2) return;
-        if (_isFlying) { stopFlyAnimation(); return; }
+    function activateFlyTrailLayers(coords) {
+        if (!map.getSource('fly-draw')) return;
 
-        const raw = trail.route_coordinates.filter(c => Array.isArray(c) && c.length >= 2 && isFinite(c[0]) && isFinite(c[1]));
-        const coords = smoothCoords(raw, 5, 2);
-        if (coords.length < 2) return;
+        const mapboxCoords = coords.map(c => c[2] != null ? [c[1], c[0], c[2]] : [c[1], c[0]]);
+        map.getSource('fly-draw').setData({
+            type: 'FeatureCollection',
+            features: [{ type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: mapboxCoords } }],
+        });
 
+        const blueGradient = ['interpolate', ['linear'], ['line-progress'], 0, '#3b82f6', 1, '#3b82f6'];
+        const blueGlow     = ['interpolate', ['linear'], ['line-progress'], 0, '#60a5fa', 1, '#60a5fa'];
+        if (map.getLayer('fly-draw-progress')) {
+            map.setPaintProperty('fly-draw-progress', 'line-gradient', blueGradient);
+            map.setPaintProperty('fly-draw-glow',     'line-gradient', blueGlow);
+        }
+
+        map.setPaintProperty('fly-draw-base',     'line-trim-offset', [0, 0]);
+        map.setPaintProperty('fly-draw-glow',     'line-trim-offset', [0, 1]);
+        map.setPaintProperty('fly-draw-progress', 'line-trim-offset', [0, 1]);
+        map.setPaintProperty('fly-draw-base',     'line-opacity', 0.35);
+        map.setPaintProperty('fly-draw-glow',     'line-opacity', 0.3);
+        map.setPaintProperty('fly-draw-progress', 'line-opacity', 1);
+
+        if (map.getLayer('trail-route-line'))    map.setPaintProperty('trail-route-line',    'line-opacity', 0);
+        if (map.getLayer('trail-route-arrows'))  map.setPaintProperty('trail-route-arrows',  'icon-opacity', 0);
+
+        if (map.getTerrain()) map.setTerrain({ source: 'mapbox-dem', exaggeration: 0.5 });
+
+        const distEl = document.getElementById('fly-stat-dist');
+        const elevEl = document.getElementById('fly-stat-elev');
+        if (distEl) distEl.textContent = '0.0';
+        if (elevEl) elevEl.textContent = '0';
+        document.getElementById('fly-stats-overlay')?.classList.remove('hidden');
+    }
+
+    function deactivateFlyTrailLayers() {
+        if (!map.getSource('fly-draw')) return;
+        ['fly-draw-base', 'fly-draw-glow', 'fly-draw-progress'].forEach(id => {
+            if (map.getLayer(id)) map.setPaintProperty(id, 'line-opacity', 0);
+        });
+        map.getSource('fly-draw').setData({ type: 'FeatureCollection', features: [] });
+
+        if (map.getLayer('trail-route-line'))   map.setPaintProperty('trail-route-line',   'line-opacity', 1);
+        if (map.getLayer('trail-route-arrows')) map.setPaintProperty('trail-route-arrows', 'icon-opacity', 1);
+
+        document.getElementById('fly-stats-overlay')?.classList.add('hidden');
+
+        if (map.getTerrain()) map.setTerrain({ source: 'mapbox-dem', exaggeration: 1.5 });
+    }
+
+    function stopFlyAnimation() {
+        _isFlying = false;
+
+        if (_flyTimeout) { clearTimeout(_flyTimeout); _flyTimeout = null; }
+        if (_flyAnimation) { cancelAnimationFrame(_flyAnimation); _flyAnimation = null; }
         if (_hikerMarker) { _hikerMarker.remove(); _hikerMarker = null; }
-        _hikerMarker = new mapboxgl.Marker({ element: createHikerEl(), anchor: 'center' })
-            .setLngLat([coords[0][1], coords[0][0]])
-            .addTo(map);
+
+        deactivateFlyTrailLayers();
+        _flyTrailId = null;
+
+        const stopBtn = document.getElementById('fly-stop-btn');
+        if (stopBtn) stopBtn.classList.add('hidden');
+
+        updateFlyBtn(false);
+
+        if (trail.route_coordinates && trail.route_coordinates.length > 1) {
+            const lngs = trail.route_coordinates.map(c => c[1]);
+            const lats = trail.route_coordinates.map(c => c[0]);
+            map.fitBounds(
+                [[Math.min(...lngs), Math.min(...lats)], [Math.max(...lngs), Math.max(...lats)]],
+                { padding: 60, pitch: 45, bearing: 0, duration: 1500 }
+            );
+        } else {
+            map.easeTo({ pitch: 45, bearing: 0, duration: 1000 });
+        }
+    }
+
+    function animateAlongTrail(rawCoords, trailElevGain = 0) {
+        const coords = rawCoords
+            .filter(c => Array.isArray(c) && c.length >= 2 && isFinite(c[0]) && isFinite(c[1]))
+            .map(c => [c[0], c[1], (c.length >= 3 && isFinite(c[2])) ? c[2] : null]);
+
+        if (coords.length < 2) { stopFlyAnimation(); return; }
+
+        const last = coords.length - 1;
+        const toRad = d => d * Math.PI / 180;
+        const haversine = (a, b) => {
+            const R = 6371000;
+            const dLat = toRad(b[0] - a[0]);
+            const dLng = toRad(b[1] - a[1]);
+            const s = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(a[0])) * Math.cos(toRad(b[0])) * Math.sin(dLng / 2) ** 2;
+            return 2 * R * Math.atan2(Math.sqrt(s), Math.sqrt(1 - s));
+        };
+
+        const cumDist     = [0];
+        const cumElevGain = [0];
+        for (let i = 0; i < last; i++) {
+            cumDist.push(cumDist[i] + haversine(coords[i], coords[i + 1]));
+            const rise = (coords[i + 1][2] != null && coords[i][2] != null)
+                ? Math.max(0, coords[i + 1][2] - coords[i][2]) : 0;
+            cumElevGain.push(cumElevGain[i] + rise);
+        }
+        const totalDist = cumDist[last];
+
+        const SPEED_MS    = 300;
+        const DURATION_MS = (totalDist / SPEED_MS) * 1000;
+        const flyZoom     = 15.5;
+        const startTime   = performance.now();
+
+        const findSeg = (d) => {
+            d = Math.max(0, Math.min(d, totalDist));
+            let lo = 0, hi = last;
+            while (lo < hi - 1) {
+                const mid = (lo + hi) >> 1;
+                if (cumDist[mid] <= d) { lo = mid; } else { hi = mid; }
+            }
+            return lo;
+        };
+
+        const posAtDist = (d) => {
+            const lo = findSeg(d);
+            const segLen = cumDist[lo + 1] - cumDist[lo];
+            const t = segLen > 0 ? (Math.max(0, Math.min(d, totalDist)) - cumDist[lo]) / segLen : 0;
+            return [
+                coords[lo][0] + (coords[lo + 1][0] - coords[lo][0]) * t,
+                coords[lo][1] + (coords[lo + 1][1] - coords[lo][1]) * t,
+            ];
+        };
+
+        const totalElevGain = cumElevGain[last];
+        const knownGain     = parseFloat(trailElevGain) || 0;
+        const hasElevData   = totalElevGain > 0;
+
+        const elevGainAtDist = hasElevData
+            ? (d) => {
+                const lo     = findSeg(d);
+                const segLen = cumDist[lo + 1] - cumDist[lo];
+                const t      = segLen > 0 ? (Math.max(0, Math.min(d, totalDist)) - cumDist[lo]) / segLen : 0;
+                const segRise = (coords[lo + 1][2] != null && coords[lo][2] != null)
+                    ? Math.max(0, coords[lo + 1][2] - coords[lo][2]) : 0;
+                return cumElevGain[lo] + segRise * t;
+            }
+            : (d) => (totalDist > 0 ? (d / totalDist) * knownGain : 0);
+
+        const initPos  = posAtDist(0);
+        let smoothLat  = initPos[0];
+        let smoothLng  = initPos[1];
+        let smoothBear = getBearing(coords[0], coords[Math.min(30, last)]);
+        let smoothZoom = flyZoom;
+        let prevTime   = null;
+        const POS_HL     = 700;
+        const BEARING_HL = 6000;
+        const ZOOM_HL    = 2500;
+
+        const distEl = document.getElementById('fly-stat-dist');
+        const elevEl = document.getElementById('fly-stat-elev');
+
+        const animate = (now) => {
+            if (!_isFlying) return;
+
+            const dt            = prevTime !== null ? Math.min(now - prevTime, 100) : 16;
+            prevTime            = now;
+            const progress      = Math.min((now - startTime) / DURATION_MS, 1);
+            const distTravelled = progress * totalDist;
+
+            const [lat, lng] = posAtDist(distTravelled);
+
+            const posAlpha = 1 - Math.pow(0.5, dt / POS_HL);
+            smoothLat += (lat - smoothLat) * posAlpha;
+            smoothLng += (lng - smoothLng) * posAlpha;
+
+            const [behindLat, behindLng] = posAtDist(Math.max(0, distTravelled - 500));
+            const [aheadLat,  aheadLng]  = posAtDist(distTravelled + 1000);
+            const targetBear = getBearing([behindLat, behindLng], [aheadLat, aheadLng]);
+
+            const bearAlpha = 1 - Math.pow(0.5, dt / BEARING_HL);
+            const bearDelta = ((targetBear - smoothBear + 540) % 360) - 180;
+            smoothBear = (smoothBear + bearDelta * bearAlpha + 360) % 360;
+
+            const lo       = findSeg(distTravelled);
+            const hi       = findSeg(Math.min(distTravelled + 150, totalDist));
+            const rise     = (coords[hi][2] != null && coords[lo][2] != null)
+                ? Math.max(0, coords[hi][2] - coords[lo][2]) : 0;
+            const run      = cumDist[hi] - cumDist[lo];
+            const grade    = run > 0 ? (rise / run) * 100 : 0;
+            const targetZoom = grade > 8 ? 16.5 : grade < 3 ? 14.5 : flyZoom;
+            const zoomAlpha  = 1 - Math.pow(0.5, dt / ZOOM_HL);
+            smoothZoom      += (targetZoom - smoothZoom) * zoomAlpha;
+
+            map.jumpTo({ center: [smoothLng, smoothLat], bearing: smoothBear, pitch: 55, zoom: smoothZoom });
+
+            if (map.getLayer('fly-draw-progress')) {
+                map.setPaintProperty('fly-draw-base',     'line-trim-offset', [0, progress]);
+                map.setPaintProperty('fly-draw-glow',     'line-trim-offset', [progress, 1]);
+                map.setPaintProperty('fly-draw-progress', 'line-trim-offset', [progress, 1]);
+            }
+
+            if (distEl) distEl.textContent = (distTravelled / 1000).toFixed(1);
+            if (elevEl) elevEl.textContent  = Math.round(elevGainAtDist(distTravelled));
+
+            if (progress < 1) {
+                _flyAnimation = requestAnimationFrame(animate);
+            } else {
+                stopFlyAnimation();
+            }
+        };
+
+        _flyAnimation = requestAnimationFrame(animate);
+    }
+
+    function flyAlongTrail() {
+        if (_isFlying || _flyTimeout) { stopFlyAnimation(); return; }
+        if (!trail.route_coordinates || trail.route_coordinates.length < 2) return;
+
+        const coords = trail.route_coordinates
+            .map(c => {
+                if (Array.isArray(c) && c.length >= 2 && isFinite(c[0]) && isFinite(c[1])) {
+                    return c.length >= 3 && isFinite(c[2]) ? [c[0], c[1], c[2]] : [c[0], c[1], null];
+                }
+                return null;
+            })
+            .filter(c => c !== null);
+
+        if (coords.length < 2) return;
 
         _isFlying = true;
         updateFlyBtn(true);
 
+        const stopBtn = document.getElementById('fly-stop-btn');
+        if (stopBtn) stopBtn.classList.remove('hidden');
+
+        activateFlyTrailLayers(coords);
+
+        // Phase 1: top-down 2D overview
         const lngs = coords.map(c => c[1]);
         const lats = coords.map(c => c[0]);
         map.fitBounds(
             [[Math.min(...lngs), Math.min(...lats)], [Math.max(...lngs), Math.max(...lats)]],
-            { padding: 80, maxZoom: 14, duration: 1500 }
+            { padding: 80, maxZoom: 13, pitch: 0, bearing: 0, duration: 800 }
         );
 
+        // Phase 2: tilt into 3D, zoom to trail start
         _flyTimeout = setTimeout(() => {
             _flyTimeout = null;
             if (!_isFlying) return;
 
-            const last = coords.length - 1;
-            const DURATION_MS = Math.max(20000, coords.length * 100);
-            const startTime = performance.now();
+            const initialBearing = getBearing(coords[0], coords[Math.min(30, coords.length - 1)]);
+            map.flyTo({
+                center:   [coords[0][1], coords[0][0]],
+                zoom:     15.5,
+                pitch:    60,
+                bearing:  initialBearing,
+                duration: 1600,
+                easing:   t => t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t,
+            });
 
-            const animate = (now) => {
+            // Phase 3: trail-following loop
+            _flyTimeout = setTimeout(() => {
+                _flyTimeout = null;
                 if (!_isFlying) return;
-                const progress = Math.min((now - startTime) / DURATION_MS, 1);
-                const rawIndex = progress * last;
-                const i = Math.min(Math.floor(rawIndex), last);
-                const t = rawIndex - i;
-                const cur = coords[i], next = coords[Math.min(i + 1, last)];
-                if (!cur || !next) { _flyAnimation = requestAnimationFrame(animate); return; }
-
-                const lng = cur[1] + (next[1] - cur[1]) * t;
-                const lat = cur[0] + (next[0] - cur[0]) * t;
-                if (_hikerMarker) _hikerMarker.setLngLat([lng, lat]);
-
-                const camI = Math.max(0, i - 8);
-                const camA = coords[camI], camB = coords[Math.min(camI + 1, last)];
-                if (camA && camB) {
-                    map.easeTo({
-                        center: [camA[1] + (camB[1] - camA[1]) * t, camA[0] + (camB[0] - camA[0]) * t],
-                        bearing: getBearing(cur, next),
-                        pitch: 60, zoom: 15, duration: 150, easing: x => x,
-                    });
-                }
-
-                if (progress < 1) { _flyAnimation = requestAnimationFrame(animate); }
-                else { stopFlyAnimation(); }
-            };
-            _flyAnimation = requestAnimationFrame(animate);
-        }, 1800);
+                animateAlongTrail(coords, trail.elevation_gain_m);
+            }, 1800);
+        }, 1000);
     }
 
     document.getElementById('fly-along-btn')?.addEventListener('click', flyAlongTrail);
+    document.getElementById('fly-stop-btn')?.addEventListener('click', stopFlyAnimation);
 
     // ── Focus feature (highlight card click) ─────────────────────────────────
     window.focusFeature = function(coordinates, name) {
