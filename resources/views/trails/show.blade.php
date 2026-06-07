@@ -69,12 +69,12 @@
     }
     
     .tab-button:hover {
-        color: #10b981;
+        color: #2C5F5D;
     }
-    
+
     .tab-button.active {
-        color: #10b981;
-        border-bottom-color: #10b981;
+        color: #2C5F5D;
+        border-bottom-color: #2C5F5D;
     }
     
     .tab-content {
@@ -175,12 +175,13 @@
         padding: 1.5rem;
         border-radius: 1rem;
         box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        border-top: 3px solid #2C5F5D;
         transition: all 0.3s ease;
     }
-    
+
     .stat-card:hover {
         transform: translateY(-4px);
-        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        box-shadow: 0 10px 15px -3px rgba(44, 95, 93, 0.15);
     }
     
     /* Map Container */
@@ -191,7 +192,7 @@
     
     /* Elevation Profile Chart */
     #elevation-chart {
-        height: 250px;
+        height: 400px;
     }
     
     /* Rich content from Quill editor */
@@ -205,6 +206,25 @@
     .trail-description ol, .rich-content ol { list-style: decimal; padding-left: 1.5rem; margin-bottom: 1rem; }
     .trail-description li, .rich-content li { margin-bottom: 0.25rem; }
     .trail-description a, .rich-content a { color: #059669; text-decoration: underline; }
+
+    /* Map style layer cards */
+    .detail-layer-card {
+        position: relative;
+        cursor: pointer;
+        border-radius: 0.5rem;
+        overflow: hidden;
+        transition: all 0.2s;
+        border: 2px solid transparent;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    }
+    .detail-layer-card:hover { border-color: #93C5FD; }
+    .detail-layer-card.active { border-color: #2563EB; box-shadow: 0 0 0 3px rgba(37,99,235,0.1); }
+    .detail-layer-card .layer-preview { width: 100%; height: 60px; border-radius: 0.375rem; overflow: hidden; }
+    .detail-layer-card .layer-label { display: block; font-size: 0.75rem; font-weight: 500; color: #374151; text-align: center; margin-top: 0.375rem; padding: 0 0.25rem 0.25rem; }
+    .detail-layer-card .layer-checkmark { position: absolute; top: 4px; right: 4px; width: 18px; height: 18px; color: white; background-color: #2563EB; border-radius: 50%; padding: 2px; display: none; }
+    .detail-layer-card.active .layer-checkmark { display: block; }
 
     /* Print Styles */
     @media print {
@@ -304,7 +324,7 @@
                     @endif
                     
                     @if($trail->isTrail())
-                        <span class="px-6 py-3 bg-white/95 backdrop-blur text-emerald-600 rounded-full font-bold text-lg">
+                        <span class="px-6 py-3 bg-white/95 backdrop-blur text-forest-600 rounded-full font-bold text-lg">
                             Level {{ $trail->difficulty_level }}/5
                         </span>
                     @else
@@ -360,17 +380,17 @@
                     <div class="text-xs font-semibold {{ $difficultyColor }} mt-1">{{ $trail->difficulty_text }}</div>
                 </div>
                 <div class="stat-card text-center">
-                    <div class="text-4xl font-bold text-blue-600 mb-1">{{ $trail->distance_km }}</div>
+                    <div class="text-4xl font-bold text-forest-600 mb-1">{{ $trail->distance_km }}</div>
                     <div class="text-sm font-medium text-gray-600">Distance</div>
                     <div class="text-xs text-gray-500 mt-1">kilometres</div>
                 </div>
                 <div class="stat-card text-center">
-                    <div class="text-4xl font-bold text-orange-600 mb-1">{{ number_format($trail->elevation_gain_m) }}</div>
+                    <div class="text-4xl font-bold text-accent-500 mb-1">{{ number_format($trail->elevation_gain_m) }}</div>
                     <div class="text-sm font-medium text-gray-600">Elevation Gain</div>
                     <div class="text-xs text-gray-500 mt-1">metres</div>
                 </div>
                 <div class="stat-card text-center">
-                    <div class="text-4xl font-bold text-purple-600 mb-1">{{ $trail->estimated_time_hours }}</div>
+                    <div class="text-4xl font-bold text-emerald-400 mb-1">{{ $trail->estimated_time_hours }}</div>
                     <div class="text-sm font-medium text-gray-600">Est. Time</div>
                     <div class="text-xs text-gray-500 mt-1">hours</div>
                 </div>
@@ -684,37 +704,96 @@
                                 </button>
                                 @endif
                             </div>
+
+                            <!-- Map Style Switcher -->
+                            <div class="absolute top-4 right-4 z-10">
+                                <div class="relative">
+                                    <button id="detail-layers-toggle"
+                                        title="Change Map Style"
+                                        class="bg-white rounded-lg shadow-lg p-2 hover:bg-gray-50 transition-colors">
+                                        <svg class="w-5 h-5 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 0v10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2z"/>
+                                        </svg>
+                                    </button>
+                                    <div id="detail-layers-dropdown" class="hidden absolute top-full right-0 mt-2 bg-white rounded-lg shadow-xl border border-gray-200 overflow-hidden" style="min-width:200px;">
+                                        <div class="p-2">
+                                            <div class="text-xs font-semibold text-gray-500 uppercase tracking-wider px-3 py-2">Map Style</div>
+                                            <div class="grid grid-cols-2 gap-2">
+                                                <button class="detail-layer-card" data-style="mapbox://styles/mapbox/standard">
+                                                    <div class="layer-preview">
+                                                        <img src="{{ asset('images/map-layers/standard.png') }}" alt="Standard" class="w-full h-full object-cover">
+                                                    </div>
+                                                    <span class="layer-label">Standard</span>
+                                                    <svg class="layer-checkmark" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+                                                </button>
+                                                <button class="detail-layer-card" data-style="mapbox://styles/mapbox/satellite-streets-v12">
+                                                    <div class="layer-preview">
+                                                        <img src="{{ asset('images/map-layers/satellite.png') }}" alt="Satellite" class="w-full h-full object-cover">
+                                                    </div>
+                                                    <span class="layer-label">Satellite</span>
+                                                    <svg class="layer-checkmark" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+                                                </button>
+                                                <button class="detail-layer-card active" data-style="mapbox://styles/mapbox/outdoors-v12">
+                                                    <div class="layer-preview">
+                                                        <img src="{{ asset('images/map-layers/terrain.png') }}" alt="Terrain" class="w-full h-full object-cover">
+                                                    </div>
+                                                    <span class="layer-label">Terrain</span>
+                                                    <svg class="layer-checkmark" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+                                                </button>
+                                                <button class="detail-layer-card" data-style="mapbox://styles/mapbox/navigation-day-v1">
+                                                    <div class="layer-preview">
+                                                        <img src="{{ asset('images/map-layers/outdoor.png') }}" alt="Outdoors" class="w-full h-full object-cover">
+                                                    </div>
+                                                    <span class="layer-label">Outdoors</span>
+                                                    <svg class="layer-checkmark" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Stop fly-along button (shown only during animation) -->
+                            <button id="fly-stop-btn"
+                                    class="hidden absolute bottom-8 left-3 z-40 bg-white border border-red-200 text-red-700 hover:bg-red-50 rounded-full shadow-lg px-4 py-2 text-sm font-semibold flex items-center gap-2 transition-colors">
+                                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                                    <rect x="6" y="6" width="12" height="12" rx="2"/>
+                                </svg>
+                                <span>Stop Fly Along</span>
+                            </button>
+
+                            <!-- Live stats overlay (shown only during animation) -->
+                            <div id="fly-stats-overlay"
+                                 class="hidden absolute top-4 z-40 rounded-2xl overflow-hidden pointer-events-none"
+                                 style="right:10px;background:rgba(0,0,0,0.68);backdrop-filter:blur(10px);min-width:190px;box-shadow:0 4px 24px rgba(0,0,0,0.35);">
+                                <div style="padding:8px 14px 6px;border-bottom:1px solid rgba(255,255,255,0.07);">
+                                    <span style="font-size:9px;letter-spacing:0.12em;color:rgba(255,255,255,0.4);text-transform:uppercase;font-weight:700;">Trail Progress</span>
+                                </div>
+                                <div style="padding:8px 14px 12px;display:flex;gap:18px;align-items:flex-end;">
+                                    <div>
+                                        <div style="font-size:24px;font-weight:800;color:#fff;line-height:1;font-variant-numeric:tabular-nums;" id="fly-stat-dist">0.0</div>
+                                        <div style="font-size:10px;color:rgba(255,255,255,0.45);margin-top:3px;">km traveled</div>
+                                    </div>
+                                    <div style="width:1px;height:32px;background:rgba(255,255,255,0.1);flex-shrink:0;"></div>
+                                    <div>
+                                        <div style="font-size:24px;font-weight:800;color:#4A9B8E;line-height:1;font-variant-numeric:tabular-nums;" id="fly-stat-elev">0</div>
+                                        <div style="font-size:10px;color:rgba(255,255,255,0.45);margin-top:3px;">m gain</div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
-                    
+
                     <!-- Elevation Profile -->
                     <div class="mt-8">
                         <div class="flex items-center justify-between mb-4">
                             <h3 class="text-2xl font-bold text-gray-900">Elevation Profile</h3>
-                            <button type="button" id="load-elevation" class="text-sm text-blue-600 hover:text-blue-800 font-medium">
+                            <button type="button" id="load-elevation" class="text-sm text-forest-600 hover:text-forest-800 font-medium">
                                 Refresh Profile
                             </button>
                         </div>
-                        <div id="elevation-chart" class="w-full h-48 bg-gray-50 rounded-lg border hidden">
+                        <div id="elevation-chart" class="w-full bg-gray-50 rounded-lg border hidden">
                             <canvas id="elevation-canvas" class="w-full h-full"></canvas>
-                        </div>
-                        <div id="elevation-stats" class="hidden text-sm text-gray-600 grid grid-cols-4 gap-3 mt-3">
-                            <div class="text-center">
-                                <div class="font-bold text-lg">-</div>
-                                <div class="text-xs">Max Elevation</div>
-                            </div>
-                            <div class="text-center">
-                                <div class="font-bold text-lg">-</div>
-                                <div class="text-xs">Min Elevation</div>
-                            </div>
-                            <div class="text-center">
-                                <div class="font-bold text-lg" id="elevation-gain-display">-</div>
-                                <div class="text-xs">Elevation Gain</div>
-                            </div>
-                            <div class="text-center">
-                                <div class="font-bold text-lg">-</div>
-                                <div class="text-xs">Elevation Loss</div>
-                            </div>
                         </div>
                     </div>
                 </div>
@@ -857,27 +936,27 @@
                         <h2 class="text-forest-700">Getting There</h2>
 
                         @if($trail->directions)
-                        <div class="bg-blue-50 border-l-4 border-blue-500 p-6 rounded-r-lg mb-6">
-                            <h3 class="flex items-center text-blue-900 mb-3 font-semibold">
+                        <div class="bg-forest-50 border-l-4 border-forest-600 p-6 rounded-r-lg mb-6">
+                            <h3 class="flex items-center text-forest-900 mb-3 font-semibold">
                                 <svg class="w-5 h-5 mr-2 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                                     <path fill-rule="evenodd" d="M10.293 15.707a1 1 0 010-1.414L14.586 10l-4.293-4.293a1 1 0 111.414-1.414l5 5a1 1 0 010 1.414l-5 5a1 1 0 01-1.414 0z" clip-rule="evenodd" />
                                 </svg>
                                 Directions
                             </h3>
-                            <div class="text-blue-900 rich-content">{!! $trail->directions !!}</div>
+                            <div class="text-forest-800 rich-content">{!! $trail->directions !!}</div>
                         </div>
                         @endif
 
                         @if($trail->parking_info)
-                        <div class="bg-green-50 border-l-4 border-green-500 p-6 rounded-r-lg mb-6">
-                            <h3 class="flex items-center text-green-900 mb-3 font-semibold">
+                        <div class="bg-emerald-50 border-l-4 border-emerald-500 p-6 rounded-r-lg mb-6">
+                            <h3 class="flex items-center text-emerald-900 mb-3 font-semibold">
                                 <svg class="w-5 h-5 mr-2 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                                     <path d="M8 16.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zM15 16.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0z"/>
                                     <path d="M3 4a1 1 0 00-1 1v10a1 1 0 001 1h1.05a2.5 2.5 0 014.9 0H10a1 1 0 001-1V5a1 1 0 00-1-1H3zM14 7a1 1 0 00-1 1v6.05A2.5 2.5 0 0115.95 16H17a1 1 0 001-1V8a1 1 0 00-1-1h-3z"/>
                                 </svg>
                                 Parking
                             </h3>
-                            <div class="text-green-900 rich-content">{!! $trail->parking_info !!}</div>
+                            <div class="text-emerald-900 rich-content">{!! $trail->parking_info !!}</div>
                         </div>
                         @endif
 
@@ -989,16 +1068,16 @@
 
                             <!-- Location Info Card -->
                             @if($trail->fishing_location || $trail->fishing_distance_from_town)
-                            <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-5">
+                            <div class="bg-forest-50 border border-forest-200 rounded-lg p-4 mb-5">
                                 @if($trail->fishing_location)
                                 <div class="mb-2">
-                                    <div class="text-xs text-blue-600 font-semibold uppercase tracking-wide mb-1">Location</div>
+                                    <div class="text-xs text-forest-600 font-semibold uppercase tracking-wide mb-1">Location</div>
                                     <div class="text-sm font-bold text-gray-900">{{ $trail->fishing_location }}</div>
                                 </div>
                                 @endif
                                 @if($trail->fishing_distance_from_town)
                                 <div class="flex items-start gap-2">
-                                    <svg class="w-4 h-4 text-blue-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <svg class="w-4 h-4 text-forest-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
                                     </svg>
@@ -1042,24 +1121,24 @@
                                 @endif
 
                                 <!-- Views - Always show beside Best Season -->
-                                <div class="bg-cyan-50 border border-cyan-200 rounded-lg p-3">
+                                <div class="bg-forest-50 border border-forest-200 rounded-lg p-3">
                                     <div class="flex items-center gap-1.5 mb-1">
-                                        <svg class="w-3.5 h-3.5 text-cyan-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <svg class="w-3.5 h-3.5 text-forest-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
                                         </svg>
-                                        <span class="text-xs font-semibold text-cyan-700 uppercase tracking-wide">Views</span>
+                                        <span class="text-xs font-semibold text-forest-700 uppercase tracking-wide">Views</span>
                                     </div>
                                     <div class="text-sm font-bold text-gray-900">{{ number_format($trail->view_count ?? 0) }}</div>
                                 </div>
 
                                 @if($trail->best_fishing_time)
-                                <div class="col-span-2 bg-indigo-50 border border-indigo-200 rounded-lg p-3">
+                                <div class="col-span-2 bg-emerald-50 border border-emerald-200 rounded-lg p-3">
                                     <div class="flex items-center gap-1.5 mb-1.5">
-                                        <svg class="w-3.5 h-3.5 text-indigo-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <svg class="w-3.5 h-3.5 text-emerald-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
                                         </svg>
-                                        <span class="text-xs font-semibold text-indigo-700 uppercase tracking-wide">Best Time to Fish</span>
+                                        <span class="text-xs font-semibold text-emerald-700 uppercase tracking-wide">Best Time to Fish</span>
                                     </div>
                                     <div class="text-sm text-gray-700 leading-relaxed">{{ $trail->best_fishing_time }}</div>
                                 </div>
@@ -1103,7 +1182,7 @@
                                 <dt class="text-gray-600 font-medium mb-2">Best Seasons</dt>
                                 <dd class="flex flex-wrap gap-2">
                                     @foreach($trail->best_seasons as $season)
-                                        <span class="px-3 py-1 bg-blue-50 text-blue-700 rounded-full text-sm font-medium">
+                                        <span class="px-3 py-1 bg-forest-50 text-forest-700 border border-forest-200 rounded-full text-sm font-medium capitalize">
                                             {{ $season }}
                                         </span>
                                     @endforeach
@@ -1125,12 +1204,12 @@
                             @if($trail->start_coordinates)
                             <a href="https://www.google.com/maps/dir/Hazelton,+BC/{{ $trail->start_coordinates[0] }},{{ $trail->start_coordinates[1] }}" 
                                target="_blank"
-                               class="block w-full bg-blue-600 hover:bg-blue-700 text-white py-3 px-4 rounded-lg font-semibold transition-all duration-200 transform hover:scale-105 text-center">
+                               class="block w-full bg-forest-600 hover:bg-forest-700 text-white py-3 px-4 rounded-lg font-semibold transition-all duration-200 transform hover:scale-105 text-center">
                                 Get Directions
                             </a>
                             @endif
                             
-                            <button id="download-gpx-btn" class="w-full bg-gray-600 hover:bg-gray-700 text-white py-3 px-4 rounded-lg font-semibold transition-all duration-200">
+                            <button id="download-gpx-btn" class="w-full bg-white border-2 border-forest-600 text-forest-600 hover:bg-forest-600 hover:text-white py-3 px-4 rounded-lg font-semibold transition-all duration-200">
                                 Download GPX
                             </button>
 
@@ -1214,7 +1293,7 @@
     <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden transform transition-all"
          onclick="event.stopPropagation()">
         <!-- Modal Header -->
-        <div class="bg-gradient-to-r from-emerald-500 to-emerald-600 px-6 py-4 flex justify-between items-center">
+        <div class="bg-gradient-to-r from-forest-600 to-emerald-400 px-6 py-4 flex justify-between items-center">
             <h3 class="text-xl font-bold text-white">Share This Trail</h3>
             <button id="close-share-modal" 
                     class="text-white hover:text-gray-200 transition-colors">
@@ -1618,7 +1697,9 @@ function initTrailMap() {
     let _flyAnimation = null;
     let _flyTimeout = null;
     let _hikerMarker = null;
+    let _flyTrailId = null;
     let _highlightMarkers = [];
+    let _elevDisplayCoords = null;  // set by displayElevationProfile for scrubbing
 
     // ── Mapbox init ──────────────────────────────────────────────────────────
     mapboxgl.accessToken = '{{ $mapboxToken }}';
@@ -1629,7 +1710,7 @@ function initTrailMap() {
 
     const map = new mapboxgl.Map({
         container: 'trail-detail-map',
-        style: 'mapbox://styles/mapbox/satellite-streets-v12',
+        style: 'mapbox://styles/mapbox/outdoors-v12',
         center: initialCenter,
         zoom: isFishingLake ? 11 : 13,
         pitch: 0,
@@ -1656,6 +1737,11 @@ function initTrailMap() {
         if (!isFishingLake && trail.route_coordinates && trail.route_coordinates.length > 0) {
             const geojsonCoords = trail.route_coordinates.map(c => [c[1], c[0]]);
 
+            // Out-and-back: mirror so arrows reverse on the return leg
+            const displayCoords = trail.trail_type === 'out-and-back'
+                ? [...geojsonCoords, ...[...geojsonCoords].reverse()]
+                : geojsonCoords;
+
             const arrowSVG = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 14 14"><polygon points="13,7 5,3 7,7 5,11" fill="white"/></svg>`;
             const arrowImg = new Image(14, 14);
             arrowImg.onload = () => { if (!map.hasImage('trail-arrow')) map.addImage('trail-arrow', arrowImg); };
@@ -1663,7 +1749,7 @@ function initTrailMap() {
 
             map.addSource('trail-route', {
                 type: 'geojson',
-                data: { type: 'Feature', geometry: { type: 'LineString', coordinates: geojsonCoords } },
+                data: { type: 'Feature', geometry: { type: 'LineString', coordinates: displayCoords } },
             });
 
             map.addLayer({
@@ -1735,6 +1821,48 @@ function initTrailMap() {
                 .setPopup(popup).addTo(map);
         }
 
+        // Dedicated source for fly-along — lineMetrics:true enables line-gradient
+        if (!map.getSource('fly-draw')) {
+            map.addSource('fly-draw', {
+                type: 'geojson',
+                lineMetrics: true,
+                data: { type: 'FeatureCollection', features: [] },
+            });
+        }
+        if (!map.getLayer('fly-draw-base')) {
+            map.addLayer({
+                id: 'fly-draw-base',
+                type: 'line',
+                source: 'fly-draw',
+                layout: { 'line-cap': 'round', 'line-join': 'round' },
+                paint: { 'line-color': '#22c55e', 'line-width': 4, 'line-opacity': 0, 'line-trim-offset': [0, 0] },
+            });
+        }
+        if (!map.getLayer('fly-draw-glow')) {
+            map.addLayer({
+                id: 'fly-draw-glow',
+                type: 'line',
+                source: 'fly-draw',
+                layout: { 'line-cap': 'round', 'line-join': 'round' },
+                paint: {
+                    'line-gradient': ['interpolate', ['linear'], ['line-progress'], 0, '#4A9B8E', 1, '#4A9B8E'],
+                    'line-width': 16, 'line-blur': 8, 'line-opacity': 0, 'line-trim-offset': [0, 1],
+                },
+            });
+        }
+        if (!map.getLayer('fly-draw-progress')) {
+            map.addLayer({
+                id: 'fly-draw-progress',
+                type: 'line',
+                source: 'fly-draw',
+                layout: { 'line-cap': 'round', 'line-join': 'round' },
+                paint: {
+                    'line-gradient': ['interpolate', ['linear'], ['line-progress'], 0, '#3b82f6', 1, '#3b82f6'],
+                    'line-width': 5, 'line-opacity': 0, 'line-trim-offset': [0, 1],
+                },
+            });
+        }
+
         if (trail.highlights && trail.highlights.length > 0) {
             trail.highlights.forEach(feature => {
                 if (!feature.coordinates) return;
@@ -1781,48 +1909,91 @@ function initTrailMap() {
         });
     }
 
-    // ── Fly Along Trail ──────────────────────────────────────────────────────
-    function smoothCoords(coords, win, passes) {
-        if (!coords || coords.length < 3) return coords;
-        let result = coords;
-        const half = Math.floor(win / 2);
-        for (let p = 0; p < passes; p++) {
-            const s = [result[0]];
-            for (let i = 1; i < result.length - 1; i++) {
-                const lo = Math.max(0, i - half), hi = Math.min(result.length - 1, i + half);
-                let sLat = 0, sLng = 0, cnt = 0;
-                for (let j = lo; j <= hi; j++) { sLat += result[j][0]; sLng += result[j][1]; cnt++; }
-                s.push([sLat / cnt, sLng / cnt]);
-            }
-            s.push(result[result.length - 1]);
-            result = s;
+    // ── Map Style Switcher ───────────────────────────────────────────────────
+    const layersToggle = document.getElementById('detail-layers-toggle');
+    const layersDropdown = document.getElementById('detail-layers-dropdown');
+
+    layersToggle?.addEventListener('click', (e) => {
+        e.stopPropagation();
+        layersDropdown.classList.toggle('hidden');
+    });
+
+    document.addEventListener('click', (e) => {
+        if (!layersToggle?.contains(e.target) && !layersDropdown?.contains(e.target)) {
+            layersDropdown?.classList.add('hidden');
         }
-        return result;
-    }
+    });
+
+    document.querySelectorAll('.detail-layer-card').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const style = btn.dataset.style;
+            if (!style) return;
+
+            document.querySelectorAll('.detail-layer-card').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            layersDropdown.classList.add('hidden');
+
+            map.setStyle(style);
+            map.once('styledata', () => {
+                if (!map.getSource('mapbox-dem')) {
+                    map.addSource('mapbox-dem', {
+                        type: 'raster-dem',
+                        url: 'mapbox://mapbox.mapbox-terrain-dem-v1',
+                        tileSize: 512,
+                        maxzoom: 14,
+                    });
+                }
+                if (_is3D) {
+                    map.setTerrain({ source: 'mapbox-dem', exaggeration: 1.5 });
+                }
+
+                if (!isFishingLake && trail.route_coordinates && trail.route_coordinates.length > 0) {
+                    const geojsonCoords = trail.route_coordinates.map(c => [c[1], c[0]]);
+                    const displayCoords = trail.trail_type === 'out-and-back'
+                        ? [...geojsonCoords, ...[...geojsonCoords].reverse()]
+                        : geojsonCoords;
+                    if (!map.getSource('trail-route')) {
+                        map.addSource('trail-route', {
+                            type: 'geojson',
+                            data: { type: 'Feature', geometry: { type: 'LineString', coordinates: displayCoords } },
+                        });
+                    }
+                    if (!map.getLayer('trail-route-line')) {
+                        map.addLayer({ id: 'trail-route-line', type: 'line', source: 'trail-route', paint: { 'line-color': '#10B981', 'line-width': 4, 'line-opacity': 1 }, layout: { 'line-join': 'round', 'line-cap': 'round' } });
+                    }
+                    if (!map.hasImage('trail-arrow')) {
+                        const arrowSVG = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 14 14"><polygon points="13,7 5,3 7,7 5,11" fill="white"/></svg>`;
+                        const arrowImg = new Image(14, 14);
+                        arrowImg.onload = () => {
+                            map.addImage('trail-arrow', arrowImg);
+                            if (!map.getLayer('trail-route-arrows')) {
+                                map.addLayer({ id: 'trail-route-arrows', type: 'symbol', source: 'trail-route', layout: { 'symbol-placement': 'line', 'symbol-spacing': 120, 'icon-image': 'trail-arrow', 'icon-size': 1, 'icon-allow-overlap': true, 'icon-ignore-placement': true } });
+                            }
+                        };
+                        arrowImg.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(arrowSVG);
+                    } else if (!map.getLayer('trail-route-arrows')) {
+                        map.addLayer({ id: 'trail-route-arrows', type: 'symbol', source: 'trail-route', layout: { 'symbol-placement': 'line', 'symbol-spacing': 120, 'icon-image': 'trail-arrow', 'icon-size': 1, 'icon-allow-overlap': true, 'icon-ignore-placement': true } });
+                    }
+                }
+
+                // Re-add hover layer after style change if elevation was loaded
+                if (_elevDisplayCoords && _elevDisplayCoords.length > 1) {
+                    ensureShowHoverLayer();
+                }
+            });
+        });
+    });
+
+    // ── Fly Along Trail ──────────────────────────────────────────────────────
 
     function getBearing(start, end) {
         const toRad = d => d * Math.PI / 180;
-        const dLng = toRad(end[1] - start[1]);
-        const lat1 = toRad(start[0]), lat2 = toRad(end[0]);
+        const dLng  = toRad(end[1] - start[1]);
+        const lat1  = toRad(start[0]);
+        const lat2  = toRad(end[0]);
         const x = Math.sin(dLng) * Math.cos(lat2);
         const y = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLng);
         return (Math.atan2(x, y) * 180 / Math.PI + 360) % 360;
-    }
-
-    function createHikerEl() {
-        const el = document.createElement('div');
-        el.style.cssText = 'width:36px;height:36px;border-radius:50%;background-color:#2563EB;border:3px solid #fff;box-shadow:0 2px 10px rgba(0,0,0,0.45);display:flex;align-items:center;justify-content:center;pointer-events:none;user-select:none;';
-        el.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="white"><path d="M13.49 5.48c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm-3.6 13.9 1-4.4 2.1 2v6h2v-7.5l-2.1-2 .6-3c1.3 1.5 3.3 2.5 5.5 2.5v-2c-1.9 0-3.5-1-4.3-2.4l-1-1.6c-.4-.6-1-1-1.7-1-.3 0-.5.1-.8.1l-5.2 2.2v4.7h2v-3.4l1.8-.7-1.6 8.1-4.9-1-.4 2 7 1.4z"/></svg>`;
-        return el;
-    }
-
-    function stopFlyAnimation() {
-        _isFlying = false;
-        if (_flyTimeout) { clearTimeout(_flyTimeout); _flyTimeout = null; }
-        if (_flyAnimation) { cancelAnimationFrame(_flyAnimation); _flyAnimation = null; }
-        if (_hikerMarker) { _hikerMarker.remove(); _hikerMarker = null; }
-        map.easeTo({ pitch: 0, bearing: 0, duration: 1000 });
-        updateFlyBtn(false);
     }
 
     function updateFlyBtn(isFlying) {
@@ -1841,68 +2012,273 @@ function initTrailMap() {
         }
     }
 
-    function flyAlongTrail() {
-        if (!trail.route_coordinates || trail.route_coordinates.length < 2) return;
-        if (_isFlying) { stopFlyAnimation(); return; }
+    function activateFlyTrailLayers(coords) {
+        if (!map.getSource('fly-draw')) return;
 
-        const raw = trail.route_coordinates.filter(c => Array.isArray(c) && c.length >= 2 && isFinite(c[0]) && isFinite(c[1]));
-        const coords = smoothCoords(raw, 5, 2);
-        if (coords.length < 2) return;
+        const mapboxCoords = coords.map(c => c[2] != null ? [c[1], c[0], c[2]] : [c[1], c[0]]);
+        map.getSource('fly-draw').setData({
+            type: 'FeatureCollection',
+            features: [{ type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: mapboxCoords } }],
+        });
 
+        const blueGradient = ['interpolate', ['linear'], ['line-progress'], 0, '#2C5F5D', 1, '#4A9B8E'];
+        const blueGlow     = ['interpolate', ['linear'], ['line-progress'], 0, '#4A9B8E', 1, '#4A9B8E'];
+        if (map.getLayer('fly-draw-progress')) {
+            map.setPaintProperty('fly-draw-progress', 'line-gradient', blueGradient);
+            map.setPaintProperty('fly-draw-glow',     'line-gradient', blueGlow);
+        }
+
+        map.setPaintProperty('fly-draw-base',     'line-trim-offset', [0, 0]);
+        map.setPaintProperty('fly-draw-glow',     'line-trim-offset', [0, 1]);
+        map.setPaintProperty('fly-draw-progress', 'line-trim-offset', [0, 1]);
+        map.setPaintProperty('fly-draw-base',     'line-opacity', 0.35);
+        map.setPaintProperty('fly-draw-glow',     'line-opacity', 0.3);
+        map.setPaintProperty('fly-draw-progress', 'line-opacity', 1);
+
+        if (map.getLayer('trail-route-line'))    map.setPaintProperty('trail-route-line',    'line-opacity', 0);
+        if (map.getLayer('trail-route-arrows'))  map.setPaintProperty('trail-route-arrows',  'icon-opacity', 0);
+
+        if (map.getTerrain()) map.setTerrain({ source: 'mapbox-dem', exaggeration: 0.5 });
+
+        const distEl = document.getElementById('fly-stat-dist');
+        const elevEl = document.getElementById('fly-stat-elev');
+        if (distEl) distEl.textContent = '0.0';
+        if (elevEl) elevEl.textContent = '0';
+        document.getElementById('fly-stats-overlay')?.classList.remove('hidden');
+    }
+
+    function deactivateFlyTrailLayers() {
+        if (!map.getSource('fly-draw')) return;
+        ['fly-draw-base', 'fly-draw-glow', 'fly-draw-progress'].forEach(id => {
+            if (map.getLayer(id)) map.setPaintProperty(id, 'line-opacity', 0);
+        });
+        map.getSource('fly-draw').setData({ type: 'FeatureCollection', features: [] });
+
+        if (map.getLayer('trail-route-line'))   map.setPaintProperty('trail-route-line',   'line-opacity', 1);
+        if (map.getLayer('trail-route-arrows')) map.setPaintProperty('trail-route-arrows', 'icon-opacity', 1);
+
+        document.getElementById('fly-stats-overlay')?.classList.add('hidden');
+
+        if (map.getTerrain()) map.setTerrain({ source: 'mapbox-dem', exaggeration: 1.5 });
+    }
+
+    function stopFlyAnimation() {
+        _isFlying = false;
+
+        if (_flyTimeout) { clearTimeout(_flyTimeout); _flyTimeout = null; }
+        if (_flyAnimation) { cancelAnimationFrame(_flyAnimation); _flyAnimation = null; }
         if (_hikerMarker) { _hikerMarker.remove(); _hikerMarker = null; }
-        _hikerMarker = new mapboxgl.Marker({ element: createHikerEl(), anchor: 'center' })
-            .setLngLat([coords[0][1], coords[0][0]])
-            .addTo(map);
+
+        deactivateFlyTrailLayers();
+        _flyTrailId = null;
+
+        const stopBtn = document.getElementById('fly-stop-btn');
+        if (stopBtn) stopBtn.classList.add('hidden');
+
+        updateFlyBtn(false);
+
+        if (trail.route_coordinates && trail.route_coordinates.length > 1) {
+            const lngs = trail.route_coordinates.map(c => c[1]);
+            const lats = trail.route_coordinates.map(c => c[0]);
+            map.fitBounds(
+                [[Math.min(...lngs), Math.min(...lats)], [Math.max(...lngs), Math.max(...lats)]],
+                { padding: 60, pitch: 45, bearing: 0, duration: 1500 }
+            );
+        } else {
+            map.easeTo({ pitch: 45, bearing: 0, duration: 1000 });
+        }
+    }
+
+    function animateAlongTrail(rawCoords, trailElevGain = 0) {
+        const coords = rawCoords
+            .filter(c => Array.isArray(c) && c.length >= 2 && isFinite(c[0]) && isFinite(c[1]))
+            .map(c => [c[0], c[1], (c.length >= 3 && isFinite(c[2])) ? c[2] : null]);
+
+        if (coords.length < 2) { stopFlyAnimation(); return; }
+
+        const last = coords.length - 1;
+        const toRad = d => d * Math.PI / 180;
+        const haversine = (a, b) => {
+            const R = 6371000;
+            const dLat = toRad(b[0] - a[0]);
+            const dLng = toRad(b[1] - a[1]);
+            const s = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(a[0])) * Math.cos(toRad(b[0])) * Math.sin(dLng / 2) ** 2;
+            return 2 * R * Math.atan2(Math.sqrt(s), Math.sqrt(1 - s));
+        };
+
+        const cumDist     = [0];
+        const cumElevGain = [0];
+        for (let i = 0; i < last; i++) {
+            cumDist.push(cumDist[i] + haversine(coords[i], coords[i + 1]));
+            const rise = (coords[i + 1][2] != null && coords[i][2] != null)
+                ? Math.max(0, coords[i + 1][2] - coords[i][2]) : 0;
+            cumElevGain.push(cumElevGain[i] + rise);
+        }
+        const totalDist = cumDist[last];
+
+        const SPEED_MS    = 300;
+        const DURATION_MS = (totalDist / SPEED_MS) * 1000;
+        const flyZoom     = 15.5;
+        const startTime   = performance.now();
+
+        const findSeg = (d) => {
+            d = Math.max(0, Math.min(d, totalDist));
+            let lo = 0, hi = last;
+            while (lo < hi - 1) {
+                const mid = (lo + hi) >> 1;
+                if (cumDist[mid] <= d) { lo = mid; } else { hi = mid; }
+            }
+            return lo;
+        };
+
+        const posAtDist = (d) => {
+            const lo = findSeg(d);
+            const segLen = cumDist[lo + 1] - cumDist[lo];
+            const t = segLen > 0 ? (Math.max(0, Math.min(d, totalDist)) - cumDist[lo]) / segLen : 0;
+            return [
+                coords[lo][0] + (coords[lo + 1][0] - coords[lo][0]) * t,
+                coords[lo][1] + (coords[lo + 1][1] - coords[lo][1]) * t,
+            ];
+        };
+
+        const totalElevGain = cumElevGain[last];
+        const knownGain     = parseFloat(trailElevGain) || 0;
+        const hasElevData   = totalElevGain > 0;
+
+        const elevGainAtDist = hasElevData
+            ? (d) => {
+                const lo     = findSeg(d);
+                const segLen = cumDist[lo + 1] - cumDist[lo];
+                const t      = segLen > 0 ? (Math.max(0, Math.min(d, totalDist)) - cumDist[lo]) / segLen : 0;
+                const segRise = (coords[lo + 1][2] != null && coords[lo][2] != null)
+                    ? Math.max(0, coords[lo + 1][2] - coords[lo][2]) : 0;
+                return cumElevGain[lo] + segRise * t;
+            }
+            : (d) => (totalDist > 0 ? (d / totalDist) * knownGain : 0);
+
+        const initPos  = posAtDist(0);
+        let smoothLat  = initPos[0];
+        let smoothLng  = initPos[1];
+        let smoothBear = getBearing(coords[0], coords[Math.min(30, last)]);
+        let smoothZoom = flyZoom;
+        let prevTime   = null;
+        const POS_HL     = 700;
+        const BEARING_HL = 6000;
+        const ZOOM_HL    = 2500;
+
+        const distEl = document.getElementById('fly-stat-dist');
+        const elevEl = document.getElementById('fly-stat-elev');
+
+        const animate = (now) => {
+            if (!_isFlying) return;
+
+            const dt            = prevTime !== null ? Math.min(now - prevTime, 100) : 16;
+            prevTime            = now;
+            const progress      = Math.min((now - startTime) / DURATION_MS, 1);
+            const distTravelled = progress * totalDist;
+
+            const [lat, lng] = posAtDist(distTravelled);
+
+            const posAlpha = 1 - Math.pow(0.5, dt / POS_HL);
+            smoothLat += (lat - smoothLat) * posAlpha;
+            smoothLng += (lng - smoothLng) * posAlpha;
+
+            const [behindLat, behindLng] = posAtDist(Math.max(0, distTravelled - 500));
+            const [aheadLat,  aheadLng]  = posAtDist(distTravelled + 1000);
+            const targetBear = getBearing([behindLat, behindLng], [aheadLat, aheadLng]);
+
+            const bearAlpha = 1 - Math.pow(0.5, dt / BEARING_HL);
+            const bearDelta = ((targetBear - smoothBear + 540) % 360) - 180;
+            smoothBear = (smoothBear + bearDelta * bearAlpha + 360) % 360;
+
+            const lo       = findSeg(distTravelled);
+            const hi       = findSeg(Math.min(distTravelled + 150, totalDist));
+            const rise     = (coords[hi][2] != null && coords[lo][2] != null)
+                ? Math.max(0, coords[hi][2] - coords[lo][2]) : 0;
+            const run      = cumDist[hi] - cumDist[lo];
+            const grade    = run > 0 ? (rise / run) * 100 : 0;
+            const targetZoom = grade > 8 ? 16.5 : grade < 3 ? 14.5 : flyZoom;
+            const zoomAlpha  = 1 - Math.pow(0.5, dt / ZOOM_HL);
+            smoothZoom      += (targetZoom - smoothZoom) * zoomAlpha;
+
+            map.jumpTo({ center: [smoothLng, smoothLat], bearing: smoothBear, pitch: 55, zoom: smoothZoom });
+
+            if (map.getLayer('fly-draw-progress')) {
+                map.setPaintProperty('fly-draw-base',     'line-trim-offset', [0, progress]);
+                map.setPaintProperty('fly-draw-glow',     'line-trim-offset', [progress, 1]);
+                map.setPaintProperty('fly-draw-progress', 'line-trim-offset', [progress, 1]);
+            }
+
+            if (distEl) distEl.textContent = (distTravelled / 1000).toFixed(1);
+            if (elevEl) elevEl.textContent  = Math.round(elevGainAtDist(distTravelled));
+
+            if (progress < 1) {
+                _flyAnimation = requestAnimationFrame(animate);
+            } else {
+                stopFlyAnimation();
+            }
+        };
+
+        _flyAnimation = requestAnimationFrame(animate);
+    }
+
+    function flyAlongTrail() {
+        if (_isFlying || _flyTimeout) { stopFlyAnimation(); return; }
+        if (!trail.route_coordinates || trail.route_coordinates.length < 2) return;
+
+        const coords = trail.route_coordinates
+            .map(c => {
+                if (Array.isArray(c) && c.length >= 2 && isFinite(c[0]) && isFinite(c[1])) {
+                    return c.length >= 3 && isFinite(c[2]) ? [c[0], c[1], c[2]] : [c[0], c[1], null];
+                }
+                return null;
+            })
+            .filter(c => c !== null);
+
+        if (coords.length < 2) return;
 
         _isFlying = true;
         updateFlyBtn(true);
 
+        const stopBtn = document.getElementById('fly-stop-btn');
+        if (stopBtn) stopBtn.classList.remove('hidden');
+
+        activateFlyTrailLayers(coords);
+
+        // Phase 1: top-down 2D overview
         const lngs = coords.map(c => c[1]);
         const lats = coords.map(c => c[0]);
         map.fitBounds(
             [[Math.min(...lngs), Math.min(...lats)], [Math.max(...lngs), Math.max(...lats)]],
-            { padding: 80, maxZoom: 14, duration: 1500 }
+            { padding: 80, maxZoom: 13, pitch: 0, bearing: 0, duration: 800 }
         );
 
+        // Phase 2: tilt into 3D, zoom to trail start
         _flyTimeout = setTimeout(() => {
             _flyTimeout = null;
             if (!_isFlying) return;
 
-            const last = coords.length - 1;
-            const DURATION_MS = Math.max(20000, coords.length * 100);
-            const startTime = performance.now();
+            const initialBearing = getBearing(coords[0], coords[Math.min(30, coords.length - 1)]);
+            map.flyTo({
+                center:   [coords[0][1], coords[0][0]],
+                zoom:     15.5,
+                pitch:    60,
+                bearing:  initialBearing,
+                duration: 1600,
+                easing:   t => t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t,
+            });
 
-            const animate = (now) => {
+            // Phase 3: trail-following loop
+            _flyTimeout = setTimeout(() => {
+                _flyTimeout = null;
                 if (!_isFlying) return;
-                const progress = Math.min((now - startTime) / DURATION_MS, 1);
-                const rawIndex = progress * last;
-                const i = Math.min(Math.floor(rawIndex), last);
-                const t = rawIndex - i;
-                const cur = coords[i], next = coords[Math.min(i + 1, last)];
-                if (!cur || !next) { _flyAnimation = requestAnimationFrame(animate); return; }
-
-                const lng = cur[1] + (next[1] - cur[1]) * t;
-                const lat = cur[0] + (next[0] - cur[0]) * t;
-                if (_hikerMarker) _hikerMarker.setLngLat([lng, lat]);
-
-                const camI = Math.max(0, i - 8);
-                const camA = coords[camI], camB = coords[Math.min(camI + 1, last)];
-                if (camA && camB) {
-                    map.easeTo({
-                        center: [camA[1] + (camB[1] - camA[1]) * t, camA[0] + (camB[0] - camA[0]) * t],
-                        bearing: getBearing(cur, next),
-                        pitch: 60, zoom: 15, duration: 150, easing: x => x,
-                    });
-                }
-
-                if (progress < 1) { _flyAnimation = requestAnimationFrame(animate); }
-                else { stopFlyAnimation(); }
-            };
-            _flyAnimation = requestAnimationFrame(animate);
-        }, 1800);
+                animateAlongTrail(coords, trail.elevation_gain_m);
+            }, 1800);
+        }, 1000);
     }
 
     document.getElementById('fly-along-btn')?.addEventListener('click', flyAlongTrail);
+    document.getElementById('fly-stop-btn')?.addEventListener('click', stopFlyAnimation);
 
     // ── Focus feature (highlight card click) ─────────────────────────────────
     window.focusFeature = function(coordinates, name) {
@@ -1921,7 +2297,6 @@ function initTrailMap() {
         if (!trail.route_coordinates || trail.route_coordinates.length < 2) {
             console.log('No route data available for elevation profile');
             document.getElementById('elevation-chart').classList.add('hidden');
-            document.getElementById('elevation-stats').classList.add('hidden');
             return;
         }
 
@@ -1954,13 +2329,13 @@ function initTrailMap() {
                     console.warn('Failed to load elevation profile from API');
                     document.getElementById('load-elevation').textContent = 'Elevation data unavailable';
                     document.getElementById('elevation-chart').classList.add('hidden');
-                    document.getElementById('elevation-stats').classList.add('hidden');
+                    document.getElementById('elevation-stats').classList.add('hidden'); document.getElementById('elevation-stats').classList.remove('grid');
                 }
             } catch (error) {
                 console.error('Error loading elevation profile:', error);
                 document.getElementById('load-elevation').textContent = 'Failed to load elevation';
                 document.getElementById('elevation-chart').classList.add('hidden');
-                document.getElementById('elevation-stats').classList.add('hidden');
+                document.getElementById('elevation-stats').classList.add('hidden'); document.getElementById('elevation-stats').classList.remove('grid');
             }
         } else {
             // Use existing elevation data from route coordinates
@@ -1976,46 +2351,40 @@ function initTrailMap() {
 
     function displayElevationProfile(elevationData) {
         const chart = document.getElementById('elevation-chart');
-        const stats = document.getElementById('elevation-stats');
         const canvas = document.getElementById('elevation-canvas');
-        
+
         if (!canvas || !elevationData.geometry || !elevationData.geometry.coordinates) {
             console.log('Invalid elevation data');
             return;
         }
 
-        const coordinates = elevationData.geometry.coordinates;
-        
+        // API returns [lat, lng, elev] — convert to [lng, lat, elev] for GeoJSON map use
+        const coordinates = elevationData.geometry.coordinates.map(c => [c[1], c[0], c[2]]);
+
         // Check if coordinates have elevation data (z-coordinate)
         if (coordinates[0].length < 3) {
             console.log('No elevation data in coordinates');
             chart.classList.add('hidden');
-            stats.classList.add('hidden');
             return;
         }
 
         chart.classList.remove('hidden');
-        stats.classList.remove('hidden');
 
-        const elevations = coordinates.map(coord => coord[2]);
-        const maxElev = Math.max(...elevations);
-        const minElev = Math.min(...elevations);
-        const totalGain = calculateElevationGain(coordinates);
-        const totalLoss = calculateElevationLoss(coordinates);
+        // Out-and-back: mirror coordinates so the chart shows the return leg
+        const isOutAndBack = trail.trail_type === 'out-and-back';
+        const displayCoordinates = isOutAndBack
+            ? [...coordinates, ...[...coordinates].reverse()]
+            : coordinates;
 
-        // Update stats display
-        const statDivs = stats.querySelectorAll('.font-bold');
-        if (statDivs.length >= 4) {
-            statDivs[0].textContent = Math.round(maxElev) + 'm';
-            statDivs[1].textContent = Math.round(minElev) + 'm';
-            statDivs[2].textContent = Math.round(totalGain) + 'm';
-            statDivs[3].textContent = Math.round(totalLoss) + 'm';
-        }
+        _elevDisplayCoords = displayCoordinates;
 
-        drawElevationChart(canvas, coordinates);
+        requestAnimationFrame(() => {
+            drawElevationChart(canvas, displayCoordinates);
+            attachElevScrub(canvas);
+        });
     }
 
-    function drawElevationChart(canvas, coordinates) {
+    function drawElevationChart(canvas, coordinates, hoverIdx = -1) {
         const ctx = canvas.getContext('2d');
         const width = canvas.width = canvas.offsetWidth;
         const height = canvas.height = canvas.offsetHeight;
@@ -2028,31 +2397,135 @@ function initTrailMap() {
         const minElev = Math.min(...elevations);
         const maxElev = Math.max(...elevations);
         const elevRange = maxElev - minElev || 1;
+        const paddingTop = 40;
+        const drawHeight = height - paddingTop;
 
-        // Draw elevation line
+        // Cumulative distance (km) at each coordinate
+        const toRad = d => d * Math.PI / 180;
+        const distances = [0];
+        for (let i = 1; i < coordinates.length; i++) {
+            const [lng1, lat1] = coordinates[i - 1];
+            const [lng2, lat2] = coordinates[i];
+            const dLat = toRad(lat2 - lat1), dLng = toRad(lng2 - lng1);
+            const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
+            distances.push(distances[i - 1] + 6371 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
+        }
+
         ctx.beginPath();
-        ctx.strokeStyle = '#10B981';
+        ctx.strokeStyle = '#2C5F5D';
         ctx.lineWidth = 2;
 
         elevations.forEach((elevation, index) => {
             const x = (index / (elevations.length - 1)) * width;
-            const y = height - ((elevation - minElev) / elevRange) * height;
-            
-            if (index === 0) {
-                ctx.moveTo(x, y);
-            } else {
-                ctx.lineTo(x, y);
-            }
+            const y = paddingTop + drawHeight - ((elevation - minElev) / elevRange) * drawHeight;
+            if (index === 0) { ctx.moveTo(x, y); } else { ctx.lineTo(x, y); }
         });
 
         ctx.stroke();
 
-        // Fill area under curve
+        const grad = ctx.createLinearGradient(0, paddingTop, 0, height);
+        grad.addColorStop(0, 'rgba(44,95,93,0.18)');
+        grad.addColorStop(1, 'rgba(44,95,93,0.02)');
         ctx.lineTo(width, height);
         ctx.lineTo(0, height);
         ctx.closePath();
-        ctx.fillStyle = 'rgba(16, 185, 129, 0.1)';
+        ctx.fillStyle = grad;
         ctx.fill();
+
+        if (hoverIdx >= 0 && hoverIdx < elevations.length) {
+            const e = elevations[hoverIdx];
+            const x = (hoverIdx / (elevations.length - 1)) * width;
+            const y = paddingTop + drawHeight - ((e - minElev) / elevRange) * drawHeight;
+
+            ctx.beginPath();
+            ctx.strokeStyle = 'rgba(44,95,93,0.35)';
+            ctx.lineWidth = 1;
+            ctx.setLineDash([4, 4]);
+            ctx.moveTo(x, 0); ctx.lineTo(x, height);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            ctx.beginPath();
+            ctx.arc(x, y, 6, 0, Math.PI * 2);
+            ctx.fillStyle = '#2C5F5D';
+            ctx.fill();
+            ctx.strokeStyle = '#fff';
+            ctx.lineWidth = 2.5;
+            ctx.stroke();
+
+            // Tooltip: Elevation + Distance
+            const elevLabel = 'Elevation: ' + Math.round(e) + 'm';
+            // const distLabel = 'Distance: ' + distances[hoverIdx].toFixed(1) + 'km';
+            ctx.font = 'bold 11px Inter, system-ui, sans-serif';
+            const boxW = ctx.measureText(elevLabel).width + 14;
+            const boxH = 20; // const boxH = 34;
+            let bx = x - boxW / 2;
+            bx = Math.max(2, Math.min(width - boxW - 2, bx));
+            const by = Math.max(2, y - boxH - 10);
+
+            ctx.fillStyle = 'rgba(17,24,39,0.82)';
+            ctx.beginPath();
+            ctx.rect(bx, by, boxW, boxH);
+            ctx.fill();
+
+            ctx.fillStyle = '#fff';
+            ctx.font = 'bold 11px Inter, system-ui, sans-serif';
+            ctx.fillText(elevLabel, bx + 7, by + 14);
+            // ctx.fillStyle = '#9ca3af';
+            // ctx.font = '11px Inter, system-ui, sans-serif';
+            // ctx.fillText(distLabel, bx + 7, by + 27);
+        }
+    }
+
+    // ── Elevation scrubbing — syncs canvas hover to map ──────────────────────
+    const SHOW_HOVER_SOURCE = 'show-hover-point';
+    const SHOW_HOVER_LAYER  = 'show-hover-layer';
+
+    function ensureShowHoverLayer() {
+        if (!map.getSource(SHOW_HOVER_SOURCE)) {
+            map.addSource(SHOW_HOVER_SOURCE, { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
+        }
+        if (!map.getLayer(SHOW_HOVER_LAYER)) {
+            map.addLayer({
+                id: SHOW_HOVER_LAYER,
+                type: 'circle',
+                source: SHOW_HOVER_SOURCE,
+                paint: { 'circle-radius': 10, 'circle-color': '#fff', 'circle-stroke-width': 3, 'circle-stroke-color': '#2C5F5D' },
+            });
+        }
+    }
+
+    function attachElevScrub(canvas) {
+        const onScrub = (clientX) => {
+            const coords = _elevDisplayCoords;
+            if (!coords || coords.length < 2) return;
+            const rect = canvas.getBoundingClientRect();
+            const frac = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+            const idx = Math.round(frac * (coords.length - 1));
+            drawElevationChart(canvas, coords, idx);
+            const c = coords[idx];
+            if (!c) return;
+            try {
+                ensureShowHoverLayer();
+                map.getSource(SHOW_HOVER_SOURCE).setData({
+                    type: 'FeatureCollection',
+                    features: [{ type: 'Feature', geometry: { type: 'Point', coordinates: [c[0], c[1]] } }],
+                });
+            } catch (_) {}
+        };
+
+        const onLeave = () => {
+            if (_elevDisplayCoords) drawElevationChart(canvas, _elevDisplayCoords);
+            try {
+                map.getSource(SHOW_HOVER_SOURCE)?.setData({ type: 'FeatureCollection', features: [] });
+            } catch (_) {}
+        };
+
+        canvas.style.cursor = 'crosshair';
+        canvas.addEventListener('mousemove', e => onScrub(e.clientX));
+        canvas.addEventListener('mouseleave', onLeave);
+        canvas.addEventListener('touchmove', e => { e.preventDefault(); onScrub(e.touches[0].clientX); }, { passive: false });
+        canvas.addEventListener('touchend', onLeave);
     }
 
     function calculateElevationGain(coordinates) {
