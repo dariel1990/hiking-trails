@@ -1732,6 +1732,34 @@
 }
 </style>
 <script>
+    // ── XploreSmithers Pro gating ────────────────────────────────────────────
+    // In-app: window.Offline drives entitlement + native paywall.
+    // Browser: window.xsWeb (injected by the layout) carries the server Pro flag;
+    // non-subscribers are sent to the /pro web paywall.
+    window.xsInApp = function () {
+        return !!(window.Offline && window.Offline.isAvailable && window.Offline.isAvailable());
+    };
+    window.xsIsPro = function () {
+        if (window.xsInApp()) {
+            try { return JSON.parse(window.Offline.subscriptionStatus()).active === true; }
+            catch (e) { return false; }
+        }
+        return !!(window.xsWeb && window.xsWeb.entitled);
+    };
+    window.xsRequirePro = function (featureKey, onAllowed) {
+        if (window.xsIsPro()) {
+            if (typeof onAllowed === 'function') { onAllowed(); }
+            return;
+        }
+        if (window.xsInApp()) {
+            try { window.Offline.openPaywall(featureKey); } catch (e) {}
+        } else if (typeof window.xsShowProModal === 'function') {
+            window.xsShowProModal(featureKey);
+        } else {
+            window.location.href = (window.xsWeb && window.xsWeb.proUrl) ? window.xsWeb.proUrl : '/pro';
+        }
+    };
+    window.gateProFeature = window.xsRequirePro; // back-compat alias
 
     function escapeHtml(str) {
         if (str == null) return '';
@@ -1780,10 +1808,12 @@
 
     // Highlight Media Modal Functions
     function openHighlightMediaModal(url, type, caption) {
+        // Pro video content is gated; photos stay free.
+        if (type === 'video' && !window.xsIsPro()) { window.xsRequirePro('video'); return; }
         const modal = document.getElementById('highlight-media-modal');
         const content = document.getElementById('highlight-modal-content');
         const captionEl = document.getElementById('highlight-modal-caption');
-        
+
         if (type === 'photo') {
             content.innerHTML = `<img src="${url}" alt="${caption}" class="w-full h-auto max-h-[70vh] object-contain rounded-lg">`;
         } else if (type === 'video') {
@@ -1822,11 +1852,22 @@
     window._facilityMediaCache = window._facilityMediaCache || {};
     let _facilityModalState = { facilityId: null, index: 0 };
 
+    // Pro video content is gated; photos in the gallery stay free.
+    function _facilityMediaIsGatedVideo(media) {
+        const isVideo = media && (media.media_type === 'video_url' || media.media_type === 'video');
+        return isVideo && !window.xsIsPro();
+    }
+
     function openFacilityMediaModal(facilityId, index) {
         const data = window._facilityMediaCache[facilityId];
         if (!data || !data.media || !data.media.length) { return; }
+        const targetIndex = Math.max(0, Math.min(index || 0, data.media.length - 1));
+        if (_facilityMediaIsGatedVideo(data.media[targetIndex])) {
+            window.xsRequirePro('video');
+            return;
+        }
         _facilityModalState.facilityId = facilityId;
-        _facilityModalState.index = Math.max(0, Math.min(index || 0, data.media.length - 1));
+        _facilityModalState.index = targetIndex;
         document.getElementById('facility-media-modal').classList.remove('hidden');
         _renderFacilityMediaItem();
     }
@@ -1879,7 +1920,12 @@
         const data = window._facilityMediaCache[_facilityModalState.facilityId];
         if (!data || !data.media.length) { return; }
         const total = data.media.length;
-        _facilityModalState.index = (_facilityModalState.index + delta + total) % total;
+        const nextIndex = (_facilityModalState.index + delta + total) % total;
+        if (_facilityMediaIsGatedVideo(data.media[nextIndex])) {
+            window.xsRequirePro('video');
+            return;
+        }
+        _facilityModalState.index = nextIndex;
         _renderFacilityMediaItem();
     }
 
@@ -4281,6 +4327,8 @@
         }
 
         openFacilityPanel(facility) {
+            // Points of interest (facilities) are a Pro feature.
+            if (!window.xsIsPro()) { window.xsRequirePro('poi'); return; }
             if (this._isMobileViewport()) {
                 this.showMobileFacilityCard(facility);
                 return;

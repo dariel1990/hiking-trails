@@ -5,6 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
+    {{-- XploreSmithers Pro: web entitlement flag consumed by the gating helpers --}}
+    <script>
+        window.xsWeb = {
+            entitled: {{ auth()->check() && auth()->user()->hasActiveProEntitlement() ? 'true' : 'false' }},
+            loggedIn: {{ auth()->check() ? 'true' : 'false' }},
+            proUrl: @json(route('pro.show'))
+        };
+    </script>
+
     <title>@yield('title', 'Trail Finder - Discover Ethical Adventures')</title>
     <!-- Meta Tags Stack -->
     @stack('meta')
@@ -36,6 +45,7 @@
     @stack('styles')
 </head>
 <body class="font-sans antialiased bg-gray-50">
+    @unless(request()->routeIs('login', 'register'))
     <!-- Navigation - Enhanced with XploreSmithers styling -->
     <nav class="fixed top-0 w-full bg-white/95 backdrop-blur-md shadow-lg z-50 transition-all duration-300 {{ request()->routeIs('map') ? 'max-md:hidden' : '' }}">
         <div class="{{ request()->routeIs('map') ? 'w-full' : 'max-w-7xl mx-auto' }} px-4">
@@ -106,6 +116,36 @@
                         <span>Local Businesses</span>
                         <div class="absolute bottom-0 left-0 w-0 h-0.5 bg-accent-600 group-hover:w-full transition-all duration-300 {{ request()->routeIs('businesses.public.*') ? 'w-full' : '' }}"></div>
                     </a>
+
+                    @guest
+                        <a href="{{ route('login') }}"
+                           class="inline-flex items-center gap-2 bg-forest-700 hover:bg-forest-800 text-white font-medium px-5 py-2 rounded-lg shadow-sm transition-all duration-300">
+                            <span>Sign in</span>
+                        </a>
+                    @endguest
+
+                    @auth
+                        <div class="flex items-center gap-3">
+                            @if(auth()->user()->hasActiveProEntitlement())
+                                <a href="{{ route('pro.show') }}" class="inline-flex items-center gap-1 bg-accent-500/10 text-accent-700 ring-1 ring-accent-500/30 font-semibold text-xs uppercase tracking-wide px-2.5 py-1 rounded-full hover:bg-accent-500/20 transition">
+                                    <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.286 3.957a1 1 0 00.95.69h4.162c.969 0 1.371 1.24.588 1.81l-3.368 2.447a1 1 0 00-.364 1.118l1.287 3.957c.3.921-.755 1.688-1.54 1.118l-3.367-2.447a1 1 0 00-1.176 0l-3.367 2.447c-.784.57-1.838-.197-1.539-1.118l1.286-3.957a1 1 0 00-.363-1.118L2.07 9.384c-.783-.57-.38-1.81.588-1.81h4.163a1 1 0 00.95-.69l1.286-3.957z"/></svg>
+                                    Pro
+                                </a>
+                            @else
+                                <a href="{{ route('pro.show') }}" class="inline-flex items-center bg-accent-500 hover:bg-accent-600 text-white font-medium px-4 py-2 rounded-lg shadow-sm transition-all duration-300">
+                                    Go Pro
+                                </a>
+                            @endif
+                            <span class="text-forest-700 font-medium">{{ auth()->user()->name }}</span>
+                            <form method="POST" action="{{ route('logout') }}">
+                                @csrf
+                                <button type="submit"
+                                        class="text-forest-700 hover:text-accent-600 font-medium transition-colors duration-300">
+                                    Log out
+                                </button>
+                            </form>
+                        </div>
+                    @endauth
                 </div>
 
                 <!-- CTA Button - Enhanced design -->
@@ -135,14 +175,33 @@
                         <a href="{{ route('trail-networks.index') }}" class="block px-6 py-3 text-gray-700 hover:bg-emerald-50 hover:text-emerald-600 font-medium transition-colors">Ski Trails</a>
                         <a href="{{ route('map') }}" class="block px-6 py-3 text-gray-700 hover:bg-emerald-50 hover:text-emerald-600 font-medium transition-colors">Interactive Map</a>
                         <a href="{{ route('businesses.public.index') }}" class="block px-6 py-3 text-gray-700 hover:bg-emerald-50 hover:text-emerald-600 font-medium transition-colors">Local Businesses</a>
+
+                        @guest
+                            <a href="{{ route('login') }}" class="block px-6 py-3 text-gray-700 hover:bg-emerald-50 hover:text-emerald-600 font-medium transition-colors">Sign in</a>
+                            <a href="{{ route('register') }}" class="block px-6 py-3 text-gray-700 hover:bg-emerald-50 hover:text-emerald-600 font-medium transition-colors">Create account</a>
+                        @endguest
+
+                        @auth
+                            <a href="{{ route('pro.show') }}" class="block px-6 py-3 font-medium transition-colors {{ auth()->user()->hasActiveProEntitlement() ? 'text-accent-700' : 'text-accent-600 hover:bg-emerald-50' }}">
+                                {{ auth()->user()->hasActiveProEntitlement() ? '★ XploreSmithers Pro' : 'Go Pro' }}
+                            </a>
+                            <div class="px-6 py-3 border-t border-gray-100">
+                                <p class="text-gray-900 font-medium mb-2">{{ auth()->user()->name }}</p>
+                                <form method="POST" action="{{ route('logout') }}">
+                                    @csrf
+                                    <button type="submit" class="text-gray-700 hover:text-emerald-600 font-medium transition-colors">Log out</button>
+                                </form>
+                            </div>
+                        @endauth
                     </div>
                 </div>
             </div>
         </div>
     </nav>
+    @endunless
 
     <!-- Main Content -->
-    <main class="pt-20 {{ request()->routeIs('map') ? 'max-md:pt-0' : '' }}">
+    <main class="{{ request()->routeIs('login', 'register') ? '' : 'pt-20' }} {{ request()->routeIs('map') ? 'max-md:pt-0' : '' }}">
         <!-- Flash Messages with enhanced styling -->
         @if(session('success'))
             <div class="fixed top-24 right-6 z-40 max-w-sm">
@@ -191,7 +250,7 @@
         @yield('content')
     </main>
 
-    @unless(request()->routeIs('map') || request()->routeIs('trail-networks.show') || request()->routeIs('admin.login'))
+    @unless(request()->routeIs('map') || request()->routeIs('trail-networks.show') || request()->routeIs('admin.login') || request()->routeIs('login', 'register'))
     <!-- Enhanced Footer inspired by XploreSmithers -->
     <footer class="bg-gray-900 text-white relative overflow-hidden" style="background: linear-gradient(135deg, #2C5F5D 0%, #1a2e2e 100%);">
         <!-- Subtle background pattern -->
@@ -362,8 +421,11 @@
     </footer>
     @endunless
 
+    {{-- XploreSmithers Pro upgrade modal (web gating) --}}
+    @include('subscription._upgrade-modal')
+
     @stack('scripts')
-    
+
     <!-- Add Alpine.js for interactive components -->
     <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
 </body>

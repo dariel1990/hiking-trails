@@ -4,27 +4,30 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Subscription;
+use App\Services\GooglePlaySubscriptionVerifier;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Log;
+use Throwable;
 
 class BillingController extends Controller
 {
     /**
-     * Phase B (deferred): verify a Google Play purchase server-side.
+     * Map of Google Play SubscriptionState → local status column.
      *
-     * Wiring and the SKU allowlist are in place; the Google Play Developer
-     * API call (purchases.subscriptionsv2.get) is not implemented yet because
-     * no service-account credentials exist (spec §5, §7). Until then this
-     * returns 503 so the Android app can detect "billing not yet live"
-     * rather than mistaking it for a real verification failure (which is 422).
-     *
-     * TODO(Phase B): call androidpublisher subscriptionsv2.get with the
-     * service-account JWT, map subscriptionState -> Subscription status,
-     * upsert the subscriptions row keyed by purchase_token bound to
-     * $request->user(), acknowledge if needed, return the entitlement payload.
+     * @var array<string, string>
      */
-    public function verifyPurchase(Request $request): JsonResponse
+    private const STATE_MAP = [
+        'SUBSCRIPTION_STATE_ACTIVE' => 'active',
+        'SUBSCRIPTION_STATE_IN_GRACE_PERIOD' => 'in_grace_period',
+        'SUBSCRIPTION_STATE_ON_HOLD' => 'on_hold',
+        'SUBSCRIPTION_STATE_CANCELED' => 'canceled',
+        'SUBSCRIPTION_STATE_EXPIRED' => 'expired',
+    ];
+
+    public function verifyPurchase(Request $request, GooglePlaySubscriptionVerifier $verifier): JsonResponse
     {
         $validated = $request->validate([
             'platform' => ['required', 'string', 'in:android'],
@@ -32,10 +35,68 @@ class BillingController extends Controller
             'purchaseToken' => ['required', 'string'],
         ]);
 
+        $userId = $request->user()->id;
+        $productId = $validated['productId'];
+        $purchaseToken = $validated['purchaseToken'];
+
+        $existing = Subscription::query()->where('purchase_token', $purchaseToken)->first();
+
+        if ($existing && $existing->user_id !== $userId) {
+            return response()->json(
+                ['message' => 'Purchase token already bound to another account.'],
+                Response::HTTP_CONFLICT,
+            );
+        }
+
+        try {
+            $payload = $verifier->getSubscription($purchaseToken);
+        } catch (Throwable $e) {
+            Log::warning('Google Play verifyPurchase failed', ['error' => $e->getMessage()]);
+
+            return response()->json(['message' => 'Could not verify purchase'], Response::HTTP_UNPROCESSABLE_ENTITY);
+        }
+
+        $state = (string) ($payload['subscriptionState'] ?? '');
+        $status = self::STATE_MAP[$state] ?? 'expired';
+
+        $expiryRaw = $payload['lineItems'][0]['expiryTime'] ?? null;
+        $expiresAt = $expiryRaw ? Carbon::parse($expiryRaw) : null;
+        $autoRenewing = (bool) ($payload['lineItems'][0]['autoRenewingPlan']['autoRenewEnabled'] ?? false);
+        $acknowledgementState = (string) ($payload['acknowledgementState'] ?? '');
+
+        $subscription = Subscription::updateOrCreate(
+            ['purchase_token' => $purchaseToken],
+            [
+                'user_id' => $userId,
+                'platform' => 'android',
+                'product_id' => $productId,
+                'status' => $status,
+                'expires_at' => $expiresAt,
+                'auto_renewing' => $autoRenewing,
+                'raw_payload' => $payload,
+            ],
+        );
+
+        $isActive = in_array($status, Subscription::ENTITLED_STATUSES, true)
+            && ($expiresAt === null || $expiresAt->isFuture());
+
+        if ($isActive && $acknowledgementState === 'ACKNOWLEDGEMENT_STATE_PENDING') {
+            try {
+                $verifier->acknowledge($productId, $purchaseToken);
+            } catch (Throwable $e) {
+                Log::warning('Google Play acknowledge failed', ['error' => $e->getMessage()]);
+            }
+        }
+
         return response()->json([
-            'message' => 'Purchase verification is not yet available.',
-            'reason' => 'phase_b_not_configured',
-        ], Response::HTTP_SERVICE_UNAVAILABLE);
+            'entitlement' => [
+                'active' => $isActive,
+                'productId' => $subscription->product_id,
+                'status' => $subscription->status,
+                'expiresAt' => $subscription->expires_at?->toIso8601String(),
+                'inGracePeriod' => $subscription->status === 'in_grace_period',
+            ],
+        ]);
     }
 
     /**

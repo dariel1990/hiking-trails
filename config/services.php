@@ -50,6 +50,32 @@ return [
         'rtdn_token' => env('GOOGLE_PLAY_RTDN_TOKEN'),
     ],
 
+    'stripe' => [
+        'key' => env('STRIPE_KEY'),
+        'secret' => env('STRIPE_SECRET'),
+        'webhook_secret' => env('STRIPE_WEBHOOK_SECRET'),
+        'prices' => [
+            'monthly' => env('STRIPE_PRICE_MONTHLY'),
+            'annual' => env('STRIPE_PRICE_ANNUAL'),
+        ],
+        'trial_days' => (int) env('STRIPE_TRIAL_DAYS', 7),
+
+        /*
+         | Live checkout is only attempted when real-looking secret + price IDs
+         | are configured. Until the client's keys land, the /pro page still
+         | renders but the subscribe button shows "Payments coming soon".
+         */
+        'enabled' => env('STRIPE_SECRET') && ! str_contains((string) env('STRIPE_SECRET'), 'PLACEHOLDER')
+            && env('STRIPE_PRICE_MONTHLY') && ! str_contains((string) env('STRIPE_PRICE_MONTHLY'), 'PLACEHOLDER'),
+    ],
+
+    'google' => [
+        'web_client_id' => env('GOOGLE_WEB_CLIENT_ID'),
+        'client_id' => env('GOOGLE_WEB_CLIENT_ID'),
+        'client_secret' => env('GOOGLE_CLIENT_SECRET'),
+        'redirect' => env('GOOGLE_REDIRECT_URI'),
+    ],
+
     'recaptcha' => [
         'site_key' => env('RECAPTCHA_SITE_KEY'),
         'secret_key' => env('RECAPTCHA_SECRET_KEY'),

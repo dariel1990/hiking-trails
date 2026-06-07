@@ -890,6 +890,35 @@
 <script src="https://api.mapbox.com/mapbox-gl-js/v3.10.0/mapbox-gl.js"></script>
 
 <script>
+// ── XploreSmithers Pro gating ────────────────────────────────────────────
+// In-app: window.Offline drives entitlement + native paywall.
+// Browser: window.xsWeb (injected by the layout) carries the server Pro flag;
+// non-subscribers are sent to the /pro web paywall.
+window.xsInApp = function () {
+    return !!(window.Offline && window.Offline.isAvailable && window.Offline.isAvailable());
+};
+window.xsIsPro = function () {
+    if (window.xsInApp()) {
+        try { return JSON.parse(window.Offline.subscriptionStatus()).active === true; }
+        catch (e) { return false; }
+    }
+    return !!(window.xsWeb && window.xsWeb.entitled);
+};
+window.xsRequirePro = function (featureKey, onAllowed) {
+    if (window.xsIsPro()) {
+        if (typeof onAllowed === 'function') { onAllowed(); }
+        return;
+    }
+    if (window.xsInApp()) {
+        try { window.Offline.openPaywall(featureKey); } catch (e) {}
+    } else if (typeof window.xsShowProModal === 'function') {
+        window.xsShowProModal(featureKey);
+    } else {
+        window.location.href = (window.xsWeb && window.xsWeb.proUrl) ? window.xsWeb.proUrl : '/pro';
+    }
+};
+window.gateProFeature = window.xsRequirePro; // back-compat alias
+
 // Network data
 const networkData = @json($network);
 const trails = @json($network->trails);
@@ -1504,6 +1533,8 @@ function closeTrailDetailsCard() {
 
 // Show facility details in the same card
 function showFacilityDetailsCard(facility) {
+    // Points of interest (facilities) are a Pro feature.
+    if (!window.xsIsPro()) { window.xsRequirePro('poi'); return; }
     if (isMobileDevice()) { showMobileFacilityCard(facility); return; }
     const card = document.getElementById('trail-details-card');
     const typeLabel = facility.facility_type.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
@@ -1678,10 +1709,12 @@ function getVideoEmbedUrl(videoUrl) {
 
 // Highlight Media Modal Functions
 function openHighlightMediaModal(url, type, caption) {
+    // Pro video content is gated; photos stay free.
+    if (type === 'video' && !window.xsIsPro()) { window.xsRequirePro('video'); return; }
     const modal = document.getElementById('highlight-media-modal');
     const content = document.getElementById('highlight-modal-content');
     const captionEl = document.getElementById('highlight-modal-caption');
-    
+
     if (type === 'photo') {
         content.innerHTML = `<img src="${url}" alt="${caption}" class="w-full h-auto max-h-[70vh] object-contain rounded-lg">`;
     } else if (type === 'video') {

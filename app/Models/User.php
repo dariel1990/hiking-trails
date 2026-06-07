@@ -15,8 +15,10 @@ class User extends Authenticatable
     protected $fillable = [
         'name',
         'email',
+        'google_id',
         'password',
         'is_admin',
+        'stripe_customer_id',
     ];
 
     protected $hidden = [
@@ -58,27 +60,41 @@ class User extends Authenticatable
     }
 
     /**
-     * True when the user currently holds an active offline-maps entitlement.
+     * True when the user currently holds an active XploreSmithers Pro entitlement,
+     * from any platform (Google Play or Stripe/web). One subscription unlocks both.
      */
-    public function hasActiveOfflineEntitlement(): bool
+    public function hasActiveProEntitlement(): bool
     {
         return $this->subscriptions()
-            ->whereIn('product_id', Subscription::OFFLINE_PRODUCT_IDS)
+            ->whereIn('product_id', Subscription::PRO_PRODUCT_IDS)
             ->entitled()
             ->exists();
     }
 
     /**
-     * The most relevant offline subscription for entitlement reporting:
+     * Alias kept for the Android entitlement contract (the app reads "offline").
+     */
+    public function hasActiveOfflineEntitlement(): bool
+    {
+        return $this->hasActiveProEntitlement();
+    }
+
+    /**
+     * The most relevant Pro subscription for entitlement reporting:
      * the entitled one if present, otherwise the most recently updated row.
      */
+    public function currentProSubscription(): ?Subscription
+    {
+        $pro = $this->subscriptions()
+            ->whereIn('product_id', Subscription::PRO_PRODUCT_IDS);
+
+        return (clone $pro)->entitled()->latest('updated_at')->first()
+            ?? $pro->latest('updated_at')->first();
+    }
+
     public function currentOfflineSubscription(): ?Subscription
     {
-        $offline = $this->subscriptions()
-            ->whereIn('product_id', Subscription::OFFLINE_PRODUCT_IDS);
-
-        return (clone $offline)->entitled()->latest('updated_at')->first()
-            ?? $offline->latest('updated_at')->first();
+        return $this->currentProSubscription();
     }
 
     /**

@@ -23,6 +23,27 @@ class Subscription extends Model
     ];
 
     /**
+     * Stripe (web) SKUs that grant the same XploreSmithers Pro entitlement.
+     *
+     * @var list<string>
+     */
+    public const WEB_PRODUCT_IDS = [
+        'xs_pro_web_monthly',
+        'xs_pro_web_annual',
+    ];
+
+    /**
+     * Every product that grants Pro, across platforms. A subscription on any of
+     * these (Google Play or Stripe) unlocks Pro on both web and the app.
+     *
+     * @var list<string>
+     */
+    public const PRO_PRODUCT_IDS = [
+        ...self::OFFLINE_PRODUCT_IDS,
+        ...self::WEB_PRODUCT_IDS,
+    ];
+
+    /**
      * Statuses that count as an active offline entitlement.
      *
      * @var list<string>

@@ -10,8 +10,12 @@ use App\Http\Controllers\Admin\CarouselSlideController;
 use App\Http\Controllers\Admin\FacilityController;
 use App\Http\Controllers\Admin\MediaController;
 use App\Http\Controllers\Admin\UserController;
+use App\Http\Controllers\Auth\WebAuthController;
+use App\Http\Controllers\Auth\WebGoogleAuthController;
 use App\Http\Controllers\BusinessPublicController;
 use App\Http\Controllers\EventsController;
+use App\Http\Controllers\Subscription\StripeWebhookController;
+use App\Http\Controllers\Subscription\WebSubscriptionController;
 use App\Http\Controllers\TrailController;
 use App\Http\Controllers\TrailNetworkController;
 use Illuminate\Support\Facades\Artisan;
@@ -46,6 +50,28 @@ Route::get('/map', [TrailController::class, 'map'])->name('map');
 Route::get('/map-v2', [TrailController::class, 'mapV2'])->name('map.v2');
 
 Route::get('/privacy-policy', fn () => view('privacy-policy'))->name('privacy-policy');
+
+// Web user authentication — email/password (session-based)
+Route::get('/login', [WebAuthController::class, 'showLogin'])->name('login');
+Route::post('/login', [WebAuthController::class, 'login'])->name('login.post');
+Route::get('/register', [WebAuthController::class, 'showRegister'])->name('register');
+Route::post('/register', [WebAuthController::class, 'register'])->name('register.post');
+
+// XploreSmithers Pro — web subscriptions (Stripe)
+Route::get('/pro', [WebSubscriptionController::class, 'show'])->name('pro.show');
+Route::middleware('auth')->group(function () {
+    Route::post('/pro/checkout', [WebSubscriptionController::class, 'checkout'])->name('pro.checkout');
+    Route::get('/pro/success', [WebSubscriptionController::class, 'success'])->name('pro.success');
+    Route::get('/pro/cancel', [WebSubscriptionController::class, 'cancel'])->name('pro.cancel');
+    Route::get('/pro/billing', [WebSubscriptionController::class, 'portal'])->name('pro.portal');
+});
+// Stripe server-to-server webhook (no CSRF, no auth — verified by signature)
+Route::post('/stripe/webhook', [StripeWebhookController::class, 'handle'])->name('stripe.webhook');
+
+// Web user authentication — Google OAuth redirect flow (session-based)
+Route::get('/auth/google/redirect', [WebGoogleAuthController::class, 'redirect'])->name('google.redirect');
+Route::get('/auth/google/callback', [WebGoogleAuthController::class, 'callback'])->name('google.callback');
+Route::post('/logout', [WebGoogleAuthController::class, 'logout'])->name('logout');
 
 // Public Business Routes
 Route::get('/businesses', [BusinessPublicController::class, 'index'])->name('businesses.public.index');
@@ -168,10 +194,6 @@ Route::prefix('admin')->name('admin.')->group(function () {
 
 });
 
-Route::get('/login', function () {
-    return redirect()->route('admin.login');
-})->name('login');
-
 // Events Routes (Public - No admin middleware)
 Route::get('/events', [EventsController::class, 'index'])->name('events.index');
 Route::get('/events/{event}', [EventsController::class, 'show'])->name('events.show');
@@ -211,3 +233,20 @@ Route::get('/migrate-sponsorships', function () {
 
     return nl2br(e($createOutput."\n".$backfillOutput));
 })->name('migrate.sponsorships');
+
+// Utility — run the carousel slides + google_id migrations (remove after deploy)
+Route::get('/migrate-carousel-google', function () {
+    Artisan::call('migrate', [
+        '--path' => 'database/migrations/2026_06_03_000001_create_carousel_slides_table.php',
+        '--force' => true,
+    ]);
+    $carouselOutput = Artisan::output();
+
+    Artisan::call('migrate', [
+        '--path' => 'database/migrations/2026_06_04_005841_add_google_id_to_users_table.php',
+        '--force' => true,
+    ]);
+    $googleIdOutput = Artisan::output();
+
+    return nl2br(e($carouselOutput."\n".$googleIdOutput));
+})->name('migrate.carousel-google');

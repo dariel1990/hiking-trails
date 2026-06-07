@@ -55,4 +55,17 @@ class SubscriptionFactory extends Factory
             'auto_renewing' => false,
         ]);
     }
+
+    /**
+     * A Stripe (web) subscription row.
+     */
+    public function web(): self
+    {
+        return $this->state(fn (): array => [
+            'platform' => 'web',
+            'product_id' => fake()->randomElement(Subscription::WEB_PRODUCT_IDS),
+            'purchase_token' => 'sub_'.fake()->unique()->lexify('??????????'),
+            'latest_notification_type' => null,
+        ]);
+    }
 }

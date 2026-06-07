@@ -3,6 +3,7 @@
 namespace Tests\Feature\Api;
 
 use App\Models\User;
+use Google\Client as GoogleClient;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Laravel\Sanctum\Sanctum;
@@ -81,6 +82,96 @@ class AuthTest extends TestCase
             'email' => 'jane@example.com',
             'password' => 'wrong-password',
         ])->assertStatus(401)->assertJson(['message' => 'Invalid credentials']);
+    }
+
+    public function test_google_sign_in_creates_user_and_returns_token(): void
+    {
+        $this->fakeGoogleToken([
+            'sub' => 'google-uid-123',
+            'email' => 'jane@example.com',
+            'email_verified' => true,
+            'name' => 'Jane Hiker',
+        ]);
+
+        $response = $this->postJson('/api/auth/google', [
+            'id_token' => 'valid-token',
+            'device_name' => 'Pixel 7',
+        ]);
+
+        $response->assertOk()
+            ->assertJsonStructure(['token', 'user' => ['id', 'name', 'email']])
+            ->assertJsonPath('user.email', 'jane@example.com');
+        $this->assertNotEmpty($response->json('token'));
+        $this->assertDatabaseHas('users', [
+            'email' => 'jane@example.com',
+            'google_id' => 'google-uid-123',
+        ]);
+    }
+
+    public function test_google_sign_in_links_existing_user_without_duplicate(): void
+    {
+        User::factory()->create([
+            'email' => 'jane@example.com',
+            'password' => Hash::make('secret123'),
+        ]);
+
+        $this->fakeGoogleToken([
+            'sub' => 'google-uid-123',
+            'email' => 'jane@example.com',
+            'email_verified' => true,
+            'name' => 'Jane Hiker',
+        ]);
+
+        $this->postJson('/api/auth/google', ['id_token' => 'valid-token'])->assertOk();
+
+        $this->assertDatabaseCount('users', 1);
+        $this->assertDatabaseHas('users', [
+            'email' => 'jane@example.com',
+            'google_id' => 'google-uid-123',
+        ]);
+    }
+
+    public function test_google_sign_in_rejects_invalid_token(): void
+    {
+        $this->fakeGoogleToken(false);
+
+        $this->postJson('/api/auth/google', ['id_token' => 'tampered'])
+            ->assertStatus(401)
+            ->assertJson(['message' => 'Invalid Google token']);
+        $this->assertDatabaseCount('users', 0);
+    }
+
+    public function test_google_sign_in_rejects_unverified_email(): void
+    {
+        $this->fakeGoogleToken([
+            'sub' => 'google-uid-123',
+            'email' => 'jane@example.com',
+            'email_verified' => false,
+            'name' => 'Jane Hiker',
+        ]);
+
+        $this->postJson('/api/auth/google', ['id_token' => 'valid-token'])->assertStatus(401);
+        $this->assertDatabaseCount('users', 0);
+    }
+
+    public function test_google_sign_in_requires_id_token(): void
+    {
+        $this->postJson('/api/auth/google', [])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('id_token');
+    }
+
+    /**
+     * Bind a fake Google client that returns the given verifyIdToken payload.
+     *
+     * @param  array<string, mixed>|false  $payload
+     */
+    private function fakeGoogleToken(array|false $payload): void
+    {
+        $this->mock(GoogleClient::class, function ($mock) use ($payload) {
+            $mock->shouldReceive('setClientId')->once();
+            $mock->shouldReceive('verifyIdToken')->once()->andReturn($payload);
+        });
     }
 
     public function test_me_returns_authenticated_user(): void

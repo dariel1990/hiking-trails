@@ -24,6 +24,7 @@ Route::get('/user', function (Request $request) {
 Route::prefix('auth')->group(function () {
     Route::post('/register', [AuthController::class, 'register'])->middleware('throttle:300,1');
     Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:300,1');
+    Route::post('/google', [AuthController::class, 'googleSignIn'])->middleware('throttle:300,1');
     Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth:sanctum');
 });
 

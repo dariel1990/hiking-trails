@@ -1427,6 +1427,36 @@
 @vite(['resources/js/app.js'])
 <script src="https://api.mapbox.com/mapbox-gl-js/v3.10.0/mapbox-gl.js"></script>
 <script>
+// ── XploreSmithers Pro gating ────────────────────────────────────────────
+// In the Android app: window.Offline drives entitlement + the native paywall.
+// In a browser: window.xsWeb (injected by the layout) carries the server-side
+// Pro flag, and non-subscribers are sent to the /pro web paywall.
+window.xsInApp = function () {
+    return !!(window.Offline && window.Offline.isAvailable && window.Offline.isAvailable());
+};
+window.xsIsPro = function () {
+    if (window.xsInApp()) {
+        try { return JSON.parse(window.Offline.subscriptionStatus()).active === true; }
+        catch (e) { return false; }
+    }
+    return !!(window.xsWeb && window.xsWeb.entitled);
+};
+// Run onAllowed() if Pro; otherwise raise the right paywall (native in-app, /pro in browser).
+window.xsRequirePro = function (featureKey, onAllowed) {
+    if (window.xsIsPro()) {
+        if (typeof onAllowed === 'function') { onAllowed(); }
+        return;
+    }
+    if (window.xsInApp()) {
+        try { window.Offline.openPaywall(featureKey); } catch (e) {}
+    } else if (typeof window.xsShowProModal === 'function') {
+        window.xsShowProModal(featureKey);
+    } else {
+        window.location.href = (window.xsWeb && window.xsWeb.proUrl) ? window.xsWeb.proUrl : '/pro';
+    }
+};
+window.gateProFeature = window.xsRequirePro; // back-compat alias
+
 // Video Thumbnail Generator Functions
 function getVideoThumbnail(videoUrl) {
     // YouTube
@@ -1532,6 +1562,12 @@ let _modalState = { listId: null, index: 0 };
 function openMediaCarousel(listId, index) {
     const list = window._trailMediaLists[listId];
     if (!list || !list.length) { return; }
+    // Pro video content is gated; photos stay free.
+    const _picked = list[Math.max(0, Math.min(index || 0, list.length - 1))];
+    if (_picked && _picked.type === 'video' && !window.xsIsPro()) {
+        window.xsRequirePro('video');
+        return;
+    }
     _modalState.listId = listId;
     _modalState.index = Math.max(0, Math.min(index || 0, list.length - 1));
     const modal = document.getElementById('media-modal');
@@ -2282,6 +2318,8 @@ function initTrailMap() {
 
     // ── Focus feature (highlight card click) ─────────────────────────────────
     window.focusFeature = function(coordinates, name) {
+        // Points of interest are a Pro feature.
+        if (!window.xsIsPro()) { window.xsRequirePro('poi'); return; }
         document.querySelector('[data-tab="route"]').click();
         setTimeout(() => {
             map.flyTo({ center: [coordinates[1], coordinates[0]], zoom: 16, duration: 800 });
@@ -2743,6 +2781,13 @@ document.addEventListener('DOMContentLoaded', function() {
     const trailName = @json($trail->name);
 
     document.getElementById('download-gpx-btn')?.addEventListener('click', function() {
+        // In the app, GPX is a Pro feature: native gates + saves to Downloads.
+        if (window.xsInApp()) {
+            try { window.Offline.downloadGpx({{ $trail->id }}); } catch (e) {}
+            return;
+        }
+        // In the browser, non-subscribers are sent to the web paywall.
+        if (!window.xsIsPro()) { window.xsRequirePro('gpx'); return; }
         if (!trailRouteCoords || trailRouteCoords.length < 2) {
             alert('No route data available for download');
             return;
