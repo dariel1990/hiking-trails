@@ -74,6 +74,8 @@ class BusinessPublicController extends Controller
             ->limit(3)
             ->get();
 
-        return view('businesses.show', compact('business', 'related'));
+        $mapboxToken = config('services.mapbox.access_token');
+
+        return view('businesses.show', compact('business', 'related', 'mapboxToken'));
     }
 }

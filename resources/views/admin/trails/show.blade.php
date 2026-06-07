@@ -586,36 +586,46 @@
     </div>
 </div>
 @push('scripts')
+<link href="https://api.mapbox.com/mapbox-gl-js/v3.10.0/mapbox-gl.css" rel="stylesheet" />
+<script src="https://api.mapbox.com/mapbox-gl-js/v3.10.0/mapbox-gl.js"></script>
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        const s = document.createElement('script');
-        s.src = 'https://unpkg.com/leaflet-polylinedecorator@1.6.0/dist/leaflet.polylineDecorator.js';
-        s.onload = initAdminTrailMap;
-        s.onerror = initAdminTrailMap;
-        document.head.appendChild(s);
-    });
+    document.addEventListener('DOMContentLoaded', initAdminTrailMap);
 
     function initAdminTrailMap() {
         const trail = @json($trail);
+        mapboxgl.accessToken = '{{ $mapboxToken }}';
 
-        // Check if this is a fishing lake
         const isFishingLake = trail.location_type === 'fishing_lake';
 
-        // Initialize map - fishing lakes zoom out more to see the whole lake
-        const initialZoom = isFishingLake ? 11 : 13;
-        const map = L.map('trail-map').setView(trail.start_coordinates || [49.2827, -122.7927], initialZoom);
+        // start_coordinates is [lat, lng]; Mapbox expects [lng, lat]
+        const startLatLng = trail.start_coordinates || [49.2827, -122.7927];
 
-        // Hide loading spinner once map tiles start loading
+        // fishing lakes zoom out more to see the whole lake
+        const initialZoom = isFishingLake ? 11 : 13;
+        const map = new mapboxgl.Map({
+            container: 'trail-map',
+            style: 'mapbox://styles/mapbox/outdoors-v12',
+            center: [startLatLng[1], startLatLng[0]],
+            zoom: initialZoom,
+        });
+        map.addControl(new mapboxgl.NavigationControl({ showCompass: false }), 'top-right');
+
+        const makeMarkerEl = (html) => {
+            const el = document.createElement('div');
+            el.className = 'custom-marker';
+            el.innerHTML = html;
+            return el;
+        };
+
+        let routeBounds = null;
+
+        // Hide loading spinner + draw the route once the style is ready
         map.on('load', function() {
             const loadingEl = document.getElementById('map-loading');
-            if (loadingEl) loadingEl.style.display = 'none';
+            if (loadingEl) { loadingEl.style.display = 'none'; }
+            map.resize();
+            drawTrailRoute();
         });
-
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '© OpenStreetMap contributors'
-        }).addTo(map);
-
-        let trailRoute = null;
 
         // Add trail route if available (only for trails, not fishing lakes)
         /* ─────────────────────────────────────────────────────────────────────
@@ -674,92 +684,101 @@
         }
         ──────────────────────────────────────────────────────────────────── */
 
-        if (!isFishingLake && trail.route_coordinates && trail.route_coordinates.length > 0) {
-            const routeColor = '#3B82F6';
-            // Simplification/smoothing disabled — render stored route_coordinates as-is
-            const displayCoords = trail.route_coordinates;
-
-            L.polyline(displayCoords, {
-                color: 'white',
-                weight: 12,
-                opacity: 0,
-                interactive: false,
-            }).addTo(map);
-
-            trailRoute = L.polyline(displayCoords, {
-                color: routeColor,
-                weight: 3,
-                opacity: 1,
-                lineJoin: 'round',
-                lineCap: 'round',
-            }).addTo(map);
-
-            if (window.L.polylineDecorator && window.L.Symbol) {
-                L.polylineDecorator(trailRoute, {
-                    patterns: [
-                        {
-                            offset: 20,
-                            repeat: 80,
-                            symbol: L.Symbol.arrowHead({
-                                pixelSize: 10,
-                                headAngle: 40,
-                                pathOptions: {
-                                    color: 'white',
-                                    fillOpacity: 1,
-                                    weight: 0,
-                                },
-                            }),
-                        },
-                    ],
-                }).addTo(map);
+        function drawTrailRoute() {
+            if (isFishingLake || !trail.route_coordinates || trail.route_coordinates.length === 0) {
+                return;
             }
 
-            map.fitBounds(trailRoute.getBounds(), { padding: [20, 20] });
+            // route_coordinates is [[lat, lng], ...]; Mapbox expects [lng, lat]
+            const lineCoords = trail.route_coordinates.map((c) => [c[1], c[0]]);
+
+            map.addSource('trail-route', {
+                type: 'geojson',
+                data: { type: 'Feature', geometry: { type: 'LineString', coordinates: lineCoords } },
+            });
+
+            // White casing under the route
+            map.addLayer({
+                id: 'trail-route-casing',
+                type: 'line',
+                source: 'trail-route',
+                layout: { 'line-join': 'round', 'line-cap': 'round' },
+                paint: { 'line-color': '#ffffff', 'line-width': 7 },
+            });
+
+            // Blue route line
+            map.addLayer({
+                id: 'trail-route-line',
+                type: 'line',
+                source: 'trail-route',
+                layout: { 'line-join': 'round', 'line-cap': 'round' },
+                paint: { 'line-color': '#3B82F6', 'line-width': 3 },
+            });
+
+            // Direction arrows — replaces the leaflet-polylinedecorator plugin
+            const arrowSVG = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 14 14"><polygon points="13,7 5,3 7,7 5,11" fill="white"/></svg>`;
+            const arrowImg = new Image(14, 14);
+            arrowImg.onload = () => {
+                if (!map.hasImage('trail-arrow')) { map.addImage('trail-arrow', arrowImg); }
+                if (!map.getLayer('trail-route-arrows')) {
+                    map.addLayer({
+                        id: 'trail-route-arrows',
+                        type: 'symbol',
+                        source: 'trail-route',
+                        layout: {
+                            'symbol-placement': 'line',
+                            'symbol-spacing': 80,
+                            'icon-image': 'trail-arrow',
+                            'icon-size': 0.9,
+                            'icon-allow-overlap': true,
+                            'icon-ignore-placement': true,
+                        },
+                    });
+                }
+            };
+            arrowImg.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(arrowSVG);
+
+            // Fit the map to the route
+            routeBounds = lineCoords.reduce(
+                (bounds, coord) => bounds.extend(coord),
+                new mapboxgl.LngLatBounds(lineCoords[0], lineCoords[0])
+            );
+            map.fitBounds(routeBounds, { padding: 20 });
         }
 
         // Fishing lake location marker
         if (isFishingLake && trail.start_coordinates) {
             const fishSpecies = Array.isArray(trail.fish_species) && trail.fish_species.length > 0 ? trail.fish_species.join(', ') : 'Various species';
-            const lakeIcon = L.divIcon({
-                html: '<div class="bg-blue-500 text-white rounded-full w-10 h-10 flex items-center justify-center border-2 border-white shadow-lg text-2xl">🐟</div>',
-                className: 'custom-marker',
-                iconSize: [40, 40],
-                iconAnchor: [20, 20]
-            });
-            L.marker(trail.start_coordinates, { icon: lakeIcon })
-                .addTo(map)
-                .bindPopup('<div class="text-center min-w-[140px]"><b>' + trail.name + '</b><div class="text-sm text-gray-600 mt-1">Fishing Lake</div>' +
-                    (trail.fishing_location ? '<div class="text-xs text-gray-500 mt-1">' + trail.fishing_location + '</div>' : '') +
-                    '<div class="text-xs text-blue-600 mt-2 font-medium">' + fishSpecies + '</div></div>');
+            const lakeEl = makeMarkerEl('<div class="bg-blue-500 text-white rounded-full w-10 h-10 flex items-center justify-center border-2 border-white shadow-lg text-2xl">🐟</div>');
+            const lakePopup = new mapboxgl.Popup({ offset: 22 }).setHTML(
+                '<div class="text-center min-w-[140px]"><b>' + trail.name + '</b><div class="text-sm text-gray-600 mt-1">Fishing Lake</div>' +
+                (trail.fishing_location ? '<div class="text-xs text-gray-500 mt-1">' + trail.fishing_location + '</div>' : '') +
+                '<div class="text-xs text-blue-600 mt-2 font-medium">' + fishSpecies + '</div></div>');
+            new mapboxgl.Marker({ element: lakeEl })
+                .setLngLat([trail.start_coordinates[1], trail.start_coordinates[0]])
+                .setPopup(lakePopup)
+                .addTo(map);
         }
 
         // Start and end markers (trails only)
         if (!isFishingLake && trail.start_coordinates) {
-            const startIcon = L.divIcon({
-                html: '<div class="bg-green-500 text-white rounded-full w-8 h-8 flex items-center justify-center font-bold text-sm border-2 border-white shadow-lg">S</div>',
-                className: 'custom-marker',
-                iconSize: [32, 32],
-                iconAnchor: [16, 16]
-            });
-
-            L.marker(trail.start_coordinates, { icon: startIcon })
-                .addTo(map)
-                .bindPopup('<div class="text-center"><b>Trail Start</b><br><span class="text-sm">' + trail.name + '</span></div>');
+            const startEl = makeMarkerEl('<div class="bg-green-500 text-white rounded-full w-8 h-8 flex items-center justify-center font-bold text-sm border-2 border-white shadow-lg">S</div>');
+            const startPopup = new mapboxgl.Popup({ offset: 18 }).setHTML('<div class="text-center"><b>Trail Start</b><br><span class="text-sm">' + trail.name + '</span></div>');
+            new mapboxgl.Marker({ element: startEl })
+                .setLngLat([trail.start_coordinates[1], trail.start_coordinates[0]])
+                .setPopup(startPopup)
+                .addTo(map);
         }
 
         if (!isFishingLake && trail.end_coordinates &&
             JSON.stringify(trail.start_coordinates) !== JSON.stringify(trail.end_coordinates)) {
 
-            const endIcon = L.divIcon({
-                html: '<div class="bg-red-500 text-white rounded-full w-8 h-8 flex items-center justify-center font-bold text-sm border-2 border-white shadow-lg">E</div>',
-                className: 'custom-marker',
-                iconSize: [32, 32],
-                iconAnchor: [16, 16]
-            });
-
-            L.marker(trail.end_coordinates, { icon: endIcon })
-                .addTo(map)
-                .bindPopup('<div class="text-center"><b>Trail End</b></div>');
+            const endEl = makeMarkerEl('<div class="bg-red-500 text-white rounded-full w-8 h-8 flex items-center justify-center font-bold text-sm border-2 border-white shadow-lg">E</div>');
+            const endPopup = new mapboxgl.Popup({ offset: 18 }).setHTML('<div class="text-center"><b>Trail End</b></div>');
+            new mapboxgl.Marker({ element: endEl })
+                .setLngLat([trail.end_coordinates[1], trail.end_coordinates[0]])
+                .setPopup(endPopup)
+                .addTo(map);
         }
 
         // Load trail features/highlights
@@ -777,13 +796,8 @@
                     return; // Skip invalid coordinates
                 }
                 
-                // Create custom icon for feature
-                const featureIcon = L.divIcon({
-                    html: `<div style="background-color: ${feature.color || '#6366f1'};" class="w-10 h-10 rounded-full border-2 border-white shadow-lg flex items-center justify-center text-white text-xl">${feature.icon || '📍'}</div>`,
-                    className: 'custom-marker',
-                    iconSize: [40, 40],
-                    iconAnchor: [20, 20]
-                });
+                // Create custom icon element for feature
+                const featureEl = makeMarkerEl(`<div style="background-color: ${feature.color || '#6366f1'};" class="w-10 h-10 rounded-full border-2 border-white shadow-lg flex items-center justify-center text-white text-xl">${feature.icon || '📍'}</div>`);
                 
                 // Get feature media if available
                 // Build media thumbnails HTML (ALL media, not just primary)
@@ -870,22 +884,21 @@
                     </div>
                 `;
                 
-                // Add marker to map
-                L.marker(coords, { icon: featureIcon })
-                    .addTo(map)
-                    .bindPopup(popupContent, {
-                        maxWidth: 300,
-                        className: 'feature-popup'
-                    });
+                // Add marker to map (coords is [lat, lng]; Mapbox expects [lng, lat])
+                const featurePopup = new mapboxgl.Popup({ offset: 22, maxWidth: '300px', className: 'feature-popup' }).setHTML(popupContent);
+                new mapboxgl.Marker({ element: featureEl })
+                    .setLngLat([coords[1], coords[0]])
+                    .setPopup(featurePopup)
+                    .addTo(map);
             });
         }
         
         // Fit route button
         document.getElementById('fit-route-btn').addEventListener('click', function() {
-            if (trailRoute) {
-                map.fitBounds(trailRoute.getBounds(), { padding: [20, 20] });
+            if (routeBounds) {
+                map.fitBounds(routeBounds, { padding: 20 });
             } else if (trail.start_coordinates) {
-                map.setView(trail.start_coordinates, 13);
+                map.flyTo({ center: [trail.start_coordinates[1], trail.start_coordinates[0]], zoom: 13 });
             }
         });
     }

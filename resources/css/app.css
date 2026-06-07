@@ -3,6 +3,9 @@
 @import url('https://fonts.bunny.net/css?family=Playfair+Display:400,500,600,700');
 @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Montserrat:ital,wght@0,100..900;1,100..900&family=Oswald:wght@200..700&display=swap');
 
+/* Self-hosted Font Awesome — bundled, hashed, brotli-compressed, same-origin cached */
+@import '@fortawesome/fontawesome-free/css/all.min.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;

@@ -5,10 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
-    {{-- XploreSmithers Pro: web entitlement flag consumed by the gating helpers --}}
+    {{-- XploreSmithers Pro: web entitlement flag consumed by the gating helpers.
+         When the subscriptions switch is off, every web visitor is treated as
+         entitled so all Pro features are unlocked and the paywall never shows. --}}
     <script>
         window.xsWeb = {
-            entitled: {{ auth()->check() && auth()->user()->hasActiveProEntitlement() ? 'true' : 'false' }},
+            subscriptionsEnabled: {{ config('subscriptions.enabled') ? 'true' : 'false' }},
+            entitled: {{ ! config('subscriptions.enabled') || (auth()->check() && auth()->user()->hasActiveProEntitlement()) ? 'true' : 'false' }},
             loggedIn: {{ auth()->check() ? 'true' : 'false' }},
             proUrl: @json(route('pro.show'))
         };
@@ -37,7 +40,6 @@
     
     <!-- Additional design fonts for headings -->
     <link href="https://fonts.bunny.net/css?family=Playfair+Display:400,500,600,700" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
     <!-- Scripts -->
     @vite(['resources/css/app.css', 'resources/js/app.js'])
@@ -126,6 +128,7 @@
 
                     @auth
                         <div class="flex items-center gap-3">
+                            @if(config('subscriptions.enabled'))
                             @if(auth()->user()->hasActiveProEntitlement())
                                 <a href="{{ route('pro.show') }}" class="inline-flex items-center gap-1 bg-accent-500/10 text-accent-700 ring-1 ring-accent-500/30 font-semibold text-xs uppercase tracking-wide px-2.5 py-1 rounded-full hover:bg-accent-500/20 transition">
                                     <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.286 3.957a1 1 0 00.95.69h4.162c.969 0 1.371 1.24.588 1.81l-3.368 2.447a1 1 0 00-.364 1.118l1.287 3.957c.3.921-.755 1.688-1.54 1.118l-3.367-2.447a1 1 0 00-1.176 0l-3.367 2.447c-.784.57-1.838-.197-1.539-1.118l1.286-3.957a1 1 0 00-.363-1.118L2.07 9.384c-.783-.57-.38-1.81.588-1.81h4.163a1 1 0 00.95-.69l1.286-3.957z"/></svg>
@@ -135,6 +138,7 @@
                                 <a href="{{ route('pro.show') }}" class="inline-flex items-center bg-accent-500 hover:bg-accent-600 text-white font-medium px-4 py-2 rounded-lg shadow-sm transition-all duration-300">
                                     Go Pro
                                 </a>
+                            @endif
                             @endif
                             <span class="text-forest-700 font-medium">{{ auth()->user()->name }}</span>
                             <form method="POST" action="{{ route('logout') }}">
@@ -425,8 +429,5 @@
     @include('subscription._upgrade-modal')
 
     @stack('scripts')
-
-    <!-- Add Alpine.js for interactive components -->
-    <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
 </body>
 </html>

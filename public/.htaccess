@@ -23,3 +23,12 @@
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteRule ^ index.php [L]
 </IfModule>
+
+# Long-cache content-hashed Vite build assets. Vite fingerprints these filenames,
+# so the URL changes whenever the content does. A 1-year immutable cache is safe
+# and lets the WebView skip revalidation entirely on repeat loads.
+<IfModule mod_headers.c>
+    <If "%{REQUEST_URI} =~ m#^/build/assets/#">
+        Header set Cache-Control "public, max-age=31536000, immutable"
+    </If>
+</IfModule>

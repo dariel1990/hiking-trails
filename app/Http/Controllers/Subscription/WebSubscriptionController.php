@@ -14,8 +14,12 @@ class WebSubscriptionController extends Controller
 {
     public function __construct(private StripeSubscriptionService $stripe) {}
 
-    public function show(Request $request): View
+    public function show(Request $request): View|RedirectResponse
     {
+        if (! config('subscriptions.enabled')) {
+            return redirect()->route('home');
+        }
+
         return view('subscription.pro', [
             'isPro' => (bool) $request->user()?->hasActiveProEntitlement(),
             'stripeEnabled' => (bool) config('services.stripe.enabled'),
@@ -27,6 +31,10 @@ class WebSubscriptionController extends Controller
 
     public function checkout(CheckoutRequest $request): RedirectResponse
     {
+        if (! config('subscriptions.enabled')) {
+            return redirect()->route('home');
+        }
+
         $user = $request->user();
 
         if ($user->hasActiveProEntitlement()) {

@@ -853,50 +853,47 @@
         animation: pulse 2s ease-in-out infinite;
     }
 </style>
+<link href="https://api.mapbox.com/mapbox-gl-js/v3.10.0/mapbox-gl.css" rel="stylesheet" />
+<script src="https://api.mapbox.com/mapbox-gl-js/v3.10.0/mapbox-gl.js"></script>
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        // Initialize hero map with better styling
-        const heroMap = L.map('hero-map', {
-            zoomControl: false,
-            scrollWheelZoom: false,
-            doubleClickZoom: false,
-            boxZoom: false,
-            keyboard: false,
-            dragging: false,
-            touchZoom: false
-        }).setView([49.2827, -122.7927], 10);
-        
-        // Use a more natural map style
-        L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-            attribution: '© OpenStreetMap contributors © CARTO'
-        }).addTo(heroMap);
+        // Decorative hero map (non-interactive background)
+        mapboxgl.accessToken = '{{ $mapboxToken }}';
+        const heroMap = new mapboxgl.Map({
+            container: 'hero-map',
+            style: 'mapbox://styles/mapbox/outdoors-v12',
+            center: [-122.7927, 49.2827], // [lng, lat]
+            zoom: 9,
+            interactive: false,
+            attributionControl: false,
+        });
 
         // Add featured trail markers with custom styling
         const trails = @json($featuredTrails);
-        trails.forEach((trail, index) => {
-            if (trail.start_coordinates) {
-                // Create custom marker
-                const customIcon = L.divIcon({
-                    html: `<div class="bg-emerald-500 text-white rounded-full w-8 h-8 flex items-center justify-center font-bold text-sm shadow-lg border-2 border-white">
-                        ${index + 1}
-                    </div>`,
-                    className: 'custom-marker',
-                    iconSize: [32, 32],
-                    iconAnchor: [16, 16]
-                });
-                
-                L.marker(trail.start_coordinates, { icon: customIcon })
-                    .addTo(heroMap)
-                    .bindPopup(`
-                        <div class="text-center">
-                            <strong class="text-emerald-600">${trail.name}</strong><br>
-                            <span class="text-gray-600">${trail.distance_km} km • Difficulty ${trail.difficulty_level}/5</span><br>
-                            <a href="/trails/${trail.id}" class="text-emerald-600 hover:text-emerald-700 font-medium text-sm">View Details →</a>
-                        </div>
-                    `);
-            }
+        heroMap.on('load', () => {
+            trails.forEach((trail, index) => {
+                if (!trail.start_coordinates) { return; }
+
+                const el = document.createElement('div');
+                el.className = 'custom-marker';
+                el.innerHTML = `<div class="bg-emerald-500 text-white rounded-full w-8 h-8 flex items-center justify-center font-bold text-sm shadow-lg border-2 border-white">${index + 1}</div>`;
+
+                const popup = new mapboxgl.Popup({ offset: 18 }).setHTML(`
+                    <div class="text-center">
+                        <strong class="text-emerald-600">${trail.name}</strong><br>
+                        <span class="text-gray-600">${trail.distance_km} km • Difficulty ${trail.difficulty_level}/5</span><br>
+                        <a href="/trails/${trail.id}" class="text-emerald-600 hover:text-emerald-700 font-medium text-sm">View Details →</a>
+                    </div>
+                `);
+
+                // start_coordinates is [lat, lng]; Mapbox expects [lng, lat]
+                new mapboxgl.Marker({ element: el })
+                    .setLngLat([trail.start_coordinates[1], trail.start_coordinates[0]])
+                    .setPopup(popup)
+                    .addTo(heroMap);
+            });
         });
-        
+
         // Smooth scroll functionality
         document.querySelector('a[href="#trails"]').addEventListener('click', function(e) {
             e.preventDefault();

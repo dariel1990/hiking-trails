@@ -62,7 +62,9 @@ class TrailController extends Controller
             ->orderBy('name')
             ->get();
 
-        return view('home', compact('featuredTrails', 'stats', 'activities'));
+        $mapboxToken = config('services.mapbox.access_token');
+
+        return view('home', compact('featuredTrails', 'stats', 'activities', 'mapboxToken'));
     }
 
     /**

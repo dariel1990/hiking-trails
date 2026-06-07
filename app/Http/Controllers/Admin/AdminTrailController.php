@@ -458,7 +458,9 @@ class AdminTrailController extends Controller
 
         $facilities = Facility::where('is_active', true)->whereNull('trail_network_id')->orderBy('facility_type')->orderBy('name')->get();
 
-        return view('admin.trails.show', compact('trail', 'facilities'));
+        $mapboxToken = config('services.mapbox.access_token');
+
+        return view('admin.trails.show', compact('trail', 'facilities', 'mapboxToken'));
     }
 
     /**

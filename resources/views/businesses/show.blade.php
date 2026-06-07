@@ -572,30 +572,38 @@
 
 @if($hasMap)
 @push('scripts')
+<link href="https://api.mapbox.com/mapbox-gl-js/v3.10.0/mapbox-gl.css" rel="stylesheet" />
+<script src="https://api.mapbox.com/mapbox-gl-js/v3.10.0/mapbox-gl.js"></script>
 <script>
     document.addEventListener('DOMContentLoaded', function () {
-        const tabLocation = document.getElementById('tab-location');
         let mapInitialized = false;
 
         function initMap() {
             if (mapInitialized) { return; }
             mapInitialized = true;
+            mapboxgl.accessToken = '{{ $mapboxToken }}';
             const lat = {{ $business->latitude }};
             const lng = {{ $business->longitude }};
-            const map = L.map('business-map').setView([lat, lng], 16);
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                attribution: '© OpenStreetMap contributors'
-            }).addTo(map);
-            const icon = L.divIcon({
-                html: '<div style="font-size:32px;line-height:1;">{{ $business->icon }}</div>',
-                className: '',
-                iconSize: [40, 40],
-                iconAnchor: [20, 40],
+            const map = new mapboxgl.Map({
+                container: 'business-map',
+                style: 'mapbox://styles/mapbox/streets-v12',
+                center: [lng, lat], // [lng, lat]
+                zoom: 15,
             });
-            L.marker([lat, lng], { icon })
-                .addTo(map)
-                .bindPopup('<strong>{{ addslashes($business->name) }}</strong>@if($business->address)<br>{{ addslashes($business->address) }}@endif')
-                .openPopup();
+            map.addControl(new mapboxgl.NavigationControl({ showCompass: false }), 'top-right');
+
+            const el = document.createElement('div');
+            el.innerHTML = '<div style="font-size:32px;line-height:1;">{{ $business->icon }}</div>';
+            const popup = new mapboxgl.Popup({ offset: 28 })
+                .setHTML('<strong>{{ addslashes($business->name) }}</strong>@if($business->address)<br>{{ addslashes($business->address) }}@endif');
+            const marker = new mapboxgl.Marker({ element: el, anchor: 'bottom' })
+                .setLngLat([lng, lat])
+                .setPopup(popup)
+                .addTo(map);
+            marker.togglePopup(); // open by default
+
+            // Mapbox renders 0x0 if its container was hidden at init (tab panel)
+            map.on('load', () => map.resize());
         }
 
         // Init map when Location tab becomes active
