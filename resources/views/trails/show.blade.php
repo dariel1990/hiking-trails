@@ -190,11 +190,6 @@
         height: 100%;
     }
     
-    /* Elevation Profile Chart */
-    #elevation-chart {
-        height: 400px;
-    }
-    
     /* Rich content from Quill editor */
     .trail-description p, .rich-content p { margin-bottom: 1rem; line-height: 1.75; }
     .trail-description p:last-child, .rich-content p:last-child { margin-bottom: 0; }
@@ -680,7 +675,7 @@
                         <h2 class="text-2xl sm:text-3xl font-bold text-forest-700 mb-4">Interactive Trail Map</h2>
 
                         <!-- Mapbox Map with overlaid controls -->
-                        <div class="relative rounded-xl shadow-lg" style="height: 500px; overflow: hidden;">
+                        <div class="relative rounded-xl shadow-lg h-[320px] md:h-[500px]" style="overflow: hidden;">
                             <div id="trail-detail-map" style="position:absolute;inset:0;z-index:0;"></div>
 
                             <!-- Custom controls: stacked below the Mapbox zoom (top-left) -->
@@ -792,7 +787,7 @@
                                 Refresh Profile
                             </button>
                         </div>
-                        <div id="elevation-chart" class="w-full bg-gray-50 rounded-lg border hidden">
+                        <div id="elevation-chart" class="w-full h-[180px] md:h-[400px] bg-gray-50 rounded-lg border hidden">
                             <canvas id="elevation-canvas" class="w-full h-full"></canvas>
                         </div>
                     </div>
