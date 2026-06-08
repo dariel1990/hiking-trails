@@ -281,7 +281,7 @@
     <!-- Fly Along Stop Button (hidden unless animation is running).
          Positioned bottom-left, just above the Mapbox attribution bar. -->
     <button id="fly-stop-overlay-btn"
-            onclick="window.trailMap && window.trailMap.stopFlyAnimation()"
+            onclick="event.stopPropagation(); window.trailMap && window.trailMap.stopFlyAnimation()"
             class="hidden absolute bottom-8 left-3 max-md:bottom-24 max-md:left-4 z-40 bg-white border border-red-200 text-red-700 hover:bg-red-50 rounded-full shadow-lg px-4 py-2 text-sm font-semibold flex items-center gap-2 transition-colors">
         <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
             <rect x="6" y="6" width="12" height="12" rx="2"/>
@@ -5151,7 +5151,7 @@
 
                 const dt            = prevTime !== null ? Math.min(now - prevTime, 100) : 16;
                 prevTime            = now;
-                const progress      = Math.min((now - startTime) / DURATION_MS, 1);
+                const progress      = Math.max(0, Math.min((now - startTime) / DURATION_MS, 1));
                 const distTravelled = progress * totalDist;
 
                 // Exact trail tip (used for stats + progress fill)
@@ -5241,11 +5241,23 @@
                 this._hikerMarker = null;
             }
 
-            // Restore original trail colors, then re-highlight the trail line
+            // Reset the fly button before the panel rebuild below — showTrailInfo()
+            // renders its own fresh "Fly Along" button, and resetting first keeps it
+            // from being clobbered with a mismatched style afterward.
+            this._updateFlyButton(false);
+
+            // Restore original trail colors, then re-highlight the trail line and reopen its info panel
             this._deactivateFlyTrailLayers();
+            let flownTrail = null;
             if (this._flyTrailId != null) {
-                this.highlightTrailRoute(this._flyTrailId, { showPanel: false });
+                const flownTrailId = this._flyTrailId;
                 this._flyTrailId = null;
+                try {
+                    flownTrail = this.allTrails.find(t => t.id == flownTrailId);
+                    this.highlightTrailRoute(flownTrailId, { showPanel: true });
+                } catch (err) {
+                    console.error('[fly-along] failed to reopen trail panel after stop:', err);
+                }
             }
 
             const stopBtn = document.getElementById('fly-stop-overlay-btn');
@@ -5260,8 +5272,20 @@
             // Stay on satellite after the flyover — do not restore the previous map type
             this._preFlyMapType = null;
 
-            this.map.easeTo({ pitch: 0, bearing: 0, duration: 1000 });
-            this._updateFlyButton(false);
+            // Settle the camera back onto the trail (top-down, fitted to its bounds)
+            // rather than leaving it wherever the flyover ended.
+            const sanitized = (flownTrail?.route_coordinates || [])
+                .map(c => this.sanitizeCoordinates(c)).filter(c => c !== null);
+            if (sanitized.length > 0) {
+                const lngs = sanitized.map(c => c[1]);
+                const lats = sanitized.map(c => c[0]);
+                this.map.fitBounds([
+                    [Math.min(...lngs), Math.min(...lats)],
+                    [Math.max(...lngs), Math.max(...lats)]
+                ], { padding: 60, maxZoom: 13, pitch: 0, bearing: 0, duration: 1000 });
+            } else {
+                this.map.easeTo({ pitch: 0, bearing: 0, duration: 1000 });
+            }
         }
 
         _activateFlyTrailLayers(trailId, coords) {
