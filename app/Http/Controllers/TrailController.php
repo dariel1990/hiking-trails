@@ -199,7 +199,7 @@ class TrailController extends Controller
     /**
      * Show map page
      */
-    public function map()
+    public function map(Request $request)
     {
         // Fetch all active activities for the filters
         $activities = ActivityType::where('is_active', true)
@@ -208,7 +208,20 @@ class TrailController extends Controller
 
         $mapboxToken = config('services.mapbox.access_token');
 
-        return view('map', compact('activities', 'mapboxToken'));
+        // Resolve the focus trail's coordinates server-side so the map can be
+        // initialized already centered on it, avoiding a flash of the default view.
+        $focusCoordinates = null;
+        if ($trailId = $request->query('trail')) {
+            $focusTrail = Trail::find($trailId);
+            if ($focusTrail && is_array($focusTrail->start_coordinates) && count($focusTrail->start_coordinates) === 2) {
+                $focusCoordinates = [
+                    (float) $focusTrail->start_coordinates[0],
+                    (float) $focusTrail->start_coordinates[1],
+                ];
+            }
+        }
+
+        return view('map', compact('activities', 'mapboxToken', 'focusCoordinates'));
     }
 
     /**

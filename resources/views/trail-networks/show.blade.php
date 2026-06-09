@@ -841,27 +841,6 @@
         <div id="nmc-actions" class="flex gap-2 px-4 pb-5 pt-1"></div>
     </div>
 
-    <!-- Legend - Responsive Positioning -->
-    <div class="map-legend {{ ($network->activeSponsors->count() > 0) ? 'map-legend--top' : '' }}">
-        <h3 class="text-xs font-semibold text-gray-900 uppercase tracking-wide mb-2">Difficulty</h3>
-        <div class="space-y-1">
-            <div class="flex items-center gap-1.5">
-                <span class="legend-label">🟢 Green</span>
-            </div>
-            <div class="flex items-center gap-1.5">
-                <span class="legend-label">🔵 Blue</span>
-            </div>
-            <div class="flex items-center gap-1.5">
-                <span class="legend-label">⚫ Black Diamond</span>
-            </div>
-            <div class="flex items-center gap-1.5">
-                <span class="legend-label">⚫⚫ Double Black</span>
-            </div>
-            <div class="flex items-center gap-1.5">
-                <span class="legend-label">🔴 Proline</span>
-            </div>
-        </div>
-    </div>
 </div>
 
 <!-- Media Modal for Highlights -->

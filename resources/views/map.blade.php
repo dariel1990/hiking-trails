@@ -411,7 +411,7 @@
     </div>
 
     <!-- Mobile Floating Search Bar -->
-    <div class="md:hidden absolute top-2 left-4 right-4 z-30">
+    <div id="mobile-search-bar" class="md:hidden absolute top-2 left-4 right-4 z-30">
         <button id="mobile-search-trigger" class="w-full flex items-center gap-3 bg-white rounded-full px-4 py-3 shadow-lg border border-gray-200 text-left">
             <svg class="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
@@ -2180,14 +2180,19 @@
             };
             this.currentMapType = 'satellite';
 
+            // If we're arriving focused on a specific trail (e.g. via "Back to Trails"),
+            // start the camera there directly instead of flashing the default wide view.
+            const initialFocusCoordinates = @json($focusCoordinates);
+            const hasInitialFocus = Array.isArray(initialFocusCoordinates) && initialFocusCoordinates.length === 2;
+
             // Initialize Mapbox map with 3D terrain
             this.map = new mapboxgl.Map({
                 container: 'main-map',
                 style: this.mapStyles[this.currentMapType],
-                center: [-127.1698, 54.7804], // [lng, lat]
-                zoom: 10,
-                pitch: 60,
-                bearing: -10,
+                center: hasInitialFocus ? [initialFocusCoordinates[1], initialFocusCoordinates[0]] : [-127.1698, 54.7804], // [lng, lat]
+                zoom: hasInitialFocus ? 12 : 10,
+                pitch: hasInitialFocus ? 0 : 60,
+                bearing: hasInitialFocus ? 0 : -10,
                 attributionControl: false,
             });
 
@@ -3606,7 +3611,7 @@
                     actions.push(`<button type="button" onclick="window.trailMap.flyAlongTrail(${trail.id})" class="${btnClass}"><svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M13.49 5.48c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm-3.6 13.9 1-4.4 2.1 2v6h2v-7.5l-2.1-2 .6-3c1.3 1.5 3.3 2.5 5.5 2.5v-2c-1.9 0-3.5-1-4.3-2.4l-1-1.6c-.4-.6-1-1-1.7-1-.3 0-.5.1-.8.1l-5.2 2.2v4.7h2v-3.4l1.8-.7-1.6 8.1-4.9-1-.4 2 7 1.4z"/></svg>Fly Along</button>`);
                 }
             }
-            actions.push(`<a href="/trails/${trail.id}" class="${btnClass}"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>Details</button>`);
+            actions.push(`<a href="/trails/${trail.id}?from=map" class="${btnClass}"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>Details</button>`);
             document.getElementById('mobile-trail-actions').innerHTML = actions.join('');
 
             document.getElementById('business-panel')?.classList.add('hidden');
@@ -3615,6 +3620,12 @@
         }
 
         showTrailInfo(trail) {
+            // Clear ?trail= from the URL when the user moves to a different trail
+            const urlTrailId = new URLSearchParams(window.location.search).get('trail');
+            if (urlTrailId && String(urlTrailId) !== String(trail.id)) {
+                history.replaceState(null, '', window.location.pathname);
+            }
+
             if (this._isMobileViewport()) {
                 this.showMobileTrailCard(trail);
                 return;
@@ -3720,7 +3731,7 @@
                 }
             }
             actions.push(`
-                <a href="/trails/${trail.id}" class="biz-panel-action-btn" ${trailActionBtn}>
+                <a href="/trails/${trail.id}?from=map" target="_blank" class="biz-panel-action-btn" ${trailActionBtn}>
                     <div class="biz-panel-action-icon" ${trailActionIcon}>
                         <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                     </div>
@@ -4107,7 +4118,7 @@
 
             // Fly to start coordinates when triggered from the list
             if (flyToTrail && coords) {
-                this.map.flyTo({ center: [coords[1], coords[0]], zoom: 14, duration: 800 });
+                this.map.flyTo({ center: [coords[1], coords[0]], zoom: 12, duration: 800 });
             }
         }
 
@@ -4491,7 +4502,7 @@
                     setTimeout(() => {
                         const trail = this.allTrails.find(t => t.id == trailId);
                         if (trail) {
-                            this.focusOnTrail(trail);
+                            this.focusOnTrail(trail, { flyToTrail: true, activateLine: true });
                         }
                     }, 500);
                 }
@@ -4978,6 +4989,10 @@
             const stopBtn = document.getElementById('fly-stop-overlay-btn');
             if (stopBtn) { stopBtn.classList.remove('hidden'); }
 
+            // Hide the floating search bar and filter bar on mobile so the animation has a clear stage
+            document.getElementById('mobile-search-bar')?.classList.add('hidden');
+            document.getElementById('filter-bar')?.classList.add('max-md:hidden');
+
             this._isFlying = true;
             this._updateFlyButton(true);
 
@@ -5262,6 +5277,10 @@
 
             const stopBtn = document.getElementById('fly-stop-overlay-btn');
             if (stopBtn) { stopBtn.classList.add('hidden'); }
+
+            // Restore the floating search bar and filter bar on mobile
+            document.getElementById('mobile-search-bar')?.classList.remove('hidden');
+            document.getElementById('filter-bar')?.classList.remove('max-md:hidden');
 
             // Restore the trail list if we were the ones that collapsed it
             if (this._flyAutoCollapsed && window.trailListPanelApi) {
@@ -5758,7 +5777,7 @@
             setTimeout(() => {
                 const trail = trailMap.allTrails.find(t => t.id == trailId);
                 if (trail) {
-                    trailMap.focusOnTrail(trail);
+                    trailMap.focusOnTrail(trail, { flyToTrail: true, activateLine: true });
                 }
             }, 1500);
         }
