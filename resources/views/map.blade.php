@@ -3668,7 +3668,7 @@
                 const network = (this.networkData || []).find(n => n.id == trail.trail_network_id);
                 if (network) {
                     networkBadgeHTML = `
-                        <a href="/trail-networks/${network.slug}" target="_blank" rel="noopener"
+                        <a href="/trail-networks/${network.slug}"
                             style="display:flex;align-items:center;gap:8px;padding:8px 12px;margin-bottom:14px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;text-decoration:none;color:#166534;transition:background 0.15s;"
                             onmouseover="this.style.background='#dcfce7';" onmouseout="this.style.background='#f0fdf4';">
                             <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="flex-shrink:0;">
@@ -3720,7 +3720,7 @@
                 }
             }
             actions.push(`
-                <a href="/trails/${trail.id}" target="_blank" class="biz-panel-action-btn" ${trailActionBtn}>
+                <a href="/trails/${trail.id}" class="biz-panel-action-btn" ${trailActionBtn}>
                     <div class="biz-panel-action-icon" ${trailActionIcon}>
                         <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                     </div>

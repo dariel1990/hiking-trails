@@ -67,7 +67,16 @@
                 <div class="mb-4">
                     <h3 class="px-3 text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">Content</h3>
                     <div class="space-y-1">
-                        <a href="{{ route('admin.activity-types.index') }}" 
+                        <!-- TRAIL HIGHLIGHTS LINK -->
+                        <a href="{{ route('admin.highlights.index') }}"
+                        class="nav-item {{ request()->routeIs('admin.highlights.*') ? 'nav-item-active' : '' }}">
+                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"/>
+                            </svg>
+                            Trail Highlights
+                        </a>
+
+                        <a href="{{ route('admin.activity-types.index') }}"
                         class="nav-item {{ request()->routeIs('admin.activity-types.*') ? 'nav-item-active' : '' }}">
                             <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>

@@ -258,12 +258,12 @@
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-12 w-full">
             <!-- Breadcrumb -->
             <nav class="mb-6">
-                <a href="{{ route('trails.index') }}" 
+                <a href="{{ route('map') }}"
                    class="inline-flex items-center text-white/90 hover:text-white text-sm font-medium transition-colors group">
                     <svg class="w-4 h-4 mr-2 group-hover:-translate-x-1 transition-transform" fill="currentColor" viewBox="0 0 20 20">
                         <path fill-rule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clip-rule="evenodd" />
                     </svg>
-                    Back to Trails
+                    Back to Map
                 </a>
             </nav>
             
@@ -2768,7 +2768,7 @@ function initTrailMap() {
 document.addEventListener('DOMContentLoaded', function() {
     // ── View on Interactive Map ───────────────────────────────────────────────
     document.getElementById('show-on-map-btn')?.addEventListener('click', function() {
-        window.open('{{ route('map') }}?trail={{ $trail->id }}', '_blank');
+        window.location.href = '{{ route('map') }}?trail={{ $trail->id }}';
     });
 
     // ── Download GPX ─────────────────────────────────────────────────────────

@@ -9,6 +9,7 @@ use App\Http\Controllers\Admin\BusinessController;
 use App\Http\Controllers\Admin\CarouselSlideController;
 use App\Http\Controllers\Admin\FacilityController;
 use App\Http\Controllers\Admin\MediaController;
+use App\Http\Controllers\Admin\TrailHighlightController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Auth\WebAuthController;
 use App\Http\Controllers\Auth\WebGoogleAuthController;
@@ -103,6 +104,12 @@ Route::prefix('admin')->name('admin.')->group(function () {
         // Trail management
         Route::post('/trails/bulk-action', [AdminTrailController::class, 'bulkAction'])->name('trails.bulk-action');
         Route::resource('trails', AdminTrailController::class);
+
+        // Trail Highlights Management (read/update/delete only — created via the trail builder)
+        Route::resource('highlights', TrailHighlightController::class)
+            ->only(['index', 'edit', 'update', 'destroy'])
+            ->parameters(['highlights' => 'highlight']);
+
         Route::resource('activity-types', ActivityTypeController::class);
         Route::patch('/trails/{trail}/toggle-featured', [AdminTrailController::class, 'toggleFeatured'])->name('trails.toggle-featured')->middleware('throttle:300,1');
         Route::patch('/trails/{trail}/toggle-status', [AdminTrailController::class, 'toggleStatus'])->name('trails.toggle-status')->middleware('throttle:300,1');

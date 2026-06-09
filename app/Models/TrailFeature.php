@@ -15,14 +15,47 @@ class TrailFeature extends Model
         'name',
         'description',
         'coordinates',
-        'media_count', 
-        'icon',   
-        'color',  
+        'media_count',
+        'icon',
+        'color',
     ];
 
     protected $casts = [
         'coordinates' => 'array',
     ];
+
+    /**
+     * Available highlight (feature) types with their human-readable labels.
+     *
+     * @return array<string, string>
+     */
+    public static function getFeatureTypes(): array
+    {
+        return [
+            'viewpoint' => '👁️ Viewpoint',
+            'waterfall' => '💧 Waterfall',
+            'summit' => '⛰️ Summit',
+            'bridge' => '🌉 Bridge',
+            'lake' => '🏞️ Lake',
+            'wildlife' => '🦌 Wildlife',
+            'camping' => '⛺ Camping',
+            'shelter' => '🏠 Shelter',
+            'forest' => '🌲 Forest',
+            'parking' => '🅿️ Parking',
+            'restroom' => '🚻 Restroom',
+            'picnic' => '🍽️ Picnic',
+            'fishing' => '🐟 Fishing',
+            'other' => '📍 Other',
+        ];
+    }
+
+    /**
+     * Human-readable label for this feature's type.
+     */
+    public function getFeatureTypeLabelAttribute(): string
+    {
+        return self::getFeatureTypes()[$this->feature_type] ?? ucfirst((string) $this->feature_type);
+    }
 
     /**
      * Get the trail that owns the feature
@@ -38,10 +71,10 @@ class TrailFeature extends Model
     public function media()
     {
         return $this->belongsToMany(TrailMedia::class, 'trail_feature_media')
-                    ->withPivot(['is_primary', 'sort_order', 'caption_override'])
-                    ->withTimestamps()
-                    ->orderBy('trail_feature_media.sort_order')
-                    ->orderBy('trail_feature_media.created_at');
+            ->withPivot(['is_primary', 'sort_order', 'caption_override'])
+            ->withTimestamps()
+            ->orderBy('trail_feature_media.sort_order')
+            ->orderBy('trail_feature_media.created_at');
     }
 
     /**
@@ -66,10 +99,10 @@ class TrailFeature extends Model
     public function primaryMedia()
     {
         return $this->belongsToMany(TrailMedia::class, 'trail_feature_media')
-                    ->wherePivot('is_primary', true)
-                    ->withPivot(['is_primary', 'sort_order', 'caption_override'])
-                    ->withTimestamps()
-                    ->first();
+            ->wherePivot('is_primary', true)
+            ->withPivot(['is_primary', 'sort_order', 'caption_override'])
+            ->withTimestamps()
+            ->first();
     }
 
     /**
@@ -111,7 +144,7 @@ class TrailFeature extends Model
     public function getIconAttribute($value): string
     {
         // If custom icon is set, return it
-        if (!empty($value)) {
+        if (! empty($value)) {
             return $value;
         }
 
@@ -141,7 +174,7 @@ class TrailFeature extends Model
     public function getColorAttribute($value): string
     {
         // If custom color is set, return it
-        if (!empty($value)) {
+        if (! empty($value)) {
             return $value;
         }
 
@@ -171,11 +204,11 @@ class TrailFeature extends Model
     public function getPhotoUrlAttribute(): ?string
     {
         $primaryMedia = $this->primaryMedia();
-        
+
         if ($primaryMedia) {
             return $primaryMedia->url;
         }
-        
+
         return null;
     }
 
