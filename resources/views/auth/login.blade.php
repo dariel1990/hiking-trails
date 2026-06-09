@@ -141,6 +141,13 @@
                 Don't have an account?
                 <a href="{{ route('register') }}" class="font-semibold text-forest-700 hover:text-accent-600 transition">Create one</a>
             </p>
+
+            <p class="mt-4 text-center text-xs text-gray-400">
+                By signing in you agree to our
+                <a href="{{ route('terms') }}" target="_blank" class="font-medium text-gray-500 hover:text-forest-700 transition">Terms &amp; Conditions</a>
+                and
+                <a href="{{ route('privacy-policy') }}" target="_blank" class="font-medium text-gray-500 hover:text-forest-700 transition">Privacy Policy</a>.
+            </p>
         </div>
     </div>
 </div>

@@ -20,6 +20,7 @@ class RegisterRequest extends FormRequest
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email'],
             'password' => ['required', 'string', 'min:8', 'confirmed'],
+            'terms' => ['accepted'],
         ];
     }
 
@@ -31,6 +32,7 @@ class RegisterRequest extends FormRequest
         return [
             'email.unique' => 'An account with this email already exists.',
             'password.confirmed' => 'The password confirmation does not match.',
+            'terms.accepted' => 'You must agree to the Terms & Conditions to create an account.',
         ];
     }
 }

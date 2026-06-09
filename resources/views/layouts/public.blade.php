@@ -435,7 +435,7 @@
                         <div class="hidden md:flex items-center space-x-4 text-xs text-gray-500">
                             <a href="{{ route('privacy-policy') }}" class="hover:text-emerald-400 transition-colors">Privacy Policy</a>
                             <span>•</span>
-                            <a href="#" class="hover:text-emerald-400 transition-colors">Terms of Service</a>
+                            <a href="{{ route('terms') }}" class="hover:text-emerald-400 transition-colors">Terms of Service</a>
                             <span>•</span>
                             <a href="#" class="hover:text-emerald-400 transition-colors">Accessibility</a>
                         </div>

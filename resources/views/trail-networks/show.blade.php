@@ -1106,9 +1106,35 @@ function initMapLayers() {
     }
 }
 
+// Fit the camera to cover every trail (and facility) in the network
+function fitNetworkBounds(options = {}) {
+    const bounds = new mapboxgl.LngLatBounds();
+    let hasPoint = false;
+
+    trailFeatures.forEach(f => {
+        f.geometry.coordinates.forEach(c => { bounds.extend(c); hasPoint = true; });
+    });
+    facilitiesData.forEach(facility => {
+        if (facility.latitude && facility.longitude) {
+            bounds.extend([facility.longitude, facility.latitude]);
+            hasPoint = true;
+        }
+    });
+
+    if (!hasPoint) return;
+
+    const padding = window.innerWidth <= 768
+        ? { padding: 40, maxZoom: 15, duration: 0 }
+        : { padding: { top: 60, left: 420, right: 60, bottom: 60 }, maxZoom: 15, duration: 0 };
+    map.fitBounds(bounds, { ...padding, ...options });
+}
+
 map.on('load', () => {
     _mapLoaded = true;
     initMapLayers();
+
+    // Fit the camera to the whole network on load
+    fitNetworkBounds();
 
     trails.forEach(trail => {
         if (!trail.route_coordinates || !trail.route_coordinates.length) return;

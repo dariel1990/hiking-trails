@@ -140,6 +140,20 @@
                            placeholder="Re-enter your password">
                 </div>
 
+                <div>
+                    <label for="terms" class="flex items-start gap-2.5 text-xs text-gray-600 leading-relaxed cursor-pointer">
+                        <input id="terms" name="terms" type="checkbox" value="1" required {{ old('terms') ? 'checked' : '' }}
+                               class="mt-0.5 h-4 w-4 shrink-0 rounded border-gray-300 text-forest-600 focus:ring-forest-600/30 @error('terms') border-red-400 @enderror">
+                        <span>
+                            I agree to the
+                            <a href="{{ route('terms') }}" target="_blank" class="font-semibold text-forest-700 hover:text-accent-600 transition">Terms &amp; Conditions</a>
+                            and
+                            <a href="{{ route('privacy-policy') }}" target="_blank" class="font-semibold text-forest-700 hover:text-accent-600 transition">Privacy Policy</a>.
+                        </span>
+                    </label>
+                    @error('terms')<p class="mt-1.5 text-xs text-red-600">{{ $message }}</p>@enderror
+                </div>
+
                 <button type="submit"
                         class="w-full flex items-center justify-center gap-2 py-3.5 px-5 bg-accent-500 hover:bg-accent-600 active:scale-[0.99] text-white text-sm font-semibold rounded-xl shadow-[0_8px_20px_rgba(232,123,53,0.3)] transition focus:outline-none focus:ring-4 focus:ring-accent-500/30">
                     Create account

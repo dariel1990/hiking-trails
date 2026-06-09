@@ -107,6 +107,11 @@
                             <p class="mt-3 text-center text-xs text-white/40">Checkout isn't live yet — payment setup is in progress.</p>
                         @endunless
                         <p class="mt-3 text-center text-xs text-white/40">Cancel anytime. Apple Pay, Google Pay & cards accepted.</p>
+                        <p class="mt-2 text-center text-xs text-white/40">
+                            By starting your subscription you agree to our
+                            <a href="{{ route('terms') }}" target="_blank" class="underline hover:text-white/70 transition">Terms &amp; Conditions</a>,
+                            including the billing, auto-renewal, and refund policies.
+                        </p>
                     </form>
                 </div>
             @endguest
