@@ -8,6 +8,13 @@
     $recaptchaSiteKey = config('services.recaptcha.site_key');
 @endphp
 
+<style>
+    /* Hide the floating reCAPTCHA badge — disclosure text + privacy/terms links are shown in the modal footer instead */
+    .grecaptcha-badge {
+        visibility: hidden;
+    }
+</style>
+
 <div
     x-data="trailPhotoUpload({
         trailId: {{ (int) $trail->id }},
