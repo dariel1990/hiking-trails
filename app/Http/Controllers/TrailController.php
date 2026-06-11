@@ -354,14 +354,35 @@ class TrailController extends Controller
             }
 
             // Get all photos from trail_media (eager-loaded)
-            $photos = $trail->generalMedia->map(function ($media) {
-                return [
-                    'id' => $media->id,
-                    'url' => Storage::url($media->storage_path),
-                    'caption' => $media->caption,
-                    'is_featured' => $media->is_featured,
-                ];
-            });
+            $photos = $trail->generalMedia
+                ->where('media_type', 'photo')
+                ->map(function ($media) {
+                    return [
+                        'id' => $media->id,
+                        'url' => Storage::url($media->storage_path),
+                        'caption' => $media->caption,
+                        'is_featured' => $media->is_featured,
+                    ];
+                })->values();
+
+            // Trail-level videos (not tied to a specific feature/highlight).
+            $videos = $trail->generalMedia
+                ->filter(fn ($m) => in_array($m->media_type, ['video', 'video_url']))
+                ->map(function ($media) {
+                    return [
+                        'id' => $media->id,
+                        'media_type' => $media->media_type,
+                        'url' => $media->media_type === 'video_url'
+                            ? $media->video_url
+                            : Storage::url($media->storage_path),
+                        'video_url' => $media->video_url,
+                        'thumbnail_url' => $media->thumbnail_url,
+                        'embed_url' => $media->embed_url,
+                        'caption' => $media->caption,
+                        'is_featured' => $media->is_featured,
+                        'video_provider' => $media->video_provider,
+                    ];
+                })->values();
 
             // Map activities to the format expected by frontend
             $activities = $trail->activities->map(function ($activity) {
@@ -443,6 +464,7 @@ class TrailController extends Controller
                 'route_coordinates' => $routeCoords,
                 'preview_photo' => $featuredMedia ? Storage::url($featuredMedia->storage_path) : null,
                 'photos' => $photos,
+                'videos' => $videos,
                 'highlights' => $highlights,
                 'activities' => $activities,
                 'fishing_location' => $trail->fishing_location,

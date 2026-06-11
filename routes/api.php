@@ -186,17 +186,35 @@ Route::get('/businesses', function () {
 
     $businesses = Business::active()
         ->with(['media' => function ($query) {
-            $query->where('is_primary', true)->orderBy('sort_order');
+            $query->orderBy('sort_order')->orderBy('created_at');
         }])
         ->when($type, fn ($q) => $q->where('business_type', $type))
         ->orderBy('name')
         ->get();
 
     return $businesses->map(function (Business $business) {
-        $primaryMedia = $business->media->first();
+        $primaryMedia = $business->media
+            ->firstWhere('is_primary', true)
+            ?? $business->media->firstWhere('media_type', 'photo');
         $photoUrl = $primaryMedia && $primaryMedia->file_path
             ? asset('storage/'.$primaryMedia->file_path)
-            : null;
+            : ($primaryMedia->url ?? null);
+
+        $videos = $business->media
+            ->filter(fn ($m) => $m->media_type !== 'photo')
+            ->map(function ($m) {
+                return [
+                    'id' => $m->id,
+                    'media_type' => $m->media_type,
+                    'url' => $m->url,
+                    'video_url' => $m->url,
+                    'thumbnail_url' => $m->thumbnail_url,
+                    'embed_url' => $m->embed_url,
+                    'caption' => $m->caption,
+                    'is_primary' => $m->is_primary,
+                    'video_provider' => $m->video_provider,
+                ];
+            })->values();
 
         return [
             'id' => $business->id,
@@ -218,6 +236,7 @@ Route::get('/businesses', function () {
             'icon' => $business->icon,
             'is_featured' => $business->is_featured,
             'photo_url' => $photoUrl,
+            'videos' => $videos,
         ];
     });
 });
