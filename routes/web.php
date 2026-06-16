@@ -53,6 +53,13 @@ Route::get('/map-v2', [TrailController::class, 'mapV2'])->name('map.v2');
 Route::get('/privacy-policy', fn () => view('privacy-policy'))->name('privacy-policy');
 Route::get('/terms-and-conditions', fn () => view('terms-and-conditions'))->name('terms');
 
+// Minimal video-only YouTube player for the mobile app's in-app Custom Tab. Path is kept
+// OUTSIDE the app's deep-link prefixes so it opens in the browser tab, not the native app.
+Route::get('/app/video/youtube/{id}', function (string $id) {
+    abort_unless(preg_match('/^[A-Za-z0-9_-]{6,15}$/', $id), 404);
+    return view('embed-player', ['videoId' => $id]);
+})->name('app.video.youtube');
+
 // Web user authentication — email/password (session-based)
 Route::get('/login', [WebAuthController::class, 'showLogin'])->name('login');
 Route::post('/login', [WebAuthController::class, 'login'])->name('login.post');

@@ -73,7 +73,7 @@
         </div>
 
         {{-- Body --}}
-        <div class="px-7 sm:px-8 pt-7 pb-8">
+        <div class="px-7 sm:px-8 pt-7 pb-8" x-data="{ agreed: {{ old('terms') ? 'true' : 'false' }} }">
             @if (session('error'))
                 <div class="mb-5 flex items-start gap-2.5 rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
                     <svg class="h-4 w-4 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
@@ -81,10 +81,16 @@
                 </div>
             @endif
 
-            {{-- Google --}}
+            {{-- Google — gated by the Terms checkbox below (mirrors the app) --}}
             <a href="{{ route('google.redirect') }}"
-               class="w-full inline-flex items-center justify-center gap-3 py-3 px-5 bg-white border border-gray-200 rounded-xl text-sm font-semibold text-gray-700 shadow-[0_1px_2px_rgba(0,0,0,0.04)] hover:border-forest-400 hover:bg-gray-50 active:scale-[0.99] transition focus:outline-none focus:ring-4 focus:ring-forest-600/10">
-                <svg class="w-5 h-5" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+               @click="if (! agreed) $event.preventDefault()"
+               :aria-disabled="(! agreed).toString()"
+               :tabindex="agreed ? '0' : '-1'"
+               class="w-full inline-flex items-center justify-center gap-3 py-3 px-5 bg-white border rounded-xl text-sm font-semibold shadow-[0_1px_2px_rgba(0,0,0,0.04)] transition focus:outline-none focus:ring-4 focus:ring-forest-600/10"
+               :class="agreed
+                   ? 'border-gray-200 text-gray-700 hover:border-forest-400 hover:bg-gray-50 active:scale-[0.99] cursor-pointer'
+                   : 'border-gray-200 text-gray-400 opacity-60 cursor-not-allowed'">
+                <svg class="w-5 h-5 transition" :class="agreed ? '' : 'grayscale opacity-70'" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                     <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.27-4.74 3.27-8.1z"/>
                     <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.99.66-2.26 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84A11 11 0 0 0 12 23z"/>
                     <path fill="#FBBC05" d="M5.84 14.1a6.6 6.6 0 0 1 0-4.2V7.06H2.18a11 11 0 0 0 0 9.88l3.66-2.84z"/>
@@ -142,7 +148,7 @@
 
                 <div>
                     <label for="terms" class="flex items-start gap-2.5 text-xs text-gray-600 leading-relaxed cursor-pointer">
-                        <input id="terms" name="terms" type="checkbox" value="1" required {{ old('terms') ? 'checked' : '' }}
+                        <input id="terms" name="terms" type="checkbox" value="1" required x-model="agreed"
                                class="mt-0.5 h-4 w-4 shrink-0 rounded border-gray-300 text-forest-600 focus:ring-forest-600/30 @error('terms') border-red-400 @enderror">
                         <span>
                             I agree to the

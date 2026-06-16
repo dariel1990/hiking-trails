@@ -1197,7 +1197,7 @@
                             </button>
                             
                             @if($trail->start_coordinates)
-                            <a href="https://www.google.com/maps/dir/Hazelton,+BC/{{ $trail->start_coordinates[0] }},{{ $trail->start_coordinates[1] }}" 
+                            <a href="https://www.google.com/maps/dir/?api=1&destination={{ $trail->start_coordinates[0] }},{{ $trail->start_coordinates[1] }}&travelmode=driving"
                                target="_blank"
                                class="block w-full bg-forest-600 hover:bg-forest-700 text-white py-3 px-4 rounded-lg font-semibold transition-all duration-200 transform hover:scale-105 text-center">
                                 Get Directions
@@ -1206,6 +1206,15 @@
                             
                             <button id="download-gpx-btn" class="w-full bg-white border-2 border-forest-600 text-forest-600 hover:bg-forest-600 hover:text-white py-3 px-4 rounded-lg font-semibold transition-all duration-200">
                                 Download GPX
+                            </button>
+
+                            {{-- Download Offline Map: app-only (native downloads map tiles). Hidden in browser. --}}
+                            <button id="download-offline-btn" style="display:none"
+                                    class="w-full bg-forest-600 hover:bg-forest-700 disabled:opacity-70 text-white py-3 px-4 rounded-lg font-semibold transition-all duration-200 flex items-center justify-center gap-2">
+                                <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                                </svg>
+                                <span id="download-offline-label">Download Offline Map</span>
                             </button>
 
                             <!-- Share Button (NEW) -->
@@ -1563,6 +1572,14 @@ function openMediaCarousel(listId, index) {
         window.xsRequirePro('video');
         return;
     }
+    // Inside the native app: play videos in the native player. YouTube refuses to embed
+    // inside the app's WebView (error 152) regardless of how we build the iframe, so we
+    // hand the URL to the native VideoPlayerModal which embeds from a youtube.com origin.
+    if (_picked && _picked.type === 'video'
+        && window.Offline && typeof window.Offline.playVideo === 'function') {
+        window.Offline.playVideo(_picked.url);
+        return;
+    }
     _modalState.listId = listId;
     _modalState.index = Math.max(0, Math.min(index || 0, list.length - 1));
     const modal = document.getElementById('media-modal');
@@ -1590,22 +1607,28 @@ function _renderModalItem() {
     const nextBtn = document.getElementById('modal-next');
 
     if (item.type === 'video') {
-        const youtubeMatch = (item.url || '').match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\s]+)/);
-        const vimeoMatch = (item.url || '').match(/vimeo\.com\/(\d+)/);
-        let embedUrl = '';
-        if (youtubeMatch) { embedUrl = `https://www.youtube.com/embed/${youtubeMatch[1]}`; }
-        else if (vimeoMatch) { embedUrl = `https://player.vimeo.com/video/${vimeoMatch[1]}`; }
+        const youtubeMatch = (item.url || '').match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([\w-]{11})/);
+        const vimeoMatch = (item.url || '').match(/vimeo\.com\/(?:video\/)?(\d+)/);
 
-        if (embedUrl) {
+        if (youtubeMatch) {
+            // Play via the YouTube IFrame Player API (NOT a bare <iframe>). Inside the app's
+            // Android WebView a plain embed returns "video unavailable" (error 152) because the
+            // request lacks a recognised origin/referer; the JS API honours playerVars.origin.
             content.innerHTML = `
                 <div class="relative w-full max-w-5xl" style="padding-bottom: 56.25%;">
-                    <iframe src="${embedUrl}" frameborder="0"
-                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    <div id="yt-embed-target" class="absolute inset-0 w-full h-full rounded-lg shadow-2xl"></div>
+                </div>`;
+            _mountYouTube('yt-embed-target', youtubeMatch[1]);
+        } else if (vimeoMatch) {
+            content.innerHTML = `
+                <div class="relative w-full max-w-5xl" style="padding-bottom: 56.25%;">
+                    <iframe src="https://player.vimeo.com/video/${vimeoMatch[1]}?autoplay=1&playsinline=1" frameborder="0"
+                            allow="autoplay; fullscreen; picture-in-picture"
                             allowfullscreen
                             class="absolute inset-0 w-full h-full rounded-lg shadow-2xl"></iframe>
                 </div>`;
         } else {
-            content.innerHTML = `<video src="${item.url}" controls autoplay class="max-w-full max-h-[78vh] rounded-lg shadow-2xl"></video>`;
+            content.innerHTML = `<video src="${item.url}" controls autoplay playsinline class="max-w-full max-h-[78vh] rounded-lg shadow-2xl"></video>`;
         }
     } else {
         content.innerHTML = `<img src="${item.url}" alt="" class="max-w-full max-h-[78vh] object-contain rounded-lg shadow-2xl">`;
@@ -1618,6 +1641,38 @@ function _renderModalItem() {
     prevBtn.style.display = showArrows ? '' : 'none';
     nextBtn.style.display = showArrows ? '' : 'none';
     counter.style.display = showArrows ? '' : 'none';
+}
+
+// Loads the YouTube IFrame Player API once, resolving when YT.Player is ready.
+let _ytApiPromise = null;
+function _ensureYouTubeApi() {
+    if (window.YT && window.YT.Player) { return Promise.resolve(); }
+    if (_ytApiPromise) { return _ytApiPromise; }
+    _ytApiPromise = new Promise(function (resolve) {
+        const prev = window.onYouTubeIframeAPIReady;
+        window.onYouTubeIframeAPIReady = function () { if (prev) { prev(); } resolve(); };
+        const tag = document.createElement('script');
+        tag.src = 'https://www.youtube.com/iframe_api';
+        document.head.appendChild(tag);
+    });
+    return _ytApiPromise;
+}
+
+// Mounts an autoplaying YouTube player into [targetId] using the JS API (origin-aware).
+function _mountYouTube(targetId, videoId) {
+    _ensureYouTubeApi().then(function () {
+        const el = document.getElementById(targetId);
+        if (!el) { return; } // modal already closed/navigated
+        new YT.Player(targetId, {
+            videoId: videoId,
+            host: 'https://www.youtube.com',
+            playerVars: {
+                autoplay: 1, playsinline: 1, rel: 0, modestbranding: 1,
+                origin: window.location.origin
+            },
+            events: { onReady: function (e) { e.target.playVideo(); } }
+        });
+    });
 }
 
 function _modalStep(delta) {
@@ -2808,6 +2863,60 @@ document.addEventListener('DOMContentLoaded', function() {
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
     });
+
+    // ── Download Offline Map (app only) ───────────────────────────────────────
+    // Mirrors the native Map screen's offline download: window.Offline.downloadTrail
+    // gates login/subscription/storage and downloads tiles; the native layer
+    // dispatches progress events back through window.OfflineEvents.
+    (function () {
+        const TRAIL_ID = {{ $trail->id }};
+        const btn = document.getElementById('download-offline-btn');
+        const label = document.getElementById('download-offline-label');
+        if (!btn || !window.xsInApp || !window.xsInApp()) return; // browser: leave hidden
+
+        // Minimal event hub if the host page hasn't defined one.
+        window.OfflineEvents = window.OfflineEvents || (function () {
+            const listeners = {};
+            return {
+                dispatch: function (name, payload) { (listeners[name] || []).forEach(function (fn) { try { fn(payload); } catch (e) {} }); },
+                on: function (name, fn) { (listeners[name] = listeners[name] || []).push(fn); }
+            };
+        })();
+
+        const PRIMARY = 'w-full bg-forest-600 hover:bg-forest-700 disabled:opacity-70 text-white py-3 px-4 rounded-lg font-semibold transition-all duration-200 flex items-center justify-center gap-2';
+        const OUTLINE = 'w-full bg-white border-2 border-forest-600 text-forest-600 hover:bg-forest-600 hover:text-white py-3 px-4 rounded-lg font-semibold transition-all duration-200 flex items-center justify-center gap-2';
+
+        let state = 'idle'; // idle | downloading | done
+        function setIdle() { state = 'idle'; btn.disabled = false; btn.className = PRIMARY; label.textContent = 'Download Offline Map'; }
+        function setDownloading(f) { state = 'downloading'; btn.disabled = true; btn.className = PRIMARY; label.textContent = 'Downloading… ' + Math.round((f || 0) * 100) + '%'; }
+        function setDone() { state = 'done'; btn.disabled = false; btn.className = OUTLINE; label.textContent = 'Remove offline map'; }
+
+        btn.style.display = 'flex';
+        try {
+            const saved = JSON.parse(window.Offline.savedTrailIds() || '[]');
+            if (Array.isArray(saved) && saved.indexOf(TRAIL_ID) !== -1) setDone(); else setIdle();
+        } catch (e) { setIdle(); }
+
+        btn.addEventListener('click', function () {
+            if (state === 'idle') {
+                try { window.Offline.downloadTrail(TRAIL_ID); } catch (e) {}
+            } else if (state === 'done') {
+                // removeDownload is silent (no native event) → reset optimistically.
+                try { window.Offline.removeDownload(TRAIL_ID); } catch (e) {}
+                setIdle();
+            }
+        });
+
+        function forThisTrail(p, fn) { if (p && p.trailId === TRAIL_ID) fn(p); }
+        window.OfflineEvents.on('downloadStarted', function (p) { forThisTrail(p, function () { setDownloading(0); }); });
+        window.OfflineEvents.on('downloadProgress', function (p) { forThisTrail(p, function () { setDownloading(p.fraction); }); });
+        window.OfflineEvents.on('downloadComplete', function (p) { forThisTrail(p, setDone); });
+        window.OfflineEvents.on('downloadFailed', function (p) { forThisTrail(p, setIdle); });
+        window.OfflineEvents.on('downloadCancelled', function (p) { forThisTrail(p, setIdle); });
+        // Gated (not signed in / no subscription) → native shows paywall, reset the button.
+        window.OfflineEvents.on('loginRequired', function (p) { forThisTrail(p, setIdle); });
+        window.OfflineEvents.on('subscriptionRequired', function (p) { forThisTrail(p, setIdle); });
+    })();
 
     // ── Share Trail ──────────────────────────────────────────────────────────
     const shareBtn = document.getElementById('share-trail-btn');

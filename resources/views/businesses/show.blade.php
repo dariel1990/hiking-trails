@@ -452,7 +452,7 @@
                                 </a>
                             @endif
                             @if($business->latitude && $business->longitude)
-                                <a href="https://www.google.com/maps/search/?api=1&query={{ $business->latitude }},{{ $business->longitude }}"
+                                <a href="https://www.google.com/maps/dir/?api=1&destination={{ $business->latitude }},{{ $business->longitude }}&travelmode=driving"
                                    target="_blank" rel="noopener noreferrer"
                                    class="flex items-center gap-3 w-full bg-gray-50 hover:bg-gray-100 text-gray-700 font-semibold px-4 py-3 rounded-xl transition-colors">
                                     <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
