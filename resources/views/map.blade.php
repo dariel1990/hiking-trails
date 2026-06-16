@@ -477,6 +477,11 @@
                 <p id="mobile-trail-stats" class="text-xs text-gray-500 mt-0.5"></p>
             </div>
         </div>
+        <!-- Hero image / gallery (shown below the info row when available) -->
+        <div id="mobile-trail-hero" class="hidden px-4 pb-3">
+            <img id="mobile-trail-hero-img" src="" alt="" class="hidden rounded-xl object-cover">
+            <div id="mobile-trail-hero-grid" class="hidden facility-media-grid"></div>
+        </div>
         <!-- Action buttons -->
         <div id="mobile-trail-actions" class="flex gap-2 px-4 pb-5 pt-1"></div>
     </div>
@@ -1582,6 +1587,30 @@
     align-items: center;
     justify-content: center;
     font-size: 10px;
+}
+
+#mobile-trail-hero-grid:not(.hidden) {
+    display: flex;
+    justify-content: center;
+    gap: 6px;
+}
+
+#mobile-trail-hero-grid .facility-media-item {
+    aspect-ratio: 1;
+    width: 56px;
+    flex-shrink: 0;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+#mobile-trail-hero:not(.hidden) {
+    display: flex;
+    justify-content: center;
+}
+
+#mobile-trail-hero-img {
+    height: 56px;
+    cursor: pointer;
 }
 
 /* Facility Gallery Modal */
@@ -3536,6 +3565,55 @@
             }
         }
 
+        // items: array of { url, thumbnail_url?, media_type?, caption? } — shows a small hero
+        // thumbnail, or (for multiple items) a row of small thumbnails with a "+N more" overlay
+        // on the last one. Clicking any thumbnail opens the full-size facility media modal.
+        _setMobileHero(items, name, cacheKey) {
+            const hero = document.getElementById('mobile-trail-hero');
+            const heroImg = document.getElementById('mobile-trail-hero-img');
+            const heroGrid = document.getElementById('mobile-trail-hero-grid');
+
+            if (!items) items = [];
+            if (typeof items === 'string') items = items ? [{ url: items }] : [];
+            items = items.filter(i => i && (i.url || i.thumbnail_url));
+
+            if (items.length === 0) {
+                hero.classList.add('hidden');
+                heroImg.classList.add('hidden');
+                heroGrid.classList.add('hidden');
+                heroImg.src = '';
+                heroGrid.innerHTML = '';
+                return;
+            }
+
+            window._facilityMediaCache = window._facilityMediaCache || {};
+            window._facilityMediaCache[cacheKey] = { name: name, media: items };
+            hero.classList.remove('hidden');
+
+            if (items.length === 1) {
+                heroGrid.classList.add('hidden');
+                heroGrid.innerHTML = '';
+                heroImg.classList.remove('hidden');
+                heroImg.src = items[0].thumbnail_url || items[0].url;
+                heroImg.alt = name || '';
+                heroImg.onclick = () => openFacilityMediaModal(cacheKey, 0);
+                return;
+            }
+
+            heroImg.classList.add('hidden');
+            heroImg.src = '';
+            heroGrid.classList.remove('hidden');
+            const maxVisible = 3;
+            const remaining = items.length - maxVisible;
+            heroGrid.innerHTML = items.slice(0, maxVisible).map((item, idx) => {
+                const isVideo = item.media_type === 'video_url' || item.media_type === 'video';
+                const thumbnailUrl = item.thumbnail_url || item.url;
+                const overlay = (idx === maxVisible - 1 && remaining > 0) ? `<div class="facility-media-overlay">+${remaining} more</div>` : '';
+                const videoBadge = isVideo ? '<div class="facility-video-badge">▶</div>' : '';
+                return `<div class="facility-media-item" onclick="openFacilityMediaModal('${cacheKey}', ${idx})"><img src="${thumbnailUrl}" class="facility-media-thumbnail">${overlay}${videoBadge}</div>`;
+            }).join('');
+        }
+
         showMobileTrailCard(trail) {
             this._mobileCardTrailId = trail.id;
             const isFishingLake = trail.location_type === 'fishing_lake';
@@ -3558,6 +3636,10 @@
                     ? 'linear-gradient(135deg,#0369a1,#0ea5e9)'
                     : 'linear-gradient(135deg,#166534,#22c55e)';
             }
+
+            // Gallery (below the info section) — excludes the featured photo shown beside the name
+            const galleryItems = (trail.photos || []).filter(p => p.url !== trail.preview_photo && !p.is_featured);
+            this._setMobileHero(galleryItems, trail.name, `trail-${trail.id}`);
 
             // Name
             document.getElementById('mobile-trail-name').textContent = trail.name;
@@ -4153,6 +4235,7 @@
                 placeholder.textContent = business.icon || '🏪';
                 placeholder.style.background = 'linear-gradient(135deg,#1e40af,#3b82f6)';
             }
+            this._setMobileHero([], business.name, `business-${business.id}`);
             document.getElementById('mobile-trail-name').textContent = business.name;
             const diffRow = document.getElementById('mobile-trail-diff-row');
             let typeHtml = `<span style="font-size:12px;font-weight:600;color:#2563eb;">${escapeHtml(business.business_type_label || '')}</span>`;
@@ -4189,6 +4272,10 @@
                 placeholder.textContent = facility.icon || '📍';
                 placeholder.style.background = 'linear-gradient(135deg,#166534,#22c55e)';
             }
+            const galleryItems = (facility.media && facility.media.length > 0)
+                ? (heroUrl ? facility.media.slice(1) : facility.media)
+                : [];
+            this._setMobileHero(galleryItems, facility.name, facility.id);
             document.getElementById('mobile-trail-name').textContent = facility.name;
             document.getElementById('mobile-trail-diff-row').innerHTML = `<span style="font-size:12px;font-weight:600;color:#166534;">${escapeHtml(facility.facility_type_label || 'Facility')}</span>`;
             document.getElementById('mobile-trail-stats').textContent = facility.description || '';
