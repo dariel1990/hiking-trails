@@ -115,9 +115,13 @@
                         <!-- Header with Icon and Actions -->
                         <div class="flex items-start justify-between mb-4">
                             <div class="flex items-center gap-3">
-                                <div class="w-12 h-12 rounded-lg flex items-center justify-center text-2xl"
+                                <div class="w-12 h-12 rounded-lg flex items-center justify-center text-2xl overflow-hidden"
                                      style="background-color: {{ $activity->color }}20;">
-                                    {{ $activity->icon }}
+                                    @if($activity->icon_image)
+                                        <img src="{{ Storage::url($activity->icon_image) }}" alt="{{ $activity->name }}" class="w-full h-full object-cover rounded-lg">
+                                    @else
+                                        {{ $activity->icon }}
+                                    @endif
                                 </div>
                                 <div>
                                     <h3 class="font-semibold text-lg">{{ $activity->name }}</h3>

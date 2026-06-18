@@ -173,8 +173,10 @@
                                 class="activity-checkbox w-5 h-5"
                                 data-season-applicable="{{ $activity->season_applicable ?? 'both' }}"
                             >
-                            <span class="ml-3 text-sm">
-                                @if($activity->icon)
+                            <span class="ml-3 text-sm flex items-center gap-1">
+                                @if($activity->icon_image)
+                                    <img src="{{ Storage::url($activity->icon_image) }}" alt="" class="w-5 h-5 object-cover rounded inline-block">
+                                @elseif($activity->icon)
                                     {{ $activity->icon }}
                                 @endif
                                 {{ $activity->name }}
@@ -2191,8 +2193,7 @@
             this.currentSeason = 'summer';
             this.currentDistance = '';
             this.currentDifficulty = '';
-            this.activeFilters = ['hiking', 'fishing', 'camping', 'viewpoint', 'highlights',
-                      'snowshoeing', 'ice-fishing', 'cross-country-skiing', 'downhill-skiing'];
+            this.activeFilters = {!! json_encode($activities->pluck('slug')->push('viewpoint')->push('highlights')->unique()->values()) !!};
             this.allTrails = [];
             this.init();
 
@@ -2653,8 +2654,8 @@
         updateActivityFilters(season) {
             // Define which activities are available for each season (map overlays)
             const seasonalActivities = {
-                summer: ['hiking', 'fishing', 'camping', 'viewpoint', 'highlights'],
-                winter: ['snowshoeing', 'ice-fishing', 'cross-country-skiing', 'downhill-skiing', 'viewpoint', 'highlights'],
+                summer: {!! json_encode($activities->filter(fn($a) => in_array($a->season_applicable, ['summer', 'both']))->pluck('slug')->push('viewpoint')->push('highlights')->unique()->values()) !!},
+                winter: {!! json_encode($activities->filter(fn($a) => in_array($a->season_applicable, ['winter', 'both']))->pluck('slug')->push('viewpoint')->push('highlights')->unique()->values()) !!},
             };
 
             // Get valid activities for this season
@@ -3122,6 +3123,7 @@
                         const markerConfig = {
                             type: 'hiking',
                             icon: (displayActivity && displayActivity.icon) || '🥾',
+                            icon_image_url: (displayActivity && displayActivity.icon_image_url) || null,
                             color: (displayActivity && displayActivity.color) || '#10B981',
                         };
                         const marker = this.createTrailMarker(trail, markerConfig);
@@ -3751,7 +3753,10 @@
             }
             if (trail.activities && trail.activities.length > 0) {
                 trail.activities.forEach(activity => {
-                    metaParts.push(`<span class="biz-panel-dot">·</span><span style="font-size:12px;font-weight:600;background:${activity.color}20;color:${activity.color};padding:2px 8px;border-radius:999px;">${activity.icon} ${activity.name}</span>`);
+                    const activityIconHtml = activity.icon_image_url
+                        ? `<img src="${activity.icon_image_url}" style="width:14px;height:14px;object-fit:cover;border-radius:2px;vertical-align:middle;display:inline-block;">`
+                        : (activity.icon || '');
+                    metaParts.push(`<span class="biz-panel-dot">·</span><span style="font-size:12px;font-weight:600;background:${activity.color}20;color:${activity.color};padding:2px 8px;border-radius:999px;">${activityIconHtml} ${activity.name}</span>`);
                 });
             }
 
@@ -4966,8 +4971,8 @@
                                 ` : ''}
                                 ${trail.activities && trail.activities.length > 0 ? 
                                     trail.activities.slice(0, 2).map(activity => `
-                                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium" style="background-color: ${activity.color}20; color: ${activity.color};">
-                                            ${activity.icon} ${activity.name}
+                                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium" style="background-color: ${activity.color}20; color: ${activity.color};">
+                                            ${activity.icon_image_url ? `<img src="${activity.icon_image_url}" style="width:12px;height:12px;object-fit:cover;border-radius:2px;display:inline-block;">` : (activity.icon || '')} ${activity.name}
                                         </span>
                                     `).join('')
                                 : ''}
