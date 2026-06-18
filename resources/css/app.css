@@ -602,9 +602,25 @@
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
-  
+
   .parallax-bg {
     background-attachment: scroll;
+  }
+
+  /* Keep these slide-up modals at full speed even with reduced motion requested.
+     `revert` would roll back to the user-agent default (0s), not the modal's own
+     duration, so the actual durations are hardcoded here to match the animations
+     defined in trails/show.blade.php, app-download-modal.blade.php, and
+     subscription/_upgrade-modal.blade.php. */
+  .xs-share-modal.is-open .xs-share-backdrop,
+  .xs-app-modal.is-open .xs-app-backdrop,
+  .xs-pro-modal.is-open .xs-pro-backdrop,
+  .xs-share-modal.is-open .xs-share-dialog,
+  .xs-app-modal.is-open .xs-app-dialog,
+  .xs-pro-modal.is-open .xs-pro-dialog,
+  .xs-gpx-toast.is-in,
+  .xs-gpx-toast.is-out {
+    animation-duration: 0.5s !important;
   }
 }
 

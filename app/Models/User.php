@@ -14,10 +14,16 @@ class User extends Authenticatable
 
     protected $fillable = [
         'name',
+        'first_name',
+        'last_name',
+        'avatar',
         'email',
+        'bio',
+        'phone',
         'google_id',
         'password',
         'is_admin',
+        'is_active',
         'stripe_customer_id',
     ];
 
@@ -30,6 +36,7 @@ class User extends Authenticatable
         'email_verified_at' => 'datetime',
         'password' => 'hashed',
         'is_admin' => 'boolean',
+        'is_active' => 'boolean',
     ];
 
     /**
@@ -38,6 +45,15 @@ class User extends Authenticatable
     public function isAdmin(): bool
     {
         return $this->is_admin;
+    }
+
+    /**
+     * Full public URL for the user's uploaded profile photo, or null if they
+     * haven't set one (callers should fall back to the initials avatar).
+     */
+    public function getAvatarUrlAttribute(): ?string
+    {
+        return $this->avatar ? asset('storage/'.$this->avatar) : null;
     }
 
     /**

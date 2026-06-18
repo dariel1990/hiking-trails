@@ -82,8 +82,8 @@
         <!-- Enhanced Network Cards Grid -->
         <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8 mb-12">
             @forelse($networks as $network)
-            <div class="trail-card group cursor-pointer hover-lift" 
-                 onclick="window.location.href='{{ route('trail-networks.show', $network->slug) }}'">
+            <div class="trail-card group cursor-pointer hover-lift xs-network-card"
+                 data-network-url="{{ route('trail-networks.show', $network->slug) }}">
                 
                 <!-- Enhanced Network Header with Gradient -->
                 <div class="trail-card-image group-hover:scale-105 transition-transform duration-500">
@@ -207,3 +207,27 @@
 </section>
 @endif
 @endsection
+
+@push('scripts')
+<script>
+    // ── Prompt app download on mobile/tablet instead of opening a network map ──
+    // Stay on this page; show the "get the app" modal instead of navigating to
+    // the network's interactive map. Same xsShouldPromptAppForMap/xsPromptAppDownload
+    // helpers used by the trails show page's "View on Interactive Map" button.
+    document.addEventListener('click', function (e) {
+        var link = e.target.closest('a[href*="/trail-networks/"], [data-network-url]');
+        if (!link) {
+            return;
+        }
+
+        if (window.xsShouldPromptAppForMap && window.xsShouldPromptAppForMap() && window.xsPromptAppDownload()) {
+            e.preventDefault();
+            return;
+        }
+
+        if (!link.matches('a') && link.dataset.networkUrl) {
+            window.location.href = link.dataset.networkUrl;
+        }
+    });
+</script>
+@endpush

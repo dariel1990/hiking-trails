@@ -15,6 +15,7 @@ use App\Http\Controllers\Auth\WebAuthController;
 use App\Http\Controllers\Auth\WebGoogleAuthController;
 use App\Http\Controllers\BusinessPublicController;
 use App\Http\Controllers\EventsController;
+use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\Subscription\StripeWebhookController;
 use App\Http\Controllers\Subscription\WebSubscriptionController;
 use App\Http\Controllers\TrailController;
@@ -57,6 +58,7 @@ Route::get('/terms-and-conditions', fn () => view('terms-and-conditions'))->name
 // OUTSIDE the app's deep-link prefixes so it opens in the browser tab, not the native app.
 Route::get('/app/video/youtube/{id}', function (string $id) {
     abort_unless(preg_match('/^[A-Za-z0-9_-]{6,15}$/', $id), 404);
+
     return view('embed-player', ['videoId' => $id]);
 })->name('app.video.youtube');
 
@@ -76,6 +78,20 @@ Route::middleware('auth')->group(function () {
 });
 // Stripe server-to-server webhook (no CSRF, no auth — verified by signature)
 Route::post('/stripe/webhook', [StripeWebhookController::class, 'handle'])->name('stripe.webhook');
+
+// User settings — profile, account, subscription
+Route::middleware('auth')->prefix('settings')->name('settings.')->group(function () {
+    Route::redirect('/', '/settings/profile');
+    Route::get('/profile', [SettingsController::class, 'profile'])->name('profile');
+    Route::put('/profile', [SettingsController::class, 'updateProfile'])->name('profile.update');
+    Route::post('/profile/avatar', [SettingsController::class, 'updateAvatar'])->name('profile.avatar.update');
+    Route::delete('/profile/avatar', [SettingsController::class, 'destroyAvatar'])->name('profile.avatar.destroy');
+    Route::get('/account', [SettingsController::class, 'account'])->name('account');
+    Route::put('/account', [SettingsController::class, 'updateAccount'])->name('account.update');
+    Route::delete('/account', [SettingsController::class, 'destroyAccount'])->name('account.destroy');
+    Route::post('/account/google/disconnect', [SettingsController::class, 'disconnectGoogle'])->name('account.google.disconnect');
+    Route::get('/subscription', [SettingsController::class, 'subscription'])->name('subscription');
+});
 
 // Web user authentication — Google OAuth redirect flow (session-based)
 Route::get('/auth/google/redirect', [WebGoogleAuthController::class, 'redirect'])->name('google.redirect');

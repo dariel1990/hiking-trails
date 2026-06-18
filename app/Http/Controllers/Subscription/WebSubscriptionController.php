@@ -84,7 +84,7 @@ class WebSubscriptionController extends Controller
 
     public function cancel(): RedirectResponse
     {
-        return redirect()->route('pro.show')->with('error', 'Checkout cancelled — no charge was made.');
+        return redirect()->route('pro.show')->with('error', 'Checkout cancelled, no charge was made.');
     }
 
     public function portal(Request $request): RedirectResponse

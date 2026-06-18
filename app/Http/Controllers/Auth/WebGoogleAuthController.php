@@ -30,6 +30,12 @@ class WebGoogleAuthController extends Controller
             return redirect()->route('home')->with('error', 'Google did not return an email address.');
         }
 
+        $existing = User::where('email', $googleUser->getEmail())->first();
+
+        if ($existing && ! $existing->is_active) {
+            return redirect()->route('home')->with('error', 'This account has been deactivated.');
+        }
+
         $user = User::updateOrCreate(
             ['email' => $googleUser->getEmail()],
             [

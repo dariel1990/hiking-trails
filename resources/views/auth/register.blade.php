@@ -108,12 +108,22 @@
             <form class="space-y-4" method="POST" action="{{ route('register.post') }}" x-data="{ showPassword: false }">
                 @csrf
 
-                <div>
-                    <label for="name" class="block text-xs font-semibold text-gray-600 mb-1.5">Full name</label>
-                    <input id="name" name="name" type="text" autocomplete="name" required
-                           class="block w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 placeholder-gray-400 transition focus:outline-none focus:bg-white focus:ring-4 focus:ring-forest-600/10 focus:border-forest-600 @error('name') border-red-400 @enderror"
-                           placeholder="Jane Hiker" value="{{ old('name') }}">
-                    @error('name')<p class="mt-1.5 text-xs text-red-600">{{ $message }}</p>@enderror
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label for="first_name" class="block text-xs font-semibold text-gray-600 mb-1.5">First name</label>
+                        <input id="first_name" name="first_name" type="text" autocomplete="given-name" required
+                               class="block w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 placeholder-gray-400 transition focus:outline-none focus:bg-white focus:ring-4 focus:ring-forest-600/10 focus:border-forest-600 @error('first_name') border-red-400 @enderror"
+                               placeholder="Jane" value="{{ old('first_name') }}">
+                        @error('first_name')<p class="mt-1.5 text-xs text-red-600">{{ $message }}</p>@enderror
+                    </div>
+
+                    <div>
+                        <label for="last_name" class="block text-xs font-semibold text-gray-600 mb-1.5">Last name</label>
+                        <input id="last_name" name="last_name" type="text" autocomplete="family-name" required
+                               class="block w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 placeholder-gray-400 transition focus:outline-none focus:bg-white focus:ring-4 focus:ring-forest-600/10 focus:border-forest-600 @error('last_name') border-red-400 @enderror"
+                               placeholder="Hiker" value="{{ old('last_name') }}">
+                        @error('last_name')<p class="mt-1.5 text-xs text-red-600">{{ $message }}</p>@enderror
+                    </div>
                 </div>
 
                 <div>

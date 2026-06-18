@@ -31,6 +31,14 @@ class WebAuthController extends Controller
                 ->withErrors(['email' => 'Invalid credentials.']);
         }
 
+        if (! Auth::user()->is_active) {
+            Auth::logout();
+
+            return back()
+                ->withInput($request->only('email'))
+                ->withErrors(['email' => 'This account has been deactivated.']);
+        }
+
         $request->session()->regenerate();
 
         return redirect()->intended(route('home'));
@@ -47,8 +55,13 @@ class WebAuthController extends Controller
 
     public function register(RegisterRequest $request): RedirectResponse
     {
+        $firstName = $request->string('first_name')->value();
+        $lastName = $request->string('last_name')->value();
+
         $user = User::create([
-            'name' => $request->string('name')->value(),
+            'name' => trim("{$firstName} {$lastName}"),
+            'first_name' => $firstName,
+            'last_name' => $lastName,
             'email' => $request->string('email')->value(),
             'password' => $request->string('password')->value(),
         ]);

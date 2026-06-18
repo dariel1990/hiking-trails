@@ -17,8 +17,13 @@ class AuthController extends Controller
 {
     public function register(RegisterRequest $request): JsonResponse
     {
+        $firstName = $request->string('first_name')->value();
+        $lastName = $request->string('last_name')->value();
+
         $user = User::create([
-            'name' => $request->string('name')->value(),
+            'name' => trim("{$firstName} {$lastName}"),
+            'first_name' => $firstName,
+            'last_name' => $lastName,
             'email' => $request->string('email')->value(),
             'password' => $request->string('password')->value(),
         ]);
@@ -37,6 +42,10 @@ class AuthController extends Controller
             return response()->json(['message' => 'Invalid credentials'], Response::HTTP_UNAUTHORIZED);
         }
 
+        if (! $user->is_active) {
+            return response()->json(['message' => 'This account has been deactivated'], Response::HTTP_FORBIDDEN);
+        }
+
         return response()->json([
             'token' => $this->issueToken($user, $request),
             'user' => $this->userPayload($user),
@@ -51,6 +60,12 @@ class AuthController extends Controller
 
         if ($payload === false || empty($payload['email']) || ! ($payload['email_verified'] ?? false)) {
             return response()->json(['message' => 'Invalid Google token'], Response::HTTP_UNAUTHORIZED);
+        }
+
+        $existing = User::where('email', $payload['email'])->first();
+
+        if ($existing && ! $existing->is_active) {
+            return response()->json(['message' => 'This account has been deactivated'], Response::HTTP_FORBIDDEN);
         }
 
         $user = User::updateOrCreate(

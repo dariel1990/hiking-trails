@@ -115,8 +115,12 @@
                             <button type="button" @click="open = !open" @keydown.escape.window="open = false"
                                     :aria-expanded="open" aria-haspopup="true"
                                     class="flex items-center gap-2.5 rounded-full pl-1 pr-2.5 py-1 hover:bg-gray-100 transition-colors focus:outline-none focus:ring-2 focus:ring-forest-600/20">
-                                <span class="relative flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-forest-600 to-forest-800 text-white text-sm font-semibold shadow-sm">
-                                    {{ $navUser->initials }}
+                                <span class="relative flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-forest-600 to-forest-800 text-white text-sm font-semibold shadow-sm overflow-hidden">
+                                    @if($navUser->avatar_url)
+                                        <img src="{{ $navUser->avatar_url }}" alt="" class="h-full w-full object-cover">
+                                    @else
+                                        {{ $navUser->initials }}
+                                    @endif
                                     @if($navIsPro)
                                         <span class="absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 rounded-full bg-accent-500 ring-2 ring-white" title="XploreSmithers Pro"></span>
                                     @endif
@@ -134,7 +138,13 @@
                                  x-transition:leave-end="opacity-0 -translate-y-1 scale-95"
                                  class="absolute right-0 mt-2 w-64 origin-top-right rounded-2xl bg-white shadow-xl ring-1 ring-black/5 overflow-hidden z-50">
                                 <div class="flex items-center gap-3 px-4 py-4 bg-gray-50 border-b border-gray-100">
-                                    <span class="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-forest-600 to-forest-800 text-white text-sm font-semibold">{{ $navUser->initials }}</span>
+                                    <span class="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-forest-600 to-forest-800 text-white text-sm font-semibold overflow-hidden">
+                                        @if($navUser->avatar_url)
+                                            <img src="{{ $navUser->avatar_url }}" alt="" class="h-full w-full object-cover">
+                                        @else
+                                            {{ $navUser->initials }}
+                                        @endif
+                                    </span>
                                     <div class="min-w-0">
                                         <p class="text-sm font-semibold text-gray-900 truncate">{{ $navUser->name }}</p>
                                         <p class="text-xs text-gray-500 truncate">{{ $navUser->email }}</p>
@@ -153,13 +163,18 @@
                                                 Manage subscription
                                             </a>
                                         @else
-                                            <a href="{{ route('pro.show') }}" class="flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-accent-600 hover:bg-accent-50 transition-colors">
+                                            <button type="button" onclick="window.xsShowProModal()" class="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-accent-600 hover:bg-accent-50 transition-colors">
                                                 <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.286 3.957a1 1 0 00.95.69h4.162c.969 0 1.371 1.24.588 1.81l-3.368 2.447a1 1 0 00-.364 1.118l1.287 3.957c.3.921-.755 1.688-1.54 1.118l-3.367-2.447a1 1 0 00-1.176 0l-3.367 2.447c-.784.57-1.838-.197-1.539-1.118l1.286-3.957a1 1 0 00-.363-1.118L2.07 9.384c-.783-.57-.38-1.81.588-1.81h4.163a1 1 0 00.95-.69l1.286-3.957z"/></svg>
                                                 Go Pro
-                                            </a>
+                                            </button>
                                         @endif
                                         <div class="my-1.5 border-t border-gray-100"></div>
                                     @endif
+
+                                    <a href="{{ route('settings.profile') }}" class="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
+                                        <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M10.343 3.94c.09-.542.56-.94 1.11-.94h1.093c.55 0 1.02.398 1.11.94l.149.894c.07.424.384.764.78.93.398.164.855.142 1.205-.108l.737-.527a1.125 1.125 0 011.45.12l.773.774c.39.389.44 1.002.12 1.45l-.527.737c-.25.35-.272.806-.107 1.204.165.397.505.71.93.78l.893.15c.543.09.94.56.94 1.109v1.094c0 .55-.397 1.02-.94 1.11l-.893.149c-.425.07-.765.383-.93.78-.165.398-.143.854.107 1.204l.527.738c.32.447.27 1.06-.12 1.45l-.774.773a1.125 1.125 0 01-1.449.12l-.738-.527c-.35-.25-.806-.272-1.203-.107-.397.165-.71.505-.781.929l-.149.894c-.09.542-.56.94-1.11.94h-1.094c-.55 0-1.019-.398-1.11-.94l-.148-.894c-.071-.424-.384-.764-.781-.93-.398-.164-.854-.142-1.204.108l-.738.527c-.447.32-1.06.27-1.45-.12l-.773-.774a1.125 1.125 0 01-.12-1.45l.527-.737c.25-.35.273-.806.108-1.204-.165-.397-.505-.71-.93-.78l-.894-.15c-.542-.09-.94-.56-.94-1.109v-1.094c0-.55.398-1.02.94-1.11l.894-.149c.424-.07.765-.383.93-.78.165-.398.143-.854-.108-1.204l-.526-.738a1.125 1.125 0 01.12-1.45l.773-.773a1.125 1.125 0 011.45-.12l.737.527c.35.25.807.272 1.204.107.397-.165.71-.505.78-.929l.15-.894z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                                        Settings
+                                    </a>
 
                                     <form method="POST" action="{{ route('logout') }}">
                                         @csrf
@@ -209,17 +224,30 @@
 
                         @auth
                             <div class="mt-2 px-6 py-3 border-t border-gray-100 flex items-center gap-3">
-                                <span class="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-forest-600 to-forest-800 text-white text-sm font-semibold">{{ auth()->user()->initials }}</span>
+                                <span class="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-forest-600 to-forest-800 text-white text-sm font-semibold overflow-hidden">
+                                    @if(auth()->user()->avatar_url)
+                                        <img src="{{ auth()->user()->avatar_url }}" alt="" class="h-full w-full object-cover">
+                                    @else
+                                        {{ auth()->user()->initials }}
+                                    @endif
+                                </span>
                                 <div class="min-w-0">
                                     <p class="text-sm font-semibold text-gray-900 truncate">{{ auth()->user()->name }}</p>
                                     <p class="text-xs text-gray-500 truncate">{{ auth()->user()->email }}</p>
                                 </div>
                             </div>
                             @if(config('subscriptions.enabled'))
-                                <a href="{{ auth()->user()->hasActiveProEntitlement() ? route('pro.portal') : route('pro.show') }}" class="block px-6 py-3 font-medium transition-colors {{ auth()->user()->hasActiveProEntitlement() ? 'text-accent-700' : 'text-accent-600 hover:bg-emerald-50' }}">
-                                    {{ auth()->user()->hasActiveProEntitlement() ? '★ Manage subscription' : 'Go Pro' }}
-                                </a>
+                                @if(auth()->user()->hasActiveProEntitlement())
+                                    <a href="{{ route('pro.portal') }}" class="block px-6 py-3 font-medium text-accent-700 transition-colors">
+                                        ★ Manage subscription
+                                    </a>
+                                @else
+                                    <button type="button" onclick="window.xsShowProModal()" class="w-full text-left block px-6 py-3 font-medium text-accent-600 hover:bg-emerald-50 transition-colors">
+                                        Go Pro
+                                    </button>
+                                @endif
                             @endif
+                            <a href="{{ route('settings.profile') }}" class="block px-6 py-3 text-gray-700 hover:bg-emerald-50 hover:text-emerald-600 font-medium transition-colors">Settings</a>
                             <form method="POST" action="{{ route('logout') }}">
                                 @csrf
                                 <button type="submit" class="w-full text-left block px-6 py-3 text-gray-700 hover:bg-emerald-50 hover:text-emerald-600 font-medium transition-colors">Log out</button>
@@ -455,6 +483,46 @@
 
     {{-- XploreSmithers Pro upgrade modal (web gating) --}}
     @include('subscription._upgrade-modal')
+
+    @php($isAndroidWebView = str_contains((string) request()->userAgent(), '; wv)'))
+    @php($appDownloadUrl = config('services.android_app.play_store_url'))
+
+    @if($appDownloadUrl)
+        @include('partials.app-download-modal')
+
+        <script>
+            window.xsAppDownloadUrl = @json($appDownloadUrl);
+        </script>
+        <script>
+            (function () {
+                var isAndroidWebView = {{ $isAndroidWebView ? 'true' : 'false' }};
+
+                window.xsShouldPromptAppForMap = function () {
+                    return !isAndroidWebView && /Mobi|Android|iPhone|iPad|iPod|Tablet/i.test(navigator.userAgent);
+                };
+
+                window.xsPromptAppDownload = function () {
+                    if (!window.xsShowAppDownloadModal) {
+                        return false;
+                    }
+
+                    window.xsShowAppDownloadModal();
+                    return true;
+                };
+
+                document.addEventListener('click', function (e) {
+                    var link = e.target.closest('a[href*="/map"]');
+                    if (!link || !window.xsShouldPromptAppForMap()) {
+                        return;
+                    }
+
+                    if (window.xsPromptAppDownload()) {
+                        e.preventDefault();
+                    }
+                });
+            })();
+        </script>
+    @endif
 
     @stack('scripts')
 </body>

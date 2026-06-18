@@ -54,6 +54,32 @@ class WebSubscriptionTest extends TestCase
         $this->post('/pro/checkout', ['plan' => 'monthly'])->assertRedirect('/login');
     }
 
+    public function test_upgrade_modal_renders_for_guests_on_any_page(): void
+    {
+        $this->get('/')->assertOk()->assertSee('xs-pro-modal', false)->assertSee('Sign in to subscribe');
+    }
+
+    public function test_header_go_pro_opens_the_modal_for_non_pro_members(): void
+    {
+        $response = $this->actingAs(User::factory()->create())->get('/');
+
+        $response->assertOk()
+            ->assertSee('xsShowProModal()', false)
+            ->assertDontSee('Manage subscription');
+    }
+
+    public function test_header_links_to_billing_portal_for_pro_members(): void
+    {
+        $user = User::factory()->create();
+        Subscription::factory()->web()->active()->create(['user_id' => $user->id]);
+
+        $response = $this->actingAs($user)->get('/');
+
+        $response->assertOk()
+            ->assertSee('Manage subscription')
+            ->assertSee(route('pro.portal'), false);
+    }
+
     public function test_checkout_validates_the_plan(): void
     {
         $user = User::factory()->create();
