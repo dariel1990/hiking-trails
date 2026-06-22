@@ -30,9 +30,14 @@ class UserController extends Controller
     {
         User::create([
             'name' => $request->name,
+            'first_name' => $request->first_name,
+            'last_name' => $request->last_name,
             'email' => $request->email,
+            'phone' => $request->phone,
+            'bio' => $request->bio,
             'password' => $request->password,
             'is_admin' => $request->boolean('is_admin'),
+            'is_active' => $request->boolean('is_active', true),
         ]);
 
         return redirect()->route('admin.users.index')
@@ -48,8 +53,13 @@ class UserController extends Controller
     {
         $data = [
             'name' => $request->name,
+            'first_name' => $request->first_name,
+            'last_name' => $request->last_name,
             'email' => $request->email,
+            'phone' => $request->phone,
+            'bio' => $request->bio,
             'is_admin' => $request->boolean('is_admin'),
+            'is_active' => $request->boolean('is_active'),
         ];
 
         if (filled($request->password)) {

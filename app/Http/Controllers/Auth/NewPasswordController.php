@@ -1,0 +1,44 @@
+<?php
+
+namespace App\Http\Controllers\Auth;
+
+use App\Http\Controllers\Controller;
+use App\Http\Requests\Auth\ResetPasswordRequest;
+use App\Models\User;
+use Illuminate\Contracts\View\View;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Password;
+use Illuminate\Support\Str;
+
+class NewPasswordController extends Controller
+{
+    public function create(Request $request, string $token): View
+    {
+        return view('auth.passwords.reset', [
+            'token' => $token,
+            'email' => $request->string('email')->value(),
+        ]);
+    }
+
+    public function store(ResetPasswordRequest $request): RedirectResponse
+    {
+        $status = Password::reset(
+            $request->only('email', 'password', 'password_confirmation', 'token'),
+            function (User $user, string $password): void {
+                $user->forceFill([
+                    'password' => $password,
+                    'remember_token' => Str::random(60),
+                ])->save();
+            }
+        );
+
+        if ($status === Password::PasswordReset) {
+            return redirect()->route('login')->with('status', 'Your password has been reset. You can now sign in.');
+        }
+
+        return back()
+            ->withInput($request->only('email'))
+            ->withErrors(['email' => __($status)]);
+    }
+}

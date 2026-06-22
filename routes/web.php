@@ -11,6 +11,8 @@ use App\Http\Controllers\Admin\FacilityController;
 use App\Http\Controllers\Admin\MediaController;
 use App\Http\Controllers\Admin\TrailHighlightController;
 use App\Http\Controllers\Admin\UserController;
+use App\Http\Controllers\Auth\NewPasswordController;
+use App\Http\Controllers\Auth\PasswordResetLinkController;
 use App\Http\Controllers\Auth\WebAuthController;
 use App\Http\Controllers\Auth\WebGoogleAuthController;
 use App\Http\Controllers\BusinessPublicController;
@@ -21,6 +23,7 @@ use App\Http\Controllers\Subscription\WebSubscriptionController;
 use App\Http\Controllers\TrailController;
 use App\Http\Controllers\TrailNetworkController;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Route;
 
 // Android App Links — Digital Asset Links file
@@ -67,6 +70,12 @@ Route::get('/login', [WebAuthController::class, 'showLogin'])->name('login');
 Route::post('/login', [WebAuthController::class, 'login'])->name('login.post');
 Route::get('/register', [WebAuthController::class, 'showRegister'])->name('register');
 Route::post('/register', [WebAuthController::class, 'register'])->name('register.post');
+
+// Password reset — request a link, then set a new password
+Route::get('/forgot-password', [PasswordResetLinkController::class, 'create'])->name('password.request');
+Route::post('/forgot-password', [PasswordResetLinkController::class, 'store'])->middleware('throttle:6,1')->name('password.email');
+Route::get('/reset-password/{token}', [NewPasswordController::class, 'create'])->name('password.reset');
+Route::post('/reset-password', [NewPasswordController::class, 'store'])->middleware('throttle:6,1')->name('password.store');
 
 // XploreSmithers Pro — web subscriptions (Stripe)
 Route::get('/pro', [WebSubscriptionController::class, 'show'])->name('pro.show');
@@ -281,3 +290,42 @@ Route::get('/migrate-carousel-google', function () {
 
     return nl2br(e($carouselOutput."\n".$googleIdOutput));
 })->name('migrate.carousel-google');
+
+Route::get('/test-mail', function () {
+    try {
+        Mail::raw('Test Email', function ($message) {
+            $message->to('darielbongabong90@gmail.com')
+                ->subject('SMTP Test');
+        });
+
+        return 'Success';
+    } catch (\Exception $e) {
+        return [
+            'error' => $e->getMessage(),
+            'trace' => get_class($e),
+        ];
+    }
+});
+
+Route::get('/mail-test-config', function () {
+    return [
+        'host' => config('mail.mailers.smtp.host'),
+        'port' => config('mail.mailers.smtp.port'),
+        'user' => config('mail.mailers.smtp.username'),
+        'encryption' => config('mail.mailers.smtp.encryption'),
+    ];
+});
+
+Route::get('/mail-env', function () {
+    return [
+        'MAIL_HOST' => env('MAIL_HOST'),
+        'MAIL_PORT' => env('MAIL_PORT'),
+        'MAIL_USERNAME' => env('MAIL_USERNAME'),
+        'MAIL_PASSWORD_EXISTS' => ! empty(env('MAIL_PASSWORD')),
+        'MAIL_ENCRYPTION' => env('MAIL_ENCRYPTION'),
+    ];
+});
+
+Route::get('/mail-config-full', function () {
+    return config('mail.mailers.smtp');
+});

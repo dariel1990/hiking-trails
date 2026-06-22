@@ -25,11 +25,17 @@ Route::prefix('auth')->group(function () {
     Route::post('/register', [AuthController::class, 'register'])->middleware('throttle:300,1');
     Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:300,1');
     Route::post('/google', [AuthController::class, 'googleSignIn'])->middleware('throttle:300,1');
+    Route::post('/forgot-password', [AuthController::class, 'forgotPassword'])->middleware('throttle:300,1');
+    Route::post('/reset-password', [AuthController::class, 'resetPassword'])->middleware('throttle:300,1');
     Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth:sanctum');
 });
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('/me', [AuthController::class, 'me']);
+    Route::put('/me', [AuthController::class, 'updateProfile']);
+    Route::post('/me/avatar', [AuthController::class, 'updateAvatar']);
+    Route::put('/me/password', [AuthController::class, 'updatePassword']);
+    Route::delete('/me', [AuthController::class, 'deleteAccount']);
     Route::get('/me/entitlements', [EntitlementController::class, 'show']);
 
     // Phase B (deferred) — wiring in place, Google verification stubbed.
