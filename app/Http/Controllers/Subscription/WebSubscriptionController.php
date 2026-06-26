@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Subscription;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Subscription\CheckoutRequest;
+use App\Services\RegionalPricingService;
 use App\Services\StripeSubscriptionService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
@@ -12,7 +13,10 @@ use Throwable;
 
 class WebSubscriptionController extends Controller
 {
-    public function __construct(private StripeSubscriptionService $stripe) {}
+    public function __construct(
+        private StripeSubscriptionService $stripe,
+        private RegionalPricingService $pricing,
+    ) {}
 
     public function show(Request $request): View|RedirectResponse
     {
@@ -20,11 +24,15 @@ class WebSubscriptionController extends Controller
             return redirect()->route('home');
         }
 
+        $pricing = $this->pricing->forRequest();
+
         return view('subscription.pro', [
             'isPro' => (bool) $request->user()?->hasActiveProEntitlement(),
             'stripeEnabled' => (bool) config('services.stripe.enabled'),
-            'priceMonthly' => '4.99',
-            'priceAnnual' => '39.99',
+            'priceMonthly' => $pricing['monthly'],
+            'priceAnnual' => $pricing['annual'],
+            'symbol' => $pricing['symbol'],
+            'currency' => $pricing['currency'],
             'trialDays' => (int) config('services.stripe.trial_days'),
         ]);
     }
@@ -47,11 +55,14 @@ class WebSubscriptionController extends Controller
         }
 
         try {
+            $pricing = $this->pricing->forRequest();
+
             $session = $this->stripe->createCheckoutSession(
                 $user,
                 $request->string('plan')->value(),
                 route('pro.success').'?session_id={CHECKOUT_SESSION_ID}',
                 route('pro.cancel'),
+                $pricing['currency'],
             );
 
             return redirect()->away($session->url);
@@ -67,19 +78,28 @@ class WebSubscriptionController extends Controller
     {
         $sessionId = $request->query('session_id');
 
+        $synced = false;
+
         if ($sessionId && config('services.stripe.enabled')) {
             try {
                 $session = $this->stripe->retrieveCheckoutSession((string) $sessionId);
+
+                if ((string) $session->client_reference_id !== (string) $request->user()->id) {
+                    return redirect()->route('pro.show');
+                }
+
                 if ($session->subscription) {
                     $this->stripe->syncSubscriptionFromStripe($session->subscription, $request->user());
+                    $synced = true;
                 }
             } catch (Throwable $e) {
                 report($e);
             }
         }
 
-        return redirect()->route('pro.show')
-            ->with('success', 'Welcome to XploreSmithers Pro! Your subscription is active.');
+        return $synced
+            ? redirect()->route('pro.show')->with('success', 'Welcome to XploreSmithers Pro! Your subscription is active.')
+            : redirect()->route('pro.show')->with('info', 'Payment received. Your subscription will activate shortly — refresh in a moment.');
     }
 
     public function cancel(): RedirectResponse

@@ -14,6 +14,10 @@ return [
     |
     */
 
+    'app_api_key' => env('APP_API_KEY'),
+
+    'geo_override_country' => env('GEO_OVERRIDE_COUNTRY'),
+
     'postmark' => [
         'token' => env('POSTMARK_TOKEN'),
     ],
@@ -48,6 +52,11 @@ return [
         'package_name' => env('GOOGLE_PLAY_PACKAGE_NAME', 'com.xploresmithers.app'),
         'service_account_json' => env('GOOGLE_PLAY_SERVICE_ACCOUNT_JSON'),
         'rtdn_token' => env('GOOGLE_PLAY_RTDN_TOKEN'),
+        // Play Integrity API reuses the same service account JSON above.
+        // Before deploying, enable "Play Integrity API" for the linked Google Cloud
+        // project in Play Console → Setup → API access, then grant the service
+        // account the "Play Integrity API" role.
+        'integrity_enabled' => env('PLAY_INTEGRITY_ENABLED', false),
     ],
 
     'stripe' => [
@@ -60,13 +69,7 @@ return [
         ],
         'trial_days' => (int) env('STRIPE_TRIAL_DAYS', 7),
 
-        /*
-         | Live checkout is only attempted when real-looking secret + price IDs
-         | are configured. Until the client's keys land, the /pro page still
-         | renders but the subscribe button shows "Payments coming soon".
-         */
-        'enabled' => env('STRIPE_SECRET') && ! str_contains((string) env('STRIPE_SECRET'), 'PLACEHOLDER')
-            && env('STRIPE_PRICE_MONTHLY') && ! str_contains((string) env('STRIPE_PRICE_MONTHLY'), 'PLACEHOLDER'),
+        'enabled' => (bool) env('STRIPE_ENABLED', false),
     ],
 
     'google' => [

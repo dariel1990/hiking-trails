@@ -91,8 +91,11 @@
         <div class="xs-pro-body">
             @php
                 $modalFeatures      = \App\Services\ProFeatureCatalog::all();
-                $modalPriceMonthly  = config('services.stripe.price_monthly', '4.99');
-                $modalPriceAnnual   = config('services.stripe.price_annual', '39.99');
+                $_modalPricing      = app(\App\Services\RegionalPricingService::class)->forRequest();
+                $modalPriceMonthly  = $_modalPricing['monthly'];
+                $modalPriceAnnual   = $_modalPricing['annual'];
+                $modalSymbol        = $_modalPricing['symbol'];
+                $modalCurrency      = $_modalPricing['currency'];
                 $modalTrialDays     = (int) config('services.stripe.trial_days', 7);
                 $modalStripeEnabled = (bool) config('services.stripe.enabled');
             @endphp
@@ -200,14 +203,14 @@
                                        class="cursor-pointer rounded-2xl p-6 transition">
                                     <input type="radio" name="modal_plan" value="monthly" x-model="plan" class="sr-only">
                                     <span class="block text-xs font-semibold uppercase tracking-wider text-white/50 mb-2">Monthly</span>
-                                    <span class="text-3xl font-bold">${{ $modalPriceMonthly }}<span class="text-sm font-normal text-white/50">/mo</span></span>
+                                    <span class="text-3xl font-bold">{{ $modalSymbol }}{{ $modalPriceMonthly }}<span class="text-sm font-normal text-white/50"> {{ $modalCurrency }}/mo</span></span>
                                 </label>
                                 <label :class="plan === 'annual' ? 'ring-2 ring-primary-300 bg-white/10' : 'ring-1 ring-white/10 bg-white/5'"
                                        class="relative cursor-pointer rounded-2xl p-6 transition">
                                     <input type="radio" name="modal_plan" value="annual" x-model="plan" class="sr-only">
                                     <span class="absolute -top-2.5 right-5 bg-accent-500 text-white text-[11px] font-semibold uppercase tracking-wide px-2.5 py-0.5 rounded-full">Best value</span>
                                     <span class="block text-xs font-semibold uppercase tracking-wider text-white/50 mb-2">Annual</span>
-                                    <span class="text-3xl font-bold">${{ $modalPriceAnnual }}<span class="text-sm font-normal text-white/50">/yr</span></span>
+                                    <span class="text-3xl font-bold">{{ $modalSymbol }}{{ $modalPriceAnnual }}<span class="text-sm font-normal text-white/50"> {{ $modalCurrency }}/yr</span></span>
                                 </label>
                             </div>
 

@@ -37,8 +37,13 @@ class StripeSubscriptionService
             : 'xs_pro_web_monthly';
     }
 
-    public function createCheckoutSession(User $user, string $plan, string $successUrl, string $cancelUrl): CheckoutSession
-    {
+    public function createCheckoutSession(
+        User $user,
+        string $plan,
+        string $successUrl,
+        string $cancelUrl,
+        string $currency = 'CAD',
+    ): CheckoutSession {
         $params = [
             'mode' => 'subscription',
             'line_items' => [['price' => $this->priceFor($plan), 'quantity' => 1]],
@@ -46,6 +51,7 @@ class StripeSubscriptionService
             'cancel_url' => $cancelUrl,
             'client_reference_id' => (string) $user->id,
             'allow_promotion_codes' => true,
+            'currency' => strtolower($currency),
             'subscription_data' => [
                 'trial_period_days' => config('services.stripe.trial_days'),
                 'metadata' => ['user_id' => $user->id],

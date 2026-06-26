@@ -1,6 +1,8 @@
 {{-- Trial banner, plan selection, checkout CTA, and trust strip.
      Shared by the full /pro page and the upgrade modal. Expects $priceMonthly,
-     $priceAnnual, $trialDays, $stripeEnabled, and an ancestor x-data="{ plan: 'annual' }". --}}
+     $priceAnnual, $symbol, $currency, $trialDays, $stripeEnabled,
+     and an ancestor x-data="{ plan: 'annual' }". --}}
+@php $symbol ??= '$'; $currency ??= 'CAD'; @endphp
 <div class="flex items-center gap-3 rounded-xl ring-1 ring-primary-300/25 bg-primary-500/10 px-5 py-4">
     <svg class="w-5 h-5 text-primary-200 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2zM12 14l2 2"/></svg>
     <p class="text-sm text-white/80">
@@ -14,14 +16,14 @@
            class="cursor-pointer rounded-2xl p-6 transition">
         <input type="radio" name="plan" value="monthly" x-model="plan" class="sr-only">
         <span class="block text-xs font-semibold uppercase tracking-wider text-white/50 mb-2">Monthly</span>
-        <span class="text-3xl font-bold">${{ $priceMonthly }}<span class="text-sm font-normal text-white/50">/mo</span></span>
+        <span class="text-3xl font-bold">{{ $symbol }}{{ $priceMonthly }}<span class="text-sm font-normal text-white/50"> {{ $currency }}/mo</span></span>
     </label>
     <label :class="plan === 'annual' ? 'ring-2 ring-primary-300 bg-white/10' : 'ring-1 ring-white/10 bg-white/5'"
            class="relative cursor-pointer rounded-2xl p-6 transition">
         <input type="radio" name="plan" value="annual" x-model="plan" class="sr-only">
         <span class="absolute -top-2.5 right-5 bg-accent-500 text-white text-[11px] font-semibold uppercase tracking-wide px-2.5 py-0.5 rounded-full">Best value</span>
         <span class="block text-xs font-semibold uppercase tracking-wider text-white/50 mb-2">Annual</span>
-        <span class="text-3xl font-bold">${{ $priceAnnual }}<span class="text-sm font-normal text-white/50">/yr</span></span>
+        <span class="text-3xl font-bold">{{ $symbol }}{{ $priceAnnual }}<span class="text-sm font-normal text-white/50"> {{ $currency }}/yr</span></span>
     </label>
 </div>
 
