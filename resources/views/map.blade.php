@@ -7,22 +7,6 @@
 @endpush
 
 @section('content')
-@php
-    $appDownloadUrl = config('services.android_app.play_store_url');
-    $isAndroidWebView = str_contains((string) request()->userAgent(), '; wv)');
-    $isMobileOrTabletUA = (bool) preg_match('/Mobi|Android|iPhone|iPad|iPod|Tablet/i', (string) request()->userAgent());
-    $blockMapForDevice = $appDownloadUrl && $isMobileOrTabletUA && ! $isAndroidWebView;
-@endphp
-@if($blockMapForDevice)
-    <div class="flex items-center justify-center h-[100dvh] bg-gray-50"></div>
-    <script>
-        document.addEventListener('DOMContentLoaded', function () {
-            if (window.xsShowAppDownloadModal) {
-                window.xsShowAppDownloadModal();
-            }
-        });
-    </script>
-@else
 <div class="flex h-[calc(100vh-80px)] md:h-[calc(100vh-80px)] max-md:h-[100dvh] overflow-hidden">
 
     <!-- All Filters Modal -->
@@ -5892,5 +5876,4 @@
     }
 </script>
 @endpush
-@endif
 @endsection

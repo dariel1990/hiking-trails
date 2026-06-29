@@ -484,45 +484,6 @@
     {{-- XploreSmithers Pro upgrade modal (web gating) --}}
     @include('subscription._upgrade-modal')
 
-    @php($isAndroidWebView = str_contains((string) request()->userAgent(), '; wv)'))
-    @php($appDownloadUrl = config('services.android_app.play_store_url'))
-
-    @if($appDownloadUrl)
-        @include('partials.app-download-modal')
-
-        <script>
-            window.xsAppDownloadUrl = @json($appDownloadUrl);
-        </script>
-        <script>
-            (function () {
-                var isAndroidWebView = {{ $isAndroidWebView ? 'true' : 'false' }};
-
-                window.xsShouldPromptAppForMap = function () {
-                    return !isAndroidWebView && /Mobi|Android|iPhone|iPad|iPod|Tablet/i.test(navigator.userAgent);
-                };
-
-                window.xsPromptAppDownload = function () {
-                    if (!window.xsShowAppDownloadModal) {
-                        return false;
-                    }
-
-                    window.xsShowAppDownloadModal();
-                    return true;
-                };
-
-                document.addEventListener('click', function (e) {
-                    var link = e.target.closest('a[href*="/map"]');
-                    if (!link || !window.xsShouldPromptAppForMap()) {
-                        return;
-                    }
-
-                    if (window.xsPromptAppDownload()) {
-                        e.preventDefault();
-                    }
-                });
-            })();
-        </script>
-    @endif
 
     @stack('scripts')
 </body>
