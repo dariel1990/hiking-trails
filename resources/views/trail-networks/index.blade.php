@@ -108,9 +108,9 @@
                 <!-- Enhanced Network Info -->
                 <div class="trail-card-body">
                     <h2 class="text-2xl font-bold mb-2">{{ $network->network_name }}</h2>
-                    <span class="inline-block px-4 py-1 bg-white/30 backdrop-blur-sm rounded-full text-sm font-semibold border border-gray/50">
+                    <span class="badge-secondary mb-4">
                         {{ ucwords(str_replace('_', ' ', $network->type)) }}
-                    </span><br><br>
+                    </span>
                     @if($network->description)
                         <p class="text-gray-600 text-sm mb-4 line-clamp-2 leading-relaxed">
                             {{ Str::limit($network->description, 120) }}
@@ -123,8 +123,8 @@
                             <div class="text-2xl font-bold text-emerald-600">{{ $network->trails_count }}</div>
                             <div class="text-xs text-gray-500">Trails</div>
                         </div>
-                        <div class="text-center p-3 bg-blue-50 rounded-lg">
-                            <div class="text-2xl font-bold text-blue-600">
+                        <div class="text-center p-3 bg-primary-50 rounded-lg">
+                            <div class="text-2xl font-bold text-primary-700">
                                 {{ number_format($network->trails->sum('distance_km'), 1) }}
                             </div>
                             <div class="text-xs text-gray-500">Total km</div>
@@ -143,8 +143,8 @@
 
                     <!-- Actions -->
                     <div class="flex flex-col gap-2">
-                        <a href="{{ route('trail-networks.show', $network->slug) }}" 
-                           class="text-center bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-3 px-4 rounded-lg transition-all duration-300 transform hover:scale-105 shadow-md flex items-center justify-center">
+                        <a href="{{ route('trail-networks.show', $network->slug) }}"
+                           class="btn-primary inline-flex items-center justify-center">
                             View Network Map
                             <svg class="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
@@ -197,9 +197,9 @@
         </p>
         <div class="flex flex-col md:flex-row gap-4 justify-center">
             <a href="{{ route('map') }}" class="bg-transparent border-2 border-white text-white hover:bg-white hover:text-gray-900 font-semibold py-4 px-10 rounded-xl transition-all duration-300 text-lg shadow-xl hover:scale-105">
-                📍 View Interactive Map
+                View Interactive Map
             </a>
-            <a href="{{ route('trails.index') }}" class="bg-white text-emerald-600 hover:bg-emerald-50 font-semibold py-4 px-10 rounded-xl transition-colors text-lg shadow-xl hover:scale-105 hover:text-accent-600">
+            <a href="{{ route('trails.index') }}" class="bg-white text-forest-600 hover:bg-forest-50 font-semibold py-4 px-10 rounded-xl transition-all duration-300 text-lg shadow-xl hover:scale-105">
                 Browse All Trails
             </a>
         </div>

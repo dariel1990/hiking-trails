@@ -10,7 +10,7 @@
         @if($photoUrl)
             <img src="{{ $photoUrl }}" alt="{{ $business->name }}" class="w-full h-full object-cover" loading="lazy">
         @else
-            <div class="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
+            <div class="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-emerald-50 to-primary-100">
                 <span class="text-7xl opacity-60">{{ $business->icon }}</span>
             </div>
         @endif
@@ -22,7 +22,7 @@
         @endif
 
         <div class="absolute top-3 right-3">
-            <span class="badge bg-blue-600 text-white font-semibold shadow-lg text-xs">
+            <span class="badge bg-primary-600 text-white font-semibold shadow-lg text-xs">
                 {{ explode(' ', $business->business_type_label)[0] }}
                 {{ implode(' ', array_slice(explode(' ', $business->business_type_label), 1)) }}
             </span>
@@ -52,7 +52,7 @@
         </div>
 
         @if($business->tagline)
-            <p class="text-sm text-indigo-600 italic mb-3">{{ $business->tagline }}</p>
+            <p class="text-sm text-forest-600 italic mb-3">{{ $business->tagline }}</p>
         @endif
 
         <p class="text-gray-600 text-sm mb-4 line-clamp-2 leading-relaxed">

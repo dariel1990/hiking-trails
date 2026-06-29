@@ -347,52 +347,76 @@
 
         <!-- Pagination -->
         @if($trails->hasPages())
-            <div class="flex items-center justify-between border-t px-6 py-4">
+            @php
+                $paginator = $trails->appends(request()->query());
+                $current = $paginator->currentPage();
+                $last = $paginator->lastPage();
+                $onEachSide = 1;
+                $start = max($current - $onEachSide, 1);
+                $end = min($current + $onEachSide, $last);
+            @endphp
+            <div class="flex flex-wrap items-center justify-between gap-3 border-t px-6 py-4">
                 <div class="text-sm text-muted-foreground">
                     Showing {{ $trails->firstItem() }} to {{ $trails->lastItem() }} of {{ $trails->total() }} results
                 </div>
-                <div class="flex items-center space-x-2">
+                <div class="flex flex-wrap items-center gap-1">
                     {{-- Previous Page Link --}}
-                    @if ($trails->onFirstPage())
-                        <span class="relative inline-flex items-center px-2 py-2 text-sm font-medium text-gray-300 bg-white border border-gray-300 cursor-default rounded-l-md">
+                    @if ($paginator->onFirstPage())
+                        <span class="relative inline-flex items-center px-2 py-2 text-sm font-medium text-gray-300 bg-white border border-gray-300 cursor-default rounded-md">
                             <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
                                 <path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd" />
                             </svg>
                         </span>
                     @else
-                        <a href="{{ $trails->appends(request()->query())->previousPageUrl() }}" class="relative inline-flex items-center px-2 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-l-md hover:bg-gray-50">
+                        <a href="{{ $paginator->previousPageUrl() }}" class="relative inline-flex items-center px-2 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50">
                             <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
                                 <path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd" />
                             </svg>
                         </a>
                     @endif
 
+                    {{-- First page + leading ellipsis --}}
+                    @if ($start > 1)
+                        <a href="{{ $paginator->url(1) }}" class="relative inline-flex items-center px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50">1</a>
+                        @if ($start > 2)
+                            <span class="relative inline-flex items-center px-2 py-2 text-sm font-medium text-gray-400">&hellip;</span>
+                        @endif
+                    @endif
+
                     {{-- Pagination Elements --}}
-                    @foreach ($trails->appends(request()->query())->getUrlRange(1, $trails->lastPage()) as $page => $url)
-                        @if ($page == $trails->currentPage())
-                            <span class="relative inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-primary-600 border border-primary-600">
+                    @for ($page = $start; $page <= $end; $page++)
+                        @if ($page == $current)
+                            <span class="relative inline-flex items-center px-3 py-2 text-sm font-medium text-white bg-primary-600 border border-primary-600 rounded-md">
                                 {{ $page }}
                             </span>
                         @else
-                            <a href="{{ $url }}" class="relative inline-flex items-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 hover:bg-gray-50">
+                            <a href="{{ $paginator->url($page) }}" class="relative inline-flex items-center px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50">
                                 {{ $page }}
                             </a>
                         @endif
-                    @endforeach
+                    @endfor
+
+                    {{-- Trailing ellipsis + last page --}}
+                    @if ($end < $last)
+                        @if ($end < $last - 1)
+                            <span class="relative inline-flex items-center px-2 py-2 text-sm font-medium text-gray-400">&hellip;</span>
+                        @endif
+                        <a href="{{ $paginator->url($last) }}" class="relative inline-flex items-center px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50">{{ $last }}</a>
+                    @endif
 
                     {{-- Next Page Link --}}
-                    @if ($trails->hasMorePages())
-                        <a href="{{ $trails->appends(request()->query())->nextPageUrl() }}" class="relative inline-flex items-center px-2 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-r-md hover:bg-gray-50">
+                    @if ($paginator->hasMorePages())
+                        <a href="{{ $paginator->nextPageUrl() }}" class="relative inline-flex items-center px-2 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50">
                             <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
                                 <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" />
                             </svg>
                         </a>
                     @else
-                        <span class="relative inline-flex items-center px-2 py-2 text-sm font-medium text-gray-300 bg-white border border-gray-300 cursor-default rounded-r-md">
+                        <span class="relative inline-flex items-center px-2 py-2 text-sm font-medium text-gray-300 bg-white border border-gray-300 cursor-default rounded-md">
                             <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
                                 <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" />
                             </svg>
-                        </a>
+                        </span>
                     @endif
                 </div>
             </div>

@@ -104,7 +104,7 @@
 
                         <!-- Search Button -->
                         <div class="col-span-2 flex items-end">
-                            <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-3 px-6 rounded-lg transition-all duration-300 transform hover:scale-105 shadow-lg">
+                            <button type="submit" class="btn-primary w-full">
                                 Find Trails
                             </button>
                         </div>
@@ -229,10 +229,10 @@
         </p>
         <div class="flex flex-col md:flex-row gap-4 justify-center">
             <a href="{{ route('map') }}" class="bg-transparent border-2 border-white text-white hover:bg-white hover:text-gray-900 font-semibold py-4 px-10 rounded-xl transition-all duration-300 text-lg shadow-xl hover:scale-105">
-                📍 View Interactive Map
+                View Interactive Map
             </a>
-            <a href="{{ route('fishing-lakes.index') }}" class="bg-white text-emerald-600 hover:bg-emerald-50 font-semibold py-4 px-10 rounded-xl transition-colors text-lg shadow-xl hover:scale-105 hover:text-accent-600">
-                🐟 Browse Fishing Lakes
+            <a href="{{ route('fishing-lakes.index') }}" class="bg-white text-forest-600 hover:bg-forest-50 font-semibold py-4 px-10 rounded-xl transition-all duration-300 text-lg shadow-xl hover:scale-105">
+                Browse Fishing Lakes
             </a>
         </div>
     </div>

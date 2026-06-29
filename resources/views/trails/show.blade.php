@@ -1721,7 +1721,24 @@ function _mountYouTube(targetId, videoId) {
 function _modalStep(delta) {
     const list = window._trailMediaLists[_modalState.listId];
     if (!list || !list.length) { return; }
-    _modalState.index = (_modalState.index + delta + list.length) % list.length;
+    const nextIndex = (_modalState.index + delta + list.length) % list.length;
+    const nextItem = list[nextIndex];
+
+    // Pro video content is gated; photos stay free.
+    if (nextItem && nextItem.type === 'video' && !window.xsIsPro()) {
+        closeMediaModal();
+        window.xsRequirePro('video');
+        return;
+    }
+    // Inside the native app, hand video playback to the native player (see openMediaCarousel).
+    if (nextItem && nextItem.type === 'video'
+        && window.Offline && typeof window.Offline.playVideo === 'function') {
+        closeMediaModal();
+        window.Offline.playVideo(nextItem.url);
+        return;
+    }
+
+    _modalState.index = nextIndex;
     _renderModalItem();
 }
 

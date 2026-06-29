@@ -54,16 +54,16 @@
         </p>
         @if($isLake)
             <div class="grid grid-cols-3 gap-3 mb-4">
-                <div class="text-center p-3 bg-emerald-50 rounded-lg">
-                    <div class="text-lg font-bold text-emerald-600">{{ count($trail->fish_species ?? []) }}</div>
+                <div class="text-center p-3 bg-primary-50 rounded-lg">
+                    <div class="text-lg font-bold text-primary-700">{{ count($trail->fish_species ?? []) }}</div>
                     <div class="text-xs text-gray-500">species</div>
                 </div>
-                <div class="text-center p-3 bg-blue-50 rounded-lg">
-                    <div class="text-lg font-bold text-blue-600 capitalize">{{ $trail->best_fishing_season ?? '—' }}</div>
+                <div class="text-center p-3 bg-forest-50 rounded-lg">
+                    <div class="text-lg font-bold text-forest-700 capitalize">{{ $trail->best_fishing_season ?? '—' }}</div>
                     <div class="text-xs text-gray-500">best season</div>
                 </div>
-                <div class="text-center p-3 bg-amber-50 rounded-lg">
-                    <div class="text-lg font-bold text-amber-600">{{ number_format($trail->view_count ?? 0) }}</div>
+                <div class="text-center p-3 bg-accent-50 rounded-lg">
+                    <div class="text-lg font-bold text-accent-700">{{ number_format($trail->view_count ?? 0) }}</div>
                     <div class="text-xs text-gray-500">views</div>
                 </div>
             </div>
@@ -89,16 +89,16 @@
             </div>
         @else
             <div class="grid grid-cols-3 gap-3 mb-4">
-                <div class="text-center p-3 bg-blue-50 rounded-lg">
-                    <div class="text-lg font-bold text-blue-600">{{ $trail->distance_km }}</div>
+                <div class="text-center p-3 bg-primary-50 rounded-lg">
+                    <div class="text-lg font-bold text-primary-700">{{ $trail->distance_km }}</div>
                     <div class="text-xs text-gray-500">km</div>
                 </div>
-                <div class="text-center p-3 bg-green-50 rounded-lg">
-                    <div class="text-lg font-bold text-green-600">{{ $trail->elevation_gain_m }}</div>
+                <div class="text-center p-3 bg-forest-50 rounded-lg">
+                    <div class="text-lg font-bold text-forest-700">{{ $trail->elevation_gain_m }}</div>
                     <div class="text-xs text-gray-500">meters</div>
                 </div>
-                <div class="text-center p-3 bg-amber-50 rounded-lg">
-                    <div class="text-lg font-bold text-amber-600">{{ $trail->estimated_time_hours }}</div>
+                <div class="text-center p-3 bg-accent-50 rounded-lg">
+                    <div class="text-lg font-bold text-accent-700">{{ $trail->estimated_time_hours }}</div>
                     <div class="text-xs text-gray-500">hours</div>
                 </div>
             </div>

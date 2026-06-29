@@ -18,7 +18,7 @@
         <div class="slide-in-up mb-8">
             <h1 class="text-5xl md:text-7xl font-bold leading-tight">
                 <span class="text-white text-shadow-lg">Discover Pristine</span><br>
-                <span class="bg-gradient-to-r from-sky-300 via-sand-200 to-accent-300 bg-clip-text text-transparent">
+                <span class="bg-gradient-to-r from-emerald-300 via-sand-200 to-accent-300 bg-clip-text text-transparent">
                     Fishing Lakes
                 </span>
             </h1>
@@ -39,13 +39,13 @@
                         <label class="block text-white text-sm font-medium mb-2">Search Lakes</label>
                         <input type="text" name="search" placeholder="Lake name, location..."
                             value="{{ request('search') }}"
-                            class="w-full px-4 py-3 bg-white/90 border border-white/40 rounded-lg text-gray-900 placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-sky-400 focus:border-transparent font-medium">
+                            class="w-full px-4 py-3 bg-white/90 border border-white/40 rounded-lg text-gray-900 placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:border-transparent font-medium">
                     </div>
 
                     <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
                         <div class="col-span-2 md:col-span-1">
                             <label class="block text-white text-sm font-medium mb-2">Activity Type</label>
-                            <select name="activity" class="w-full px-3 py-3 bg-white/90 border border-white/40 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-sky-400 focus:border-transparent font-medium text-sm">
+                            <select name="activity" class="w-full px-3 py-3 bg-white/90 border border-white/40 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:border-transparent font-medium text-sm">
                                 <option value="">All Activities</option>
                                 @foreach($activities as $activity)
                                     <option value="{{ $activity->slug }}" {{ request('activity') == $activity->slug ? 'selected' : '' }}>
@@ -57,7 +57,7 @@
 
                         <div class="col-span-2 md:col-span-1">
                             <label class="block text-white text-sm font-medium mb-2">Best Season</label>
-                            <select name="season" class="w-full px-3 py-3 bg-white/90 border border-white/40 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-sky-400 focus:border-transparent font-medium text-sm">
+                            <select name="season" class="w-full px-3 py-3 bg-white/90 border border-white/40 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:border-transparent font-medium text-sm">
                                 <option value="">All Seasons</option>
                                 <option value="spring" {{ request('season') == 'spring' ? 'selected' : '' }}>🌸 Spring</option>
                                 <option value="summer" {{ request('season') == 'summer' ? 'selected' : '' }}>☀️ Summer</option>
@@ -67,7 +67,7 @@
                         </div>
 
                         <div class="col-span-2 flex items-end">
-                            <button type="submit" class="w-full bg-sky-600 hover:bg-sky-700 text-white font-semibold py-3 px-6 rounded-lg transition-all duration-300 transform hover:scale-105 shadow-lg">
+                            <button type="submit" class="btn-primary w-full">
                                 Find Lakes
                             </button>
                         </div>
@@ -79,7 +79,7 @@
                                 {{ $fishingLakes->total() }} fishing lakes found
                             </span>
                             <a href="{{ route('fishing-lakes.index') }}"
-                            class="text-sky-300 hover:text-sky-200 text-sm font-medium transition-colors flex items-center">
+                            class="text-emerald-300 hover:text-emerald-200 text-sm font-medium transition-colors flex items-center">
                                 Clear all filters
                                 <svg class="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
@@ -141,9 +141,9 @@
                     <button
                         x-on:click="loadMore"
                         :disabled="loading"
-                        class="group flex items-center gap-1.5 text-sm text-gray-500 hover:text-blue-600 transition-colors duration-200 disabled:opacity-50"
+                        class="group flex items-center gap-1.5 text-sm text-gray-500 hover:text-emerald-600 transition-colors duration-200 disabled:opacity-50"
                     >
-                        <svg x-show="loading" class="animate-spin w-3.5 h-3.5 text-blue-600" fill="none" viewBox="0 0 24 24">
+                        <svg x-show="loading" class="animate-spin w-3.5 h-3.5 text-emerald-600" fill="none" viewBox="0 0 24 24">
                             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
                         </svg>
@@ -158,8 +158,8 @@
         @else
             <div class="text-center py-20">
                 <div class="max-w-md mx-auto">
-                    <div class="w-24 h-24 bg-sky-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                        <svg class="w-12 h-12 text-sky-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <div class="w-24 h-24 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                        <svg class="w-12 h-12 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
                         </svg>
                     </div>
@@ -189,10 +189,10 @@
         </p>
         <div class="flex flex-col md:flex-row gap-4 justify-center">
             <a href="{{ route('map') }}" class="bg-transparent border-2 border-white text-white hover:bg-white hover:text-gray-900 font-semibold py-4 px-10 rounded-xl transition-all duration-300 text-lg shadow-xl hover:scale-105">
-                📍 View Interactive Map
+                View Interactive Map
             </a>
-            <a href="{{ route('trails.index') }}" class="bg-white text-emerald-600 hover:bg-emerald-50 font-semibold py-4 px-10 rounded-xl transition-colors text-lg shadow-xl hover:scale-105 hover:text-accent-600">
-                🥾 Browse Hiking Trails
+            <a href="{{ route('trails.index') }}" class="bg-white text-forest-600 hover:bg-forest-50 font-semibold py-4 px-10 rounded-xl transition-all duration-300 text-lg shadow-xl hover:scale-105">
+                Browse Hiking Trails
             </a>
         </div>
     </div>
