@@ -124,7 +124,7 @@ class TrailController extends Controller
      */
     private function buildListingQuery(Request $request): Builder
     {
-        $query = Trail::query();
+        $query = Trail::query()->where('status', 'active');
 
         if ($request->search) {
             $query->where(function ($q) use ($request) {
