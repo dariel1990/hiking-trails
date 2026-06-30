@@ -237,6 +237,12 @@
                 <span class="text-xl">🏪</span>
                 <span class="text-[10px] font-medium leading-tight">Business</span>
             </button>
+            <!-- Tours -->
+            <button data-location-filter="tour"
+                    class="location-filter-btn sidebar-nav-btn flex flex-col items-center gap-1 w-full py-3 px-1 text-center transition-colors">
+                <span class="text-xl">🗺️</span>
+                <span class="text-[10px] font-medium leading-tight">Tours</span>
+            </button>
         </div>
 
         <!-- Right Content Area -->
@@ -524,6 +530,9 @@
         </button>
         <button data-mobile-location-filter="business" class="mobile-location-tab flex-1 flex flex-col items-center gap-1 py-2 text-xs font-medium text-gray-500 border-b-2 border-transparent">
             <span class="text-lg">🏪</span><span>Business</span>
+        </button>
+        <button data-mobile-location-filter="tour" class="mobile-location-tab flex-1 flex flex-col items-center gap-1 py-2 text-xs font-medium text-gray-500 border-b-2 border-transparent">
+            <span class="text-lg">🗺️</span><span>Tours</span>
         </button>
     </div>
     <!-- Results -->
@@ -5671,14 +5680,62 @@
             );
         }
 
+        // Tour data cache
+        let toursCache = null;
+
+        async function loadToursData() {
+            if (toursCache) { return toursCache; }
+            try {
+                const res = await fetch('/api/tours');
+                toursCache = await res.json();
+            } catch (e) {
+                toursCache = [];
+            }
+            return toursCache;
+        }
+
+        function renderTourCards(tours) {
+            const container = document.getElementById('trail-cards');
+            const countEl = document.getElementById('trail-count');
+            if (countEl) { countEl.textContent = tours.length; }
+            if (!container) { return; }
+
+            if (tours.length === 0) {
+                container.innerHTML = `<div class="text-center py-8 text-gray-500"><p class="font-medium">No tours available</p></div>`;
+                return;
+            }
+
+            container.innerHTML = tours.map(tour => `
+                <a href="/tours/${tour.slug}" class="trail-list-card flex gap-3 items-center no-underline">
+                    <div class="flex-shrink-0 w-12 h-12 rounded-lg overflow-hidden bg-gradient-to-br from-blue-400 to-green-500">
+                        ${tour.cover_image_url
+                            ? `<img src="${escapeHtml(tour.cover_image_url)}" alt="${escapeHtml(tour.title)}" class="w-full h-full object-cover">`
+                            : `<div class="w-full h-full flex items-center justify-center text-white text-lg">🗺️</div>`}
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <div class="font-medium text-sm text-gray-900 truncate">${escapeHtml(tour.title)}</div>
+                        <div class="text-xs text-gray-500">${tour.stop_count} stop${tour.stop_count !== 1 ? 's' : ''}${tour.tagline ? ' · ' + escapeHtml(tour.tagline) : ''}</div>
+                    </div>
+                    <svg class="h-4 w-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                </a>
+            `).join('');
+        }
+
         function refreshList() {
             const searchTerm = searchInput ? searchInput.value.toLowerCase().trim() : '';
-            if (!window.trailMap) return;
+            if (!window.trailMap) { return; }
 
             const allTrails = window.trailMap.allTrails || window.trailMap.currentTrails || [];
             const allBusinesses = window.trailMap.businessData || [];
 
-            if (activeLocationFilter === 'business') {
+            if (activeLocationFilter === 'tour') {
+                loadToursData().then(tours => {
+                    const filtered = searchTerm
+                        ? tours.filter(t => t.title.toLowerCase().includes(searchTerm))
+                        : tours;
+                    renderTourCards(filtered);
+                });
+            } else if (activeLocationFilter === 'business') {
                 window.trailMap.renderTrailList([], filterBusinesses(allBusinesses, searchTerm));
             } else if (activeLocationFilter === 'fishing_lake') {
                 const fishing = filterTrails(allTrails.filter(t => t.location_type === 'fishing_lake'), searchTerm);
@@ -5776,7 +5833,31 @@
                 const allBusinesses = window.trailMap.businessData || [];
                 const filter = typeof mobileLocationFilter !== 'undefined' ? mobileLocationFilter : 'trail';
                 let trails, businesses;
-                if (filter === 'business') {
+                if (filter === 'tour') {
+                    loadToursData().then(tours => {
+                        const filtered = q ? tours.filter(t => t.title.toLowerCase().includes(q)) : tours;
+                        const inner = document.getElementById('mobile-search-results-inner');
+                        if (!inner) { return; }
+                        if (filtered.length === 0) {
+                            inner.innerHTML = '<div class="text-center py-8 text-gray-500"><p class="font-medium">No tours found</p></div>';
+                            return;
+                        }
+                        inner.innerHTML = filtered.map(tour => `
+                            <a href="/tours/${escapeHtml(tour.slug)}" class="trail-list-card flex gap-3 items-center no-underline">
+                                <div class="flex-shrink-0 w-10 h-10 rounded-lg overflow-hidden bg-gradient-to-br from-blue-400 to-green-500">
+                                    ${tour.cover_image_url
+                                        ? `<img src="${escapeHtml(tour.cover_image_url)}" class="w-full h-full object-cover">`
+                                        : `<div class="w-full h-full flex items-center justify-center text-lg">🗺️</div>`}
+                                </div>
+                                <div class="flex-1 min-w-0">
+                                    <div class="font-medium text-sm text-gray-900 truncate">${escapeHtml(tour.title)}</div>
+                                    <div class="text-xs text-gray-500">${tour.stop_count} stop${tour.stop_count !== 1 ? 's' : ''}</div>
+                                </div>
+                            </a>
+                        `).join('');
+                    });
+                    return;
+                } else if (filter === 'business') {
                     trails = [];
                     businesses = q ? allBusinesses.filter(b =>
                         b.name.toLowerCase().includes(q) || (b.address && b.address.toLowerCase().includes(q))

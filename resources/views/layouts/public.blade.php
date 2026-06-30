@@ -51,7 +51,7 @@
     @unless(request()->routeIs('login', 'register'))
     <!-- Navigation - Enhanced with XploreSmithers styling -->
     <nav class="fixed top-0 w-full bg-white/95 backdrop-blur-md shadow-lg z-50 transition-all duration-300 {{ request()->routeIs('map') ? 'max-md:hidden' : '' }}">
-        <div class="{{ request()->routeIs('map') ? 'w-full' : 'max-w-7xl mx-auto' }} px-4">
+        <div class="w-full px-4">
             <div class="flex justify-between items-center h-20">
                 <!-- Logo - Enhanced with brand elements -->
                 <a href="https://xploresmithers.com/" class="flex items-center space-x-2 {{ request()->routeIs('map') ? 'hidden md:flex' : 'flex' }}">
@@ -89,6 +89,11 @@
                     class="relative text-forest-700 hover:text-accent-600 font-medium transition-all duration-300 py-2 group {{ request()->routeIs('trail-networks.*') ? 'text-accent-700' : '' }}">
                         <span>Ski Trails</span>
                         <div class="absolute bottom-0 left-0 w-0 h-0.5 bg-accent-600 group-hover:w-full transition-all duration-300 {{ request()->routeIs('trail-networks.*') ? 'w-full' : '' }}"></div>
+                    </a>
+                    <a href="{{ route('tours.index') }}"
+                    class="relative text-forest-700 hover:text-accent-600 font-medium transition-all duration-300 py-2 group {{ request()->routeIs('tours.*') ? 'text-accent-700' : '' }}">
+                        <span>Tours</span>
+                        <div class="absolute bottom-0 left-0 w-0 h-0.5 bg-accent-600 group-hover:w-full transition-all duration-300 {{ request()->routeIs('tours.*') ? 'w-full' : '' }}"></div>
                     </a>
                     <a href="{{ route('map') }}"
                        class="relative text-forest-700 hover:text-accent-600 font-medium transition-all duration-300 py-2 group {{ request()->routeIs('map') ? 'text-accent-700' : '' }}">

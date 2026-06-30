@@ -7,11 +7,14 @@ use App\Http\Controllers\Api\EntitlementController;
 use App\Http\Controllers\Api\TrailPhotoController;
 use App\Http\Controllers\TrailController;
 use App\Http\Controllers\TrailNetworkController;
+use App\Http\Middleware\VerifyAppKey;
 use App\Models\Business;
 use App\Models\Facility;
+use App\Models\Tour;
 use App\Models\TrailNetwork;
 use App\Services\RouteService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/user', function (Request $request) {
@@ -23,7 +26,7 @@ Route::get('/user', function (Request $request) {
  * Rate-limited tightly: a genuine install only needs one token; high volume = abuse.
  */
 Route::post('/auth/app-token', [AppTokenController::class, 'issue'])
-    ->withoutMiddleware(\App\Http\Middleware\VerifyAppKey::class)
+    ->withoutMiddleware(VerifyAppKey::class)
     ->middleware('throttle:10,60');
 
 /*
@@ -57,7 +60,7 @@ Route::post('/billing/rtdn', [BillingController::class, 'rtdn']);
 
 // Public routes — called by both the website JS map and the Android app.
 // VerifyAppKey is excluded: the website map JS never sends X-App-Key.
-Route::withoutMiddleware(\App\Http\Middleware\VerifyAppKey::class)->group(function () {
+Route::withoutMiddleware(VerifyAppKey::class)->group(function () {
     // Community trail photo submission — rate-limited, gated by reCAPTCHA + admin moderation.
     Route::post('/trail-photos', [TrailPhotoController::class, 'store'])
         ->middleware('throttle:5,60');
@@ -200,6 +203,71 @@ Route::withoutMiddleware(\App\Http\Middleware\VerifyAppKey::class)->group(functi
                 }),
             ];
         });
+    });
+
+    // Tours — public listing for map sidebar
+    Route::get('/tours', function () {
+        return Tour::active()
+            ->withCount('stops')
+            ->orderBy('sort_order')
+            ->orderBy('title')
+            ->get()
+            ->map(fn ($tour) => [
+                'id' => $tour->id,
+                'title' => $tour->title,
+                'slug' => $tour->slug,
+                'tagline' => $tour->tagline,
+                'tour_type' => $tour->tour_type,
+                'duration_estimate' => $tour->duration_estimate,
+                'difficulty_summary' => $tour->difficulty_summary,
+                'stop_count' => $tour->stops_count,
+                'cover_image_url' => $tour->cover_image_url,
+            ]);
+    });
+
+    // Tour driving route — multi-stop ORS calculation (used by admin compute button)
+    Route::post('/tour-route', function (Request $request) {
+        $request->validate([
+            'waypoints' => 'required|array|min:2',
+            'waypoints.*' => 'required|array|min:2',
+        ]);
+
+        $apiKey = config('services.openrouteservice.api_key');
+        if (empty($apiKey)) {
+            return response()->json(['error' => 'Route service not configured'], 503);
+        }
+
+        // DB format [lat, lng] → ORS format [lng, lat]
+        $coordinates = array_map(
+            fn ($wp) => [(float) $wp[1], (float) $wp[0]],
+            $request->input('waypoints')
+        );
+
+        try {
+            $geoResponse = Http::withHeaders([
+                'Accept' => 'application/json',
+                'Authorization' => $apiKey,
+                'Content-Type' => 'application/json; charset=utf-8',
+            ])->timeout(15)->post('https://api.openrouteservice.org/v2/directions/driving-car/geojson', [
+                'coordinates' => $coordinates,
+                'instructions' => false,
+            ]);
+
+            if (! $geoResponse->successful()) {
+                return response()->json(['error' => 'Unable to calculate driving route'], 400);
+            }
+
+            $geoData = $geoResponse->json();
+            $lineCoords = $geoData['features'][0]['geometry']['coordinates'] ?? [];
+            $totalDistance = ($geoData['features'][0]['properties']['summary']['distance'] ?? 0) / 1000;
+
+            return response()->json([
+                'coordinates' => $lineCoords, // [[lng,lat],...] — Mapbox-ready
+                'total_km' => round($totalDistance, 1),
+            ]);
+        } catch (Exception $e) {
+            return response()->json(['error' => 'Route calculation failed'], 500);
+        }
     });
 
     // Businesses

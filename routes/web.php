@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Admin\ActivityTypeController;
 use App\Http\Controllers\Admin\AdminController;
+use App\Http\Controllers\Admin\AdminTourController;
 use App\Http\Controllers\Admin\AdminTrailController;
 use App\Http\Controllers\Admin\AdminTrailNetworkController;
 use App\Http\Controllers\Admin\AdminTrailPhotoController;
@@ -20,6 +21,7 @@ use App\Http\Controllers\EventsController;
 use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\Subscription\StripeWebhookController;
 use App\Http\Controllers\Subscription\WebSubscriptionController;
+use App\Http\Controllers\TourController;
 use App\Http\Controllers\TrailController;
 use App\Http\Controllers\TrailNetworkController;
 use Illuminate\Support\Facades\Artisan;
@@ -110,6 +112,10 @@ Route::post('/logout', [WebGoogleAuthController::class, 'logout'])->name('logout
 // Public Business Routes
 Route::get('/businesses', [BusinessPublicController::class, 'index'])->name('businesses.public.index');
 Route::get('/businesses/{business:slug}', [BusinessPublicController::class, 'show'])->name('businesses.public.show');
+
+// Public Tours Routes
+Route::get('/tours', [TourController::class, 'index'])->name('tours.index');
+Route::get('/tours/{tour:slug}', [TourController::class, 'show'])->name('tours.show');
 
 // Public Trail Networks Routes
 Route::get('/trail-networks', [TrailNetworkController::class, 'index'])
@@ -210,6 +216,21 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::patch('/businesses/{business}/media/{media}/caption', [BusinessController::class, 'updateMediaCaption'])
             ->name('businesses.media.caption');
 
+        // Tours Management
+        Route::post('/tours/bulk-action', [AdminTourController::class, 'bulkAction'])
+            ->name('tours.bulk-action');
+        Route::patch('/tours/{tour}/toggle-active', [AdminTourController::class, 'toggleActive'])
+            ->name('tours.toggle-active');
+        Route::resource('tours', AdminTourController::class)
+            ->names([
+                'index' => 'tours.index',
+                'create' => 'tours.create',
+                'store' => 'tours.store',
+                'edit' => 'tours.edit',
+                'update' => 'tours.update',
+                'destroy' => 'tours.destroy',
+            ]);
+
         // Community trail photos — moderation
         Route::get('/trail-photos', [AdminTrailPhotoController::class, 'index'])->name('trail-photos.index');
         Route::patch('/trail-photos/{trailPhoto}', [AdminTrailPhotoController::class, 'update'])->name('trail-photos.update');
@@ -299,7 +320,7 @@ Route::get('/test-mail', function () {
         });
 
         return 'Success';
-    } catch (\Exception $e) {
+    } catch (Exception $e) {
         return [
             'error' => $e->getMessage(),
             'trace' => get_class($e),
