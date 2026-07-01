@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Subscription;
+use App\Models\User;
+use App\Notifications\NewSubscriptionNotification;
 use App\Services\GooglePlaySubscriptionVerifier;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -79,6 +81,12 @@ class BillingController extends Controller
 
         $isActive = in_array($status, Subscription::ENTITLED_STATUSES, true)
             && ($expiresAt === null || $expiresAt->isFuture());
+
+        if ($isActive && $subscription->wasRecentlyCreated) {
+            User::where('is_admin', true)->each(
+                fn (User $admin) => $admin->notify(new NewSubscriptionNotification($subscription))
+            );
+        }
 
         if ($isActive && $acknowledgementState === 'ACKNOWLEDGEMENT_STATE_PENDING') {
             try {

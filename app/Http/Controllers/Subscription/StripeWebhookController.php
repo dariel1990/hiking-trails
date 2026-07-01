@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Subscription;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Notifications\NewSubscriptionNotification;
 use App\Services\StripeSubscriptionService;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -64,7 +65,13 @@ class StripeWebhookController extends Controller
         }
 
         $sub = $this->stripe->retrieveSubscription((string) $session->subscription);
-        $this->stripe->syncSubscriptionFromStripe($sub, $user);
+        $localSub = $this->stripe->syncSubscriptionFromStripe($sub, $user);
+
+        if ($localSub->status === 'active') {
+            User::where('is_admin', true)->each(
+                fn (User $admin) => $admin->notify(new NewSubscriptionNotification($localSub))
+            );
+        }
     }
 
     private function onSubscriptionChange(StripeSubscription $sub): void
