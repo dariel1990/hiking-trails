@@ -17,8 +17,11 @@ class TrailFeature extends Model
         'coordinates',
         'media_count',
         'icon',
+        'icon_image',
         'color',
     ];
+
+    protected $appends = ['icon_image_url'];
 
     protected $casts = [
         'coordinates' => 'array',
@@ -136,6 +139,14 @@ class TrailFeature extends Model
     public function hasReachedVideoLimit(): bool
     {
         return $this->videos()->count() >= 1;
+    }
+
+    /**
+     * Full public URL for the custom icon image, or null if not set.
+     */
+    public function getIconImageUrlAttribute(): ?string
+    {
+        return $this->icon_image ? asset('storage/'.$this->icon_image) : null;
     }
 
     /**

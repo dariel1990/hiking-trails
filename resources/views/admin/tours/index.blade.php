@@ -174,7 +174,7 @@
                                 <td class="px-4 py-4">
                                     <div class="flex flex-col gap-2">
                                         <button type="button"
-                                            data-toggle-active="{{ $tour->id }}"
+                                            data-toggle-url="{{ route('admin.tours.toggle-active', $tour) }}"
                                             data-active="{{ $tour->is_active ? '1' : '0' }}"
                                             title="Click to toggle"
                                             class="toggle-active group inline-flex items-center gap-2">
@@ -271,9 +271,9 @@ document.addEventListener('DOMContentLoaded', function () {
         btn.addEventListener('click', async function () {
             if (btn.disabled) { return; }
             btn.disabled = true;
-            const id = btn.dataset.toggleActive;
+            const url = btn.dataset.toggleUrl;
             try {
-                const res = await fetch(`/admin/tours/${id}/toggle-active`, {
+                const res = await fetch(url, {
                     method: 'PATCH',
                     headers: {
                         'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,

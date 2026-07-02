@@ -443,6 +443,7 @@ class TrailController extends Controller
                     'media' => $allMedia,
                     'media_count' => $feature->media_count ?? 0,
                     'icon' => $feature->icon,
+                    'icon_image_url' => $feature->icon_image_url,
                     'color' => $feature->color,
                 ];
             });

@@ -10,6 +10,7 @@ class TourStop extends Model
     protected $fillable = [
         'tour_id',
         'trail_id',
+        'trail_feature_id',
         'stop_order',
         'stop_label',
         'driving_notes',
@@ -24,5 +25,10 @@ class TourStop extends Model
     public function trail(): BelongsTo
     {
         return $this->belongsTo(Trail::class);
+    }
+
+    public function feature(): BelongsTo
+    {
+        return $this->belongsTo(TrailFeature::class, 'trail_feature_id');
     }
 }

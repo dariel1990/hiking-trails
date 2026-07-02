@@ -754,7 +754,7 @@
                                         
                                         <div class="grid grid-cols-2 gap-3">
                                             <div class="space-y-2">
-                                                <label class="text-xs font-medium">Icon</label>
+                                                <label class="text-xs font-medium">Emoji Icon</label>
                                                 <input type="text" id="highlight-icon-input" placeholder="📍" maxlength="10"
                                                     class="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm text-center text-xl">
                                             </div>
@@ -763,6 +763,37 @@
                                                 <input type="color" id="highlight-color-input" value="#10B981"
                                                     class="flex h-9 w-full rounded-md border border-input bg-background px-2 py-1">
                                             </div>
+                                        </div>
+
+                                        {{-- Custom icon image --}}
+                                        <div class="space-y-2">
+                                            <label class="text-xs font-medium">Custom Icon Image <span class="text-muted-foreground">(overrides emoji)</span></label>
+
+                                            {{-- Gallery of previously uploaded icons --}}
+                                            <div class="flex flex-wrap gap-2 min-h-[2.5rem] items-center" id="feature-icon-gallery">
+                                                <span class="text-xs text-muted-foreground italic self-center">Loading icons…</span>
+                                            </div>
+
+                                            {{-- Selected icon preview --}}
+                                            <div id="highlight-icon-image-preview" class="hidden items-center gap-2 text-xs text-green-700 bg-green-50 border border-green-200 rounded-md px-3 py-1.5">
+                                                <img id="highlight-icon-image-preview-img" src="" alt="" class="w-6 h-6 object-contain rounded">
+                                                <span id="highlight-icon-image-name" class="truncate flex-1"></span>
+                                                <button type="button" id="highlight-icon-image-clear" class="ml-auto text-red-500 hover:text-red-700 shrink-0" title="Remove custom icon">✕</button>
+                                            </div>
+
+                                            {{-- Upload new icon --}}
+                                            <div class="flex items-center gap-2">
+                                                <label for="highlight-icon-image-input" class="cursor-pointer inline-flex items-center gap-1.5 rounded-md border border-dashed border-input px-3 py-1.5 text-xs text-muted-foreground hover:bg-muted hover:text-foreground transition-colors">
+                                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+                                                    Upload new icon
+                                                </label>
+                                                <input type="file" id="highlight-icon-image-input" accept="image/*" class="hidden">
+                                                <span id="highlight-icon-upload-status" class="text-xs text-muted-foreground"></span>
+                                            </div>
+
+                                            {{-- Hidden fields carrying selected path/url --}}
+                                            <input type="hidden" id="highlight-icon-image-path" value="">
+                                            <input type="hidden" id="highlight-icon-image-url" value="">
                                         </div>
 
                                         <button type="button" id="add-highlight-btn" 
@@ -2704,9 +2735,9 @@
                     const selectedOption = e.target.options[e.target.selectedIndex];
                     const icon = selectedOption.dataset.icon;
                     const color = selectedOption.dataset.color;
-                    
-                    if (icon) document.getElementById('highlight-icon-input').value = icon;
-                    if (color) document.getElementById('highlight-color-input').value = color;
+
+                    if (icon) { document.getElementById('highlight-icon-input').value = icon; }
+                    if (color) { document.getElementById('highlight-color-input').value = color; }
                 });
             }
 
@@ -2715,7 +2746,134 @@
             if (addBtn) {
                 addBtn.addEventListener('click', () => this.addHighlightToList());
             }
+
+            // Icon image upload
+            const iconImageInput = document.getElementById('highlight-icon-image-input');
+            if (iconImageInput) {
+                iconImageInput.addEventListener('change', async (e) => {
+                    const file = e.target.files[0];
+                    if (!file) { return; }
+
+                    const statusEl = document.getElementById('highlight-icon-upload-status');
+                    if (statusEl) { statusEl.textContent = 'Uploading…'; }
+
+                    const fd = new FormData();
+                    fd.append('icon', file);
+                    fd.append('_token', document.querySelector('meta[name="csrf-token"]').content);
+
+                    try {
+                        const res = await fetch('{{ route("admin.trails.feature-icons.upload") }}', { method: 'POST', body: fd });
+                        const data = await res.json();
+                        if (data.path && data.url) {
+                            this.selectFeatureIcon(data.path, data.url);
+                            this.addToIconGallery(data.path, data.url);
+                            if (statusEl) { statusEl.textContent = 'Uploaded!'; }
+                            setTimeout(() => { if (statusEl) { statusEl.textContent = ''; } }, 2000);
+                        }
+                    } catch {
+                        if (statusEl) { statusEl.textContent = 'Upload failed'; }
+                    }
+
+                    iconImageInput.value = '';
+                });
+            }
+
+            // Clear icon image button
+            const clearBtn = document.getElementById('highlight-icon-image-clear');
+            if (clearBtn) {
+                clearBtn.addEventListener('click', () => this.clearFeatureIcon());
+            }
+
+            // Load gallery of existing icons
+            this.initFeatureIconGallery();
+
             // Map click routing is handled in setupMapClicks() via this.highlightModeEnabled
+        }
+
+        initFeatureIconGallery() {
+            const gallery = document.getElementById('feature-icon-gallery');
+            if (!gallery) { return; }
+
+            fetch('{{ route("admin.trails.feature-icons") }}', {
+                headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content }
+            })
+            .then(r => r.json())
+            .then(icons => {
+                if (!icons.length) {
+                    gallery.innerHTML = '<span class="text-xs text-muted-foreground italic self-center">No custom icons yet</span>';
+                    return;
+                }
+                gallery.innerHTML = icons.map(icon => `
+                    <button type="button" data-path="${icon.path}" data-url="${icon.url}"
+                        class="feature-icon-thumb w-10 h-10 rounded-md border-2 border-transparent hover:border-primary overflow-hidden bg-white flex items-center justify-center p-0.5 transition-colors"
+                        title="${icon.path.split('/').pop()}">
+                        <img src="${icon.url}" class="w-full h-full object-contain" alt="">
+                    </button>
+                `).join('');
+
+                gallery.querySelectorAll('.feature-icon-thumb').forEach(btn => {
+                    btn.addEventListener('click', () => this.selectFeatureIcon(btn.dataset.path, btn.dataset.url));
+                });
+            })
+            .catch(() => {
+                gallery.innerHTML = '<span class="text-xs text-red-400 italic self-center">Failed to load icons</span>';
+            });
+        }
+
+        selectFeatureIcon(path, url) {
+            document.getElementById('highlight-icon-image-path').value = path;
+            document.getElementById('highlight-icon-image-url').value = url;
+
+            const preview = document.getElementById('highlight-icon-image-preview');
+            const previewImg = document.getElementById('highlight-icon-image-preview-img');
+            const previewName = document.getElementById('highlight-icon-image-name');
+            if (preview && previewImg) {
+                previewImg.src = url;
+                if (previewName) { previewName.textContent = path.split('/').pop(); }
+                preview.classList.remove('hidden');
+                preview.classList.add('flex');
+            }
+
+            document.querySelectorAll('.feature-icon-thumb').forEach(t => {
+                t.classList.toggle('border-primary', t.dataset.path === path);
+                t.classList.toggle('border-transparent', t.dataset.path !== path);
+            });
+        }
+
+        clearFeatureIcon() {
+            document.getElementById('highlight-icon-image-path').value = '';
+            document.getElementById('highlight-icon-image-url').value = '';
+
+            const preview = document.getElementById('highlight-icon-image-preview');
+            if (preview) {
+                preview.classList.add('hidden');
+                preview.classList.remove('flex');
+            }
+
+            document.querySelectorAll('.feature-icon-thumb').forEach(t => {
+                t.classList.remove('border-primary');
+                t.classList.add('border-transparent');
+            });
+        }
+
+        addToIconGallery(path, url) {
+            const gallery = document.getElementById('feature-icon-gallery');
+            if (!gallery) { return; }
+
+            const placeholder = gallery.querySelector('span.italic');
+            if (placeholder) { placeholder.remove(); }
+
+            if (gallery.querySelector(`[data-path="${path}"]`)) { return; }
+
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.dataset.path = path;
+            btn.dataset.url = url;
+            btn.className = 'feature-icon-thumb w-10 h-10 rounded-md border-2 border-transparent hover:border-primary overflow-hidden bg-white flex items-center justify-center p-0.5 transition-colors';
+            btn.title = path.split('/').pop();
+            btn.addEventListener('click', () => this.selectFeatureIcon(path, url));
+            btn.innerHTML = `<img src="${url}" class="w-full h-full object-contain" alt="">`;
+            gallery.prepend(btn);
         }
 
         placeHighlightMarker(lat, lng) {
@@ -2769,12 +2927,17 @@
 
                 const highlightIndex = this.highlights.length; // Get index before adding
 
+                const iconImagePath = document.getElementById('highlight-icon-image-path').value;
+                const iconImageUrl = document.getElementById('highlight-icon-image-url').value;
+
                 const highlight = {
                     id: Date.now(),
                     type: type,
                     name: name,
                     description: description,
                     icon: icon,
+                    icon_image: iconImagePath || null,
+                    icon_image_url: iconImageUrl || null,
                     color: color,
                     coordinates: this.pendingHighlight.coordinates,
                     mediaFile: mediaInput.files[0] || null,
@@ -2798,8 +2961,15 @@
 
                 // Add permanent DRAGGABLE marker
                 const markerEl = document.createElement('div');
-                markerEl.style.cssText = `background-color:${highlight.color};width:32px;height:32px;border-radius:50%;border:2px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;font-size:18px;cursor:move;`;
-                markerEl.textContent = highlight.icon;
+                markerEl.style.cssText = `background-color:${highlight.color};width:32px;height:32px;border-radius:50%;border:2px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;font-size:18px;cursor:move;overflow:hidden;`;
+                if (highlight.icon_image_url) {
+                    const img = document.createElement('img');
+                    img.src = highlight.icon_image_url;
+                    img.style.cssText = 'width:22px;height:22px;object-fit:contain;';
+                    markerEl.appendChild(img);
+                } else {
+                    markerEl.textContent = highlight.icon;
+                }
 
                 const popup = new mapboxgl.Popup({ offset: 20 }).setHTML(`<b>${highlight.name}</b><br>${highlight.description || ''}`);
                 const marker = new mapboxgl.Marker({ element: markerEl, draggable: true })
@@ -2838,8 +3008,8 @@
 
             listContainer.innerHTML = this.highlights.map(h => `
                 <div class="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
-                    <div style="background-color: ${h.color};" class="w-8 h-8 rounded-full flex items-center justify-center text-white shrink-0">
-                        ${h.icon}
+                    <div style="background-color: ${h.color};" class="w-8 h-8 rounded-full flex items-center justify-center text-white shrink-0 overflow-hidden">
+                        ${h.icon_image_url ? `<img src="${h.icon_image_url}" class="w-5 h-5 object-contain" alt="">` : h.icon}
                     </div>
                     <div class="flex-1 min-w-0">
                         <h5 class="font-medium text-sm">${h.name}</h5>
@@ -2936,7 +3106,12 @@
             document.getElementById('highlight-description-input').value = highlight.description || '';
             document.getElementById('highlight-icon-input').value = highlight.icon;
             document.getElementById('highlight-color-input').value = highlight.color;
-            
+            if (highlight.icon_image && highlight.icon_image_url) {
+                this.selectFeatureIcon(highlight.icon_image, highlight.icon_image_url);
+            } else {
+                this.clearFeatureIcon();
+            }
+
             // Change button text and style to "Update"
             const addBtn = document.getElementById('add-highlight-btn');
             addBtn.innerHTML = `
@@ -2976,6 +3151,8 @@
             highlight.name = document.getElementById('highlight-name-input').value;
             highlight.description = document.getElementById('highlight-description-input').value;
             highlight.icon = document.getElementById('highlight-icon-input').value;
+            highlight.icon_image = document.getElementById('highlight-icon-image-path').value || null;
+            highlight.icon_image_url = document.getElementById('highlight-icon-image-url').value || null;
             highlight.color = document.getElementById('highlight-color-input').value;
             
             // Handle new media upload (if user changed it)
@@ -3015,17 +3192,22 @@
             if (marker) {
                 const el = marker.getElement();
                 el.style.backgroundColor = highlight.color;
-                el.textContent = highlight.icon;
+                el.style.overflow = 'hidden';
+                if (highlight.icon_image_url) {
+                    el.innerHTML = `<img src="${highlight.icon_image_url}" style="width:22px;height:22px;object-fit:contain;" alt="">`;
+                } else {
+                    el.textContent = highlight.icon;
+                }
 
                 const existingPopup = marker.getPopup();
                 if (existingPopup) {
                     existingPopup.setHTML(`<b>${highlight.name}</b><br>${highlight.description || ''}`);
                 }
             }
-            
+
             // Clear editing mode
             this.editingHighlightId = null;
-            
+
             showToast('Highlight updated successfully!', 'success');
         }
 
@@ -3037,6 +3219,7 @@
             document.getElementById('highlight-icon-input').value = '';
             document.getElementById('highlight-color-input').value = '#10B981';
             document.getElementById('highlight-media-input').value = '';
+            this.clearFeatureIcon();
             
             const mediaPreview = document.getElementById('highlight-media-preview');
             if (mediaPreview) mediaPreview.classList.add('hidden');

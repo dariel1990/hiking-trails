@@ -14,7 +14,7 @@
     $resolvedIcon = $highlight->icon ?: '📍';
 @endphp
 
-<div x-data="highlightIconState('{{ $rawIcon }}', @js($resolvedIcon))" class="px-4 lg:px-8 py-6">
+<div x-data="highlightIconState('{{ $rawIcon }}', @js($resolvedIcon), @js($highlight->icon_image_url))" class="px-4 lg:px-8 py-6">
 
     {{-- Page Header --}}
     <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 pb-6 mb-6 border-b border-gray-200">
@@ -27,8 +27,8 @@
                 <span class="text-gray-700 font-medium truncate max-w-xs">{{ $highlight->name }}</span>
             </nav>
             <div class="flex items-center gap-3">
-                <div class="w-10 h-10 rounded-lg border flex items-center justify-center text-xl select-none"
-                     x-text="iconPreview"
+                <div class="w-10 h-10 rounded-lg border flex items-center justify-center text-xl select-none overflow-hidden"
+                     x-html="iconImageUrl ? `<img src='${iconImageUrl}' style='width:28px;height:28px;object-fit:contain;' alt=''>` : iconPreview"
                      :style="`background-color: ${colorValue}1A; border-color: ${colorValue}33;`"></div>
                 <div>
                     <h1 class="text-2xl font-bold text-gray-900 leading-tight">Edit Highlight</h1>
@@ -119,8 +119,8 @@
                                     Custom Icon <span class="text-gray-400 font-normal text-xs">(Optional)</span>
                                 </label>
                                 <div class="flex items-center gap-3">
-                                    <div class="w-11 h-11 flex-shrink-0 rounded-lg border flex items-center justify-center text-xl select-none"
-                                         x-text="iconPreview"
+                                    <div class="w-11 h-11 flex-shrink-0 rounded-lg border flex items-center justify-center text-xl select-none overflow-hidden"
+                                         x-html="iconImageUrl ? `<img src='${iconImageUrl}' style='width:28px;height:28px;object-fit:contain;' alt=''>` : iconPreview"
                                          :style="`background-color: ${colorValue}1A; border-color: ${colorValue}33;`"></div>
                                     <input type="text" name="icon" id="icon"
                                            value="{{ old('icon', $rawIcon) }}" maxlength="10"
@@ -149,6 +149,46 @@
                                 <p class="mt-1 text-xs text-gray-500">Color of this highlight's map marker.</p>
                                 @error('color')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
                             </div>
+                        </div>
+
+                        {{-- Custom Icon Image --}}
+                        <div class="space-y-2">
+                            <label class="block text-sm font-medium text-gray-700">
+                                Custom Icon Image <span class="text-gray-400 font-normal text-xs">(overrides emoji above)</span>
+                            </label>
+
+                            {{-- Gallery of previously uploaded icons --}}
+                            <div class="flex flex-wrap gap-2 min-h-[2.5rem] items-center" id="feature-icon-gallery">
+                                <span class="text-xs text-gray-400 italic self-center">Loading icons…</span>
+                            </div>
+
+                            {{-- Current / selected icon preview --}}
+                            <div id="highlight-icon-image-preview"
+                                 class="{{ $highlight->icon_image ? 'flex' : 'hidden' }} items-center gap-2 text-xs text-green-700 bg-green-50 border border-green-200 rounded-md px-3 py-1.5">
+                                <img id="highlight-icon-image-preview-img"
+                                     src="{{ $highlight->icon_image_url ?? '' }}" alt=""
+                                     class="w-6 h-6 object-contain rounded">
+                                <span id="highlight-icon-image-name" class="truncate flex-1">{{ $highlight->icon_image ? basename($highlight->icon_image) : '' }}</span>
+                                <button type="button" id="highlight-icon-image-clear"
+                                        class="ml-auto text-red-500 hover:text-red-700 shrink-0" title="Remove custom icon">✕</button>
+                            </div>
+
+                            {{-- Upload new icon --}}
+                            <div class="flex items-center gap-2">
+                                <label for="highlight-icon-image-input"
+                                       class="cursor-pointer inline-flex items-center gap-1.5 rounded-md border border-dashed border-gray-300 px-3 py-1.5 text-xs text-gray-500 hover:bg-gray-50 hover:text-gray-700 transition-colors">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
+                                    </svg>
+                                    Upload new icon
+                                </label>
+                                <input type="file" id="highlight-icon-image-input" accept="image/*" class="hidden">
+                                <span id="highlight-icon-upload-status" class="text-xs text-gray-400"></span>
+                            </div>
+
+                            {{-- Hidden field carries the selected path to the server --}}
+                            <input type="hidden" name="icon_image" id="highlight-icon-image-path"
+                                   value="{{ old('icon_image', $highlight->icon_image) }}">
                         </div>
                     </div>
                 </div>
@@ -488,11 +528,12 @@ document.addEventListener('DOMContentLoaded', function () {
 
 <script src="https://api.mapbox.com/mapbox-gl-js/v3.10.0/mapbox-gl.js"></script>
 <script>
-function highlightIconState(initialCustom, initialResolved) {
+function highlightIconState(initialCustom, initialResolved, initialIconImageUrl) {
     return {
         customIcon: initialCustom || '',
         typeIcon: initialResolved || '📍',
         colorValue: @js($highlight->color),
+        iconImageUrl: initialIconImageUrl || '',
         get iconPreview() {
             const c = (this.customIcon || '').trim();
             return c || this.typeIcon;
@@ -503,6 +544,115 @@ function highlightIconState(initialCustom, initialResolved) {
         },
     };
 }
+
+document.addEventListener('DOMContentLoaded', function () {
+    // Icon image gallery
+    const gallery = document.getElementById('feature-icon-gallery');
+    const iconPathInput = document.getElementById('highlight-icon-image-path');
+    const iconPreviewEl = document.getElementById('highlight-icon-image-preview');
+    const iconPreviewImg = document.getElementById('highlight-icon-image-preview-img');
+    const iconPreviewName = document.getElementById('highlight-icon-image-name');
+    const clearBtn = document.getElementById('highlight-icon-image-clear');
+    const uploadInput = document.getElementById('highlight-icon-image-input');
+    const statusEl = document.getElementById('highlight-icon-upload-status');
+
+    function selectIcon(path, url) {
+        iconPathInput.value = path;
+        iconPreviewImg.src = url;
+        iconPreviewName.textContent = path.split('/').pop();
+        iconPreviewEl.classList.remove('hidden');
+        iconPreviewEl.classList.add('flex');
+        // Sync into Alpine state for header preview
+        const alpine = Alpine.$data(document.querySelector('[x-data]'));
+        if (alpine) { alpine.iconImageUrl = url; }
+
+        document.querySelectorAll('.feature-icon-thumb').forEach(t => {
+            t.classList.toggle('ring-2', t.dataset.path === path);
+            t.classList.toggle('ring-green-500', t.dataset.path === path);
+        });
+    }
+
+    function clearIcon() {
+        iconPathInput.value = '';
+        iconPreviewEl.classList.add('hidden');
+        iconPreviewEl.classList.remove('flex');
+        const alpine = Alpine.$data(document.querySelector('[x-data]'));
+        if (alpine) { alpine.iconImageUrl = ''; }
+        document.querySelectorAll('.feature-icon-thumb').forEach(t => {
+            t.classList.remove('ring-2', 'ring-green-500');
+        });
+    }
+
+    function addThumbToGallery(path, url) {
+        const placeholder = gallery.querySelector('span.italic');
+        if (placeholder) { placeholder.remove(); }
+        if (gallery.querySelector(`[data-path="${CSS.escape(path)}"]`)) { return; }
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.dataset.path = path;
+        btn.dataset.url = url;
+        btn.className = 'feature-icon-thumb w-10 h-10 rounded-md border-2 border-gray-200 hover:border-green-400 overflow-hidden bg-white flex items-center justify-center p-0.5 transition-all';
+        btn.title = path.split('/').pop();
+        btn.innerHTML = `<img src="${url}" class="w-full h-full object-contain" alt="">`;
+        btn.addEventListener('click', () => selectIcon(path, url));
+        gallery.prepend(btn);
+    }
+
+    if (clearBtn) {
+        clearBtn.addEventListener('click', clearIcon);
+    }
+
+    if (uploadInput) {
+        uploadInput.addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (!file) { return; }
+            if (statusEl) { statusEl.textContent = 'Uploading…'; }
+            const fd = new FormData();
+            fd.append('icon', file);
+            fd.append('_token', document.querySelector('meta[name="csrf-token"]').content);
+            try {
+                const res = await fetch('{{ route("admin.trails.feature-icons.upload") }}', { method: 'POST', body: fd });
+                const data = await res.json();
+                if (data.path && data.url) {
+                    addThumbToGallery(data.path, data.url);
+                    selectIcon(data.path, data.url);
+                    if (statusEl) { statusEl.textContent = 'Uploaded!'; }
+                    setTimeout(() => { if (statusEl) { statusEl.textContent = ''; } }, 2000);
+                }
+            } catch {
+                if (statusEl) { statusEl.textContent = 'Upload failed'; }
+            }
+            uploadInput.value = '';
+        });
+    }
+
+    // Load existing icons from gallery
+    fetch('{{ route("admin.trails.feature-icons") }}', {
+        headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content }
+    })
+    .then(r => r.json())
+    .then(icons => {
+        if (!icons.length) {
+            gallery.innerHTML = '<span class="text-xs text-gray-400 italic self-center">No custom icons yet</span>';
+            return;
+        }
+        gallery.innerHTML = '';
+        icons.forEach(icon => addThumbToGallery(icon.path, icon.url));
+
+        // Highlight currently selected
+        const currentPath = iconPathInput.value;
+        if (currentPath) {
+            document.querySelectorAll('.feature-icon-thumb').forEach(t => {
+                if (t.dataset.path === currentPath) {
+                    t.classList.add('ring-2', 'ring-green-500');
+                }
+            });
+        }
+    })
+    .catch(() => {
+        gallery.innerHTML = '<span class="text-xs text-red-400 italic self-center">Failed to load icons</span>';
+    });
+});
 
 document.addEventListener('DOMContentLoaded', function () {
     mapboxgl.accessToken = '{{ config('services.mapbox.access_token') }}';

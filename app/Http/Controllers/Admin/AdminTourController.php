@@ -8,6 +8,7 @@ use App\Http\Requests\Admin\UpdateTourRequest;
 use App\Models\Tour;
 use App\Models\TourStop;
 use App\Models\Trail;
+use App\Models\TrailFeature;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -36,7 +37,12 @@ class AdminTourController extends Controller
             ->orderBy('name')
             ->get(['id', 'name', 'start_coordinates', 'location_type']);
 
-        return view('admin.tours.create', compact('availableTrails'));
+        $availableFeatures = TrailFeature::with('trail:id,name')
+            ->whereNotNull('coordinates')
+            ->orderBy('name')
+            ->get(['id', 'trail_id', 'feature_type', 'name', 'coordinates']);
+
+        return view('admin.tours.create', compact('availableTrails', 'availableFeatures'));
     }
 
     public function store(StoreTourRequest $request): RedirectResponse
@@ -70,13 +76,18 @@ class AdminTourController extends Controller
 
     public function edit(Tour $tour): View
     {
-        $tour->load('stops.trail');
+        $tour->load('stops.trail', 'stops.feature');
 
         $availableTrails = Trail::where('status', 'active')
             ->orderBy('name')
             ->get(['id', 'name', 'start_coordinates', 'location_type']);
 
-        return view('admin.tours.edit', compact('tour', 'availableTrails'));
+        $availableFeatures = TrailFeature::with('trail:id,name')
+            ->whereNotNull('coordinates')
+            ->orderBy('name')
+            ->get(['id', 'trail_id', 'feature_type', 'name', 'coordinates']);
+
+        return view('admin.tours.edit', compact('tour', 'availableTrails', 'availableFeatures'));
     }
 
     public function update(UpdateTourRequest $request, Tour $tour): RedirectResponse
@@ -187,6 +198,7 @@ class AdminTourController extends Controller
             TourStop::create([
                 'tour_id' => $tour->id,
                 'trail_id' => $stop['trail_id'],
+                'trail_feature_id' => ! empty($stop['feature_id']) ? $stop['feature_id'] : null,
                 'stop_order' => $index,
                 'stop_label' => $stop['stop_label'] ?? null,
                 'driving_notes' => $stop['driving_notes'] ?? null,

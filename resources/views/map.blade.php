@@ -3270,7 +3270,7 @@
             if (!trail.highlights || trail.highlights.length === 0) return;
 
             trail.highlights.forEach(highlight => {
-                const el = this._createMarkerEl(highlight.icon || '📍');
+                const el = this._createMarkerEl(highlight.icon || '📍', highlight.icon_image_url || null);
                 const coords = highlight.coordinates; // [lat, lng]
                 el.addEventListener('click', (e) => {
                     e.stopPropagation();
@@ -3290,8 +3290,8 @@
             return `
                 <div class="max-w-xs">
                     <div class="flex items-center mb-2">
-                        <div style="background-color: ${highlight.color};" class="w-8 h-8 rounded-full flex items-center justify-center text-white mr-2">
-                            ${highlight.icon}
+                        <div style="background-color: ${highlight.color};" class="w-8 h-8 rounded-full flex items-center justify-center text-white mr-2 overflow-hidden">
+                            ${highlight.icon_image_url ? `<img src="${highlight.icon_image_url}" style="width:20px;height:20px;object-fit:contain;" alt="">` : highlight.icon}
                         </div>
                         <h5 class="font-bold text-base">${highlight.name}</h5>
                     </div>
@@ -3322,7 +3322,7 @@
             } else {
                 img.classList.add('hidden');
                 placeholder.classList.remove('hidden');
-                placeholder.textContent = placeholderIcon || '📍';
+                placeholder.innerHTML = placeholderIcon || '📍';
                 placeholder.style.background = placeholderBg || 'linear-gradient(135deg,#4b5563,#1f2937)';
             }
             document.getElementById('mobile-trail-name').textContent = name;
@@ -3339,12 +3339,18 @@
             const firstPhoto = highlight.media?.find(m => m.media_type === 'photo');
             const coordsJson = JSON.stringify(highlight.coordinates);
             const color = highlight.color || '#16a34a';
+            const placeholderIconHtml = highlight.icon_image_url
+                ? `<img src="${highlight.icon_image_url}" style="width:36px;height:36px;object-fit:contain;" alt="">`
+                : (highlight.icon || '📍');
+            const inlineIconHtml = highlight.icon_image_url
+                ? `<img src="${highlight.icon_image_url}" style="width:14px;height:14px;object-fit:contain;display:inline-block;vertical-align:middle;" alt="">`
+                : (highlight.icon || '');
             this._showMobileCard({
                 imageUrl: firstPhoto?.url || null,
-                placeholderIcon: highlight.icon || '📍',
+                placeholderIcon: placeholderIconHtml,
                 placeholderBg: `linear-gradient(135deg,${color}cc,${color})`,
                 name: highlight.name,
-                metaHtml: `<span style="font-size:12px;font-weight:600;color:${color};">${highlight.icon || ''} ${escapeHtml(highlight.type.replace(/_/g, ' '))}</span><span style="color:#d1d5db;font-size:11px;">·</span><span style="font-size:12px;color:#6b7280;">on ${escapeHtml(trail.name)}</span>`,
+                metaHtml: `<span style="font-size:12px;font-weight:600;color:${color};">${inlineIconHtml} ${escapeHtml(highlight.type.replace(/_/g, ' '))}</span><span style="color:#d1d5db;font-size:11px;">·</span><span style="font-size:12px;color:#6b7280;">on ${escapeHtml(trail.name)}</span>`,
                 statsText: highlight.description || '',
                 actionsHtml: `<button type="button" onclick="window.trailMap.viewHighlight(${trail.id},${coordsJson})" class="${btnClass}"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>Center</button><a href="/trails/${trail.id}" class="${btnClass}"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-1.447-.894L15 9m0 8V9m0 0V7"/></svg>Full Trail</a>`,
             });
@@ -3386,9 +3392,12 @@
             const heroGradient = highlight.color
                 ? `linear-gradient(135deg, ${highlight.color}cc, ${highlight.color})`
                 : 'linear-gradient(135deg, #4b5563, #1f2937)';
+            const heroIconHtml = highlight.icon_image_url
+                ? `<img src="${highlight.icon_image_url}" style="width:56px;height:56px;object-fit:contain;" alt="">`
+                : (highlight.icon || '📍');
             const hero = firstPhoto
                 ? `<div class="biz-panel-hero"><img src="${firstPhoto.url}" alt="${escapeHtml(highlight.name)}"></div>`
-                : `<div class="biz-panel-hero" style="background:${heroGradient};"><div class="biz-panel-hero-placeholder">${highlight.icon || '📍'}</div></div>`;
+                : `<div class="biz-panel-hero" style="background:${heroGradient};"><div class="biz-panel-hero-placeholder">${heroIconHtml}</div></div>`;
 
             // Action buttons
             const coordsJson = JSON.stringify(highlight.coordinates).replace(/"/g, '&quot;');
@@ -3460,7 +3469,7 @@
                 <div class="biz-panel-body" style="flex:1;overflow-y:auto;">
                     <h2 class="biz-panel-name">${escapeHtml(highlight.name)}</h2>
                     <div class="biz-panel-meta">
-                        <span class="biz-panel-type" style="color:${highlight.color || '#2563eb'};">${highlight.icon || ''} ${escapeHtml(highlight.type.replace(/_/g, ' '))}</span>
+                        <span class="biz-panel-type" style="color:${highlight.color || '#2563eb'};">${highlight.icon_image_url ? `<img src="${highlight.icon_image_url}" style="width:14px;height:14px;object-fit:contain;display:inline-block;vertical-align:middle;" alt="">` : (highlight.icon || '')} ${escapeHtml(highlight.type.replace(/_/g, ' '))}</span>
                         <span class="biz-panel-dot">·</span>
                         <span style="font-size:12px;color:#6b7280;">on ${escapeHtml(trail.name)}</span>
                     </div>

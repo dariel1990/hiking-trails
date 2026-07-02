@@ -3,17 +3,31 @@
 {{-- Available trails as JSON for Alpine.js --}}
 @php
 $availableTrailsJson = $availableTrails->map(fn ($t) => [
+    'item_type' => 'trail',
     'id' => $t->id,
     'name' => $t->name,
     'location_type' => $t->location_type,
     'start_coordinates' => $t->start_coordinates,
 ])->values()->toJson();
 
+$availableFeaturesJson = $availableFeatures->map(fn ($f) => [
+    'item_type' => 'feature',
+    'id' => $f->id,
+    'trail_id' => $f->trail_id,
+    'trail_name' => $f->trail?->name ?? '',
+    'feature_type' => $f->feature_type,
+    'name' => $f->name,
+    'coordinates' => $f->coordinates,
+])->values()->toJson();
+
 $existingStopsJson = $isEdit
     ? $tour->stops->map(fn ($s) => [
         'trail_id' => $s->trail_id,
-        'name' => $s->trail->name ?? 'Unknown',
-        'start_coordinates' => $s->trail->start_coordinates ?? null,
+        'feature_id' => $s->trail_feature_id,
+        'item_type' => $s->trail_feature_id ? 'feature' : 'trail',
+        'feature_type' => $s->feature?->feature_type ?? null,
+        'name' => $s->feature?->name ?? ($s->trail?->name ?? 'Unknown'),
+        'start_coordinates' => $s->feature?->coordinates ?? ($s->trail?->start_coordinates ?? null),
         'stop_label' => $s->stop_label ?? '',
         'estimated_visit_time' => $s->estimated_visit_time ?? '',
         'driving_notes' => $s->driving_notes ?? '',
@@ -22,7 +36,7 @@ $existingStopsJson = $isEdit
 @endphp
 
 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6"
-     x-data="tourForm({{ $availableTrailsJson }}, {{ $existingStopsJson }})">
+     x-data="tourForm({{ $availableTrailsJson }}, {{ $availableFeaturesJson }}, {{ $existingStopsJson }})">
 
     <!-- Left: Main fields -->
     <div class="lg:col-span-2 space-y-6">
@@ -34,18 +48,66 @@ $existingStopsJson = $isEdit
             </div>
             <div class="p-6 space-y-4">
 
-                <div class="space-y-2">
-                    <label for="tour_type" class="text-sm font-medium leading-none">
-                        Tour Type <span class="text-red-500">*</span>
-                    </label>
-                    <select name="tour_type" id="tour_type" required
-                        class="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
-                        <option value="">Select tour type</option>
-                        @foreach(App\Models\Tour::getTourTypes() as $type => $label)
-                            <option value="{{ $type }}" {{ old('tour_type', $isEdit ? $tour->tour_type : '') === $type ? 'selected' : '' }}>{{ $label }}</option>
-                        @endforeach
-                    </select>
-                    @error('tour_type') <p class="text-sm text-red-600">{{ $message }}</p> @enderror
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div class="sm:col-span-2 space-y-2">
+                        <label for="tour_type" class="text-sm font-medium leading-none">
+                            Tour Type <span class="text-red-500">*</span>
+                        </label>
+                        <select name="tour_type" id="tour_type" required
+                            onchange="syncTourTypeIcon(this.value)"
+                            class="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
+                            <option value="">Select tour type</option>
+                            @foreach(App\Models\Tour::getTourTypes() as $type => $label)
+                                <option value="{{ $type }}" {{ old('tour_type', $isEdit ? $tour->tour_type : '') === $type ? 'selected' : '' }}>{{ $label }}</option>
+                            @endforeach
+                        </select>
+                        @error('tour_type') <p class="text-sm text-red-600">{{ $message }}</p> @enderror
+                    </div>
+                    <div class="space-y-3">
+                        <label class="text-sm font-medium leading-none">Custom Icon</label>
+
+                        {{-- Gallery of previously uploaded icons --}}
+                        <div class="flex flex-wrap gap-2 min-h-[2.5rem] items-center" id="tour-icon-gallery">
+                            <span class="text-xs text-muted-foreground italic self-center">Loading icons…</span>
+                        </div>
+
+                        {{-- Selected icon preview --}}
+                        <div id="tour-icon-image-preview" class="hidden items-center gap-2 text-xs text-green-700 bg-green-50 border border-green-200 rounded-md px-3 py-1.5">
+                            <img id="tour-icon-image-preview-img" src="" alt="" class="w-6 h-6 object-contain rounded">
+                            <span id="tour-icon-image-name" class="truncate flex-1"></span>
+                            <button type="button" id="tour-icon-image-clear" class="ml-auto text-red-500 hover:text-red-700 shrink-0" title="Remove custom icon">✕</button>
+                        </div>
+
+                        {{-- Upload new icon --}}
+                        <div class="flex items-center gap-2">
+                            <label for="tour-icon-image-input" class="cursor-pointer inline-flex items-center gap-1.5 rounded-md border border-dashed border-input px-3 py-1.5 text-xs text-muted-foreground hover:bg-muted hover:text-foreground transition-colors">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+                                Upload new icon
+                            </label>
+                            <input type="file" id="tour-icon-image-input" accept="image/*" class="hidden">
+                            <span id="tour-icon-upload-status" class="text-xs text-muted-foreground"></span>
+                        </div>
+
+                        {{-- Hidden field submitted with form --}}
+                        <input type="hidden" name="icon_image" id="tour-icon-image-path" value="{{ old('icon_image', $isEdit ? ($tour->icon_image ?? '') : '') }}">
+
+                        {{-- Emoji fallback --}}
+                        <div class="border-t pt-2 space-y-1">
+                            <label for="tour_icon" class="text-xs font-medium text-muted-foreground">Or emoji fallback (used when no image selected)</label>
+                            <div class="flex gap-2 items-center">
+                                <input type="text" name="icon" id="tour_icon"
+                                    value="{{ old('icon', $isEdit ? ($tour->icon ?? '') : '') }}"
+                                    placeholder="e.g. 🏔️"
+                                    maxlength="10"
+                                    class="flex h-9 w-full rounded-md border border-input bg-background px-3 py-2 text-xl ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
+                                <button type="button" onclick="document.getElementById('tour_icon').value=''"
+                                    title="Clear emoji"
+                                    class="flex-shrink-0 h-9 w-9 flex items-center justify-center rounded-md border border-input bg-background hover:bg-muted text-muted-foreground text-xs">✕</button>
+                            </div>
+                        </div>
+                        @error('icon') <p class="text-sm text-red-600">{{ $message }}</p> @enderror
+                        @error('icon_image') <p class="text-sm text-red-600">{{ $message }}</p> @enderror
+                    </div>
                 </div>
 
                 <div class="space-y-2">
@@ -120,30 +182,34 @@ $existingStopsJson = $isEdit
         <div class="rounded-lg border bg-card text-card-foreground shadow-sm">
             <div class="flex flex-col space-y-1.5 p-6 border-b">
                 <h3 class="text-lg font-semibold leading-none tracking-tight">Tour Stops</h3>
-                <p class="text-sm text-muted-foreground">Add trails as stops in the order visitors should visit them</p>
+                <p class="text-sm text-muted-foreground">Add trails or trail features as stops in the order visitors should visit them</p>
             </div>
             <div class="p-6 space-y-4">
 
-                {{-- Trail search --}}
+                {{-- Trail/Feature search --}}
                 <div class="space-y-2">
                     <label class="text-sm font-medium leading-none">Add a Stop</label>
                     <div class="flex gap-2">
                         <input type="text" x-model="search"
-                            placeholder="Search trails by name..."
+                            placeholder="Search trails or trail features..."
                             class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
                     </div>
-                    <div x-show="search.length > 0 && filteredTrails.length > 0"
-                        class="border rounded-md bg-white shadow-md max-h-48 overflow-y-auto z-10">
-                        <template x-for="trail in filteredTrails" :key="trail.id">
+                    <div x-show="search.length > 0 && filteredItems.length > 0"
+                        class="border rounded-md bg-white shadow-md max-h-56 overflow-y-auto z-10">
+                        <template x-for="item in filteredItems" :key="item.item_type + '-' + item.id">
                             <button type="button"
-                                @click="addStop(trail)"
+                                @click="addStop(item)"
                                 class="w-full text-left px-4 py-2 text-sm hover:bg-muted/50 flex items-center justify-between gap-2 border-b last:border-b-0">
-                                <span x-text="trail.name"></span>
-                                <span class="text-xs text-muted-foreground" x-text="trail.location_type === 'fishing_lake' ? '🎣' : '🥾'"></span>
+                                <span class="flex flex-col min-w-0">
+                                    <span x-text="item.name" class="font-medium truncate"></span>
+                                    <span x-show="item.item_type === 'feature'" class="text-xs text-muted-foreground" x-text="'📍 Feature on: ' + (item.trail_name || '')"></span>
+                                </span>
+                                <span class="text-xs text-muted-foreground flex-shrink-0"
+                                    x-text="item.item_type === 'feature' ? '🏔️' : (item.location_type === 'fishing_lake' ? '🎣' : '🥾')"></span>
                             </button>
                         </template>
                     </div>
-                    <p x-show="search.length > 1 && filteredTrails.length === 0" class="text-sm text-muted-foreground">No matching trails found.</p>
+                    <p x-show="search.length > 1 && filteredItems.length === 0" class="text-sm text-muted-foreground">No matching trails or features found.</p>
                 </div>
 
                 {{-- Stops list --}}
@@ -156,7 +222,12 @@ $existingStopsJson = $isEdit
 
                             {{-- Stop details --}}
                             <div class="flex-1 space-y-2">
-                                <div class="font-medium text-sm" x-text="stop.name"></div>
+                                <div class="flex items-center gap-2">
+                                    <span class="font-medium text-sm" x-text="stop.name"></span>
+                                    <span x-show="stop.item_type === 'feature'"
+                                        class="inline-flex items-center rounded-full bg-blue-50 border border-blue-200 px-1.5 py-0.5 text-xs font-medium text-blue-700"
+                                        x-text="stop.feature_type || 'Feature'"></span>
+                                </div>
                                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
                                     <input type="text"
                                         :name="`stops[${index}][stop_label]`"
@@ -173,8 +244,9 @@ $existingStopsJson = $isEdit
                                         x-model="stop.driving_notes"
                                         placeholder="Driving notes (optional)"
                                         class="flex h-8 w-full rounded-md border border-input bg-background px-2 py-1 text-xs ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:col-span-2">
-                                    {{-- Hidden trail_id --}}
+                                    {{-- Hidden inputs --}}
                                     <input type="hidden" :name="`stops[${index}][trail_id]`" :value="stop.trail_id">
+                                    <input type="hidden" :name="`stops[${index}][feature_id]`" :value="stop.feature_id || ''">
                                 </div>
                             </div>
 
@@ -198,7 +270,7 @@ $existingStopsJson = $isEdit
                 </div>
 
                 <p x-show="stops.length === 0" class="text-sm text-muted-foreground text-center py-4">
-                    No stops added yet. Search for trails above to add them.
+                    No stops added yet. Search for trails or features above to add them.
                 </p>
 
             </div>

@@ -15,6 +15,8 @@ class Tour extends Model
         'description',
         'cover_image',
         'tour_type',
+        'icon',
+        'icon_image',
         'difficulty_summary',
         'duration_estimate',
         'total_driving_km',
@@ -42,6 +44,26 @@ class Tour extends Model
     public function getCoverImageUrlAttribute(): ?string
     {
         return $this->cover_image ? asset('storage/'.$this->cover_image) : null;
+    }
+
+    public function getIconImageUrlAttribute(): ?string
+    {
+        return $this->icon_image ? asset('storage/'.$this->icon_image) : null;
+    }
+
+    public function getTourIconAttribute(): string
+    {
+        if ($this->icon) {
+            return $this->icon;
+        }
+
+        $label = static::getTourTypes()[$this->tour_type] ?? '';
+
+        if (preg_match('/^(\X+?)\s/u', $label, $matches)) {
+            return $matches[1];
+        }
+
+        return '📍';
     }
 
     public function getRouteKeyName(): string

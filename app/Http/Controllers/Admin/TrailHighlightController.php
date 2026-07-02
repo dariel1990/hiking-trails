@@ -68,6 +68,7 @@ class TrailHighlightController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
             'icon' => ['nullable', 'string', 'max:10'],
+            'icon_image' => ['nullable', 'string', 'max:500'],
             'color' => ['nullable', 'string', 'regex:/^#[0-9A-Fa-f]{6}$/'],
             'latitude' => ['required', 'numeric', 'between:-90,90'],
             'longitude' => ['required', 'numeric', 'between:-180,180'],
@@ -80,6 +81,7 @@ class TrailHighlightController extends Controller
             'name' => $validated['name'],
             'description' => $validated['description'] ?? null,
             'icon' => $validated['icon'] ?: null,
+            'icon_image' => $validated['icon_image'] ?: null,
             'color' => $validated['color'] ?: null,
             'coordinates' => [(float) $validated['latitude'], (float) $validated['longitude']],
         ]);

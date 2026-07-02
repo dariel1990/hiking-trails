@@ -17,6 +17,43 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Route;
 
+/**
+ * Decode a Google-encoded polyline string into [[lng, lat], ...] pairs (Mapbox-ready).
+ * ORS returns encoded polyline with 1e5 precision by default.
+ */
+function decodePolyline(string $encoded): array
+{
+    $index = 0;
+    $lat = 0;
+    $lng = 0;
+    $coordinates = [];
+    $len = strlen($encoded);
+
+    while ($index < $len) {
+        $shift = 0;
+        $result = 0;
+        do {
+            $b = ord($encoded[$index++]) - 63;
+            $result |= ($b & 0x1F) << $shift;
+            $shift += 5;
+        } while ($b >= 0x20);
+        $lat += ($result & 1) ? ~($result >> 1) : ($result >> 1);
+
+        $shift = 0;
+        $result = 0;
+        do {
+            $b = ord($encoded[$index++]) - 63;
+            $result |= ($b & 0x1F) << $shift;
+            $shift += 5;
+        } while ($b >= 0x20);
+        $lng += ($result & 1) ? ~($result >> 1) : ($result >> 1);
+
+        $coordinates[] = [round($lng / 1e5, 6), round($lat / 1e5, 6)];
+    }
+
+    return $coordinates;
+}
+
 Route::get('/user', function (Request $request) {
     return $request->user();
 })->middleware('auth:sanctum');
@@ -244,29 +281,34 @@ Route::withoutMiddleware(VerifyAppKey::class)->group(function () {
         );
 
         try {
-            $geoResponse = Http::withHeaders([
+            $orsResponse = Http::withHeaders([
                 'Accept' => 'application/json',
                 'Authorization' => $apiKey,
                 'Content-Type' => 'application/json; charset=utf-8',
-            ])->timeout(15)->post('https://api.openrouteservice.org/v2/directions/driving-car/geojson', [
+            ])->timeout(15)->post('https://api.openrouteservice.org/v2/directions/driving-car', [
                 'coordinates' => $coordinates,
                 'instructions' => false,
             ]);
 
-            if (! $geoResponse->successful()) {
-                return response()->json(['error' => 'Unable to calculate driving route'], 400);
+            if (! $orsResponse->successful()) {
+                $err = $orsResponse->json('error.message') ?? 'Unable to calculate driving route';
+
+                return response()->json(['error' => $err], 400);
             }
 
-            $geoData = $geoResponse->json();
-            $lineCoords = $geoData['features'][0]['geometry']['coordinates'] ?? [];
-            $totalDistance = ($geoData['features'][0]['properties']['summary']['distance'] ?? 0) / 1000;
+            $data = $orsResponse->json();
+            $encodedGeometry = $data['routes'][0]['geometry'] ?? '';
+            $totalDistance = ($data['routes'][0]['summary']['distance'] ?? 0) / 1000;
+
+            // Decode Google-format encoded polyline → [[lng, lat], ...] for Mapbox
+            $lineCoords = decodePolyline($encodedGeometry);
 
             return response()->json([
-                'coordinates' => $lineCoords, // [[lng,lat],...] — Mapbox-ready
+                'coordinates' => $lineCoords,
                 'total_km' => round($totalDistance, 1),
             ]);
         } catch (Exception $e) {
-            return response()->json(['error' => 'Route calculation failed'], 500);
+            return response()->json(['error' => 'Route calculation failed: '.$e->getMessage()], 500);
         }
     });
 

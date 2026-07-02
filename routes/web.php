@@ -149,6 +149,8 @@ Route::prefix('admin')->name('admin.')->group(function () {
 
         // Trail management
         Route::post('/trails/bulk-action', [AdminTrailController::class, 'bulkAction'])->name('trails.bulk-action');
+        Route::get('/trails/feature-icons', [AdminTrailController::class, 'listFeatureIcons'])->name('trails.feature-icons');
+        Route::post('/trails/feature-icons/upload', [AdminTrailController::class, 'uploadFeatureIcon'])->name('trails.feature-icons.upload');
         Route::resource('trails', AdminTrailController::class);
 
         // Trail Highlights Management (read/update/delete only — created via the trail builder)

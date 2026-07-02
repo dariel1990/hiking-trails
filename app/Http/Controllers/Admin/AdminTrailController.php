@@ -382,8 +382,9 @@ class AdminTrailController extends Controller
                         'name' => $highlightData['name'],
                         'description' => $highlightData['description'] ?? null,
                         'coordinates' => $highlightData['coordinates'],
-                        'icon' => $highlightData['icon'] ?? null,      // NEW
-                        'color' => $highlightData['color'] ?? null,    // NEW
+                        'icon' => $highlightData['icon'] ?? null,
+                        'icon_image' => $highlightData['icon_image'] ?? null,
+                        'color' => $highlightData['color'] ?? null,
                     ]);
 
                     // Handle photo file if exists for this highlight
@@ -766,6 +767,7 @@ class AdminTrailController extends Controller
                             'description' => $highlightData['description'] ?? null,
                             'coordinates' => $highlightData['coordinates'],
                             'icon' => $highlightData['icon'] ?? null,
+                            'icon_image' => $highlightData['icon_image'] ?? $feature->icon_image,
                             'color' => $highlightData['color'] ?? null,
                         ]);
 
@@ -878,8 +880,9 @@ class AdminTrailController extends Controller
                         'name' => $highlightData['name'],
                         'description' => $highlightData['description'] ?? null,
                         'coordinates' => $highlightData['coordinates'],
-                        'icon' => $highlightData['icon'] ?? null,      // NEW
-                        'color' => $highlightData['color'] ?? null,    // NEW
+                        'icon' => $highlightData['icon'] ?? null,
+                        'icon_image' => $highlightData['icon_image'] ?? null,
+                        'color' => $highlightData['color'] ?? null,
                     ]);
 
                     // Handle photo file if exists for this highlight
@@ -1100,6 +1103,41 @@ class AdminTrailController extends Controller
     // ============================================
     // NEW: GPX-RELATED API METHODS
     // ============================================
+
+    /**
+     * List all previously uploaded feature POI icons.
+     */
+    public function listFeatureIcons(): JsonResponse
+    {
+        $files = Storage::disk('public')->files('feature-icons');
+
+        $icons = collect($files)
+            ->filter(fn ($f) => preg_match('/\.(png|jpg|jpeg|webp|gif)$/i', $f))
+            ->map(fn ($f) => [
+                'path' => $f,
+                'url' => asset('storage/'.$f),
+            ])
+            ->values();
+
+        return response()->json($icons);
+    }
+
+    /**
+     * Upload a new feature POI icon and return its path + URL.
+     */
+    public function uploadFeatureIcon(Request $request): JsonResponse
+    {
+        $request->validate([
+            'icon' => 'required|image|mimes:jpg,jpeg,png,webp,gif|max:2048',
+        ]);
+
+        $path = $request->file('icon')->store('feature-icons', 'public');
+
+        return response()->json([
+            'path' => $path,
+            'url' => asset('storage/'.$path),
+        ]);
+    }
 
     /**
      * Preview GPX calculations before saving

@@ -163,6 +163,7 @@ class TrailNetworkController extends Controller
                     'feature_type' => $feature->feature_type,
                     'coordinates' => $coordinates,
                     'icon' => $feature->icon,
+                    'icon_image_url' => $feature->icon_image_url,
                     'color' => $feature->color,
                     'media' => $media,
                     'trail' => [

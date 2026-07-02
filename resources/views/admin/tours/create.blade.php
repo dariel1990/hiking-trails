@@ -22,7 +22,8 @@
         </div>
     </div>
 
-    <form action="{{ route('admin.tours.store') }}" method="POST" enctype="multipart/form-data" class="space-y-6">
+    <form action="{{ route('admin.tours.store') }}" method="POST" enctype="multipart/form-data" class="space-y-6"
+        onkeydown="if(event.key==='Enter'&&event.target.tagName!=='TEXTAREA'){event.preventDefault();}">
         @csrf
         @include('admin.tours._form', ['tour' => null])
     </form>
