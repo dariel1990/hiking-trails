@@ -3367,20 +3367,74 @@
                     return;
                 }
                 gallery.innerHTML = icons.map(icon => `
-                    <button type="button" data-path="${icon.path}" data-url="${icon.url}"
-                        class="feature-icon-thumb w-10 h-10 rounded-md border-2 border-transparent hover:border-primary overflow-hidden bg-white flex items-center justify-center p-0.5 transition-colors"
-                        title="${icon.path.split('/').pop()}">
-                        <img src="${icon.url}" class="w-full h-full object-contain" alt="">
-                    </button>
+                    <div class="relative group" data-icon-wrapper="${icon.path}">
+                        <button type="button" data-path="${icon.path}" data-url="${icon.url}"
+                            class="feature-icon-thumb w-10 h-10 rounded-md border-2 border-transparent hover:border-primary overflow-hidden bg-white flex items-center justify-center p-0.5 transition-colors"
+                            title="${icon.path.split('/').pop()}">
+                            <img src="${icon.url}" class="w-full h-full object-contain" alt="">
+                        </button>
+                        <button type="button" data-delete-path="${icon.path}"
+                            class="feature-icon-delete absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-red-500 text-white text-[10px] leading-none flex items-center justify-center opacity-0 group-hover:opacity-100 hover:bg-red-600 transition-opacity shadow"
+                            title="Delete this custom icon">✕</button>
+                    </div>
                 `).join('');
 
                 gallery.querySelectorAll('.feature-icon-thumb').forEach(btn => {
                     btn.addEventListener('click', () => this.selectFeatureIcon(btn.dataset.path, btn.dataset.url));
                 });
+                gallery.querySelectorAll('.feature-icon-delete').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        this.deleteFeatureIcon(btn.dataset.deletePath, btn.closest('[data-icon-wrapper]'));
+                    });
+                });
             })
             .catch(() => {
                 gallery.innerHTML = '<span class="text-xs text-red-400 italic self-center">Failed to load icons</span>';
             });
+        }
+
+        async deleteFeatureIcon(path, wrapperEl) {
+            if (!confirm('Delete this custom icon? This cannot be undone.')) { return; }
+
+            const requestDelete = async (force = false) => {
+                const res = await fetch('{{ route("admin.trails.feature-icons.delete") }}', {
+                    method: 'DELETE',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                    },
+                    body: JSON.stringify({ path, force })
+                });
+                if (!res.ok) { throw new Error('Failed to delete icon'); }
+                return res.json();
+            };
+
+            try {
+                let data = await requestDelete();
+
+                if (!data.deleted && data.in_use) {
+                    const proceed = confirm(`This icon is currently used by ${data.in_use} item(s). Deleting it will revert them to their feature type's stock icon. Delete anyway?`);
+                    if (!proceed) { return; }
+                    data = await requestDelete(true);
+                }
+
+                if (!data.deleted) { return; }
+
+                if (wrapperEl) { wrapperEl.remove(); }
+
+                if (document.getElementById('highlight-icon-image-path').value === path) {
+                    this.clearFeatureIcon();
+                }
+
+                const gallery = document.getElementById('feature-icon-gallery');
+                if (gallery && !gallery.querySelector('.feature-icon-thumb')) {
+                    gallery.innerHTML = '<span class="text-xs text-muted-foreground italic self-center">No custom icons yet</span>';
+                }
+            } catch {
+                alert('Failed to delete icon.');
+            }
         }
 
         selectFeatureIcon(path, url) {
@@ -3426,7 +3480,11 @@
             const placeholder = gallery.querySelector('span.italic');
             if (placeholder) { placeholder.remove(); }
 
-            if (gallery.querySelector(`[data-path="${path}"]`)) { return; }
+            if (gallery.querySelector(`[data-icon-wrapper="${path}"]`)) { return; }
+
+            const wrapper = document.createElement('div');
+            wrapper.className = 'relative group';
+            wrapper.dataset.iconWrapper = path;
 
             const btn = document.createElement('button');
             btn.type = 'button';
@@ -3436,7 +3494,21 @@
             btn.title = path.split('/').pop();
             btn.addEventListener('click', () => this.selectFeatureIcon(path, url));
             btn.innerHTML = `<img src="${url}" class="w-full h-full object-contain" alt="">`;
-            gallery.prepend(btn);
+
+            const deleteBtn = document.createElement('button');
+            deleteBtn.type = 'button';
+            deleteBtn.dataset.deletePath = path;
+            deleteBtn.className = 'feature-icon-delete absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-red-500 text-white text-[10px] leading-none flex items-center justify-center opacity-0 group-hover:opacity-100 hover:bg-red-600 transition-opacity shadow';
+            deleteBtn.title = 'Delete this custom icon';
+            deleteBtn.textContent = '✕';
+            deleteBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.deleteFeatureIcon(path, wrapper);
+            });
+
+            wrapper.appendChild(btn);
+            wrapper.appendChild(deleteBtn);
+            gallery.prepend(wrapper);
         }
 
         placeHighlightMarker(lat, lng) {

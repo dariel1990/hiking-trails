@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\ActivityType;
 use App\Models\Facility;
 use App\Models\SeasonalTrailData;
+use App\Models\Tour;
 use App\Models\Trail;
 use App\Models\TrailFeature;
 use App\Models\TrailMedia;
@@ -1137,6 +1138,41 @@ class AdminTrailController extends Controller
             'path' => $path,
             'url' => asset('storage/'.$path),
         ]);
+    }
+
+    /**
+     * Delete a custom feature POI icon.
+     */
+    public function deleteFeatureIcon(Request $request): JsonResponse
+    {
+        $request->validate([
+            'path' => 'required|string',
+            'force' => 'nullable|boolean',
+        ]);
+
+        $path = $request->string('path')->toString();
+
+        if (! str_starts_with($path, 'feature-icons/') || str_contains($path, '..')) {
+            abort(422, 'Invalid icon path.');
+        }
+
+        $inUse = TrailFeature::where('icon_image', $path)->count()
+            + Tour::where('icon_image', $path)->count();
+
+        if ($inUse > 0 && ! $request->boolean('force')) {
+            return response()->json(['deleted' => false, 'in_use' => $inUse]);
+        }
+
+        if ($inUse > 0) {
+            // Clear the reference so these records fall back to their type's stock icon
+            // instead of pointing at a now-deleted image.
+            TrailFeature::where('icon_image', $path)->update(['icon_image' => null]);
+            Tour::where('icon_image', $path)->update(['icon_image' => null]);
+        }
+
+        Storage::disk('public')->delete($path);
+
+        return response()->json(['deleted' => true]);
     }
 
     /**

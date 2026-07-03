@@ -122,71 +122,26 @@
         </div>
     </div>
 
-    {{-- Trail Media Section --}}
-    @if($trailMedia->isNotEmpty())
+    {{-- Media Grid --}}
+    @if($media->isNotEmpty())
         <div class="rounded-lg border bg-card text-card-foreground shadow-sm">
             <div class="flex items-center justify-between border-b px-6 py-4">
-                <div class="flex items-center gap-2">
-                    <span class="inline-flex items-center rounded-full border border-transparent bg-green-100 px-2.5 py-0.5 text-xs font-semibold text-green-800">
-                        Trails
-                    </span>
-                    <span class="text-sm text-muted-foreground">{{ $trailMedia->count() }} item{{ $trailMedia->count() !== 1 ? 's' : '' }}</span>
-                </div>
+                <span class="text-sm text-muted-foreground">{{ $media->total() }} item{{ $media->total() !== 1 ? 's' : '' }}</span>
             </div>
             <div class="p-6">
                 <div class="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
-                    @foreach($trailMedia as $media)
-                        @include('admin.media._card', ['media' => $media, 'mediaSource' => 'trail'])
+                    @foreach($media as $item)
+                        @include('admin.media._card', ['media' => $item['media'], 'mediaSource' => $item['source']])
                     @endforeach
                 </div>
+                @if($media->hasPages())
+                    <div class="mt-6">
+                        {{ $media->onEachSide(1)->links() }}
+                    </div>
+                @endif
             </div>
         </div>
-    @endif
-
-    {{-- Facility Media Section --}}
-    @if($facilityMedia->isNotEmpty())
-        <div class="rounded-lg border bg-card text-card-foreground shadow-sm">
-            <div class="flex items-center justify-between border-b px-6 py-4">
-                <div class="flex items-center gap-2">
-                    <span class="inline-flex items-center rounded-full border border-transparent bg-orange-100 px-2.5 py-0.5 text-xs font-semibold text-orange-800">
-                        Facilities
-                    </span>
-                    <span class="text-sm text-muted-foreground">{{ $facilityMedia->count() }} item{{ $facilityMedia->count() !== 1 ? 's' : '' }}</span>
-                </div>
-            </div>
-            <div class="p-6">
-                <div class="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
-                    @foreach($facilityMedia as $media)
-                        @include('admin.media._card', ['media' => $media, 'mediaSource' => 'facility'])
-                    @endforeach
-                </div>
-            </div>
-        </div>
-    @endif
-
-    {{-- Business Media Section --}}
-    @if($businessMedia->isNotEmpty())
-        <div class="rounded-lg border bg-card text-card-foreground shadow-sm">
-            <div class="flex items-center justify-between border-b px-6 py-4">
-                <div class="flex items-center gap-2">
-                    <span class="inline-flex items-center rounded-full border border-transparent bg-blue-100 px-2.5 py-0.5 text-xs font-semibold text-blue-800">
-                        Businesses
-                    </span>
-                    <span class="text-sm text-muted-foreground">{{ $businessMedia->count() }} item{{ $businessMedia->count() !== 1 ? 's' : '' }}</span>
-                </div>
-            </div>
-            <div class="p-6">
-                <div class="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
-                    @foreach($businessMedia as $media)
-                        @include('admin.media._card', ['media' => $media, 'mediaSource' => 'business'])
-                    @endforeach
-                </div>
-            </div>
-        </div>
-    @endif
-
-    {{-- Empty state --}}
-    @if($trailMedia->isEmpty() && $facilityMedia->isEmpty() && $businessMedia->isEmpty())
+    @else
         <div class="rounded-lg border bg-card text-card-foreground shadow-sm">
             <div class="p-12 text-center">
                 <div class="flex flex-col items-center justify-center space-y-4">
@@ -207,4 +162,50 @@
     @endif
 
 </div>
+
+<style>
+:root {
+  --background: 0 0% 100%;
+  --foreground: 222.2 84% 4.9%;
+  --card: 0 0% 100%;
+  --card-foreground: 222.2 84% 4.9%;
+  --primary: 221.2 83.2% 53.3%;
+  --primary-foreground: 210 40% 98%;
+  --secondary: 210 40% 96%;
+  --secondary-foreground: 222.2 84% 4.9%;
+  --muted: 210 40% 96%;
+  --muted-foreground: 215.4 16.3% 46.9%;
+  --accent: 210 40% 96%;
+  --accent-foreground: 222.2 84% 4.9%;
+  --destructive: 0 84.2% 60.2%;
+  --destructive-foreground: 210 40% 98%;
+  --border: 214.3 31.8% 91.4%;
+  --input: 214.3 31.8% 91.4%;
+  --ring: 221.2 83.2% 53.3%;
+}
+.bg-background { background-color: hsl(var(--background)); }
+.text-foreground { color: hsl(var(--foreground)); }
+.bg-card { background-color: hsl(var(--card)); }
+.text-card-foreground { color: hsl(var(--card-foreground)); }
+.bg-primary { background-color: hsl(var(--primary)); }
+.text-primary-foreground { color: hsl(var(--primary-foreground)); }
+.bg-primary\/90 { background-color: hsl(var(--primary) / 0.9); }
+.hover\:bg-primary\/90:hover { background-color: hsl(var(--primary) / 0.9); }
+.bg-secondary { background-color: hsl(var(--secondary)); }
+.text-secondary-foreground { color: hsl(var(--secondary-foreground)); }
+.bg-muted { background-color: hsl(var(--muted)); }
+.text-muted-foreground { color: hsl(var(--muted-foreground)); }
+.bg-muted\/50 { background-color: hsl(var(--muted) / 0.5); }
+.hover\:bg-muted\/50:hover { background-color: hsl(var(--muted) / 0.5); }
+.bg-accent { background-color: hsl(var(--accent)); }
+.text-accent-foreground { color: hsl(var(--accent-foreground)); }
+.hover\:bg-accent:hover { background-color: hsl(var(--accent)); }
+.hover\:text-accent-foreground:hover { color: hsl(var(--accent-foreground)); }
+.hover\:bg-destructive:hover { background-color: hsl(var(--destructive)); }
+.hover\:text-destructive-foreground:hover { color: hsl(var(--destructive-foreground)); }
+.border-border { border-color: hsl(var(--border)); }
+.border-input { border-color: hsl(var(--input)); }
+.ring-ring { --tw-ring-color: hsl(var(--ring)); }
+.ring-offset-background { --tw-ring-offset-color: hsl(var(--background)); }
+</style>
 @endsection

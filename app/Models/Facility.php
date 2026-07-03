@@ -27,7 +27,7 @@ class Facility extends Model
         'is_active' => 'boolean',
     ];
 
-    protected $appends = ['media_count'];
+    protected $appends = ['media_count', 'icon_image_url'];
 
     public function trailNetwork()
     {
@@ -93,6 +93,14 @@ class Facility extends Model
         }
 
         return $this->getDefaultIcon();
+    }
+
+    /**
+     * Get the URL for the custom icon image, if set
+     */
+    public function getIconImageUrlAttribute(): ?string
+    {
+        return $this->icon_image ? asset('storage/'.$this->icon_image) : null;
     }
 
     /**

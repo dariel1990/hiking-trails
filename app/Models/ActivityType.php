@@ -14,4 +14,12 @@ class ActivityType extends Model
             ->withPivot(['activity_notes', 'activity_specific_data'])
             ->withTimestamps();
     }
+
+    /**
+     * Get the icon, falling back to a stock icon when no emoji or image is set.
+     */
+    public function getIconAttribute(?string $value): string
+    {
+        return $value ?: '🥾';
+    }
 }

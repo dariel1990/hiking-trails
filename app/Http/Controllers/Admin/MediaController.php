@@ -8,6 +8,7 @@ use App\Models\FacilityMedia;
 use App\Models\TrailMedia;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\View\View;
 
 class MediaController extends Controller
@@ -17,6 +18,7 @@ class MediaController extends Controller
         $type = $request->input('type', 'all');
         $source = $request->input('source', 'all');
         $search = $request->input('search');
+        $perPage = 10;
 
         $trailQuery = TrailMedia::with(['trail', 'features'])
             ->when($type !== 'all', function ($q) use ($type) {
@@ -26,8 +28,7 @@ class MediaController extends Controller
                     $q->whereIn('media_type', ['video', 'video_url']);
                 }
             })
-            ->when($search, fn ($q) => $q->whereHas('trail', fn ($tq) => $tq->where('name', 'like', "%{$search}%")))
-            ->latest();
+            ->when($search, fn ($q) => $q->whereHas('trail', fn ($tq) => $tq->where('name', 'like', "%{$search}%")));
 
         $facilityQuery = FacilityMedia::with('facility')
             ->when($type !== 'all', function ($q) use ($type) {
@@ -37,8 +38,7 @@ class MediaController extends Controller
                     $q->where('media_type', 'video_url');
                 }
             })
-            ->when($search, fn ($q) => $q->whereHas('facility', fn ($fq) => $fq->where('name', 'like', "%{$search}%")))
-            ->latest();
+            ->when($search, fn ($q) => $q->whereHas('facility', fn ($fq) => $fq->where('name', 'like', "%{$search}%")));
 
         $businessQuery = BusinessMedia::with('business')
             ->when($type !== 'all', function ($q) use ($type) {
@@ -48,12 +48,30 @@ class MediaController extends Controller
                     $q->where('media_type', 'video_url');
                 }
             })
-            ->when($search, fn ($q) => $q->whereHas('business', fn ($bq) => $bq->where('name', 'like', "%{$search}%")))
-            ->latest();
+            ->when($search, fn ($q) => $q->whereHas('business', fn ($bq) => $bq->where('name', 'like', "%{$search}%")));
 
-        $trailMedia = in_array($source, ['facility', 'business']) ? collect() : $trailQuery->get();
-        $facilityMedia = in_array($source, ['trail', 'business']) ? collect() : $facilityQuery->get();
-        $businessMedia = in_array($source, ['trail', 'facility']) ? collect() : $businessQuery->get();
+        $items = collect();
+
+        if (in_array($source, ['all', 'trail'])) {
+            $items = $items->concat($trailQuery->get()->map(fn ($m) => ['media' => $m, 'source' => 'trail']));
+        }
+        if (in_array($source, ['all', 'facility'])) {
+            $items = $items->concat($facilityQuery->get()->map(fn ($m) => ['media' => $m, 'source' => 'facility']));
+        }
+        if (in_array($source, ['all', 'business'])) {
+            $items = $items->concat($businessQuery->get()->map(fn ($m) => ['media' => $m, 'source' => 'business']));
+        }
+
+        $items = $items->sortByDesc(fn ($item) => $item['media']->created_at)->values();
+
+        $page = max((int) $request->input('page', 1), 1);
+        $media = new LengthAwarePaginator(
+            $items->forPage($page, $perPage)->values(),
+            $items->count(),
+            $perPage,
+            $page,
+            ['path' => $request->url(), 'query' => $request->query()]
+        );
 
         $stats = [
             'total' => TrailMedia::count() + FacilityMedia::count() + BusinessMedia::count(),
@@ -68,7 +86,7 @@ class MediaController extends Controller
             'business_media' => BusinessMedia::count(),
         ];
 
-        return view('admin.media.index', compact('trailMedia', 'facilityMedia', 'businessMedia', 'stats', 'type', 'source', 'search'));
+        return view('admin.media.index', compact('media', 'stats', 'type', 'source', 'search'));
     }
 
     public function showTrailMedia(TrailMedia $media): View

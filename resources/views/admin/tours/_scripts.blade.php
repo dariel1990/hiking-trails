@@ -183,14 +183,25 @@ function initTourIconGallery() {
             }
             const current = document.getElementById('tour-icon-image-path').value;
             gallery.innerHTML = icons.map(ic => `
-                <button type="button" data-path="${ic.path}" data-url="${ic.url}"
-                    class="tour-icon-thumb w-10 h-10 rounded-md border-2 ${ic.path === current ? 'border-primary' : 'border-transparent'} hover:border-primary overflow-hidden bg-white flex items-center justify-center p-0.5 transition-colors"
-                    title="${ic.path.split('/').pop()}">
-                    <img src="${ic.url}" class="w-full h-full object-contain" alt="">
-                </button>`).join('');
+                <div class="relative group" data-icon-wrapper="${ic.path}">
+                    <button type="button" data-path="${ic.path}" data-url="${ic.url}"
+                        class="tour-icon-thumb w-10 h-10 rounded-md border-2 ${ic.path === current ? 'border-primary' : 'border-transparent'} hover:border-primary overflow-hidden bg-white flex items-center justify-center p-0.5 transition-colors"
+                        title="${ic.path.split('/').pop()}">
+                        <img src="${ic.url}" class="w-full h-full object-contain" alt="">
+                    </button>
+                    <button type="button" data-delete-path="${ic.path}"
+                        class="tour-icon-delete absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-red-500 text-white text-[10px] leading-none flex items-center justify-center opacity-0 group-hover:opacity-100 hover:bg-red-600 transition-opacity shadow"
+                        title="Delete this custom icon">✕</button>
+                </div>`).join('');
 
             gallery.querySelectorAll('.tour-icon-thumb').forEach(btn => {
                 btn.addEventListener('click', () => selectTourIcon(btn.dataset.path, btn.dataset.url));
+            });
+            gallery.querySelectorAll('.tour-icon-delete').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    deleteTourIcon(btn.dataset.deletePath, btn.closest('[data-icon-wrapper]'));
+                });
             });
 
             // Restore preview if editing with existing icon_image
@@ -245,6 +256,10 @@ function addToTourIconGallery(path, url) {
     const placeholder = gallery.querySelector('span.italic');
     if (placeholder) { placeholder.remove(); }
 
+    const wrapper = document.createElement('div');
+    wrapper.className = 'relative group';
+    wrapper.dataset.iconWrapper = path;
+
     const btn = document.createElement('button');
     btn.type = 'button';
     btn.dataset.path = path;
@@ -253,7 +268,64 @@ function addToTourIconGallery(path, url) {
     btn.title = path.split('/').pop();
     btn.addEventListener('click', () => selectTourIcon(path, url));
     btn.innerHTML = `<img src="${url}" class="w-full h-full object-contain" alt="">`;
-    gallery.prepend(btn);
+
+    const deleteBtn = document.createElement('button');
+    deleteBtn.type = 'button';
+    deleteBtn.dataset.deletePath = path;
+    deleteBtn.className = 'tour-icon-delete absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-red-500 text-white text-[10px] leading-none flex items-center justify-center opacity-0 group-hover:opacity-100 hover:bg-red-600 transition-opacity shadow';
+    deleteBtn.title = 'Delete this custom icon';
+    deleteBtn.textContent = '✕';
+    deleteBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        deleteTourIcon(path, wrapper);
+    });
+
+    wrapper.appendChild(btn);
+    wrapper.appendChild(deleteBtn);
+    gallery.prepend(wrapper);
+}
+
+async function deleteTourIcon(path, wrapperEl) {
+    if (!confirm('Delete this custom icon? This cannot be undone.')) { return; }
+
+    const requestDelete = async (force = false) => {
+        const res = await fetch('{{ route("admin.trails.feature-icons.delete") }}', {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+            },
+            body: JSON.stringify({ path, force })
+        });
+        if (!res.ok) { throw new Error('Failed to delete icon'); }
+        return res.json();
+    };
+
+    try {
+        let data = await requestDelete();
+
+        if (!data.deleted && data.in_use) {
+            const proceed = confirm(`This icon is currently used by ${data.in_use} item(s). Deleting it will revert them to their tour type's stock icon. Delete anyway?`);
+            if (!proceed) { return; }
+            data = await requestDelete(true);
+        }
+
+        if (!data.deleted) { return; }
+
+        if (wrapperEl) { wrapperEl.remove(); }
+
+        if (document.getElementById('tour-icon-image-path').value === path) {
+            clearTourIcon();
+        }
+
+        const gallery = document.getElementById('tour-icon-gallery');
+        if (gallery && !gallery.querySelector('.tour-icon-thumb')) {
+            gallery.innerHTML = '<span class="text-xs text-muted-foreground italic">No icons uploaded yet.</span>';
+        }
+    } catch {
+        alert('Failed to delete icon.');
+    }
 }
 
 document.addEventListener('DOMContentLoaded', function () {

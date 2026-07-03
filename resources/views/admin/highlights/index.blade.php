@@ -93,11 +93,21 @@
                     <tr class="border-b transition-colors hover:bg-muted/50">
                         <td class="p-4 align-middle">
                             <div class="flex items-center gap-3">
-                                <div class="flex h-9 w-9 items-center justify-center rounded-lg text-lg select-none"
-                                     style="background-color: {{ $highlight->color }}1A; border: 1px solid {{ $highlight->color }}33;">
-                                    {{ $highlight->icon }}
+                                <div class="flex h-9 w-9 items-center justify-center rounded-lg text-lg select-none overflow-hidden"
+                                     style="background-color: {{ $highlight->color }}1A; border: 1px solid {{ $highlight->color }}33;"
+                                     title="{{ $highlight->icon_image ? 'Custom icon' : 'Emoji icon' }}">
+                                    @if($highlight->icon_image)
+                                        <img src="{{ $highlight->icon_image_url }}" class="h-full w-full object-contain p-1" alt="">
+                                    @else
+                                        {{ $highlight->icon }}
+                                    @endif
                                 </div>
-                                <div class="font-medium leading-none">{{ $highlight->name }}</div>
+                                <div>
+                                    <div class="font-medium leading-none">{{ $highlight->name }}</div>
+                                    <span class="mt-1 inline-flex items-center rounded-full border px-1.5 py-0.5 text-[10px] font-medium {{ $highlight->icon_image ? 'border-blue-200 bg-blue-50 text-blue-700' : 'border-gray-200 bg-gray-50 text-gray-500' }}">
+                                        {{ $highlight->icon_image ? 'Custom' : 'Emoji' }}
+                                    </span>
+                                </div>
                             </div>
                         </td>
                         <td class="p-4 align-middle">

@@ -59,15 +59,37 @@
         </a>
     </div>
 
+    {{-- Search --}}
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
+        <form method="GET" action="{{ route('admin.facilities.index') }}" class="flex flex-col sm:flex-row gap-3">
+            @if($type !== 'all')
+                <input type="hidden" name="type" value="{{ $type }}">
+            @endif
+            <div class="relative flex-1">
+                <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                </svg>
+                <input type="text" name="search" value="{{ request('search') }}"
+                       placeholder="Search facilities by name or description..."
+                       class="w-full rounded-lg border border-gray-300 pl-10 pr-3 py-2.5 text-sm focus:border-green-500 focus:ring-green-500">
+            </div>
+            <div class="flex gap-2">
+                <button type="submit"
+                        class="inline-flex items-center justify-center gap-2 bg-gray-900 hover:bg-gray-800 text-white px-4 py-2.5 rounded-lg font-medium text-sm transition-colors">
+                    Search
+                </button>
+                @if($search)
+                    <a href="{{ route('admin.facilities.index', array_filter(['type' => $type !== 'all' ? $type : null])) }}"
+                       class="inline-flex items-center justify-center gap-2 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 px-4 py-2.5 rounded-lg font-medium text-sm transition-colors">
+                        Clear
+                    </a>
+                @endif
+            </div>
+        </form>
+    </div>
+
     {{-- Stats Cards --}}
     <div class="grid gap-4 md:grid-cols-4">
-        @php
-            $totalCount    = $facilities->count();
-            $activeCount   = $facilities->where('is_active', true)->count();
-            $withMediaCount = $facilities->where('media_count', '>', 0)->count();
-            $inactiveCount = $facilities->where('is_active', false)->count();
-        @endphp
-
         <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
             <div class="flex items-center justify-between mb-3">
                 <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Total</p>
@@ -119,59 +141,49 @@
 
     {{-- Facilities Grid (filtered by type) --}}
     @php
-        $byType = $facilities->groupBy('facility_type');
         $facilityTypeMap = App\Models\Facility::getFacilityTypes();
     @endphp
 
-    <div x-data="{ activeType: 'all' }" class="bg-white rounded-xl shadow-sm border border-gray-200">
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200">
         <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
             <h2 class="text-sm font-semibold text-gray-900 uppercase tracking-wide">All Facilities</h2>
-            <span class="text-xs text-gray-500">
-                <span x-show="activeType === 'all'">{{ $totalCount }} {{ Str::plural('facility', $totalCount) }}</span>
-                @foreach($byType as $type => $items)
-                    <span x-show="activeType === '{{ $type }}'" x-cloak>{{ $items->count() }} {{ Str::plural('facility', $items->count()) }}</span>
-                @endforeach
-            </span>
+            <span class="text-xs text-gray-500">{{ $facilities->total() }} {{ Str::plural('facility', $facilities->total()) }}</span>
         </div>
 
         @if($totalCount > 0)
             {{-- Type Tabs --}}
             <div class="px-6 pt-5 pb-1 flex flex-wrap gap-2 border-b border-gray-100">
-                <button type="button" x-on:click="activeType = 'all'"
-                        :class="activeType === 'all' ? 'bg-green-600 text-white border-green-600 shadow-sm' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'"
-                        class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border text-xs font-semibold transition-colors mb-4">
+                <a href="{{ route('admin.facilities.index', array_filter(['search' => $search ?: null, 'type' => 'all'])) }}"
+                   class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border text-xs font-semibold transition-colors mb-4 {{ $type === 'all' ? 'bg-green-600 text-white border-green-600 shadow-sm' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50' }}">
                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
                     </svg>
                     <span>All</span>
                     <span class="opacity-75">{{ $totalCount }}</span>
-                </button>
+                </a>
 
-                @foreach($byType as $type => $items)
+                @foreach($typeCounts as $typeKey => $count)
                     @php
-                        $label = $facilityTypeMap[$type] ?? $type;
+                        $label = $facilityTypeMap[$typeKey] ?? $typeKey;
                         $parts = explode(' ', $label, 2);
                         $emoji = $parts[0] ?? '📍';
                         $name = $parts[1] ?? $label;
                     @endphp
-                    <button type="button" x-on:click="activeType = '{{ $type }}'"
-                            :class="activeType === '{{ $type }}' ? 'bg-green-600 text-white border-green-600 shadow-sm' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'"
-                            class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border text-xs font-semibold transition-colors mb-4">
+                    <a href="{{ route('admin.facilities.index', array_filter(['search' => $search ?: null, 'type' => $typeKey])) }}"
+                       class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border text-xs font-semibold transition-colors mb-4 {{ $type === $typeKey ? 'bg-green-600 text-white border-green-600 shadow-sm' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50' }}">
                         <span class="text-sm leading-none">{{ $emoji }}</span>
                         <span>{{ $name }}</span>
-                        <span class="opacity-75">{{ $items->count() }}</span>
-                    </button>
+                        <span class="opacity-75">{{ $count }}</span>
+                    </a>
                 @endforeach
             </div>
         @endif
 
         <div class="p-6">
-            @if($totalCount > 0)
+            @if($facilities->count() > 0)
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     @foreach($facilities as $facility)
-                    <div x-show="activeType === 'all' || activeType === '{{ $facility->facility_type }}'"
-                         data-facility-type="{{ $facility->facility_type }}"
-                         class="group relative rounded-xl border border-gray-200 bg-white p-5 hover:border-gray-300 hover:shadow-md transition-all">
+                    <div class="group relative rounded-xl border border-gray-200 bg-white p-5 hover:border-gray-300 hover:shadow-md transition-all">
                         {{-- Status badge (top-right) --}}
                         @if(!$facility->is_active)
                             <span class="absolute top-4 right-4 inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide bg-gray-100 text-gray-600 border border-gray-200">
@@ -186,8 +198,13 @@
 
                         {{-- Header --}}
                         <div class="flex items-center gap-3 mb-3 pr-16">
-                            <div class="flex-shrink-0 w-11 h-11 rounded-lg bg-gradient-to-br from-blue-50 to-blue-100 border border-blue-200 flex items-center justify-center text-2xl">
-                                {{ $facility->icon }}
+                            <div class="flex-shrink-0 w-11 h-11 rounded-lg bg-gradient-to-br from-blue-50 to-blue-100 border border-blue-200 flex items-center justify-center text-2xl overflow-hidden"
+                                 title="{{ $facility->icon_image ? 'Custom icon' : 'Emoji icon' }}">
+                                @if($facility->icon_image)
+                                    <img src="{{ $facility->icon_image_url }}" class="h-full w-full object-contain p-1.5" alt="">
+                                @else
+                                    {{ $facility->icon }}
+                                @endif
                             </div>
                             <div class="min-w-0 flex-1">
                                 <h3 class="font-semibold text-gray-900 leading-tight truncate">{{ $facility->name }}</h3>
@@ -250,6 +267,11 @@
                     </div>
                     @endforeach
                 </div>
+                @if($facilities->hasPages())
+                    <div class="mt-6">
+                        {{ $facilities->onEachSide(1)->links() }}
+                    </div>
+                @endif
             @else
                 <div class="flex flex-col items-center justify-center py-16 text-center">
                     <div class="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mb-4">
@@ -258,17 +280,28 @@
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
                         </svg>
                     </div>
-                    <h3 class="text-lg font-semibold text-gray-900 mb-1">No facilities yet</h3>
-                    <p class="text-sm text-gray-500 mb-6 max-w-sm">
-                        Get started by adding facilities like parking areas, viewpoints, restrooms, and more.
-                    </p>
-                    <a href="{{ route('admin.facilities.create') }}"
-                       class="inline-flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-5 py-2.5 rounded-lg font-medium text-sm transition-colors shadow-sm">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-                        </svg>
-                        Add First Facility
-                    </a>
+                    @if($totalCount === 0)
+                        <h3 class="text-lg font-semibold text-gray-900 mb-1">No facilities yet</h3>
+                        <p class="text-sm text-gray-500 mb-6 max-w-sm">
+                            Get started by adding facilities like parking areas, viewpoints, restrooms, and more.
+                        </p>
+                        <a href="{{ route('admin.facilities.create') }}"
+                           class="inline-flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-5 py-2.5 rounded-lg font-medium text-sm transition-colors shadow-sm">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                            </svg>
+                            Add First Facility
+                        </a>
+                    @else
+                        <h3 class="text-lg font-semibold text-gray-900 mb-1">No facilities found</h3>
+                        <p class="text-sm text-gray-500 mb-6 max-w-sm">
+                            No facilities match this filter{{ $search ? " and search \"{$search}\"" : '' }}.
+                        </p>
+                        <a href="{{ route('admin.facilities.index', array_filter(['search' => $search ?: null])) }}"
+                           class="inline-flex items-center gap-2 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 px-5 py-2.5 rounded-lg font-medium text-sm transition-colors">
+                            Clear type filter
+                        </a>
+                    @endif
                 </div>
             @endif
         </div>
@@ -282,7 +315,7 @@
         </div>
         <div class="p-6">
             <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
-                @foreach(App\Models\Facility::getFacilityTypes() as $type => $label)
+                @foreach(App\Models\Facility::getFacilityTypes() as $facilityTypeKey => $label)
                 @php
                     $parts = explode(' ', $label, 2);
                     $emoji = $parts[0] ?? '📍';

@@ -133,33 +133,35 @@
                                 @error('icon')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
 
                                 <!-- Image Upload -->
-                                @php $iconImageUrl = $facility->icon_image ? asset('storage/'.$facility->icon_image) : null; @endphp
-                                <div class="mt-3 pt-3 border-t border-gray-100" x-data="{ imagePreview: @js($iconImageUrl) }">
-                                    <p class="text-xs font-medium text-gray-600 mb-2">Or upload PNG/JPG icon <span class="text-gray-400 font-normal">(overrides emoji)</span></p>
-                                    <div class="flex items-center gap-3">
-                                        <div class="w-11 h-11 flex-shrink-0 rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 flex items-center justify-center overflow-hidden">
-                                            <template x-if="imagePreview">
-                                                <img :src="imagePreview" class="w-full h-full object-cover rounded-lg">
-                                            </template>
-                                            <template x-if="!imagePreview">
-                                                <svg class="w-5 h-5 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
-                                                </svg>
-                                            </template>
-                                        </div>
-                                        <div class="flex-1">
-                                            <input type="file" name="icon_image" accept="image/*"
-                                                   @change="const f=$event.target.files[0]; if(f){ const r=new FileReader(); r.onload=e=>imagePreview=e.target.result; r.readAsDataURL(f); } else { imagePreview=@js($iconImageUrl); }"
-                                                   class="block w-full text-sm text-gray-500 file:mr-3 file:py-2 file:px-3 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-gray-100 file:text-gray-700 hover:file:bg-gray-200 cursor-pointer">
-                                            @if($facility->icon_image)
-                                            <label class="flex items-center gap-1.5 mt-1.5 text-xs text-red-600 cursor-pointer">
-                                                <input type="checkbox" name="remove_icon_image" value="1" x-on:change="if($event.target.checked) imagePreview=null;">
-                                                Remove current image
-                                            </label>
-                                            @endif
-                                        </div>
+                                <div class="mt-3 pt-3 border-t border-gray-100 space-y-2">
+                                    <p class="text-xs font-medium text-gray-600">Or upload PNG/JPG icon <span class="text-gray-400 font-normal">(overrides emoji)</span></p>
+
+                                    {{-- Gallery of previously uploaded icons --}}
+                                    <div class="flex flex-wrap gap-2 min-h-[3rem] items-center" id="facility-icon-gallery">
+                                        <span class="text-xs text-gray-400 italic self-center">Loading icons…</span>
                                     </div>
-                                    <p class="mt-1 text-xs text-gray-400">PNG, JPG, WebP · Max 2 MB</p>
+
+                                    {{-- Selected icon preview --}}
+                                    <div id="facility-icon-image-preview" class="{{ $facility->icon_image ? 'flex' : 'hidden' }} items-center gap-2 text-xs text-green-700 bg-green-50 border border-green-200 rounded-md px-3 py-1.5">
+                                        <img id="facility-icon-image-preview-img" src="{{ $facility->icon_image ? asset('storage/'.$facility->icon_image) : '' }}" alt="" class="w-6 h-6 object-contain rounded">
+                                        <span id="facility-icon-image-name" class="truncate flex-1">{{ $facility->icon_image ? basename($facility->icon_image) : '' }}</span>
+                                        <button type="button" id="facility-icon-image-clear" class="ml-auto text-red-500 hover:text-red-700 shrink-0" title="Remove custom icon">✕</button>
+                                    </div>
+
+                                    {{-- Upload new icon --}}
+                                    <div class="flex items-center gap-2">
+                                        <label for="facility-icon-image-input" class="cursor-pointer inline-flex items-center gap-1.5 rounded-md border border-dashed border-gray-300 px-3 py-1.5 text-xs text-gray-500 hover:bg-gray-50 hover:text-gray-700 transition-colors">
+                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                                            </svg>
+                                            Upload new icon
+                                        </label>
+                                        <input type="file" id="facility-icon-image-input" accept="image/*" class="hidden">
+                                        <span id="facility-icon-upload-status" class="text-xs text-gray-400"></span>
+                                    </div>
+                                    <p class="text-xs text-gray-400">PNG, JPG, WebP · Max 2 MB</p>
+
+                                    <input type="hidden" name="icon_image" id="facility-icon-image-path" value="{{ old('icon_image', $facility->icon_image) }}">
                                     @error('icon_image')
                                         <p class="text-sm text-red-500">{{ $message }}</p>
                                     @enderror
@@ -783,6 +785,206 @@ async function deleteMedia(facilityId, mediaId, button) {
         }
     });
 }
+
+// ── Facility icon image gallery ──────────────────────────────────────────────
+
+function initFacilityIconGallery() {
+    const gallery = document.getElementById('facility-icon-gallery');
+    if (!gallery) { return; }
+
+    fetch('{{ route("admin.facilities.icons") }}', {
+        headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content }
+    })
+    .then(r => r.json())
+    .then(icons => {
+        if (!icons.length) {
+            gallery.innerHTML = '<span class="text-xs text-gray-400 italic self-center">No custom icons yet</span>';
+            return;
+        }
+
+        const current = document.getElementById('facility-icon-image-path').value;
+        gallery.innerHTML = icons.map(ic => `
+            <div class="relative group" data-icon-wrapper="${ic.path}">
+                <button type="button" data-path="${ic.path}" data-url="${ic.url}"
+                    class="facility-icon-thumb w-10 h-10 rounded-md border-2 ${ic.path === current ? 'border-primary' : 'border-transparent'} hover:border-primary overflow-hidden bg-white flex items-center justify-center p-0.5 transition-colors"
+                    title="${ic.path.split('/').pop()}">
+                    <img src="${ic.url}" class="w-full h-full object-contain" alt="">
+                </button>
+                <button type="button" data-delete-path="${ic.path}"
+                    class="facility-icon-delete absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-red-500 text-white text-[10px] leading-none flex items-center justify-center opacity-0 group-hover:opacity-100 hover:bg-red-600 transition-opacity shadow"
+                    title="Delete this custom icon">✕</button>
+            </div>
+        `).join('');
+
+        gallery.querySelectorAll('.facility-icon-thumb').forEach(btn => {
+            btn.addEventListener('click', () => selectFacilityIcon(btn.dataset.path, btn.dataset.url));
+        });
+        gallery.querySelectorAll('.facility-icon-delete').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                deleteFacilityIcon(btn.dataset.deletePath, btn.closest('[data-icon-wrapper]'));
+            });
+        });
+
+        if (current) {
+            const match = icons.find(ic => ic.path === current);
+            if (match) { selectFacilityIcon(match.path, match.url); }
+        }
+    })
+    .catch(() => {
+        gallery.innerHTML = '<span class="text-xs text-red-400 italic self-center">Failed to load icons</span>';
+    });
+}
+
+function selectFacilityIcon(path, url) {
+    document.getElementById('facility-icon-image-path').value = path;
+
+    const preview = document.getElementById('facility-icon-image-preview');
+    const previewImg = document.getElementById('facility-icon-image-preview-img');
+    const previewName = document.getElementById('facility-icon-image-name');
+    if (preview && previewImg) {
+        previewImg.src = url;
+        if (previewName) { previewName.textContent = path.split('/').pop(); }
+        preview.classList.remove('hidden');
+        preview.classList.add('flex');
+    }
+
+    document.querySelectorAll('#facility-icon-gallery .facility-icon-thumb').forEach(btn => {
+        btn.classList.toggle('border-primary', btn.dataset.path === path);
+        btn.classList.toggle('border-transparent', btn.dataset.path !== path);
+    });
+}
+
+function clearFacilityIcon() {
+    document.getElementById('facility-icon-image-path').value = '';
+
+    const preview = document.getElementById('facility-icon-image-preview');
+    if (preview) {
+        preview.classList.add('hidden');
+        preview.classList.remove('flex');
+    }
+
+    document.querySelectorAll('#facility-icon-gallery .facility-icon-thumb').forEach(btn => {
+        btn.classList.remove('border-primary');
+        btn.classList.add('border-transparent');
+    });
+}
+
+function addToFacilityIconGallery(path, url) {
+    const gallery = document.getElementById('facility-icon-gallery');
+    if (!gallery) { return; }
+
+    const placeholder = gallery.querySelector('span.italic');
+    if (placeholder) { placeholder.remove(); }
+
+    const wrapper = document.createElement('div');
+    wrapper.className = 'relative group';
+    wrapper.dataset.iconWrapper = path;
+
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.dataset.path = path;
+    btn.dataset.url = url;
+    btn.className = 'facility-icon-thumb w-10 h-10 rounded-md border-2 border-transparent hover:border-primary overflow-hidden bg-white flex items-center justify-center p-0.5 transition-colors';
+    btn.title = path.split('/').pop();
+    btn.addEventListener('click', () => selectFacilityIcon(path, url));
+    btn.innerHTML = `<img src="${url}" class="w-full h-full object-contain" alt="">`;
+
+    const deleteBtn = document.createElement('button');
+    deleteBtn.type = 'button';
+    deleteBtn.dataset.deletePath = path;
+    deleteBtn.className = 'facility-icon-delete absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-red-500 text-white text-[10px] leading-none flex items-center justify-center opacity-0 group-hover:opacity-100 hover:bg-red-600 transition-opacity shadow';
+    deleteBtn.title = 'Delete this custom icon';
+    deleteBtn.textContent = '✕';
+    deleteBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        deleteFacilityIcon(path, wrapper);
+    });
+
+    wrapper.appendChild(btn);
+    wrapper.appendChild(deleteBtn);
+    gallery.prepend(wrapper);
+}
+
+async function deleteFacilityIcon(path, wrapperEl) {
+    if (!confirm('Delete this custom icon? This cannot be undone.')) { return; }
+
+    const requestDelete = async (force = false) => {
+        const res = await fetch('{{ route("admin.facilities.icons.delete") }}', {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+            },
+            body: JSON.stringify({ path, force })
+        });
+        if (!res.ok) { throw new Error('Failed to delete icon'); }
+        return res.json();
+    };
+
+    try {
+        let data = await requestDelete();
+
+        if (!data.deleted && data.in_use) {
+            const proceed = confirm(`This icon is currently used by ${data.in_use} item(s). Deleting it will revert them to their facility type's stock icon. Delete anyway?`);
+            if (!proceed) { return; }
+            data = await requestDelete(true);
+        }
+
+        if (!data.deleted) { return; }
+
+        if (wrapperEl) { wrapperEl.remove(); }
+
+        if (document.getElementById('facility-icon-image-path').value === path) {
+            clearFacilityIcon();
+        }
+
+        const gallery = document.getElementById('facility-icon-gallery');
+        if (gallery && !gallery.querySelector('.facility-icon-thumb')) {
+            gallery.innerHTML = '<span class="text-xs text-gray-400 italic self-center">No custom icons yet</span>';
+        }
+    } catch {
+        alert('Failed to delete icon.');
+    }
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+    initFacilityIconGallery();
+
+    const iconUploadInput = document.getElementById('facility-icon-image-input');
+    if (iconUploadInput) {
+        iconUploadInput.addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (!file) { return; }
+            const statusEl = document.getElementById('facility-icon-upload-status');
+            if (statusEl) { statusEl.textContent = 'Uploading…'; }
+
+            const fd = new FormData();
+            fd.append('icon', file);
+            fd.append('_token', document.querySelector('meta[name="csrf-token"]').content);
+
+            try {
+                const res = await fetch('{{ route("admin.facilities.icons.upload") }}', { method: 'POST', body: fd });
+                const data = await res.json();
+                if (data.path && data.url) {
+                    selectFacilityIcon(data.path, data.url);
+                    addToFacilityIconGallery(data.path, data.url);
+                    if (statusEl) { statusEl.textContent = 'Uploaded!'; }
+                    setTimeout(() => { if (statusEl) { statusEl.textContent = ''; } }, 2000);
+                }
+            } catch {
+                if (statusEl) { statusEl.textContent = 'Upload failed.'; }
+            }
+            iconUploadInput.value = '';
+        });
+    }
+
+    const iconClearBtn = document.getElementById('facility-icon-image-clear');
+    if (iconClearBtn) {
+        iconClearBtn.addEventListener('click', clearFacilityIcon);
+    }
+});
 </script>
 
 <style>

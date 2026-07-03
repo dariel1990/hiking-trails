@@ -42,7 +42,9 @@ class AdminController extends Controller
             if (! $user->isAdmin()) {
                 Auth::logout();
 
-                return back()->withErrors(['email' => 'Access denied. Admin privileges required.']);
+                return back()
+                    ->withInput($request->only('email'))
+                    ->withErrors(['email' => 'Access denied. Admin privileges required.']);
             }
 
             $request->session()->regenerate();
@@ -50,7 +52,9 @@ class AdminController extends Controller
             return redirect()->intended(route('admin.dashboard'));
         }
 
-        return back()->withErrors(['email' => 'Invalid credentials.']);
+        return back()
+            ->withInput($request->only('email'))
+            ->withErrors(['email' => 'Invalid credentials.']);
     }
 
     /**

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\ActivityType;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -57,7 +58,7 @@ class ActivityTypeController extends Controller
             'name' => 'required|string|max:255',
             'slug' => 'required|string|max:255|unique:activity_types,slug',
             'icon' => 'nullable|string|max:10',
-            'icon_image' => 'nullable|image|mimes:jpg,jpeg,png,webp,gif|max:2048',
+            'icon_image' => 'nullable|string|max:255',
             'color' => 'required|string|max:7|regex:/^#[0-9A-Fa-f]{6}$/',
             'description' => 'nullable|string|max:500',
             'season_applicable' => 'required|in:summer,winter,both',
@@ -67,11 +68,11 @@ class ActivityTypeController extends Controller
         $validated['slug'] = Str::slug($validated['slug']);
         $validated['is_active'] = $request->has('is_active') ? true : false;
 
-        if ($request->hasFile('icon_image')) {
-            $validated['icon_image'] = $request->file('icon_image')->store('activity-type-icons', 'public');
+        if (! empty($validated['icon_image'])) {
+            if (! str_starts_with($validated['icon_image'], 'activity-type-icons/') || str_contains($validated['icon_image'], '..')) {
+                abort(422, 'Invalid icon image.');
+            }
             $validated['icon'] = null;
-        } else {
-            unset($validated['icon_image']);
         }
 
         ActivityType::create($validated);
@@ -99,8 +100,7 @@ class ActivityTypeController extends Controller
             'name' => 'required|string|max:255',
             'slug' => 'required|string|max:255|unique:activity_types,slug,'.$activityType->id,
             'icon' => 'nullable|string|max:10',
-            'icon_image' => 'nullable|image|mimes:jpg,jpeg,png,webp,gif|max:2048',
-            'remove_icon_image' => 'nullable|boolean',
+            'icon_image' => 'nullable|string|max:255',
             'color' => 'required|string|max:7|regex:/^#[0-9A-Fa-f]{6}$/',
             'description' => 'nullable|string|max:500',
             'season_applicable' => 'required|in:summer,winter,both',
@@ -109,27 +109,86 @@ class ActivityTypeController extends Controller
 
         $validated['slug'] = Str::slug($validated['slug']);
         $validated['is_active'] = $request->has('is_active') ? true : false;
-        unset($validated['remove_icon_image']);
 
-        if ($request->hasFile('icon_image')) {
-            if ($activityType->icon_image) {
-                Storage::disk('public')->delete($activityType->icon_image);
+        if (! empty($validated['icon_image'])) {
+            if (! str_starts_with($validated['icon_image'], 'activity-type-icons/') || str_contains($validated['icon_image'], '..')) {
+                abort(422, 'Invalid icon image.');
             }
-            $validated['icon_image'] = $request->file('icon_image')->store('activity-type-icons', 'public');
             $validated['icon'] = null;
-        } elseif ($request->boolean('remove_icon_image')) {
-            if ($activityType->icon_image) {
-                Storage::disk('public')->delete($activityType->icon_image);
-            }
-            $validated['icon_image'] = null;
-        } else {
-            unset($validated['icon_image']);
         }
 
         $activityType->update($validated);
 
         return redirect()->route('admin.activity-types.index')
             ->with('success', 'Activity type updated successfully!');
+    }
+
+    /**
+     * List previously uploaded activity type icons for reuse.
+     */
+    public function listIcons(): JsonResponse
+    {
+        $files = Storage::disk('public')->files('activity-type-icons');
+
+        $icons = collect($files)
+            ->filter(fn ($f) => preg_match('/\.(png|jpg|jpeg|webp|gif)$/i', $f))
+            ->map(fn ($f) => [
+                'path' => $f,
+                'url' => asset('storage/'.$f),
+            ])
+            ->values();
+
+        return response()->json($icons);
+    }
+
+    /**
+     * Upload a new activity type icon and return its path + URL.
+     */
+    public function uploadIcon(Request $request): JsonResponse
+    {
+        $request->validate([
+            'icon' => 'required|image|mimes:jpg,jpeg,png,webp,gif|max:2048',
+        ]);
+
+        $path = $request->file('icon')->store('activity-type-icons', 'public');
+
+        return response()->json([
+            'path' => $path,
+            'url' => asset('storage/'.$path),
+        ]);
+    }
+
+    /**
+     * Delete an activity type icon.
+     */
+    public function deleteIcon(Request $request): JsonResponse
+    {
+        $request->validate([
+            'path' => 'required|string',
+            'force' => 'nullable|boolean',
+        ]);
+
+        $path = $request->string('path')->toString();
+
+        if (! str_starts_with($path, 'activity-type-icons/') || str_contains($path, '..')) {
+            abort(422, 'Invalid icon path.');
+        }
+
+        $inUse = ActivityType::where('icon_image', $path)->count();
+
+        if ($inUse > 0 && ! $request->boolean('force')) {
+            return response()->json(['deleted' => false, 'in_use' => $inUse]);
+        }
+
+        if ($inUse > 0) {
+            // Clear the reference so these records fall back to the stock icon
+            // instead of pointing at a now-deleted image.
+            ActivityType::where('icon_image', $path)->update(['icon_image' => null]);
+        }
+
+        Storage::disk('public')->delete($path);
+
+        return response()->json(['deleted' => true]);
     }
 
     /**

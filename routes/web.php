@@ -151,6 +151,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::post('/trails/bulk-action', [AdminTrailController::class, 'bulkAction'])->name('trails.bulk-action');
         Route::get('/trails/feature-icons', [AdminTrailController::class, 'listFeatureIcons'])->name('trails.feature-icons');
         Route::post('/trails/feature-icons/upload', [AdminTrailController::class, 'uploadFeatureIcon'])->name('trails.feature-icons.upload');
+        Route::delete('/trails/feature-icons', [AdminTrailController::class, 'deleteFeatureIcon'])->name('trails.feature-icons.delete');
         Route::resource('trails', AdminTrailController::class);
 
         // Trail Highlights Management (read/update/delete only — created via the trail builder)
@@ -158,6 +159,9 @@ Route::prefix('admin')->name('admin.')->group(function () {
             ->only(['index', 'edit', 'update', 'destroy'])
             ->parameters(['highlights' => 'highlight']);
 
+        Route::get('/activity-types/icons', [ActivityTypeController::class, 'listIcons'])->name('activity-types.icons');
+        Route::post('/activity-types/icons/upload', [ActivityTypeController::class, 'uploadIcon'])->name('activity-types.icons.upload');
+        Route::delete('/activity-types/icons', [ActivityTypeController::class, 'deleteIcon'])->name('activity-types.icons.delete');
         Route::resource('activity-types', ActivityTypeController::class);
         Route::patch('/trails/{trail}/toggle-featured', [AdminTrailController::class, 'toggleFeatured'])->name('trails.toggle-featured')->middleware('throttle:300,1');
         Route::patch('/trails/{trail}/toggle-status', [AdminTrailController::class, 'toggleStatus'])->name('trails.toggle-status')->middleware('throttle:300,1');
@@ -182,6 +186,9 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::delete('carousel/{carousel}', [CarouselSlideController::class, 'destroy'])->name('carousel.destroy');
 
         // Facilities Management (Standalone - Global)
+        Route::get('/facilities/icons', [FacilityController::class, 'listIcons'])->name('facilities.icons');
+        Route::post('/facilities/icons/upload', [FacilityController::class, 'uploadIcon'])->name('facilities.icons.upload');
+        Route::delete('/facilities/icons', [FacilityController::class, 'deleteIcon'])->name('facilities.icons.delete');
         Route::resource('facilities', FacilityController::class)
             ->names([
                 'index' => 'facilities.index',

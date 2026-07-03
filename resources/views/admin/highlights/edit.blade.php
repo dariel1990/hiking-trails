@@ -586,7 +586,12 @@ document.addEventListener('DOMContentLoaded', function () {
     function addThumbToGallery(path, url) {
         const placeholder = gallery.querySelector('span.italic');
         if (placeholder) { placeholder.remove(); }
-        if (gallery.querySelector(`[data-path="${CSS.escape(path)}"]`)) { return; }
+        if (gallery.querySelector(`[data-icon-wrapper="${CSS.escape(path)}"]`)) { return; }
+
+        const wrapper = document.createElement('div');
+        wrapper.className = 'relative group';
+        wrapper.dataset.iconWrapper = path;
+
         const btn = document.createElement('button');
         btn.type = 'button';
         btn.dataset.path = path;
@@ -595,7 +600,63 @@ document.addEventListener('DOMContentLoaded', function () {
         btn.title = path.split('/').pop();
         btn.innerHTML = `<img src="${url}" class="w-full h-full object-contain" alt="">`;
         btn.addEventListener('click', () => selectIcon(path, url));
-        gallery.prepend(btn);
+
+        const deleteBtn = document.createElement('button');
+        deleteBtn.type = 'button';
+        deleteBtn.dataset.deletePath = path;
+        deleteBtn.className = 'feature-icon-delete absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-red-500 text-white text-[10px] leading-none flex items-center justify-center opacity-0 group-hover:opacity-100 hover:bg-red-600 transition-opacity shadow';
+        deleteBtn.title = 'Delete this custom icon';
+        deleteBtn.textContent = '✕';
+        deleteBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            deleteFeatureIcon(path, wrapper);
+        });
+
+        wrapper.appendChild(btn);
+        wrapper.appendChild(deleteBtn);
+        gallery.prepend(wrapper);
+    }
+
+    async function deleteFeatureIcon(path, wrapperEl) {
+        if (!confirm('Delete this custom icon? This cannot be undone.')) { return; }
+
+        const requestDelete = async (force = false) => {
+            const res = await fetch('{{ route("admin.trails.feature-icons.delete") }}', {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                },
+                body: JSON.stringify({ path, force })
+            });
+            if (!res.ok) { throw new Error('Failed to delete icon'); }
+            return res.json();
+        };
+
+        try {
+            let data = await requestDelete();
+
+            if (!data.deleted && data.in_use) {
+                const proceed = confirm(`This icon is currently used by ${data.in_use} item(s). Deleting it will revert them to their feature type's stock icon. Delete anyway?`);
+                if (!proceed) { return; }
+                data = await requestDelete(true);
+            }
+
+            if (!data.deleted) { return; }
+
+            if (wrapperEl) { wrapperEl.remove(); }
+
+            if (iconPathInput.value === path) {
+                clearIcon();
+            }
+
+            if (!gallery.querySelector('.feature-icon-thumb')) {
+                gallery.innerHTML = '<span class="text-xs text-gray-400 italic self-center">No custom icons yet</span>';
+            }
+        } catch {
+            alert('Failed to delete icon.');
+        }
     }
 
     if (clearBtn) {

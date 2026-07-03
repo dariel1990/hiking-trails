@@ -6,8 +6,10 @@ use App\Http\Controllers\Controller;
 use App\Models\Facility;
 use App\Models\FacilityMedia;
 use App\Models\TrailNetwork;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Intervention\Image\Drivers\Gd\Driver;
@@ -18,14 +20,41 @@ class FacilityController extends Controller
     /**
      * Display all facilities
      */
-    public function index()
+    public function index(Request $request)
     {
-        $facilities = Facility::withCount('media')
+        $search = $request->string('search')->toString();
+        $type = $request->string('type', 'all')->toString();
+
+        $baseQuery = Facility::query()
+            ->when($search !== '', function ($query) use ($search) {
+                $query->where(function ($q) use ($search) {
+                    $q->where('name', 'like', "%{$search}%")
+                        ->orWhere('description', 'like', "%{$search}%");
+                });
+            });
+
+        // Counts reflect the full search-filtered set, not just the current page.
+        $totalCount = (clone $baseQuery)->count();
+        $activeCount = (clone $baseQuery)->where('is_active', true)->count();
+        $inactiveCount = (clone $baseQuery)->where('is_active', false)->count();
+        $withMediaCount = (clone $baseQuery)->has('media')->count();
+
+        $typeCounts = (clone $baseQuery)
+            ->select('facility_type', DB::raw('count(*) as aggregate'))
+            ->groupBy('facility_type')
+            ->pluck('aggregate', 'facility_type');
+
+        $facilities = (clone $baseQuery)
+            ->withCount('media')
+            ->when($type !== 'all', fn ($q) => $q->where('facility_type', $type))
             ->orderBy('facility_type')
             ->orderBy('name')
-            ->get();
+            ->paginate(12)
+            ->withQueryString();
 
-        return view('admin.facilities.index', compact('facilities'));
+        return view('admin.facilities.index', compact(
+            'facilities', 'totalCount', 'activeCount', 'inactiveCount', 'withMediaCount', 'typeCounts', 'search', 'type'
+        ));
     }
 
     /**
@@ -50,7 +79,7 @@ class FacilityController extends Controller
             'longitude' => 'required|numeric|between:-180,180',
             'description' => 'nullable|string',
             'icon' => 'nullable|string|max:10',
-            'icon_image' => 'nullable|image|mimes:jpg,jpeg,png,webp,gif|max:2048',
+            'icon_image' => 'nullable|string|max:255',
             'is_active' => 'boolean',
             'trail_network_id' => 'nullable|exists:trail_networks,id',
             'photos' => 'nullable|array',
@@ -62,11 +91,11 @@ class FacilityController extends Controller
         $validated['is_active'] = $request->has('is_active');
         $validated['trail_network_id'] = $request->input('trail_network_id') ?: null;
 
-        if ($request->hasFile('icon_image')) {
-            $validated['icon_image'] = $request->file('icon_image')->store('facility-icons', 'public');
+        if (! empty($validated['icon_image'])) {
+            if (! str_starts_with($validated['icon_image'], 'facility-icons/') || str_contains($validated['icon_image'], '..')) {
+                abort(422, 'Invalid icon image.');
+            }
             $validated['icon'] = null;
-        } else {
-            unset($validated['icon_image']);
         }
 
         $facility = Facility::create($validated);
@@ -109,8 +138,7 @@ class FacilityController extends Controller
             'longitude' => 'required|numeric|between:-180,180',
             'description' => 'nullable|string',
             'icon' => 'nullable|string|max:10',
-            'icon_image' => 'nullable|image|mimes:jpg,jpeg,png,webp,gif|max:2048',
-            'remove_icon_image' => 'nullable|boolean',
+            'icon_image' => 'nullable|string|max:255',
             'is_active' => 'boolean',
             'trail_network_id' => 'nullable|exists:trail_networks,id',
             'photos' => 'nullable|array',
@@ -121,21 +149,12 @@ class FacilityController extends Controller
 
         $validated['is_active'] = $request->has('is_active');
         $validated['trail_network_id'] = $request->input('trail_network_id') ?: null;
-        unset($validated['remove_icon_image']);
 
-        if ($request->hasFile('icon_image')) {
-            if ($facility->icon_image) {
-                Storage::disk('public')->delete($facility->icon_image);
+        if (! empty($validated['icon_image'])) {
+            if (! str_starts_with($validated['icon_image'], 'facility-icons/') || str_contains($validated['icon_image'], '..')) {
+                abort(422, 'Invalid icon image.');
             }
-            $validated['icon_image'] = $request->file('icon_image')->store('facility-icons', 'public');
             $validated['icon'] = null;
-        } elseif ($request->boolean('remove_icon_image')) {
-            if ($facility->icon_image) {
-                Storage::disk('public')->delete($facility->icon_image);
-            }
-            $validated['icon_image'] = null;
-        } else {
-            unset($validated['icon_image']);
         }
 
         $facility->update($validated);
@@ -150,6 +169,74 @@ class FacilityController extends Controller
         }
 
         return redirect()->route('admin.facilities.index')->with('success', $message);
+    }
+
+    /**
+     * List previously uploaded facility icons for reuse.
+     */
+    public function listIcons(): JsonResponse
+    {
+        $files = Storage::disk('public')->files('facility-icons');
+
+        $icons = collect($files)
+            ->filter(fn ($f) => preg_match('/\.(png|jpg|jpeg|webp|gif)$/i', $f))
+            ->map(fn ($f) => [
+                'path' => $f,
+                'url' => asset('storage/'.$f),
+            ])
+            ->values();
+
+        return response()->json($icons);
+    }
+
+    /**
+     * Upload a new facility icon and return its path + URL.
+     */
+    public function uploadIcon(Request $request): JsonResponse
+    {
+        $request->validate([
+            'icon' => 'required|image|mimes:jpg,jpeg,png,webp,gif|max:2048',
+        ]);
+
+        $path = $request->file('icon')->store('facility-icons', 'public');
+
+        return response()->json([
+            'path' => $path,
+            'url' => asset('storage/'.$path),
+        ]);
+    }
+
+    /**
+     * Delete a facility icon.
+     */
+    public function deleteIcon(Request $request): JsonResponse
+    {
+        $request->validate([
+            'path' => 'required|string',
+            'force' => 'nullable|boolean',
+        ]);
+
+        $path = $request->string('path')->toString();
+
+        if (! str_starts_with($path, 'facility-icons/') || str_contains($path, '..')) {
+            abort(422, 'Invalid icon path.');
+        }
+
+        $inUse = Facility::where('icon_image', $path)->count();
+
+        if ($inUse > 0 && ! $request->boolean('force')) {
+            return response()->json(['deleted' => false, 'in_use' => $inUse]);
+        }
+
+        if ($inUse > 0) {
+            // Clear the reference so these records fall back to their facility type's
+            // stock icon instead of pointing at a now-deleted image.
+            Facility::where('icon_image', $path)->update(['icon_image' => null]);
+        }
+
+        Storage::disk('public')->delete($path);
+
+        return response()->json(['deleted' => true]);
     }
 
     /**
