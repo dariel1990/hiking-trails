@@ -86,19 +86,26 @@
         @endif
 
         <!-- CTA Buttons -->
-        <div class="scale-in space-y-4 md:space-y-0 md:space-x-6 flex flex-col md:flex-row justify-center mb-16" style="animation-delay: 0.6s;">
-            <a href="#trails" class="btn-primary text-lg px-10 py-4 hover-glow shadow-xl">
-                🗺️ Explore Trails
-            </a>
-            <a href="{{ route('map') }}" class="bg-transparent border-2 border-white text-white hover:bg-white hover:text-gray-900 font-semibold py-4 px-10 rounded-xl transition-all duration-300 text-lg shadow-xl">
-                📍 View Interactive Map
-            </a>
-            <a href="{{ route('trail-networks.index', ['type' => 'ski']) }}" class="bg-transparent border-2 border-white text-white hover:bg-white hover:text-gray-900 font-semibold py-4 px-10 rounded-xl transition-all duration-300 text-lg shadow-xl">
-                ⛷️ Ski Trails
-            </a>
-            <a href="{{ route('trail-networks.index', ['type' => 'mountain_biking']) }}" class="bg-transparent border-2 border-white text-white hover:bg-white hover:text-gray-900 font-semibold py-4 px-10 rounded-xl transition-all duration-300 text-lg shadow-xl">
-                🚵 Mountain Bike Trails
-            </a>
+        <div class="scale-in mb-16 w-screen relative left-1/2 -translate-x-1/2 px-4" style="animation-delay: 0.6s;">
+            <div class="max-w-sm sm:max-w-none mx-auto flex justify-center mb-4">
+                <a href="#trails" class="btn-primary w-full sm:w-auto text-center text-lg px-10 py-4 hover-glow shadow-xl">
+                    🗺️ Explore Trails
+                </a>
+            </div>
+            <div class="max-w-sm sm:max-w-6xl mx-auto flex flex-col sm:flex-row flex-wrap items-center justify-center gap-4">
+                <a href="{{ route('map') }}" class="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-white/10 hover:bg-white hover:text-gray-900 border-2 border-white/70 text-white font-semibold py-4 px-8 rounded-full transition-all duration-300 text-lg shadow-lg backdrop-blur-sm">
+                    📍 Interactive Map
+                </a>
+                <a href="{{ route('trail-networks.index', ['type' => 'ski']) }}" class="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-white/10 hover:bg-white hover:text-gray-900 border-2 border-white/70 text-white font-semibold py-4 px-8 rounded-full transition-all duration-300 text-lg shadow-lg backdrop-blur-sm">
+                    ⛷️ Ski Trails
+                </a>
+                <a href="{{ route('trail-networks.index', ['type' => 'mountain_biking']) }}" class="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-white/10 hover:bg-white hover:text-gray-900 border-2 border-white/70 text-white font-semibold py-4 px-8 rounded-full transition-all duration-300 text-lg shadow-lg backdrop-blur-sm">
+                    🚵 Mountain Bike Trails
+                </a>
+                <a href="{{ route('tours.index') }}" class="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-white/10 hover:bg-white hover:text-gray-900 border-2 border-white/70 text-white font-semibold py-4 px-8 rounded-full transition-all duration-300 text-lg shadow-lg backdrop-blur-sm">
+                    🧭 Tours
+                </a>
+            </div>
         </div>
         <!-- Enhanced Search Bar with Better Layout -->
         <div class="w-full max-w-5xl mx-auto scale-in" style="animation-delay: 0.4s;">

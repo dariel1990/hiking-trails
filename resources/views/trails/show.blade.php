@@ -547,9 +547,13 @@
                                     <div class="p-4">
                                         <!-- Header with Icon and Info -->
                                         <div class="flex items-start gap-3 mb-3">
-                                            <div style="background-color: {{ $highlight->color }};" 
-                                                class="w-10 h-10 rounded-lg flex items-center justify-center text-white shadow-md flex-shrink-0 text-xl">
-                                                {{ $highlight->icon }}
+                                            <div style="background-color: {{ $highlight->color }};"
+                                                class="w-10 h-10 rounded-full flex items-center justify-center text-white shadow-md flex-shrink-0 text-xl overflow-hidden">
+                                                @if($highlight->icon_image_url)
+                                                    <img src="{{ $highlight->icon_image_url }}" alt="" class="w-full h-full object-contain p-1.5">
+                                                @else
+                                                    {{ $highlight->icon }}
+                                                @endif
                                             </div>
                                             <div class="flex-1 min-w-0">
                                                 <h4 class="font-bold text-gray-900 text-base leading-tight mb-1.5">
@@ -2013,13 +2017,15 @@ function initTrailMap() {
             trail.highlights.forEach(feature => {
                 if (!feature.coordinates) return;
                 const el = document.createElement('div');
-                el.style.cssText = `width:32px;height:32px;border-radius:50%;background-color:${feature.color || '#EC4899'};border:2px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;font-size:16px;cursor:pointer;`;
-                el.textContent = feature.icon || '\u{1F4CD}';
+                el.style.cssText = `width:32px;height:32px;border-radius:50%;background-color:${feature.color || '#EC4899'};border:2px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;font-size:16px;cursor:pointer;overflow:hidden;`;
+                el.innerHTML = feature.icon_image_url
+                    ? `<img src="${feature.icon_image_url}" style="width:100%;height:100%;object-fit:contain;padding:4px;" alt="">`
+                    : (feature.icon || '\u{1F4CD}');
 
                 const popup = new mapboxgl.Popup({ maxWidth: '320px', offset: 20 }).setHTML(`
                     <div class="min-w-[200px]">
                         <div class="flex items-start gap-2 mb-2">
-                            <div style="background-color:${feature.color || '#6366f1'};" class="w-7 h-7 rounded-lg flex items-center justify-center text-white text-sm flex-shrink-0">${feature.icon || '\u{1F4CD}'}</div>
+                            <div style="background-color:${feature.color || '#6366f1'};" class="w-7 h-7 rounded-full flex items-center justify-center text-white text-sm flex-shrink-0 overflow-hidden">${feature.icon_image_url ? `<img src="${feature.icon_image_url}" style="width:100%;height:100%;object-fit:contain;padding:2px;" alt="">` : (feature.icon || '\u{1F4CD}')}</div>
                             <div>
                                 <div class="font-semibold text-sm text-gray-900">${feature.name}</div>
                                 <span class="text-xs bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded capitalize">${(feature.feature_type || '').replace(/_/g, ' ')}</span>
@@ -2805,9 +2811,9 @@ function initTrailMap() {
         content.innerHTML = `
             <div class="space-y-4">
                 <div class="flex items-start gap-4">
-                    <div style="background-color: ${highlight.color || '#6366f1'};" 
-                        class="w-16 h-16 rounded-xl flex items-center justify-center text-white shadow-lg flex-shrink-0 text-3xl">
-                        ${highlight.icon || '📍'}
+                    <div style="background-color: ${highlight.color || '#6366f1'};"
+                        class="w-16 h-16 rounded-full flex items-center justify-center text-white shadow-lg flex-shrink-0 text-3xl overflow-hidden">
+                        ${highlight.icon_image_url ? `<img src="${highlight.icon_image_url}" style="width:100%;height:100%;object-fit:contain;padding:6px;" alt="">` : (highlight.icon || '📍')}
                     </div>
                     <div class="flex-1 min-w-0">
                         <h3 class="font-bold text-2xl text-gray-900 leading-tight mb-2">
