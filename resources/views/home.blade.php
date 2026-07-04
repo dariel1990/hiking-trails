@@ -86,7 +86,7 @@
         @endif
 
         <!-- CTA Buttons -->
-        <div class="scale-in mb-16 w-screen relative left-1/2 -translate-x-1/2 px-4" style="animation-delay: 0.6s;">
+        <div class="scale-in mb-16 px-4" style="animation-delay: 0.6s; width: 100vw; margin-left: calc(50% - 50vw); margin-right: calc(50% - 50vw);">
             <div class="max-w-sm sm:max-w-none mx-auto flex justify-center mb-4">
                 <a href="#trails" class="btn-primary w-full sm:w-auto text-center text-lg px-10 py-4 hover-glow shadow-xl">
                     🗺️ Explore Trails
