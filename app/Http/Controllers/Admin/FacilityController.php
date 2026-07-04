@@ -198,7 +198,7 @@ class FacilityController extends Controller
             'icon' => 'required|image|mimes:jpg,jpeg,png,webp,gif|max:2048',
         ]);
 
-        $path = $request->file('icon')->store('facility-icons', 'public');
+        $path = $this->compressAndStoreIcon($request->file('icon'), 'facility-icons');
 
         return response()->json([
             'path' => $path,
@@ -280,6 +280,18 @@ class FacilityController extends Controller
 
         $path = $directory.'/'.Str::random(40).'.webp';
         Storage::disk('public')->put($path, (string) $image->toWebp(85));
+
+        return $path;
+    }
+
+    private function compressAndStoreIcon(UploadedFile $icon, string $directory): string
+    {
+        $manager = new ImageManager(new Driver);
+        $image = $manager->read($icon->getRealPath());
+        $image->scaleDown(width: 256, height: 256);
+
+        $path = $directory.'/'.Str::random(40).'.webp';
+        Storage::disk('public')->put($path, (string) $image->toWebp(90));
 
         return $path;
     }

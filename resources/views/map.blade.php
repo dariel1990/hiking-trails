@@ -4255,7 +4255,9 @@
             } else {
                 img.classList.add('hidden');
                 placeholder.classList.remove('hidden');
-                placeholder.textContent = business.icon || '🏪';
+                placeholder.innerHTML = business.icon_image_url
+                    ? `<img src="${business.icon_image_url}" style="width:36px;height:36px;object-fit:contain;" alt="">`
+                    : (business.icon || '🏪');
                 placeholder.style.background = 'linear-gradient(135deg,#1e40af,#3b82f6)';
             }
             this._setMobileHero([], business.name, `business-${business.id}`);
@@ -4318,9 +4320,12 @@
             const content = document.getElementById('business-panel-content');
             if (!panel || !content) { return; }
 
+            const businessHeroIconHtml = business.icon_image_url
+                ? `<img src="${business.icon_image_url}" style="width:56px;height:56px;object-fit:contain;" alt="">`
+                : business.icon;
             const hero = business.photo_url
                 ? `<div class="biz-panel-hero"><img src="${business.photo_url}" alt="${business.name}"></div>`
-                : `<div class="biz-panel-hero"><div class="biz-panel-hero-placeholder">${business.icon}</div></div>`;
+                : `<div class="biz-panel-hero"><div class="biz-panel-hero-placeholder">${businessHeroIconHtml}</div></div>`;
 
             const metaParts = [`<span class="biz-panel-type">${business.business_type_label}</span>`];
             if (business.price_range) {
@@ -4695,7 +4700,7 @@
             if (!this.showBusinesses) return;
 
             (this.businessData || []).forEach(business => {
-                const el = this._createMarkerEl(business.icon || '🏪');
+                const el = this._createMarkerEl(business.icon || '🏪', business.icon_image_url || null);
                 el.dataset.businessId = business.id;
                 el.addEventListener('click', (e) => {
                     e.stopPropagation();
@@ -4924,7 +4929,7 @@
             const renderBusinessCards = (items) => items.map(b => `
                 <div class="business-list-card trail-list-card" data-location-type="business" data-business-id="${b.id}"
                     onclick="window.trailMap.focusOnBusiness(${b.id})">
-                    <div class="flex-shrink-0 text-xl w-8 text-center">${b.icon}</div>
+                    <div class="flex-shrink-0 text-xl w-8 text-center">${b.icon_image_url ? `<img src="${b.icon_image_url}" style="width:20px;height:20px;object-fit:contain;display:inline-block;" alt="">` : b.icon}</div>
                     <div class="flex-1 min-w-0">
                         <div class="font-medium text-sm text-gray-900 truncate">${escapeHtml(b.name)}</div>
                         <div class="text-xs text-gray-500">${escapeHtml(b.business_type_label)}${b.address ? ' · ' + escapeHtml(b.address) : ''}</div>

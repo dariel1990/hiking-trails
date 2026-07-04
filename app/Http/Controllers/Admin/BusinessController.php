@@ -19,14 +19,24 @@ use Intervention\Image\ImageManager;
 
 class BusinessController extends Controller
 {
-    public function index(): View
+    public function index(Request $request): View
     {
+        $search = $request->string('search')->toString();
+
         $businesses = Business::withCount('media')
+            ->when($search !== '', function ($query) use ($search) {
+                $query->where(function ($q) use ($search) {
+                    $q->where('name', 'like', "%{$search}%")
+                        ->orWhere('tagline', 'like', "%{$search}%")
+                        ->orWhere('description', 'like', "%{$search}%")
+                        ->orWhere('address', 'like', "%{$search}%");
+                });
+            })
             ->orderBy('business_type')
             ->orderBy('name')
             ->get();
 
-        return view('admin.businesses.index', compact('businesses'));
+        return view('admin.businesses.index', compact('businesses', 'search'));
     }
 
     public function create(): View
@@ -40,6 +50,7 @@ class BusinessController extends Controller
         $validated['is_active'] = $request->boolean('is_active', true);
         $validated['is_featured'] = $request->boolean('is_featured');
         $validated['is_seasonal'] = $request->boolean('is_seasonal');
+        $validated = $this->sanitizeIconImage($validated);
 
         $business = Business::create($validated);
 
@@ -70,6 +81,7 @@ class BusinessController extends Controller
         $validated['is_active'] = $request->boolean('is_active', true);
         $validated['is_featured'] = $request->boolean('is_featured');
         $validated['is_seasonal'] = $request->boolean('is_seasonal');
+        $validated = $this->sanitizeIconImage($validated);
 
         $business->update($validated);
 
@@ -121,6 +133,93 @@ class BusinessController extends Controller
         }
 
         return redirect()->route('admin.businesses.index')->with('success', $message);
+    }
+
+    /**
+     * List previously uploaded business icons for reuse.
+     */
+    public function listIcons(): JsonResponse
+    {
+        $files = Storage::disk('public')->files('business-icons');
+
+        $icons = collect($files)
+            ->filter(fn ($f) => preg_match('/\.(png|jpg|jpeg|webp|gif)$/i', $f))
+            ->map(fn ($f) => [
+                'path' => $f,
+                'url' => asset('storage/'.$f),
+            ])
+            ->values();
+
+        return response()->json($icons);
+    }
+
+    /**
+     * Upload a new business icon and return its path + URL.
+     */
+    public function uploadIcon(Request $request): JsonResponse
+    {
+        $request->validate([
+            'icon' => 'required|image|mimes:jpg,jpeg,png,webp,gif|max:2048',
+        ]);
+
+        $path = $this->compressAndStoreIcon($request->file('icon'), 'business-icons');
+
+        return response()->json([
+            'path' => $path,
+            'url' => asset('storage/'.$path),
+        ]);
+    }
+
+    /**
+     * Delete a business icon.
+     */
+    public function deleteIcon(Request $request): JsonResponse
+    {
+        $request->validate([
+            'path' => 'required|string',
+            'force' => 'nullable|boolean',
+        ]);
+
+        $path = $request->string('path')->toString();
+
+        if (! str_starts_with($path, 'business-icons/') || str_contains($path, '..')) {
+            abort(422, 'Invalid icon path.');
+        }
+
+        $inUse = Business::where('icon_image', $path)->count();
+
+        if ($inUse > 0 && ! $request->boolean('force')) {
+            return response()->json(['deleted' => false, 'in_use' => $inUse]);
+        }
+
+        if ($inUse > 0) {
+            // Clear the reference so these records fall back to their business type's
+            // stock icon instead of pointing at a now-deleted image.
+            Business::where('icon_image', $path)->update(['icon_image' => null]);
+        }
+
+        Storage::disk('public')->delete($path);
+
+        return response()->json(['deleted' => true]);
+    }
+
+    /**
+     * Ensure icon_image, when set, points at an uploaded business icon and clears
+     * the emoji icon override so the image takes precedence.
+     *
+     * @param  array<string, mixed>  $validated
+     * @return array<string, mixed>
+     */
+    private function sanitizeIconImage(array $validated): array
+    {
+        if (! empty($validated['icon_image'])) {
+            if (! str_starts_with($validated['icon_image'], 'business-icons/') || str_contains($validated['icon_image'], '..')) {
+                abort(422, 'Invalid icon image.');
+            }
+            $validated['icon'] = null;
+        }
+
+        return $validated;
     }
 
     public function toggleActive(Business $business): JsonResponse
@@ -225,6 +324,18 @@ class BusinessController extends Controller
 
         $path = $directory.'/'.Str::random(40).'.webp';
         Storage::disk('public')->put($path, (string) $image->toWebp(85));
+
+        return $path;
+    }
+
+    private function compressAndStoreIcon(UploadedFile $icon, string $directory): string
+    {
+        $manager = new ImageManager(new Driver);
+        $image = $manager->read($icon->getRealPath());
+        $image->scaleDown(width: 256, height: 256);
+
+        $path = $directory.'/'.Str::random(40).'.webp';
+        Storage::disk('public')->put($path, (string) $image->toWebp(90));
 
         return $path;
     }

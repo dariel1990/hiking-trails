@@ -209,6 +209,9 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::patch('/facilities/{facility}/media/{media}/caption', [FacilityController::class, 'updateMediaCaption'])
             ->name('facilities.media.caption');
         // Businesses Management
+        Route::get('/businesses/icons', [BusinessController::class, 'listIcons'])->name('businesses.icons');
+        Route::post('/businesses/icons/upload', [BusinessController::class, 'uploadIcon'])->name('businesses.icons.upload');
+        Route::delete('/businesses/icons', [BusinessController::class, 'deleteIcon'])->name('businesses.icons.delete');
         Route::post('/businesses/bulk-action', [BusinessController::class, 'bulkAction'])
             ->name('businesses.bulk-action');
         Route::patch('/businesses/{business}/toggle-active', [BusinessController::class, 'toggleActive'])

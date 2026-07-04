@@ -35,6 +35,7 @@ class UpdateBusinessRequest extends FormRequest
             'is_seasonal' => ['boolean'],
             'season_open' => ['nullable', 'string', 'max:100'],
             'icon' => ['nullable', 'string', 'max:10'],
+            'icon_image' => ['nullable', 'string', 'max:255'],
             'is_featured' => ['boolean'],
             'is_active' => ['boolean'],
             'photos' => ['nullable', 'array'],

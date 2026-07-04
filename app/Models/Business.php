@@ -29,6 +29,7 @@ class Business extends Model
         'is_seasonal',
         'season_open',
         'icon',
+        'icon_image',
         'is_featured',
         'is_active',
     ];
@@ -45,7 +46,7 @@ class Business extends Model
         ];
     }
 
-    protected $appends = ['media_count'];
+    protected $appends = ['media_count', 'icon_image_url'];
 
     public function media()
     {
@@ -84,6 +85,11 @@ class Business extends Model
         }
 
         return $this->getDefaultIcon();
+    }
+
+    public function getIconImageUrlAttribute(): ?string
+    {
+        return $this->icon_image ? asset('storage/'.$this->icon_image) : null;
     }
 
     public function getDefaultIcon(): string

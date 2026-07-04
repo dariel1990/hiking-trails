@@ -671,20 +671,94 @@ function switchMapStyle(mapType) {
     document.getElementById('admin-layers-dropdown').classList.add('hidden');
 }
 
-function handlePhotoSelection(input) {
+// Shrinks large photos client-side before they're uploaded, so multi-photo
+// saves aren't stuck transferring/processing huge originals.
+function compressImageForUpload(file, maxDimension = 1920, quality = 0.85) {
+    return new Promise((resolve) => {
+        if (!file.type.startsWith('image/') || file.type === 'image/svg+xml' || file.type === 'image/gif') {
+            resolve(file);
+            return;
+        }
+
+        const objectUrl = URL.createObjectURL(file);
+        const img = new Image();
+
+        img.onload = () => {
+            URL.revokeObjectURL(objectUrl);
+
+            const { width, height } = img;
+            const needsResize = width > maxDimension || height > maxDimension;
+            const needsCompression = file.size > 1.5 * 1024 * 1024;
+
+            if (!needsResize && !needsCompression) {
+                resolve(file);
+                return;
+            }
+
+            const scale = Math.min(1, maxDimension / Math.max(width, height));
+            const targetWidth = Math.max(1, Math.round(width * scale));
+            const targetHeight = Math.max(1, Math.round(height * scale));
+
+            const canvas = document.createElement('canvas');
+            canvas.width = targetWidth;
+            canvas.height = targetHeight;
+            canvas.getContext('2d').drawImage(img, 0, 0, targetWidth, targetHeight);
+
+            canvas.toBlob((blob) => {
+                if (!blob || blob.size >= file.size) {
+                    resolve(file);
+                    return;
+                }
+                const newName = file.name.replace(/\.[^.]+$/, '') + '.jpg';
+                resolve(new File([blob], newName, { type: 'image/jpeg', lastModified: Date.now() }));
+            }, 'image/jpeg', quality);
+        };
+
+        img.onerror = () => {
+            URL.revokeObjectURL(objectUrl);
+            resolve(file);
+        };
+
+        img.src = objectUrl;
+    });
+}
+
+async function handlePhotoSelection(input) {
     const previewContainer = document.getElementById('photo-preview');
-    previewContainer.innerHTML = '';
-    if (input.files) {
-        Array.from(input.files).forEach(file => {
-            const reader = new FileReader();
-            reader.onload = function (e) {
-                const div = document.createElement('div');
-                div.className = 'relative aspect-square rounded-lg overflow-hidden border border-gray-200 bg-gray-100';
-                div.innerHTML = `<img src="${e.target.result}" class="w-full h-full object-cover">`;
-                previewContainer.appendChild(div);
-            };
-            reader.readAsDataURL(file);
+    if (!input.files || input.files.length === 0) {
+        previewContainer.innerHTML = '';
+        return;
+    }
+
+    const submitBtn = document.querySelector('button[type="submit"]');
+    const originalSubmitText = submitBtn ? submitBtn.textContent : null;
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Compressing images…';
+    }
+    previewContainer.innerHTML = '<div class="col-span-full text-sm text-gray-500 py-2">Compressing images…</div>';
+
+    try {
+        const files = Array.from(input.files);
+        const compressed = await Promise.all(files.map(file => compressImageForUpload(file)));
+
+        const dataTransfer = new DataTransfer();
+        compressed.forEach(file => dataTransfer.items.add(file));
+        input.files = dataTransfer.files;
+
+        previewContainer.innerHTML = '';
+        compressed.forEach(file => {
+            const url = URL.createObjectURL(file);
+            const div = document.createElement('div');
+            div.className = 'relative aspect-square rounded-lg overflow-hidden border border-gray-200 bg-gray-100';
+            div.innerHTML = `<img src="${url}" class="w-full h-full object-cover">`;
+            previewContainer.appendChild(div);
         });
+    } finally {
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.textContent = originalSubmitText;
+        }
     }
 }
 

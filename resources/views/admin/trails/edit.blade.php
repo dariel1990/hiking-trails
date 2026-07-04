@@ -4161,6 +4161,58 @@
         }
     }
 
+    // Shrinks large photos client-side before they're staged for upload, so
+    // multi-photo saves aren't stuck transferring/processing huge originals.
+    function compressImageForUpload(file, maxDimension = 1920, quality = 0.85) {
+        return new Promise((resolve) => {
+            if (!file.type.startsWith('image/') || file.type === 'image/svg+xml' || file.type === 'image/gif') {
+                resolve(file);
+                return;
+            }
+
+            const objectUrl = URL.createObjectURL(file);
+            const img = new Image();
+
+            img.onload = () => {
+                URL.revokeObjectURL(objectUrl);
+
+                const { width, height } = img;
+                const needsResize = width > maxDimension || height > maxDimension;
+                const needsCompression = file.size > 1.5 * 1024 * 1024;
+
+                if (!needsResize && !needsCompression) {
+                    resolve(file);
+                    return;
+                }
+
+                const scale = Math.min(1, maxDimension / Math.max(width, height));
+                const targetWidth = Math.max(1, Math.round(width * scale));
+                const targetHeight = Math.max(1, Math.round(height * scale));
+
+                const canvas = document.createElement('canvas');
+                canvas.width = targetWidth;
+                canvas.height = targetHeight;
+                canvas.getContext('2d').drawImage(img, 0, 0, targetWidth, targetHeight);
+
+                canvas.toBlob((blob) => {
+                    if (!blob || blob.size >= file.size) {
+                        resolve(file);
+                        return;
+                    }
+                    const newName = file.name.replace(/\.[^.]+$/, '') + '.jpg';
+                    resolve(new File([blob], newName, { type: 'image/jpeg', lastModified: Date.now() }));
+                }, 'image/jpeg', quality);
+            };
+
+            img.onerror = () => {
+                URL.revokeObjectURL(objectUrl);
+                resolve(file);
+            };
+
+            img.src = objectUrl;
+        });
+    }
+
     // Photo Upload Handler
     class PhotoUploadManager {
         constructor() {
@@ -4353,20 +4405,42 @@
             document.body.appendChild(modal);
         }
 
-        handleFiles(files) {
-            Array.from(files).forEach(file => {
+        async handleFiles(files) {
+            const validFiles = Array.from(files).filter(file => {
                 if (!file.type.startsWith('image/')) {
                     alert(`${file.name} is not an image file`);
-                    return;
+                    return false;
                 }
 
                 if (file.size > 50 * 1024 * 1024) {
                     alert(`${file.name} is too large. Maximum size is 50MB`);
-                    return;
+                    return false;
                 }
 
-                this.addPhoto(file);
+                return true;
             });
+
+            if (validFiles.length === 0) { return; }
+
+            // Large phone photos make the upload and server-side processing slow.
+            // Shrinking them in the browser before they're added fixes both.
+            const submitBtn = document.querySelector('button[type="submit"]');
+            const originalSubmitText = submitBtn ? submitBtn.textContent : null;
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                submitBtn.textContent = 'Compressing images…';
+            }
+
+            try {
+                for (const file of validFiles) {
+                    await this.addPhoto(file);
+                }
+            } finally {
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = originalSubmitText;
+                }
+            }
         }
 
        renderExistingPhotos() {
@@ -4446,28 +4520,33 @@
             this.render();
         }
 
-        addPhoto(file) {
-            const reader = new FileReader();
-            
-            reader.onload = (e) => {
-                const photo = {
-                    file: file,
-                    dataUrl: e.target.result,
-                    id: Date.now() + Math.random()
+        async addPhoto(file) {
+            const compressedFile = await compressImageForUpload(file);
+
+            return new Promise((resolve) => {
+                const reader = new FileReader();
+
+                reader.onload = (e) => {
+                    const photo = {
+                        file: compressedFile,
+                        dataUrl: e.target.result,
+                        id: Date.now() + Math.random()
+                    };
+
+                    this.photos.push(photo);
+
+                    // Auto-feature the first newly added photo only if there is no featured photo already
+                    if (this.featuredIndex === -1 && !this.hasFeaturedPhoto()) {
+                        // featuredIndex is the index within this.photos
+                        this.featuredIndex = this.photos.length - 1;
+                    }
+
+                    this.render();
+                    resolve();
                 };
 
-                this.photos.push(photo);
-
-                // Auto-feature the first newly added photo only if there is no featured photo already
-                if (this.featuredIndex === -1 && !this.hasFeaturedPhoto()) {
-                    // featuredIndex is the index within this.photos
-                    this.featuredIndex = this.photos.length - 1;
-                }
-
-                this.render();
-            };
-
-            reader.readAsDataURL(file);
+                reader.readAsDataURL(compressedFile);
+            });
         }
 
         removePhoto(index) {

@@ -41,6 +41,32 @@
         </a>
     </div>
 
+    <!-- Search -->
+    <div class="rounded-lg border bg-card text-card-foreground shadow-sm p-5">
+        <form method="GET" action="{{ route('admin.businesses.index') }}" class="flex flex-col sm:flex-row gap-3">
+            <div class="relative flex-1">
+                <svg class="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                </svg>
+                <input type="text" name="search" value="{{ $search }}"
+                       placeholder="Search businesses by name, tagline, description, or address..."
+                       class="flex h-10 w-full rounded-md border border-input bg-background pl-10 pr-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
+            </div>
+            <div class="flex gap-2">
+                <button type="submit"
+                        class="inline-flex items-center justify-center rounded-md bg-black text-white hover:bg-black/90 h-10 px-4 py-2 text-sm font-medium transition-colors">
+                    Search
+                </button>
+                @if($search)
+                    <a href="{{ route('admin.businesses.index') }}"
+                       class="inline-flex items-center justify-center rounded-md border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2 text-sm font-medium transition-colors">
+                        Clear
+                    </a>
+                @endif
+            </div>
+        </form>
+    </div>
+
     <!-- Stats -->
     <div class="grid gap-4 md:grid-cols-4">
         <div class="rounded-lg border bg-card text-card-foreground shadow-sm p-6">
@@ -92,13 +118,25 @@
                         </svg>
                     </div>
                     <div class="space-y-2">
-                        <h3 class="text-lg font-semibold">No businesses yet</h3>
-                        <p class="text-sm text-muted-foreground">Add local businesses to show them on the map.</p>
+                        @if($search)
+                            <h3 class="text-lg font-semibold">No businesses found</h3>
+                            <p class="text-sm text-muted-foreground">No results for "{{ $search }}". Try a different search term.</p>
+                        @else
+                            <h3 class="text-lg font-semibold">No businesses yet</h3>
+                            <p class="text-sm text-muted-foreground">Add local businesses to show them on the map.</p>
+                        @endif
                     </div>
-                    <a href="{{ route('admin.businesses.create') }}"
-                        class="inline-flex items-center justify-center rounded-md bg-black text-white hover:bg-black/90 h-10 px-4 py-2 text-sm font-medium">
-                        Add First Business
-                    </a>
+                    @if($search)
+                        <a href="{{ route('admin.businesses.index') }}"
+                            class="inline-flex items-center justify-center rounded-md border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2 text-sm font-medium">
+                            Clear Search
+                        </a>
+                    @else
+                        <a href="{{ route('admin.businesses.create') }}"
+                            class="inline-flex items-center justify-center rounded-md bg-black text-white hover:bg-black/90 h-10 px-4 py-2 text-sm font-medium">
+                            Add First Business
+                        </a>
+                    @endif
                 </div>
             </div>
         @else
@@ -150,8 +188,12 @@
                                 </td>
                                 <td class="px-6 py-4">
                                     <div class="flex items-center gap-3">
-                                        <div class="flex h-10 w-10 items-center justify-center rounded-full bg-muted text-lg flex-shrink-0">
-                                            {{ $business->icon }}
+                                        <div class="flex h-10 w-10 items-center justify-center rounded-full bg-muted text-lg flex-shrink-0 overflow-hidden">
+                                            @if($business->icon_image_url)
+                                                <img src="{{ $business->icon_image_url }}" alt="" class="h-full w-full object-contain">
+                                            @else
+                                                {{ $business->icon }}
+                                            @endif
                                         </div>
                                         <div>
                                             <div class="font-medium">{{ $business->name }}</div>

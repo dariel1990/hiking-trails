@@ -366,6 +366,7 @@ Route::withoutMiddleware(VerifyAppKey::class)->group(function () {
                 'is_seasonal' => $business->is_seasonal,
                 'season_open' => $business->season_open,
                 'icon' => $business->icon,
+                'icon_image_url' => $business->icon_image_url,
                 'is_featured' => $business->is_featured,
                 'photo_url' => $photoUrl,
                 'videos' => $videos,

@@ -291,11 +291,49 @@
 
                 <div class="space-y-2">
                     <label for="icon" class="text-sm font-medium leading-none">Custom Icon <span class="text-muted-foreground text-xs">(optional)</span></label>
-                    <input type="text" name="icon" id="icon" maxlength="10"
-                        value="{{ old('icon', $isEdit ? $business->attributes['icon'] ?? '' : '') }}"
-                        placeholder="Leave empty for default"
-                        class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
-                    <p class="text-xs text-muted-foreground">Default: <span id="icon-preview" class="text-base">📍</span></p>
+                    <div class="flex items-center gap-3">
+                        <div class="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-md border bg-muted text-xl select-none" id="icon-preview-box">
+                            <span id="icon-preview">📍</span>
+                        </div>
+                        <input type="text" name="icon" id="icon" maxlength="10"
+                            value="{{ old('icon', $isEdit ? $business->attributes['icon'] ?? '' : '') }}"
+                            placeholder="Leave empty for default"
+                            class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
+                    </div>
+                    @error('icon') <p class="text-sm text-red-600">{{ $message }}</p> @enderror
+
+                    {{-- Custom icon image upload --}}
+                    <div class="mt-2 pt-3 border-t space-y-2">
+                        <p class="text-xs font-medium text-muted-foreground">Or upload PNG/JPG icon <span class="text-muted-foreground/70 font-normal">(overrides emoji)</span></p>
+
+                        {{-- Gallery of previously uploaded icons --}}
+                        <div class="flex flex-wrap gap-2 min-h-[3rem] items-center" id="business-icon-gallery">
+                            <span class="text-xs text-muted-foreground italic self-center">Loading icons…</span>
+                        </div>
+
+                        {{-- Selected icon preview --}}
+                        <div id="business-icon-image-preview" class="{{ $isEdit && $business->icon_image ? 'flex' : 'hidden' }} items-center gap-2 text-xs text-green-700 bg-green-50 border border-green-200 rounded-md px-3 py-1.5">
+                            <img id="business-icon-image-preview-img" src="{{ $isEdit && $business->icon_image ? $business->icon_image_url : '' }}" alt="" class="w-6 h-6 object-contain rounded">
+                            <span id="business-icon-image-name" class="truncate flex-1">{{ $isEdit && $business->icon_image ? basename($business->icon_image) : '' }}</span>
+                            <button type="button" id="business-icon-image-clear" class="ml-auto text-red-500 hover:text-red-700 shrink-0" title="Remove custom icon">✕</button>
+                        </div>
+
+                        {{-- Upload new icon --}}
+                        <div class="flex items-center gap-2">
+                            <label for="business-icon-image-input" class="cursor-pointer inline-flex items-center gap-1.5 rounded-md border border-dashed border-input px-3 py-1.5 text-xs text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                                </svg>
+                                Upload new icon
+                            </label>
+                            <input type="file" id="business-icon-image-input" accept="image/*" class="hidden">
+                            <span id="business-icon-upload-status" class="text-xs text-muted-foreground"></span>
+                        </div>
+                        <p class="text-xs text-muted-foreground/70">PNG, JPG, WebP · Max 2 MB</p>
+
+                        <input type="hidden" name="icon_image" id="business-icon-image-path" value="{{ old('icon_image', $isEdit ? $business->icon_image : '') }}">
+                        @error('icon_image') <p class="text-sm text-red-600">{{ $message }}</p> @enderror
+                    </div>
                 </div>
 
                 <div class="space-y-2">
