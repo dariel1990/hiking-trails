@@ -281,10 +281,13 @@ class TrailController extends Controller
             }
         });
 
-        // Filter by season when provided — fishing lakes are always included regardless of season
+        // Filter by season when provided — fishing lakes and trails with no assigned
+        // activity are always included regardless of season, since they aren't tied
+        // to any season-specific activity in the first place.
         if ($season) {
             $query->where(function ($q) use ($season) {
                 $q->where('location_type', 'fishing_lake')
+                    ->orWhereDoesntHave('activities')
                     ->orWhereHas('activities', function ($q2) use ($season) {
                         $q2->where(function ($q3) use ($season) {
                             $q3->where('season_applicable', $season)
@@ -407,8 +410,15 @@ class TrailController extends Controller
                     ];
                 }
 
-                // Get primary media from the eager-loaded collection
-                $primaryMedia = $feature->media->where('is_primary', true)->first();
+                // Get primary media from the eager-loaded collection.
+                // is_primary lives on the trail_feature_media pivot, not the media row itself.
+                $primaryMedia = $feature->media->first(fn ($media) => $media->pivot->is_primary);
+
+                // Fall back to the first photo so the highlight still has a hero image
+                // even if nothing has been explicitly marked as featured.
+                if (! $primaryMedia) {
+                    $primaryMedia = $feature->media->firstWhere('media_type', 'photo');
+                }
 
                 // Map ALL media items for this feature
                 $allMedia = $feature->media->map(function ($media) {
@@ -416,6 +426,7 @@ class TrailController extends Controller
                         'id' => $media->id,
                         'media_type' => $media->media_type,
                         'caption' => $media->caption,
+                        'is_primary' => (bool) $media->pivot->is_primary,
                     ];
 
                     // Handle different media types

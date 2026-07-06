@@ -1147,32 +1147,32 @@
                         <div class="space-y-2" data-media-id="{{ $media->id }}">
                             @if($media->media_type === 'photo')
                                 {{-- Photo Display --}}
-                                <div class="relative group rounded-lg overflow-hidden border-2 {{ $media->is_featured ? 'border-yellow-400' : 'border-gray-200' }}">
-                                    <img src="{{ asset('storage/' . $media->storage_path) }}" 
-                                        alt="{{ $media->original_name }}" 
+                                <div class="media-frame relative group rounded-lg overflow-hidden border-2 {{ $media->is_featured ? 'border-yellow-400' : 'border-gray-200' }}">
+                                    <img src="{{ asset('storage/' . $media->storage_path) }}"
+                                        alt="{{ $media->original_name }}"
                                         class="w-full h-32 object-cover">
-                                    
+
                                     @if($media->is_featured)
-                                    <div class="absolute top-2 left-2">
+                                    <div class="featured-badge absolute top-2 left-2">
                                         <span class="inline-flex items-center rounded-full bg-yellow-400 px-2 py-1 text-xs font-semibold text-yellow-900">
                                             ⭐ Featured
                                         </span>
                                     </div>
                                     @endif
                                 </div>
-                                
+
                             @elseif($media->media_type === 'video_url')
                                 {{-- Video Display --}}
-                                <div class="relative group rounded-lg overflow-hidden border-2 {{ $media->is_featured ? 'border-yellow-400' : 'border-gray-200' }} cursor-pointer"
+                                <div class="media-frame relative group rounded-lg overflow-hidden border-2 {{ $media->is_featured ? 'border-yellow-400' : 'border-gray-200' }} cursor-pointer"
                                     onclick="playExistingVideo('{{ $media->video_url }}')">
                                     <div class="w-full h-32 bg-gray-900 flex items-center justify-center">
                                         <svg class="w-12 h-12 text-white opacity-75" fill="currentColor" viewBox="0 0 20 20">
                                             <path d="M2 6a2 2 0 012-2h6a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V6zM14.553 7.106A1 1 0 0014 8v4a1 1 0 00.553.894l2 1A1 1 0 0018 13V7a1 1 0 00-1.447-.894l-2 1z"/>
                                         </svg>
                                     </div>
-                                    
+
                                     @if($media->is_featured)
-                                    <div class="absolute top-2 left-2">
+                                    <div class="featured-badge absolute top-2 left-2">
                                         <span class="inline-flex items-center rounded-full bg-yellow-400 px-2 py-1 text-xs font-semibold text-yellow-900">
                                             ⭐ Featured
                                         </span>
@@ -1200,14 +1200,14 @@
                             <div class="flex gap-2">
                                 @if($media->media_type === 'photo')
                                     @if(!$media->is_featured)
-                                    <button type="button" 
+                                    <button type="button"
                                             onclick="setFeaturedPhoto({{ $media->id }})"
-                                            class="flex-1 px-3 py-1.5 text-xs font-medium rounded bg-gray-100 hover:bg-gray-200 text-gray-700">
+                                            class="featured-control flex-1 px-3 py-1.5 text-xs font-medium rounded bg-gray-100 hover:bg-gray-200 text-gray-700">
                                         Set Featured
                                     </button>
                                     @else
-                                    <button type="button" 
-                                            class="flex-1 px-3 py-1.5 text-xs font-medium rounded bg-yellow-400 text-yellow-900 cursor-default">
+                                    <button type="button"
+                                            class="featured-control flex-1 px-3 py-1.5 text-xs font-medium rounded bg-yellow-400 text-yellow-900 cursor-default">
                                         ⭐ Featured
                                     </button>
                                     @endif
@@ -5504,52 +5504,65 @@
         });
     }
 
-    // Set featured photo
-    function setFeaturedPhoto(photoId) {
-        // Update hidden input for featured photo
+    // Set featured photo — persists immediately via AJAX so it survives a page refresh
+    // without requiring the admin to also click "Save Changes".
+    async function setFeaturedPhoto(photoId) {
+        // Keep the hidden input in sync too, in case the full form is submitted right after.
         const featuredInput = document.getElementById('featured-photo-id');
         if (featuredInput) {
             featuredInput.value = photoId;
         }
-        
-        // Visual feedback - remove all featured styling
-        document.querySelectorAll('[data-photo-id]').forEach(el => {
-            el.classList.remove('border-yellow-400');
-            el.classList.add('border-gray-200');
-            
-            // Remove featured badges
-            const badge = el.querySelector('.bg-yellow-400');
-            if (badge && badge.textContent.includes('Featured')) {
-                badge.remove();
+
+        try {
+            const res = await fetch(`/admin/trails/{{ $trail->id }}/media/${photoId}/featured`, {
+                method: 'PATCH',
+                headers: {
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                    'Accept': 'application/json',
+                },
+            });
+            const data = await res.json();
+            if (!data.success) {
+                showToast(data.message || 'Failed to set featured photo.', 'error');
+                return;
             }
-            
-            // Show "Set Featured" button on other photos
-            const setButton = el.querySelector('button[onclick*="setFeaturedPhoto"]');
-            if (setButton) {
-                setButton.style.display = 'block';
+        } catch {
+            showToast('Failed to set featured photo.', 'error');
+            return;
+        }
+
+        document.querySelectorAll('[data-media-id]').forEach(el => {
+            const isSelected = String(el.dataset.mediaId) === String(photoId);
+            const frame = el.querySelector('.media-frame');
+
+            if (frame) {
+                frame.classList.toggle('border-yellow-400', isSelected);
+                frame.classList.toggle('border-gray-200', !isSelected);
+
+                const existingBadge = frame.querySelector('.featured-badge');
+                if (existingBadge) {
+                    existingBadge.remove();
+                }
+                if (isSelected) {
+                    const badge = document.createElement('div');
+                    badge.className = 'featured-badge absolute top-2 left-2';
+                    badge.innerHTML = '<span class="inline-flex items-center rounded-full bg-yellow-400 px-2 py-1 text-xs font-semibold text-yellow-900">⭐ Featured</span>';
+                    frame.appendChild(badge);
+                }
+            }
+
+            // Swap the "Set Featured" control (only present on photo items)
+            const control = el.querySelector('.featured-control');
+            if (control) {
+                if (isSelected) {
+                    control.outerHTML = '<button type="button" class="featured-control flex-1 px-3 py-1.5 text-xs font-medium rounded bg-yellow-400 text-yellow-900 cursor-default">⭐ Featured</button>';
+                } else {
+                    control.outerHTML = `<button type="button" onclick="setFeaturedPhoto(${el.dataset.mediaId})" class="featured-control flex-1 px-3 py-1.5 text-xs font-medium rounded bg-gray-100 hover:bg-gray-200 text-gray-700">Set Featured</button>`;
+                }
             }
         });
-        
-        // Add featured styling to selected photo
-        const selectedPhoto = document.querySelector(`[data-photo-id="${photoId}"]`);
-        if (selectedPhoto) {
-            selectedPhoto.classList.remove('border-gray-200');
-            selectedPhoto.classList.add('border-yellow-400');
-            
-            // Add featured badge
-            const badge = document.createElement('div');
-            badge.className = 'absolute top-2 left-2 bg-yellow-400 text-yellow-900 text-xs font-semibold px-2 py-1 rounded shadow-md';
-            badge.innerHTML = '⭐ Featured';
-            selectedPhoto.querySelector('.aspect-square').appendChild(badge);
-            
-            // Hide the "Set Featured" button on this photo
-            const setButton = selectedPhoto.querySelector('button[onclick*="setFeaturedPhoto"]');
-            if (setButton) {
-                setButton.style.display = 'none';
-            }
-        }
-        
-        showToast('Photo set as featured! Save changes to confirm.', 'success');
+
+        showToast('Photo set as featured!', 'success');
     }
 
     // Show toast notification

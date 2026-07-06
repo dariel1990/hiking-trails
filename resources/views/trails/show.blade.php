@@ -7,9 +7,9 @@
 <meta property="og:url" content="{{ url()->current() }}">
 <meta property="og:title" content="{{ $trail->name }} - {{ $trail->difficulty_text }} Trail">
 <meta property="og:description" content="{{ Str::limit($trail->description, 200) }}">
-@if($trail->media && $trail->media->count() > 0)
-<meta property="og:image" content="{{ url($trail->media->first()->url) }}">
-<meta property="og:image:secure_url" content="{{ url($trail->media->first()->url) }}">
+@if($trail->featured_media_url)
+<meta property="og:image" content="{{ url($trail->featured_media_url) }}">
+<meta property="og:image:secure_url" content="{{ url($trail->featured_media_url) }}">
 <meta property="og:image:type" content="image/jpeg">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
@@ -22,8 +22,8 @@
 <meta name="twitter:url" content="{{ url()->current() }}">
 <meta name="twitter:title" content="{{ $trail->name }} - {{ $trail->difficulty_text }} Trail">
 <meta name="twitter:description" content="{{ Str::limit($trail->description, 200) }}">
-@if($trail->media && $trail->media->count() > 0)
-<meta name="twitter:image" content="{{ url($trail->media->first()->url) }}">
+@if($trail->featured_media_url)
+<meta name="twitter:image" content="{{ url($trail->featured_media_url) }}">
 <meta name="twitter:image:alt" content="{{ $trail->name }} - Trail Photo">
 @endif
 @endpush
@@ -235,9 +235,9 @@
 <!-- Hero Section -->
 <div class="relative h-[60vh] bg-gray-900 overflow-hidden">
 
-    @if($trail->media && $trail->media->count() > 0)
-        <img src="{{ $trail->media->first()->url }}" 
-             alt="{{ $trail->name }}" 
+    @if($trail->featured_media_url)
+        <img src="{{ $trail->featured_media_url }}"
+             alt="{{ $trail->name }}"
              class="w-full h-full object-cover">
     @else
         <div class="relative min-h-screen flex items-center justify-center hero-gradient overflow-hidden">

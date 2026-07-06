@@ -348,6 +348,22 @@ Route::withoutMiddleware(VerifyAppKey::class)->group(function () {
                     ];
                 })->values();
 
+            $media = $business->media->map(function ($m) {
+                $photoUrl = $m->file_path ? asset('storage/'.$m->file_path) : ($m->url ?? null);
+                $videoUrl = $m->url ?? null;
+
+                return [
+                    'id' => $m->id,
+                    'media_type' => $m->media_type,
+                    'url' => $m->media_type === 'photo' ? $photoUrl : $videoUrl,
+                    'thumbnail_url' => $m->media_type === 'photo' ? $photoUrl : $m->thumbnail_url,
+                    'embed_url' => $m->embed_url,
+                    'caption' => $m->caption,
+                    'is_primary' => $m->is_primary,
+                    'video_provider' => $m->video_provider,
+                ];
+            })->values();
+
             return [
                 'id' => $business->id,
                 'name' => $business->name,
@@ -370,6 +386,7 @@ Route::withoutMiddleware(VerifyAppKey::class)->group(function () {
                 'is_featured' => $business->is_featured,
                 'photo_url' => $photoUrl,
                 'videos' => $videos,
+                'media' => $media,
             ];
         });
     });

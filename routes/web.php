@@ -152,12 +152,18 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::get('/trails/feature-icons', [AdminTrailController::class, 'listFeatureIcons'])->name('trails.feature-icons');
         Route::post('/trails/feature-icons/upload', [AdminTrailController::class, 'uploadFeatureIcon'])->name('trails.feature-icons.upload');
         Route::delete('/trails/feature-icons', [AdminTrailController::class, 'deleteFeatureIcon'])->name('trails.feature-icons.delete');
+        Route::patch('/trails/{trail}/media/{media}/featured', [AdminTrailController::class, 'setFeaturedMedia'])
+            ->name('trails.media.featured');
         Route::resource('trails', AdminTrailController::class);
 
         // Trail Highlights Management (read/update/delete only — created via the trail builder)
         Route::resource('highlights', TrailHighlightController::class)
             ->only(['index', 'edit', 'update', 'destroy'])
             ->parameters(['highlights' => 'highlight']);
+        Route::delete('/highlights/{highlight}/media/{media}', [TrailHighlightController::class, 'deleteMedia'])
+            ->name('highlights.media.delete');
+        Route::patch('/highlights/{highlight}/media/{media}/featured', [TrailHighlightController::class, 'setFeaturedMedia'])
+            ->name('highlights.media.featured');
 
         Route::get('/activity-types/icons', [ActivityTypeController::class, 'listIcons'])->name('activity-types.icons');
         Route::post('/activity-types/icons/upload', [ActivityTypeController::class, 'uploadIcon'])->name('activity-types.icons.upload');

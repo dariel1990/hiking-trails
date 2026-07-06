@@ -3336,7 +3336,8 @@
 
         showMobileHighlightCard(trail, highlight) {
             const btnClass = 'flex-1 flex items-center justify-center gap-1.5 py-2 px-2 rounded-lg text-xs font-semibold border border-gray-200 bg-gray-50 hover:bg-gray-100 text-gray-700 transition-colors';
-            const firstPhoto = highlight.media?.find(m => m.media_type === 'photo');
+            const firstPhoto = highlight.media?.find(m => m.media_type === 'photo' && m.is_primary)
+                || highlight.media?.find(m => m.media_type === 'photo');
             const coordsJson = JSON.stringify(highlight.coordinates);
             const color = highlight.color || '#16a34a';
             const placeholderIconHtml = highlight.icon_image_url
@@ -3387,8 +3388,9 @@
             // Close business panel if open
             document.getElementById('business-panel')?.classList.add('hidden');
 
-            // Hero — first photo or colored placeholder
-            const firstPhoto = highlight.media?.find(m => m.media_type === 'photo');
+            // Hero — featured photo (if one is set), otherwise the first photo, or a colored placeholder
+            const firstPhoto = highlight.media?.find(m => m.media_type === 'photo' && m.is_primary)
+                || highlight.media?.find(m => m.media_type === 'photo');
             const heroGradient = highlight.color
                 ? `linear-gradient(135deg, ${highlight.color}cc, ${highlight.color})`
                 : 'linear-gradient(135deg, #4b5563, #1f2937)';
@@ -3658,7 +3660,10 @@
             }
 
             // Gallery (below the info section) — excludes the featured photo shown beside the name
-            const galleryItems = (trail.photos || []).filter(p => p.url !== trail.preview_photo && !p.is_featured);
+            const galleryItems = [
+                ...(trail.photos || []).filter(p => p.url !== trail.preview_photo && !p.is_featured),
+                ...(trail.videos || []),
+            ];
             this._setMobileHero(galleryItems, trail.name, `trail-${trail.id}`);
 
             // Name
@@ -3755,6 +3760,31 @@
             const hero = imageUrl
                 ? `<div class="biz-panel-hero"><img src="${imageUrl}" alt="${escapeHtml(trail.name)}"></div>`
                 : `<div class="biz-panel-hero" style="background:${heroGradient};"><div class="biz-panel-hero-placeholder"><img src="/images/xplore-smithers-logo.png" alt="Xplore Smithers"></div></div>`;
+
+            // Media gallery — all photos/videos other than the one already used as the hero
+            const trailMediaCacheKey = `trail-${trail.id}`;
+            const trailMediaItems = [...(trail.photos || []), ...(trail.videos || [])]
+                .filter(item => item.url !== imageUrl);
+            window._facilityMediaCache = window._facilityMediaCache || {};
+            window._facilityMediaCache[trailMediaCacheKey] = { name: trail.name, media: [...(trail.photos || []), ...(trail.videos || [])] };
+            let mediaHTML = '';
+            if (trailMediaItems.length > 0) {
+                mediaHTML = `<hr class="biz-panel-divider">
+                    <div class="facility-media-gallery" style="border-top:none;margin-top:0;padding-top:0;">
+                        <p class="facility-media-count">${trailMediaItems.length} more ${trailMediaItems.length === 1 ? 'photo/video' : 'photos/videos'}</p>
+                        <div class="facility-media-grid">`;
+                const allMedia = [...(trail.photos || []), ...(trail.videos || [])];
+                trailMediaItems.slice(0, 4).forEach((media, idx) => {
+                    const realIndex = allMedia.indexOf(media);
+                    const isVideo = media.media_type === 'video_url' || media.media_type === 'video';
+                    const thumbnailUrl = media.thumbnail_url || media.url;
+                    const remaining = trailMediaItems.length - 4;
+                    const overlay = (idx === 3 && remaining > 0) ? `<div class="facility-media-overlay">+${remaining} more</div>` : '';
+                    const videoBadge = isVideo ? '<div class="facility-video-badge">▶</div>' : '';
+                    mediaHTML += `<div class="facility-media-item" onclick="openFacilityMediaModal('${trailMediaCacheKey}', ${realIndex})"><img src="${thumbnailUrl}" class="facility-media-thumbnail">${overlay}${videoBadge}</div>`;
+                });
+                mediaHTML += `</div></div>`;
+            }
 
             // Meta badges — type tag + activities
             const metaParts = [];
@@ -3937,6 +3967,7 @@
                         </div>
                     </div>` : ''}
                     ${highlightsHTML}
+                    ${mediaHTML}
                 </div>
             `;
 
@@ -4260,7 +4291,10 @@
                     : (business.icon || '🏪');
                 placeholder.style.background = 'linear-gradient(135deg,#1e40af,#3b82f6)';
             }
-            this._setMobileHero([], business.name, `business-${business.id}`);
+            const businessGalleryItems = (business.media && business.media.length > 0)
+                ? (business.photo_url ? business.media.filter(m => m.url !== business.photo_url) : business.media)
+                : [];
+            this._setMobileHero(businessGalleryItems, business.name, `business-${business.id}`);
             document.getElementById('mobile-trail-name').textContent = business.name;
             const diffRow = document.getElementById('mobile-trail-diff-row');
             let typeHtml = `<span style="font-size:12px;font-weight:600;color:#2563eb;">${escapeHtml(business.business_type_label || '')}</span>`;
@@ -4326,6 +4360,32 @@
             const hero = business.photo_url
                 ? `<div class="biz-panel-hero"><img src="${business.photo_url}" alt="${business.name}"></div>`
                 : `<div class="biz-panel-hero"><div class="biz-panel-hero-placeholder">${businessHeroIconHtml}</div></div>`;
+
+            // Media gallery (skip the item already shown as the hero)
+            const businessMediaCacheKey = `business-${business.id}`;
+            window._facilityMediaCache = window._facilityMediaCache || {};
+            window._facilityMediaCache[businessMediaCacheKey] = { name: business.name, media: business.media || [] };
+            let mediaHTML = '';
+            if (business.media && business.media.length > 0) {
+                const skipFirst = !!business.photo_url;
+                const galleryItems = skipFirst ? business.media.filter(m => m.url !== business.photo_url) : business.media;
+                if (galleryItems.length > 0) {
+                    mediaHTML = `<hr class="biz-panel-divider">
+                        <div class="facility-media-gallery" style="border-top:none;margin-top:0;padding-top:0;">
+                            <p class="facility-media-count">${galleryItems.length} more ${galleryItems.length === 1 ? 'photo/video' : 'photos/videos'}</p>
+                            <div class="facility-media-grid">`;
+                    galleryItems.slice(0, 4).forEach((media, idx) => {
+                        const realIndex = business.media.indexOf(media);
+                        const isVideo = media.media_type === 'video_url' || media.media_type === 'video';
+                        const thumbnailUrl = media.thumbnail_url || media.url;
+                        const remaining = galleryItems.length - 4;
+                        const overlay = (idx === 3 && remaining > 0) ? `<div class="facility-media-overlay">+${remaining} more</div>` : '';
+                        const videoBadge = isVideo ? '<div class="facility-video-badge">▶</div>' : '';
+                        mediaHTML += `<div class="facility-media-item" onclick="openFacilityMediaModal('${businessMediaCacheKey}', ${realIndex})"><img src="${thumbnailUrl}" class="facility-media-thumbnail">${overlay}${videoBadge}</div>`;
+                    });
+                    mediaHTML += `</div></div>`;
+                }
+            }
 
             const metaParts = [`<span class="biz-panel-type">${business.business_type_label}</span>`];
             if (business.price_range) {
@@ -4424,6 +4484,7 @@
                     ${description}
                     ${actions.length ? `<div class="biz-panel-actions">${actions.join('')}</div>` : ''}
                     ${infoRows.length ? `<hr class="biz-panel-divider">${infoRows.join('')}` : ''}
+                    ${mediaHTML}
                 </div>
             `;
 
@@ -5669,6 +5730,8 @@
             if (e.target.closest('#all-filters-modal, #filter-bar')) return;
             // Ignore clicks on filter buttons themselves
             if (e.target.closest('.season-btn, .dist-chip, .diff-chip, .location-filter-btn, #all-filters-btn')) return;
+            // Ignore clicks inside the photo/video lightbox (it sits above the panel, not inside it)
+            if (e.target.closest('#facility-media-modal, #highlight-media-modal')) return;
 
             window.trailMap.closeAllPanels();
         });

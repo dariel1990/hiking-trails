@@ -117,7 +117,7 @@ class AdminTrailController extends Controller
             'trail_video_urls.*' => 'nullable|url|max:500',
             'highlight_media_*' => 'nullable|file|mimes:jpeg,png,jpg,gif|max:10240',
             'highlight_video_url_*' => 'nullable|url|max:500',
-            'activity_id' => 'nullable|integer|exists:activity_types,id',
+            'activity_id' => 'required|integer|exists:activity_types,id',
             'activity_notes' => 'nullable|string|max:1000',
             'seasonal' => 'nullable|array',
             'seasonal.*.conditions' => 'nullable|string|max:255',
@@ -447,6 +447,8 @@ class AdminTrailController extends Controller
             }
         }
 
+        $this->ensureTrailHasFeaturedPhoto($trail);
+
         return redirect()->route('admin.trails.show', $trail)
             ->with('success', 'Trail created successfully!');
     }
@@ -556,7 +558,7 @@ class AdminTrailController extends Controller
             'deleted_photos' => 'nullable|string',
             'deleted_features' => 'nullable|string',
             'featured_photo_id' => 'nullable|integer',
-            'activity_id' => 'nullable|integer|exists:activity_types,id',
+            'activity_id' => 'required|integer|exists:activity_types,id',
             'activity_notes' => 'nullable|string|max:1000',
             'seasonal' => 'nullable|array',
             'seasonal.*.conditions' => 'nullable|string|max:255',
@@ -1074,13 +1076,50 @@ class AdminTrailController extends Controller
             $trail->media()->where('id', $request->featured_photo_id)->update(['is_featured' => true]);
         }
 
+        $this->ensureTrailHasFeaturedPhoto($trail);
+
         return redirect()->route('admin.trails.show', $trail)
             ->with('success', 'Trail updated successfully!');
     }
 
     /**
+     * Guarantee the trail has an explicit featured photo — e.g. after the previously
+     * featured photo was deleted, or on first save when none was ever chosen. Falls back
+     * to the first photo by sort order so the trail always has a real, persisted hero image.
+     */
+    private function ensureTrailHasFeaturedPhoto(Trail $trail): void
+    {
+        $hasFeatured = $trail->media()->where('media_type', 'photo')->where('is_featured', true)->exists();
+
+        if ($hasFeatured) {
+            return;
+        }
+
+        $firstPhoto = $trail->media()->where('media_type', 'photo')->orderBy('sort_order')->first();
+
+        if ($firstPhoto) {
+            $firstPhoto->update(['is_featured' => true]);
+        }
+    }
+
+    /**
      * Remove the specified trail
      */
+    /**
+     * Mark the given media item as the trail's featured photo (immediate, no full-form save needed).
+     */
+    public function setFeaturedMedia(Trail $trail, TrailMedia $media): JsonResponse
+    {
+        if ($media->trail_id !== $trail->id) {
+            return response()->json(['success' => false, 'message' => 'Media not found.'], 404);
+        }
+
+        $trail->media()->update(['is_featured' => false]);
+        $media->update(['is_featured' => true]);
+
+        return response()->json(['success' => true, 'message' => 'Featured photo updated successfully.']);
+    }
+
     public function destroy(Trail $trail)
     {
         // Delete associated media from storage
