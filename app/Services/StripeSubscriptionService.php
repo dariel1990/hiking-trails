@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Subscription;
 use App\Models\User;
+use App\Notifications\NewSubscriptionNotification;
 use Illuminate\Support\Carbon;
 use Stripe\BillingPortal\Session as PortalSession;
 use Stripe\Checkout\Session as CheckoutSession;
@@ -98,7 +99,7 @@ class StripeSubscriptionService
             $user->forceFill(['stripe_customer_id' => (string) $sub->customer])->save();
         }
 
-        return Subscription::updateOrCreate(
+        $subscription = Subscription::updateOrCreate(
             ['purchase_token' => $sub->id],
             [
                 'user_id' => $user->id,
@@ -110,6 +111,17 @@ class StripeSubscriptionService
                 'raw_payload' => $sub->toArray(),
             ]
         );
+
+        // Notify admins the first time a subscription is created in an active state.
+        // Keying on wasRecentlyCreated dedupes across the two entry points (webhook and
+        // the checkout success redirect) and skips renewal/update syncs of existing rows.
+        if ($subscription->wasRecentlyCreated && $subscription->status === 'active') {
+            User::where('is_admin', true)->each(
+                fn (User $admin) => $admin->notify(new NewSubscriptionNotification($subscription))
+            );
+        }
+
+        return $subscription;
     }
 
     /**

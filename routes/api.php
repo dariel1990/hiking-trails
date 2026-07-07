@@ -20,38 +20,43 @@ use Illuminate\Support\Facades\Route;
 /**
  * Decode a Google-encoded polyline string into [[lng, lat], ...] pairs (Mapbox-ready).
  * ORS returns encoded polyline with 1e5 precision by default.
+ *
+ * Guarded with function_exists so `route:cache` (which loads the route files)
+ * does not fatal with "Cannot redeclare decodePolyline()".
  */
-function decodePolyline(string $encoded): array
-{
-    $index = 0;
-    $lat = 0;
-    $lng = 0;
-    $coordinates = [];
-    $len = strlen($encoded);
+if (! function_exists('decodePolyline')) {
+    function decodePolyline(string $encoded): array
+    {
+        $index = 0;
+        $lat = 0;
+        $lng = 0;
+        $coordinates = [];
+        $len = strlen($encoded);
 
-    while ($index < $len) {
-        $shift = 0;
-        $result = 0;
-        do {
-            $b = ord($encoded[$index++]) - 63;
-            $result |= ($b & 0x1F) << $shift;
-            $shift += 5;
-        } while ($b >= 0x20);
-        $lat += ($result & 1) ? ~($result >> 1) : ($result >> 1);
+        while ($index < $len) {
+            $shift = 0;
+            $result = 0;
+            do {
+                $b = ord($encoded[$index++]) - 63;
+                $result |= ($b & 0x1F) << $shift;
+                $shift += 5;
+            } while ($b >= 0x20);
+            $lat += ($result & 1) ? ~($result >> 1) : ($result >> 1);
 
-        $shift = 0;
-        $result = 0;
-        do {
-            $b = ord($encoded[$index++]) - 63;
-            $result |= ($b & 0x1F) << $shift;
-            $shift += 5;
-        } while ($b >= 0x20);
-        $lng += ($result & 1) ? ~($result >> 1) : ($result >> 1);
+            $shift = 0;
+            $result = 0;
+            do {
+                $b = ord($encoded[$index++]) - 63;
+                $result |= ($b & 0x1F) << $shift;
+                $shift += 5;
+            } while ($b >= 0x20);
+            $lng += ($result & 1) ? ~($result >> 1) : ($result >> 1);
 
-        $coordinates[] = [round($lng / 1e5, 6), round($lat / 1e5, 6)];
+            $coordinates[] = [round($lng / 1e5, 6), round($lat / 1e5, 6)];
+        }
+
+        return $coordinates;
     }
-
-    return $coordinates;
 }
 
 Route::get('/user', function (Request $request) {

@@ -32,6 +32,7 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withSchedule(function (Schedule $schedule) {
         // Add your scheduled tasks here
         $schedule->command('gpx:clean-temp')->hourly();
+        $schedule->command('subscriptions:expire-lapsed')->hourly();
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //

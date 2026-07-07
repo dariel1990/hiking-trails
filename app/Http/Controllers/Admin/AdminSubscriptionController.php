@@ -4,8 +4,12 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Subscription;
+use App\Models\User;
+use App\Notifications\NewSubscriptionNotification;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\View\View;
 
 class AdminSubscriptionController extends Controller
@@ -67,5 +71,55 @@ class AdminSubscriptionController extends Controller
 
         return redirect()->route('admin.subscriptions.show', $subscription)
             ->with('success', "Subscription extended by {$validated['days']} day(s).");
+    }
+
+    /**
+     * Manually send the "new subscription" email to every admin (plus the site
+     * owner) for each currently-active subscription. Visiting the route shows a
+     * dry-run preview; append ?confirm=send to actually dispatch the emails.
+     */
+    public function notifyAdmins(Request $request): JsonResponse
+    {
+        // The site owner receives admin notifications even without an admin account.
+        $ownerEmail = 'thomcamus@gmail.com';
+
+        $recipients = User::where('is_admin', true)->pluck('email')
+            ->push($ownerEmail)
+            ->filter()
+            ->unique()
+            ->values();
+
+        $subscriptions = Subscription::with('user')->entitled()->get();
+
+        $summary = $subscriptions->map(fn (Subscription $subscription): array => [
+            'user' => $subscription->user?->name,
+            'email' => $subscription->user?->email,
+            'platform' => $subscription->platform,
+            'product_id' => $subscription->product_id,
+            'expires_at' => $subscription->expires_at?->toDateString(),
+        ]);
+
+        if ($request->query('confirm') !== 'send') {
+            return response()->json([
+                'preview' => true,
+                'message' => 'Dry run. Append ?confirm=send to this URL to actually send the emails below.',
+                'recipients' => $recipients,
+                'active_subscriptions' => $summary,
+                'emails_to_send' => $subscriptions->count() * $recipients->count(),
+            ]);
+        }
+
+        foreach ($subscriptions as $subscription) {
+            foreach ($recipients as $email) {
+                Notification::route('mail', $email)->notifyNow(new NewSubscriptionNotification($subscription));
+            }
+        }
+
+        return response()->json([
+            'sent' => true,
+            'recipients' => $recipients,
+            'active_subscriptions' => $summary,
+            'emails_sent' => $subscriptions->count() * $recipients->count(),
+        ]);
     }
 }
