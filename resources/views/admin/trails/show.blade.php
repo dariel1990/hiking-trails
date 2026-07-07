@@ -39,6 +39,13 @@
         </div>
     </div>
 
+    @if($trail->featured_media_url)
+    <!-- Featured Photo -->
+    <div class="rounded-lg border bg-card text-card-foreground shadow-sm overflow-hidden">
+        <img src="{{ $trail->featured_media_url }}" alt="{{ $trail->name }}" class="w-full h-64 object-cover">
+    </div>
+    @endif
+
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <!-- Main Content -->
         <div class="lg:col-span-2 space-y-8">

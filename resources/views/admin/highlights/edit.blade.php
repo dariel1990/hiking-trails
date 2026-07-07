@@ -64,7 +64,7 @@
         </div>
     @endif
 
-    <form id="highlight-form" action="{{ route('admin.highlights.update', $highlight) }}" method="POST">
+    <form id="highlight-form" action="{{ route('admin.highlights.update', $highlight) }}" method="POST" enctype="multipart/form-data">
         @csrf
         @method('PUT')
 
@@ -193,30 +193,28 @@
                     </div>
                 </div>
 
-                {{-- Media (read-only preview) --}}
-                @if($highlight->media->count() > 0)
+                {{-- Media --}}
                 <div class="bg-white rounded-xl shadow-sm border border-gray-200">
                     <div class="px-6 py-4 border-b border-gray-100 flex items-center gap-3">
                         <div class="flex-1">
                             <h2 class="text-sm font-semibold text-gray-900">Media</h2>
-                            <p class="text-xs text-gray-500">Click to preview. Photos and videos are managed from the trail builder.</p>
+                            <p class="text-xs text-gray-500">Click a photo to preview it. Up to 10 photos per highlight.</p>
                         </div>
+                        @if($highlight->media->count() > 0)
                         <span class="text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200 px-2 py-0.5 rounded-full">
                             {{ $highlight->media->count() }} {{ Str::plural('item', $highlight->media->count()) }}
                         </span>
+                        @endif
                     </div>
                     <div class="px-6 py-5">
-                        <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                        @if($highlight->media->count() > 0)
+                        <div class="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-5">
                             @foreach($highlight->media as $media)
-                            <div class="relative aspect-square rounded-lg overflow-hidden border border-gray-200 bg-gray-100 cursor-pointer group hover:opacity-90 transition"
+                            <div class="relative aspect-square rounded-lg overflow-hidden border {{ $media->pivot->is_primary ? 'border-yellow-400' : 'border-gray-200' }} bg-gray-100 cursor-pointer group hover:opacity-90 transition"
+                                 data-media-id="{{ $media->id }}"
                                  onclick="openMediaCarousel('highlight-{{ $highlight->id }}', {{ $loop->index }})">
                                 @if($media->isPhoto())
                                     <img src="{{ $media->url }}" alt="{{ $media->caption ?? $highlight->name }}" class="w-full h-full object-cover">
-                                    <div class="absolute inset-0 bg-black/0 group-hover:bg-black/25 transition-all flex items-center justify-center">
-                                        <svg class="w-7 h-7 text-white opacity-0 group-hover:opacity-100 transition-opacity drop-shadow" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7"/>
-                                        </svg>
-                                    </div>
                                 @else
                                     <div class="video-thumb relative w-full h-full bg-gray-900"
                                          @if($media->isExternal() && $media->video_url) data-video-url="{{ $media->video_url }}" @endif>
@@ -226,7 +224,7 @@
                                             <div class="video-icon-placeholder w-full h-full flex items-center justify-center">
                                                 <svg class="w-9 h-9 text-white opacity-75" fill="currentColor" viewBox="0 0 20 20">
                                                     <path d="M2 6a2 2 0 012-2h6a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V6zM14.553 7.106A1 1 0 0014 8v4a1 1 0 00.553.894l2 1A1 1 0 0018 13V7a1 1 0 00-1.447-.894l-2 1z"/>
-                                                </svg>
+                                            </svg>
                                             </div>
                                         @endif
                                         <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
@@ -238,12 +236,56 @@
                                         </div>
                                     </div>
                                 @endif
+
+                                {{-- Hover actions --}}
+                                <div class="absolute inset-0 bg-black/55 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-2">
+                                    @if($media->isPhoto() && !$media->pivot->is_primary)
+                                    <button type="button"
+                                            onclick="event.stopPropagation(); setFeaturedHighlightMedia({{ $highlight->id }}, {{ $media->id }}, this)"
+                                            class="text-xs bg-white text-gray-900 px-2.5 py-1 rounded-md hover:bg-gray-50 font-medium">
+                                        Set Featured
+                                    </button>
+                                    @elseif($media->isPhoto())
+                                    <span class="text-xs bg-yellow-400 text-yellow-900 px-2.5 py-1 rounded-md font-medium">⭐ Featured</span>
+                                    @endif
+                                    <button type="button"
+                                            onclick="event.stopPropagation(); deleteHighlightMedia({{ $highlight->id }}, {{ $media->id }}, this)"
+                                            class="text-xs bg-red-600 text-white px-2.5 py-1 rounded-md hover:bg-red-700 font-medium">
+                                        Delete
+                                    </button>
+                                </div>
+
+                                @if($media->pivot->is_primary)
+                                <div class="absolute top-2 right-2">
+                                    <span class="bg-yellow-400 text-yellow-900 text-[10px] font-bold px-2 py-0.5 rounded-full shadow">⭐ FEATURED</span>
+                                </div>
+                                @endif
                             </div>
                             @endforeach
                         </div>
+                        @endif
+
+                        {{-- Add new photos --}}
+                        @if(!$highlight->hasReachedPhotoLimit())
+                        <div class="@if($highlight->media->count() > 0) pt-5 border-t border-gray-100 @endif">
+                            <p class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-3">Add Photos</p>
+                            <input type="file" id="highlight-photos" name="photos[]" multiple accept="image/*"
+                                   class="hidden" onchange="handleHighlightPhotoSelection(this)">
+                            <label for="highlight-photos"
+                                   class="flex flex-col items-center justify-center gap-2 w-full h-44 rounded-lg border-2 border-dashed border-gray-400 bg-gray-50 hover:bg-gray-100 hover:border-gray-400 cursor-pointer transition-colors">
+                                <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+                                </svg>
+                                <div class="text-center">
+                                    <p class="text-sm font-medium text-gray-700">Click to upload photos</p>
+                                    <p class="text-xs text-gray-500 mt-0.5">Multiple images supported · JPG, PNG, WebP</p>
+                                </div>
+                            </label>
+                            <div id="highlight-photo-preview" class="grid grid-cols-3 sm:grid-cols-4 gap-3 mt-4"></div>
+                        </div>
+                        @endif
                     </div>
                 </div>
-                @endif
 
                 {{-- Danger Zone --}}
                 <div class="bg-red-50/40 rounded-xl border border-red-200">
@@ -507,6 +549,142 @@ function getVideoThumbnail(videoUrl) {
     const vimeoMatch = videoUrl.match(/vimeo\.com\/(\d+)/);
     if (vimeoMatch) { return `https://vumbnail.com/${vimeoMatch[1]}.jpg`; }
     return null;
+}
+
+async function setFeaturedHighlightMedia(highlightId, mediaId, button) {
+    button.disabled = true;
+    try {
+        const res = await fetch(`/admin/highlights/${highlightId}/media/${mediaId}/featured`, {
+            method: 'PATCH',
+            headers: {
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                'Accept': 'application/json',
+            },
+        });
+        const data = await res.json();
+        if (data.success) {
+            location.reload();
+        } else {
+            alert(data.message || 'Failed to set featured photo.');
+            button.disabled = false;
+        }
+    } catch {
+        alert('Failed to set featured photo.');
+        button.disabled = false;
+    }
+}
+
+async function deleteHighlightMedia(highlightId, mediaId, button) {
+    if (!confirm('Delete this media item? This cannot be undone.')) { return; }
+    button.disabled = true;
+    try {
+        const res = await fetch(`/admin/highlights/${highlightId}/media/${mediaId}`, {
+            method: 'DELETE',
+            headers: {
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                'Accept': 'application/json',
+            },
+        });
+        const data = await res.json();
+        if (data.success) {
+            location.reload();
+        } else {
+            alert(data.message || 'Failed to delete media.');
+            button.disabled = false;
+        }
+    } catch {
+        alert('Failed to delete media.');
+        button.disabled = false;
+    }
+}
+
+async function handleHighlightPhotoSelection(input) {
+    const previewContainer = document.getElementById('highlight-photo-preview');
+    if (!input.files || input.files.length === 0) {
+        previewContainer.innerHTML = '';
+        return;
+    }
+
+    const submitBtn = document.querySelector('button[type="submit"][form="highlight-form"]');
+    const originalSubmitText = submitBtn ? submitBtn.textContent : null;
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Compressing images…';
+    }
+    previewContainer.innerHTML = '<div class="col-span-full text-sm text-gray-500 py-2">Compressing images…</div>';
+
+    try {
+        const files = Array.from(input.files);
+        const compressed = await Promise.all(files.map(file => compressImageForUpload(file)));
+
+        const dataTransfer = new DataTransfer();
+        compressed.forEach(file => dataTransfer.items.add(file));
+        input.files = dataTransfer.files;
+
+        previewContainer.innerHTML = '';
+        compressed.forEach(file => {
+            const url = URL.createObjectURL(file);
+            const div = document.createElement('div');
+            div.className = 'relative aspect-square rounded-lg overflow-hidden border border-gray-200 bg-gray-100';
+            div.innerHTML = `<img src="${url}" class="w-full h-full object-cover">`;
+            previewContainer.appendChild(div);
+        });
+    } finally {
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.textContent = originalSubmitText;
+        }
+    }
+}
+
+function compressImageForUpload(file, maxDimension = 1920, quality = 0.85) {
+    return new Promise((resolve) => {
+        if (!file.type.startsWith('image/') || file.type === 'image/svg+xml' || file.type === 'image/gif') {
+            resolve(file);
+            return;
+        }
+
+        const objectUrl = URL.createObjectURL(file);
+        const img = new Image();
+
+        img.onload = () => {
+            URL.revokeObjectURL(objectUrl);
+
+            const { width, height } = img;
+            const needsResize = width > maxDimension || height > maxDimension;
+            const needsCompression = file.size > 1.5 * 1024 * 1024;
+
+            if (!needsResize && !needsCompression) {
+                resolve(file);
+                return;
+            }
+
+            const scale = Math.min(1, maxDimension / Math.max(width, height));
+            const targetWidth = Math.max(1, Math.round(width * scale));
+            const targetHeight = Math.max(1, Math.round(height * scale));
+
+            const canvas = document.createElement('canvas');
+            canvas.width = targetWidth;
+            canvas.height = targetHeight;
+            canvas.getContext('2d').drawImage(img, 0, 0, targetWidth, targetHeight);
+
+            canvas.toBlob((blob) => {
+                if (!blob || blob.size >= file.size) {
+                    resolve(file);
+                    return;
+                }
+                const newName = file.name.replace(/\.[^.]+$/, '') + '.jpg';
+                resolve(new File([blob], newName, { type: 'image/jpeg', lastModified: Date.now() }));
+            }, 'image/jpeg', quality);
+        };
+
+        img.onerror = () => {
+            URL.revokeObjectURL(objectUrl);
+            resolve(file);
+        };
+
+        img.src = objectUrl;
+    });
 }
 
 document.addEventListener('DOMContentLoaded', function () {

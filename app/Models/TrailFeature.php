@@ -214,13 +214,9 @@ class TrailFeature extends Model
      */
     public function getPhotoUrlAttribute(): ?string
     {
-        $primaryMedia = $this->primaryMedia();
+        $primaryMedia = $this->primaryMedia() ?? $this->photos()->first();
 
-        if ($primaryMedia) {
-            return $primaryMedia->url;
-        }
-
-        return null;
+        return $primaryMedia?->url;
     }
 
     /**
