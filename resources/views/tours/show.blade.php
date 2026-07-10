@@ -33,6 +33,34 @@
         background: linear-gradient(to bottom, #d1e1db, #e5e7eb);
     }
     .stop-timeline-item:last-child .timeline-connector { display: none; }
+
+    /* Map markers */
+    .tour-marker { display: flex; align-items: center; gap: 0; cursor: pointer; }
+    .tour-marker-badge {
+        width: 2.1rem; height: 2.1rem; border-radius: 9999px;
+        background: linear-gradient(145deg, #2C5F5D, #1d4644);
+        color: #fff; font-size: 0.85rem; font-weight: 700;
+        display: flex; align-items: center; justify-content: center;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.35);
+        border: 2.5px solid #fff;
+        flex-shrink: 0;
+        transition: box-shadow 0.15s, filter 0.15s, transform 0.15s;
+        z-index: 2;
+    }
+    .tour-marker:hover .tour-marker-badge { box-shadow: 0 4px 14px rgba(0,0,0,0.45); filter: brightness(1.15); transform: scale(1.06); }
+    .tour-marker-label {
+        margin-left: -0.5rem; padding: 0.3rem 0.7rem 0.3rem 1rem;
+        background: rgba(255,255,255,0.95); color: #1f2937;
+        font-size: 0.72rem; font-weight: 600; white-space: nowrap;
+        border-radius: 0 9999px 9999px 0;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.18);
+        border: 1px solid rgba(0,0,0,0.06); border-left: none;
+        transition: box-shadow 0.15s;
+        display: flex; align-items: center; gap: 0.35rem;
+    }
+    .tour-marker:hover .tour-marker-label { box-shadow: 0 4px 10px rgba(0,0,0,0.25); }
+    .tour-marker-icon { width: 1.05rem; height: 1.05rem; border-radius: 9999px; object-fit: cover; flex-shrink: 0; }
+    .tour-marker-icon-emoji { display: flex; align-items: center; justify-content: center; font-size: 0.85rem; line-height: 1; }
 </style>
 @endpush
 
@@ -223,7 +251,7 @@
                             @endif
 
                             <!-- Number badge -->
-                            <div class="absolute left-0 top-0 flex h-11 w-11 items-center justify-center rounded-full bg-gray-900 text-white text-sm font-bold shadow-md border-2 border-white ring-2 ring-gray-200">
+                            <div class="absolute left-0 top-0 flex h-11 w-11 items-center justify-center rounded-full text-white text-sm font-bold shadow-md border-2 border-white ring-2 ring-forest-100" style="background: linear-gradient(145deg, #2C5F5D, #1d4644);">
                                 {{ $loop->iteration }}
                             </div>
 
@@ -318,6 +346,8 @@ mapboxgl.accessToken = @json($mapboxToken);
 
 const tourStops = @json($tourStopsData);
 const drivingRoute = @json($tour->driving_route_coordinates);
+const tourIconImage = @json($tour->icon_image_url);
+const tourIconEmoji = @json($tour->tour_icon);
 
 const map = new mapboxgl.Map({
     container: 'tour-map',
@@ -361,17 +391,20 @@ function addRouteAndMarkers() {
         const lngLat = [lng, lat];
 
         const el = document.createElement('div');
-        el.style.cssText = 'width:2rem;height:2rem;border-radius:50%;background:#111827;color:#fff;font-size:0.8rem;font-weight:700;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,0.4);cursor:pointer;border:2.5px solid #fff;transition:box-shadow 0.15s,filter 0.15s;';
-        el.textContent = i + 1;
+        el.className = 'tour-marker';
         el.title = stop.label;
-        el.addEventListener('mouseenter', () => { el.style.boxShadow = '0 4px 16px rgba(0,0,0,0.5)'; el.style.filter = 'brightness(1.4)'; });
-        el.addEventListener('mouseleave', () => { el.style.boxShadow = '0 2px 8px rgba(0,0,0,0.4)'; el.style.filter = ''; });
+        const iconHtml = tourIconImage
+            ? `<img src="${tourIconImage}" alt="" class="tour-marker-icon">`
+            : `<span class="tour-marker-icon tour-marker-icon-emoji">${tourIconEmoji}</span>`;
+
+        el.innerHTML = `
+            <div class="tour-marker-badge">${i + 1}</div>
+            <div class="tour-marker-label">${iconHtml}<span>${stop.label}</span></div>
+        `;
         el.addEventListener('click', () => focusStop(i, stop.coords));
 
-        const marker = new mapboxgl.Marker({ element: el })
+        const marker = new mapboxgl.Marker({ element: el, anchor: 'left' })
             .setLngLat(lngLat)
-            .setPopup(new mapboxgl.Popup({ offset: 25, className: 'tour-popup' })
-                .setHTML(`<strong style="font-size:0.8rem">${i + 1}. ${stop.label}</strong>`))
             .addTo(map);
 
         activeMarkers.push(marker);

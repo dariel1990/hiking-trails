@@ -33,15 +33,15 @@ class CarouselSlideController extends Controller
 
         $filename = basename($request->input('filename'));
 
-        if (! Storage::disk('public')->exists('slide-show/' . $filename)) {
+        if (! Storage::disk('public')->exists('slide-show/'.$filename)) {
             return back()->with('error', 'File not found in storage.');
         }
 
         CarouselSlide::create([
-            'filename'   => $filename,
-            'caption'    => ucwords(str_replace(['-', '_'], ' ', pathinfo($filename, PATHINFO_FILENAME))),
+            'filename' => $filename,
+            'caption' => ucwords(str_replace(['-', '_'], ' ', pathinfo($filename, PATHINFO_FILENAME))),
             'sort_order' => 0,
-            'is_active'  => true,
+            'is_active' => true,
         ]);
 
         return redirect()->route('admin.carousel.index')->with('success', 'Slide imported.');
@@ -53,6 +53,8 @@ class CarouselSlideController extends Controller
             'image' => 'required|image|mimes:jpg,jpeg,png,gif,webp|max:10240',
             'caption' => 'nullable|string|max:255',
             'sort_order' => 'nullable|integer|min:0',
+            'starts_at' => 'nullable|date',
+            'ends_at' => 'nullable|date|after_or_equal:starts_at',
         ]);
 
         $file = $request->file('image');
@@ -64,6 +66,8 @@ class CarouselSlideController extends Controller
             'caption' => $request->input('caption') ?: ucwords(str_replace(['-', '_'], ' ', pathinfo($filename, PATHINFO_FILENAME))),
             'sort_order' => $request->input('sort_order', 0),
             'is_active' => true,
+            'starts_at' => $request->input('starts_at') ?: now()->toDateString(),
+            'ends_at' => $request->input('ends_at') ?: null,
         ]);
 
         return redirect()->route('admin.carousel.index')->with('success', 'Slide uploaded successfully.');
@@ -75,12 +79,16 @@ class CarouselSlideController extends Controller
             'caption' => 'nullable|string|max:255',
             'sort_order' => 'nullable|integer|min:0',
             'is_active' => 'boolean',
+            'starts_at' => 'nullable|date',
+            'ends_at' => 'nullable|date|after_or_equal:starts_at',
         ]);
 
         $carousel->update([
             'caption' => $request->input('caption'),
             'sort_order' => $request->input('sort_order', 0),
             'is_active' => $request->boolean('is_active'),
+            'starts_at' => $request->input('starts_at') ?: null,
+            'ends_at' => $request->input('ends_at') ?: null,
         ]);
 
         return redirect()->route('admin.carousel.index')->with('success', 'Slide updated.');

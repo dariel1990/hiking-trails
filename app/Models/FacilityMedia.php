@@ -16,6 +16,7 @@ class FacilityMedia extends Model
         'facility_id',
         'media_type',
         'file_path',
+        'thumbnail_path',
         'url',
         'caption',
         'video_provider',
@@ -55,6 +56,10 @@ class FacilityMedia extends Model
      */
     public function getThumbnailUrlAttribute(): ?string
     {
+        if ($this->media_type === 'photo' && $this->thumbnail_path) {
+            return Storage::disk('public')->url($this->thumbnail_path);
+        }
+
         if ($this->media_type === 'photo' && $this->file_path) {
             return Storage::disk('public')->url($this->file_path);
         }
@@ -171,6 +176,10 @@ class FacilityMedia extends Model
         static::deleting(function ($media) {
             if ($media->file_path) {
                 Storage::disk('public')->delete($media->file_path);
+            }
+
+            if ($media->thumbnail_path) {
+                Storage::disk('public')->delete($media->thumbnail_path);
             }
         });
     }

@@ -119,11 +119,12 @@ Route::withoutMiddleware(VerifyAppKey::class)->group(function () {
 
     // Trail Networks
     Route::get('/trail-networks', function () {
-        $networks = TrailNetwork::with(['trails' => function ($q) {
-            $q->select('id', 'trail_network_id', 'name', 'difficulty_level', 'distance_km', 'status')
-                ->whereIn('status', ['active', 'seasonal'])
-                ->orderBy('difficulty_level');
-        }])
+        $networks = TrailNetwork::where('is_active', true)
+            ->with(['trails' => function ($q) {
+                $q->select('id', 'trail_network_id', 'name', 'difficulty_level', 'distance_km', 'status')
+                    ->whereIn('status', ['active', 'seasonal'])
+                    ->orderBy('difficulty_level');
+            }])
             ->get()
             ->filter(fn ($n) => $n->trails->isNotEmpty())
             ->values()

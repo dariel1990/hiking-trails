@@ -3,7 +3,9 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Facility;
 use App\Models\TrailNetwork;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -40,6 +42,7 @@ class AdminTrailNetworkController extends Controller
         }
 
         $validated['is_always_visible'] = $request->has('is_always_visible');
+        $validated['is_active'] = $request->has('is_active');
 
         if ($request->hasFile('image')) {
             $validated['image'] = $request->file('image')->store('trail-networks', 'public');
@@ -62,7 +65,7 @@ class AdminTrailNetworkController extends Controller
     {
         $trailNetwork->load(['trails', 'sponsors']);
 
-        $facilities = \App\Models\Facility::where('is_active', true)
+        $facilities = Facility::where('is_active', true)
             ->where('trail_network_id', $trailNetwork->id)
             ->orderBy('facility_type')
             ->orderBy('name')
@@ -93,6 +96,7 @@ class AdminTrailNetworkController extends Controller
         }
 
         $validated['is_always_visible'] = $request->has('is_always_visible');
+        $validated['is_active'] = $request->has('is_active');
 
         if ($request->hasFile('image')) {
             if ($trailNetwork->image) {
@@ -114,6 +118,19 @@ class AdminTrailNetworkController extends Controller
 
         return redirect()->route('admin.trail-networks.index')
             ->with('success', 'Trail network updated successfully.');
+    }
+
+    /**
+     * Toggle the active status of the specified trail network
+     */
+    public function toggleActive(TrailNetwork $trailNetwork): JsonResponse
+    {
+        $trailNetwork->update(['is_active' => ! $trailNetwork->is_active]);
+
+        return response()->json([
+            'success' => true,
+            'is_active' => $trailNetwork->is_active,
+        ]);
     }
 
     /**
@@ -165,6 +182,7 @@ class AdminTrailNetworkController extends Controller
             'address' => 'nullable|string|max:500',
             'website_url' => 'nullable|url|max:500',
             'is_always_visible' => 'boolean',
+            'is_active' => 'boolean',
 
             'sponsors' => 'nullable|array',
             'sponsors.*.id' => 'nullable|integer|exists:trail_network_sponsors,id',

@@ -176,6 +176,8 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::patch('/trails/{trail}/toggle-status', [AdminTrailController::class, 'toggleStatus'])->name('trails.toggle-status')->middleware('throttle:300,1');
 
         // Add the trail networks routes here
+        Route::patch('/trail-networks/{trail_network}/toggle-active', [AdminTrailNetworkController::class, 'toggleActive'])
+            ->name('trail-networks.toggle-active');
         Route::resource('trail-networks', AdminTrailNetworkController::class)
             ->names([
                 'index' => 'trail-networks.index',

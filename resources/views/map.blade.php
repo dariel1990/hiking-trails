@@ -286,6 +286,19 @@
     <!-- Main Map Container -->
     <div id="main-map" class="absolute inset-0 z-10" style="width:100%;height:100%;"></div>
 
+    <!-- Map loading overlay — shown while trails are (re)loaded, e.g. switching season -->
+    <div id="map-loading-overlay"
+         class="absolute inset-0 z-50 flex items-center justify-center bg-white/50 backdrop-blur-[2px] opacity-0 invisible transition-opacity duration-700 ease-in-out pointer-events-none">
+        <div id="map-loading-card"
+             class="flex flex-col items-center gap-3 bg-white/95 shadow-xl ring-1 ring-black/5 rounded-2xl px-7 py-5 opacity-0 scale-90 transition-all duration-500 ease-out">
+            <div class="relative w-9 h-9">
+                <div class="absolute inset-0 rounded-full border-[3px] border-gray-200"></div>
+                <div class="absolute inset-0 rounded-full border-[3px] border-primary-500 border-t-transparent animate-spin"></div>
+            </div>
+            <p class="text-xs font-semibold text-gray-600 tracking-wide">Loading trails…</p>
+        </div>
+    </div>
+
     <!-- Fly Along Stop Button (hidden unless animation is running).
          Positioned bottom-left, just above the Mapbox attribution bar. -->
     <button id="fly-stop-overlay-btn"
@@ -2935,10 +2948,15 @@
         }
 
         switchSeason(season) {
-            
+
+            // Close any open info panel/modal — it may show data (e.g. difficulty,
+            // route) that's no longer relevant to the season being switched to.
+            this.closeAllPanels();
+            closeMobileTrailCard();
+
             // Update current season
             this.currentSeason = season;
-            
+
             // Update UI - all season buttons
             document.querySelectorAll('.season-btn, .season-btn-mobile').forEach(btn => {
                 if (btn.dataset.season === season) {
@@ -2955,6 +2973,7 @@
             this.renderNetworkMarkers();
 
             // Reload trails with new season
+            this.showMapLoading();
             this.loadTrails(season);
         }
 
@@ -3233,6 +3252,34 @@
             document.getElementById('trail-info-panel')?.classList.add('hidden');
             this.closeBusinessPanel();
             this._clearSelection();
+        }
+
+        showMapLoading() {
+            const overlay = document.getElementById('map-loading-overlay');
+            const card = document.getElementById('map-loading-card');
+            if (!overlay || !card) return;
+
+            overlay.classList.remove('opacity-0', 'invisible');
+            // Let the backdrop start fading in first, then pop the card in
+            // a beat later for a slightly staggered, more polished entrance.
+            requestAnimationFrame(() => {
+                card.classList.remove('opacity-0', 'scale-90');
+                card.classList.add('opacity-100', 'scale-100');
+            });
+        }
+
+        hideMapLoading() {
+            const overlay = document.getElementById('map-loading-overlay');
+            const card = document.getElementById('map-loading-card');
+            if (!overlay || !card) return;
+
+            // Card fades/shrinks out quickly, then the white backdrop lingers
+            // a little longer before slowly fading away.
+            card.classList.remove('opacity-100', 'scale-100');
+            card.classList.add('opacity-0', 'scale-90');
+            setTimeout(() => {
+                overlay.classList.add('opacity-0', 'invisible');
+            }, 150);
         }
 
         _isMobileViewport() {
@@ -3625,14 +3672,14 @@
             heroImg.classList.add('hidden');
             heroImg.src = '';
             heroGrid.classList.remove('hidden');
-            const maxVisible = 3;
+            const maxVisible = 4;
             const remaining = items.length - maxVisible;
             heroGrid.innerHTML = items.slice(0, maxVisible).map((item, idx) => {
                 const isVideo = item.media_type === 'video_url' || item.media_type === 'video';
                 const thumbnailUrl = item.thumbnail_url || item.url;
                 const overlay = (idx === maxVisible - 1 && remaining > 0) ? `<div class="facility-media-overlay">+${remaining} more</div>` : '';
                 const videoBadge = isVideo ? '<div class="facility-video-badge">▶</div>' : '';
-                return `<div class="facility-media-item" onclick="openFacilityMediaModal('${cacheKey}', ${idx})"><img src="${thumbnailUrl}" class="facility-media-thumbnail">${overlay}${videoBadge}</div>`;
+                return `<div class="facility-media-item" onclick="openFacilityMediaModal('${cacheKey}', ${idx})"><img src="${thumbnailUrl}" class="facility-media-thumbnail" loading="lazy">${overlay}${videoBadge}</div>`;
             }).join('');
         }
 
@@ -3781,7 +3828,7 @@
                     const remaining = trailMediaItems.length - 4;
                     const overlay = (idx === 3 && remaining > 0) ? `<div class="facility-media-overlay">+${remaining} more</div>` : '';
                     const videoBadge = isVideo ? '<div class="facility-video-badge">▶</div>' : '';
-                    mediaHTML += `<div class="facility-media-item" onclick="openFacilityMediaModal('${trailMediaCacheKey}', ${realIndex})"><img src="${thumbnailUrl}" class="facility-media-thumbnail">${overlay}${videoBadge}</div>`;
+                    mediaHTML += `<div class="facility-media-item" onclick="openFacilityMediaModal('${trailMediaCacheKey}', ${realIndex})"><img src="${thumbnailUrl}" class="facility-media-thumbnail" loading="lazy">${overlay}${videoBadge}</div>`;
                 });
                 mediaHTML += `</div></div>`;
             }
@@ -4381,7 +4428,7 @@
                         const remaining = galleryItems.length - 4;
                         const overlay = (idx === 3 && remaining > 0) ? `<div class="facility-media-overlay">+${remaining} more</div>` : '';
                         const videoBadge = isVideo ? '<div class="facility-video-badge">▶</div>' : '';
-                        mediaHTML += `<div class="facility-media-item" onclick="openFacilityMediaModal('${businessMediaCacheKey}', ${realIndex})"><img src="${thumbnailUrl}" class="facility-media-thumbnail">${overlay}${videoBadge}</div>`;
+                        mediaHTML += `<div class="facility-media-item" onclick="openFacilityMediaModal('${businessMediaCacheKey}', ${realIndex})"><img src="${thumbnailUrl}" class="facility-media-thumbnail" loading="lazy">${overlay}${videoBadge}</div>`;
                     });
                     mediaHTML += `</div></div>`;
                 }
@@ -4562,7 +4609,7 @@
                         const remaining = galleryItems.length - 4;
                         const overlay = (idx === 3 && remaining > 0) ? `<div class="facility-media-overlay">+${remaining} more</div>` : '';
                         const videoBadge = isVideo ? '<div class="facility-video-badge">▶</div>' : '';
-                        mediaHTML += `<div class="facility-media-item" onclick="openFacilityMediaModal(${facility.id}, ${realIndex})"><img src="${thumbnailUrl}" class="facility-media-thumbnail">${overlay}${videoBadge}</div>`;
+                        mediaHTML += `<div class="facility-media-item" onclick="openFacilityMediaModal(${facility.id}, ${realIndex})"><img src="${thumbnailUrl}" class="facility-media-thumbnail" loading="lazy">${overlay}${videoBadge}</div>`;
                     });
                     mediaHTML += `</div></div>`;
                 }
@@ -4684,6 +4731,8 @@
                 }
             } catch (error) {
                 console.error('Error loading trails:', error);
+            } finally {
+                this.hideMapLoading();
             }
         }
 
@@ -4922,16 +4971,25 @@
                     </a>`);
             }
 
-            const diffLabel = ['', 'Very Easy', 'Easy', 'Moderate', 'Hard', 'Very Hard'];
+            // Ski-run difficulty scale — matches /trail-networks/ (green/blue/black diamond/proline)
+            const diffLabel = { 1: 'Green', 2: 'Blue', 3: 'Black Diamond', 4: 'Double Black Diamond', 5: 'Proline' };
+            const diffStyle = {
+                1: 'background:#dcfce7;color:#166534;',
+                2: 'background:#dbeafe;color:#1d4ed8;',
+                3: 'background:#1a1a1a;color:#ffffff;',
+                4: 'background:#111827;color:#ffffff;',
+                5: 'background:#fee2e2;color:#991b1b;',
+            };
             const trailRows = (network.trails || []).map(t => {
-                const color = this.getDifficultyColor(t.difficulty);
-                const label = diffLabel[t.difficulty] || ('Level ' + t.difficulty);
+                const level = Math.floor(t.difficulty);
+                const style = diffStyle[level] || 'background:#f3f4f6;color:#374151;';
+                const label = diffLabel[level] || (t.difficulty ? `Level ${t.difficulty}` : '');
                 return `
                     <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid #f3f4f6;">
                         <span style="font-size:13px;color:#374151;font-weight:500;">${escapeHtml(t.name)}</span>
                         <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
                             ${t.distance ? `<span style="font-size:11px;color:#6b7280;">${t.distance} km</span>` : ''}
-                            ${t.difficulty ? `<span style="font-size:11px;font-weight:700;color:${color};background:${color}20;padding:2px 7px;border-radius:999px;">${label}</span>` : ''}
+                            ${t.difficulty ? `<span style="font-size:11px;font-weight:700;padding:2px 7px;border-radius:999px;${style}">${label}</span>` : ''}
                         </div>
                     </div>`;
             }).join('');
@@ -5732,6 +5790,8 @@
             if (e.target.closest('.season-btn, .dist-chip, .diff-chip, .location-filter-btn, #all-filters-btn')) return;
             // Ignore clicks inside the photo/video lightbox (it sits above the panel, not inside it)
             if (e.target.closest('#facility-media-modal, #highlight-media-modal')) return;
+            // Ignore clicks inside the Pro subscription modal (it sits above the panel, not inside it)
+            if (e.target.closest('#xs-pro-modal')) return;
 
             window.trailMap.closeAllPanels();
         });

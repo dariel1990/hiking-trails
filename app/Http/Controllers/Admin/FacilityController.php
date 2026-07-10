@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Facility;
 use App\Models\FacilityMedia;
 use App\Models\TrailNetwork;
+use App\Services\ImageThumbnailService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
@@ -258,12 +259,13 @@ class FacilityController extends Controller
     {
         if ($request->hasFile('photos')) {
             foreach ($request->file('photos') as $index => $photo) {
-                $path = $this->compressAndStorePhoto($photo, 'facilities/'.$facility->id.'/photos');
+                $compressed = $this->compressAndStorePhoto($photo, 'facilities/'.$facility->id.'/photos');
 
                 FacilityMedia::create([
                     'facility_id' => $facility->id,
                     'media_type' => 'photo',
-                    'file_path' => $path,
+                    'file_path' => $compressed['path'],
+                    'thumbnail_path' => $compressed['thumbnail_path'],
                     'caption' => $request->input("photo_captions.{$index}"),
                     'is_primary' => $index === 0 && ! $facility->media()->exists(),
                     'sort_order' => $facility->media()->count() + $index,
@@ -272,16 +274,12 @@ class FacilityController extends Controller
         }
     }
 
-    private function compressAndStorePhoto(UploadedFile $photo, string $directory): string
+    /**
+     * @return array{filename: string, path: string, thumbnail_path: string, file_size: int}
+     */
+    private function compressAndStorePhoto(UploadedFile $photo, string $directory): array
     {
-        $manager = new ImageManager(new Driver);
-        $image = $manager->read($photo->getRealPath());
-        $image->scaleDown(width: 1920, height: 1080);
-
-        $path = $directory.'/'.Str::random(40).'.webp';
-        Storage::disk('public')->put($path, (string) $image->toWebp(85));
-
-        return $path;
+        return app(ImageThumbnailService::class)->process($photo, $directory);
     }
 
     private function compressAndStoreIcon(UploadedFile $icon, string $directory): string

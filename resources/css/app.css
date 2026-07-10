@@ -622,6 +622,14 @@
   .xs-gpx-toast.is-out {
     animation-duration: 0.5s !important;
   }
+
+  /* Keep the map loading spinner actually spinning — it's functional feedback
+     (season switch in progress), not decorative motion, so it shouldn't be
+     frozen to a single 0.01ms frame like purely cosmetic animations. */
+  #map-loading-card .animate-spin {
+    animation-duration: 1s !important;
+    animation-iteration-count: infinite !important;
+  }
 }
 
 

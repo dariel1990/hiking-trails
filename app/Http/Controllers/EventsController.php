@@ -59,7 +59,7 @@ class EventsController extends Controller
         $prevMonth = $firstDayOfMonth->copy()->subMonth();
         $nextMonth = $firstDayOfMonth->copy()->addMonth();
 
-        $slides = CarouselSlide::active()->ordered()->get()
+        $slides = CarouselSlide::currentlyActive()->ordered()->get()
             ->map(fn ($s) => [
                 'url' => $s->url,
                 'name' => $s->caption,

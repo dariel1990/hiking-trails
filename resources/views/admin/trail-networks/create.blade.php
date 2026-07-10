@@ -250,6 +250,19 @@
                                 </span>
                             </div>
                         </label>
+
+                        <label for="is_active"
+                               class="mt-3 flex items-start gap-3 p-4 bg-gray-50 rounded-lg border border-gray-200 cursor-pointer hover:bg-gray-100/70 transition-colors">
+                            <input type="checkbox" name="is_active" id="is_active" value="1"
+                                   {{ old('is_active', true) ? 'checked' : '' }}
+                                   class="mt-0.5 h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 rounded">
+                            <div>
+                                <span class="block text-sm font-medium text-gray-700">Active</span>
+                                <span class="block text-xs text-gray-500 mt-0.5">
+                                    Uncheck to hide this network (and its markers) from the public map.
+                                </span>
+                            </div>
+                        </label>
                     </div>
                 </div>
 

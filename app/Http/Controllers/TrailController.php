@@ -273,7 +273,7 @@ class TrailController extends Controller
         }
 
         // Include active/seasonal trails + always-visible network trails
-        $alwaysVisibleNetworkIds = TrailNetwork::where('is_always_visible', true)->pluck('id');
+        $alwaysVisibleNetworkIds = TrailNetwork::where('is_always_visible', true)->where('is_active', true)->pluck('id');
         $query->where(function ($q) use ($alwaysVisibleNetworkIds) {
             $q->whereIn('status', ['active', 'seasonal']);
             if ($alwaysVisibleNetworkIds->isNotEmpty()) {

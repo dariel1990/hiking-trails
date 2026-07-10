@@ -21,10 +21,12 @@ class TrailNetwork extends Model
         'address',
         'website_url',
         'is_always_visible',
+        'is_active',
     ];
 
     protected $casts = [
         'is_always_visible' => 'boolean',
+        'is_active' => 'boolean',
         'latitude' => 'decimal:7',
         'longitude' => 'decimal:7',
     ];
@@ -44,6 +46,11 @@ class TrailNetwork extends Model
                 $network->slug = $slug;
             }
         });
+    }
+
+    public function scopeActive($query)
+    {
+        return $query->where('is_active', true);
     }
 
     public function trails()

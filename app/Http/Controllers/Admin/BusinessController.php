@@ -7,6 +7,7 @@ use App\Http\Requests\Admin\StoreBusinessRequest;
 use App\Http\Requests\Admin\UpdateBusinessRequest;
 use App\Models\Business;
 use App\Models\BusinessMedia;
+use App\Services\ImageThumbnailService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -302,12 +303,13 @@ class BusinessController extends Controller
     {
         if ($request->hasFile('photos')) {
             foreach ($request->file('photos') as $index => $photo) {
-                $path = $this->compressAndStorePhoto($photo, 'businesses/'.$business->id.'/photos');
+                $compressed = $this->compressAndStorePhoto($photo, 'businesses/'.$business->id.'/photos');
 
                 BusinessMedia::create([
                     'business_id' => $business->id,
                     'media_type' => 'photo',
-                    'file_path' => $path,
+                    'file_path' => $compressed['path'],
+                    'thumbnail_path' => $compressed['thumbnail_path'],
                     'caption' => $request->input("photo_captions.{$index}"),
                     'is_primary' => $index === 0 && ! $business->media()->exists(),
                     'sort_order' => $business->media()->count() + $index,
@@ -316,16 +318,12 @@ class BusinessController extends Controller
         }
     }
 
-    private function compressAndStorePhoto(UploadedFile $photo, string $directory): string
+    /**
+     * @return array{filename: string, path: string, thumbnail_path: string, file_size: int}
+     */
+    private function compressAndStorePhoto(UploadedFile $photo, string $directory): array
     {
-        $manager = new ImageManager(new Driver);
-        $image = $manager->read($photo->getRealPath());
-        $image->scaleDown(width: 1920, height: 1080);
-
-        $path = $directory.'/'.Str::random(40).'.webp';
-        Storage::disk('public')->put($path, (string) $image->toWebp(85));
-
-        return $path;
+        return app(ImageThumbnailService::class)->process($photo, $directory);
     }
 
     private function compressAndStoreIcon(UploadedFile $icon, string $directory): string

@@ -64,6 +64,19 @@
                            class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
                     <p class="text-xs text-gray-400 mt-1">Lower number = shown first</p>
                 </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Show From</label>
+                    <input type="date" name="starts_at" value="{{ old('starts_at', now()->toDateString()) }}"
+                           class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
+                    @error('starts_at') <p class="text-red-600 text-xs mt-1">{{ $message }}</p> @enderror
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Show Until</label>
+                    <input type="date" name="ends_at" value="{{ old('ends_at') }}"
+                           class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
+                    @error('ends_at') <p class="text-red-600 text-xs mt-1">{{ $message }}</p> @enderror
+                    <p class="text-xs text-gray-400 mt-1">Leave blank to keep showing indefinitely</p>
+                </div>
             </div>
             <div class="mt-4 flex justify-end">
                 <button type="submit" class="bg-primary-600 hover:bg-primary-700 text-white px-5 py-2 rounded-lg text-sm font-semibold transition-colors shadow-sm">
@@ -127,7 +140,7 @@
         @else
             <div class="divide-y divide-gray-100">
                 @foreach($slides as $slide)
-                <div class="flex items-center gap-4 px-6 py-4 hover:bg-gray-50 transition-colors">
+                <div class="flex items-start gap-4 px-6 py-4 hover:bg-gray-50 transition-colors">
 
                     {{-- Thumbnail --}}
                     <div class="w-24 h-16 rounded-lg overflow-hidden bg-gray-100 shrink-0 border border-gray-200">
@@ -137,33 +150,61 @@
 
                     {{-- Edit form --}}
                     <form action="{{ route('admin.carousel.update', $slide) }}" method="POST"
-                          class="flex-1 flex flex-wrap items-center gap-3">
+                          class="flex-1 flex flex-col gap-2">
                         @csrf @method('PATCH')
 
-                        <div class="flex-1 min-w-40">
-                            <input type="text" name="caption" value="{{ $slide->caption }}"
-                                   placeholder="Caption"
-                                   class="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
+                        <div class="flex flex-wrap items-center gap-3">
+                            <div class="flex-1 min-w-40">
+                                <input type="text" name="caption" value="{{ $slide->caption }}"
+                                       placeholder="Caption"
+                                       class="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
+                            </div>
+
+                            <div class="w-20">
+                                <input type="number" name="sort_order" value="{{ $slide->sort_order }}" min="0"
+                                       title="Sort order"
+                                       class="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm text-center focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
+                            </div>
+
+                            <label class="flex items-center gap-2 text-sm text-gray-700 cursor-pointer select-none">
+                                <input type="hidden" name="is_active" value="0">
+                                <input type="checkbox" name="is_active" value="1"
+                                       {{ $slide->is_active ? 'checked' : '' }}
+                                       class="rounded border-gray-300 text-primary-600 focus:ring-primary-500">
+                                Active
+                            </label>
+
+                            @if($slide->is_active)
+                                @if(!$slide->is_within_schedule)
+                                    <span class="text-xs font-semibold text-red-700 bg-red-50 border border-red-200 rounded-full px-2 py-0.5">
+                                        {{ $slide->starts_at && \Illuminate\Support\Carbon::today()->lt($slide->starts_at) ? 'Scheduled' : 'Expired' }}
+                                    </span>
+                                @else
+                                    <span class="text-xs font-semibold text-green-700 bg-green-50 border border-green-200 rounded-full px-2 py-0.5">
+                                        Live
+                                    </span>
+                                @endif
+                            @endif
+
+                            <button type="submit"
+                                    class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors">
+                                Save
+                            </button>
                         </div>
 
-                        <div class="w-20">
-                            <input type="number" name="sort_order" value="{{ $slide->sort_order }}" min="0"
-                                   title="Sort order"
-                                   class="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm text-center focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
+                        <div class="flex flex-wrap items-center gap-3">
+                            <div class="flex items-center gap-1.5">
+                                <label class="text-xs text-gray-500">From</label>
+                                <input type="date" name="starts_at" value="{{ $slide->starts_at?->toDateString() }}"
+                                       class="border border-gray-300 rounded-lg px-2 py-1 text-xs focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
+                            </div>
+                            <div class="flex items-center gap-1.5">
+                                <label class="text-xs text-gray-500">To</label>
+                                <input type="date" name="ends_at" value="{{ $slide->ends_at?->toDateString() }}"
+                                       class="border border-gray-300 rounded-lg px-2 py-1 text-xs focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
+                            </div>
+                            <p class="text-xs text-gray-400">Leave blank to control manually</p>
                         </div>
-
-                        <label class="flex items-center gap-2 text-sm text-gray-700 cursor-pointer select-none">
-                            <input type="hidden" name="is_active" value="0">
-                            <input type="checkbox" name="is_active" value="1"
-                                   {{ $slide->is_active ? 'checked' : '' }}
-                                   class="rounded border-gray-300 text-primary-600 focus:ring-primary-500">
-                            Active
-                        </label>
-
-                        <button type="submit"
-                                class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors">
-                            Save
-                        </button>
                     </form>
 
                     {{-- Delete --}}

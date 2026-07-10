@@ -16,6 +16,7 @@ class BusinessMedia extends Model
         'business_id',
         'media_type',
         'file_path',
+        'thumbnail_path',
         'url',
         'caption',
         'video_provider',
@@ -49,6 +50,10 @@ class BusinessMedia extends Model
 
     public function getThumbnailUrlAttribute(): ?string
     {
+        if ($this->media_type === 'photo' && $this->thumbnail_path) {
+            return asset('storage/'.$this->thumbnail_path);
+        }
+
         if ($this->media_type === 'photo' && $this->file_path) {
             return asset('storage/'.$this->file_path);
         }
@@ -146,6 +151,10 @@ class BusinessMedia extends Model
         static::deleting(function (BusinessMedia $media) {
             if ($media->file_path) {
                 Storage::disk('public')->delete($media->file_path);
+            }
+
+            if ($media->thumbnail_path) {
+                Storage::disk('public')->delete($media->thumbnail_path);
             }
         });
     }

@@ -12,6 +12,7 @@ use App\Models\TrailFeature;
 use App\Models\TrailMedia;
 use App\Models\TrailNetwork;
 use App\Services\GpxService;
+use App\Services\ImageThumbnailService;
 use Exception;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -20,8 +21,6 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
-use Intervention\Image\Drivers\Gd\Driver;
-use Intervention\Image\ImageManager;
 
 class AdminTrailController extends Controller
 {
@@ -319,6 +318,7 @@ class AdminTrailController extends Controller
                     'filename' => $compressed['filename'],
                     'original_name' => $photo->getClientOriginalName(),
                     'storage_path' => $compressed['path'],
+                    'thumbnail_path' => $compressed['thumbnail_path'],
                     'file_size' => $compressed['file_size'],
                     'mime_type' => 'image/webp',
                     'sort_order' => $index,
@@ -400,6 +400,7 @@ class AdminTrailController extends Controller
                             'filename' => $compressed['filename'],
                             'original_name' => $mediaFile->getClientOriginalName(),
                             'storage_path' => $compressed['path'],
+                            'thumbnail_path' => $compressed['thumbnail_path'],
                             'file_size' => $compressed['file_size'],
                             'mime_type' => 'image/webp',
                             'sort_order' => 0,
@@ -807,6 +808,7 @@ class AdminTrailController extends Controller
                                 'filename' => $compressed['filename'],
                                 'original_name' => $mediaFile->getClientOriginalName(),
                                 'storage_path' => $compressed['path'],
+                                'thumbnail_path' => $compressed['thumbnail_path'],
                                 'file_size' => $compressed['file_size'],
                                 'mime_type' => 'image/webp',
                                 'sort_order' => 0,
@@ -900,6 +902,7 @@ class AdminTrailController extends Controller
                             'filename' => $compressed['filename'],
                             'original_name' => $mediaFile->getClientOriginalName(),
                             'storage_path' => $compressed['path'],
+                            'thumbnail_path' => $compressed['thumbnail_path'],
                             'file_size' => $compressed['file_size'],
                             'mime_type' => 'image/webp',
                             'sort_order' => 0,
@@ -1020,6 +1023,7 @@ class AdminTrailController extends Controller
                     'filename' => $compressed['filename'],
                     'original_name' => $photo->getClientOriginalName(),
                     'storage_path' => $compressed['path'],
+                    'thumbnail_path' => $compressed['thumbnail_path'],
                     'file_size' => $compressed['file_size'],
                     'mime_type' => 'image/webp',
                     'sort_order' => $maxSortOrder + $index + 1,
@@ -1361,23 +1365,14 @@ class AdminTrailController extends Controller
     }
 
     /**
-     * Compress and store a photo upload as WebP, scaled down to max 1920×1080.
+     * Compress and store a photo upload as WebP (scaled down to max 1920×1080),
+     * along with a small gallery thumbnail.
      *
-     * @return array{filename: string, path: string, file_size: int}
+     * @return array{filename: string, path: string, thumbnail_path: string, file_size: int}
      */
     private function compressAndStorePhoto(UploadedFile $photo, string $directory): array
     {
-        $manager = new ImageManager(new Driver);
-        $image = $manager->read($photo->getRealPath());
-        $image->scaleDown(width: 1920, height: 1080);
-
-        $filename = Str::random(40).'.webp';
-        $path = $directory.'/'.$filename;
-        $webpData = (string) $image->toWebp(85);
-
-        Storage::disk('public')->put($path, $webpData);
-
-        return ['filename' => $filename, 'path' => $path, 'file_size' => strlen($webpData)];
+        return app(ImageThumbnailService::class)->process($photo, $directory);
     }
 
     /**

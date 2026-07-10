@@ -120,6 +120,7 @@
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Location</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Trails</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Visible</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                             <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                         </tr>
                     </thead>
@@ -166,6 +167,20 @@
                                     @else
                                         <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-gray-100 text-gray-700">No</span>
                                     @endif
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <button type="button"
+                                        data-toggle-url="{{ route('admin.trail-networks.toggle-active', $network) }}"
+                                        data-active="{{ $network->is_active ? '1' : '0' }}"
+                                        title="Click to toggle"
+                                        class="toggle-active group inline-flex items-center gap-2">
+                                        <span class="relative inline-flex h-5 w-9 items-center rounded-full transition-colors {{ $network->is_active ? 'bg-green-500' : 'bg-gray-300' }}">
+                                            <span class="inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform {{ $network->is_active ? 'translate-x-4' : 'translate-x-0.5' }}"></span>
+                                        </span>
+                                        <span class="toggle-label text-xs font-semibold {{ $network->is_active ? 'text-green-700' : 'text-gray-500' }}">
+                                            {{ $network->is_active ? 'Active' : 'Inactive' }}
+                                        </span>
+                                    </button>
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                     <div class="inline-flex items-center gap-1.5">
@@ -220,4 +235,44 @@
         @endif
     </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    document.querySelectorAll('.toggle-active').forEach(btn => {
+        btn.addEventListener('click', async function () {
+            if (btn.disabled) { return; }
+            btn.disabled = true;
+            const url = btn.dataset.toggleUrl;
+            try {
+                const res = await fetch(url, {
+                    method: 'PATCH',
+                    headers: {
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                });
+                if (!res.ok) { throw new Error('Request failed'); }
+                const data = await res.json();
+                const active = !!data.is_active;
+                btn.dataset.active = active ? '1' : '0';
+                const pill = btn.querySelector('span.relative');
+                const knob = pill.querySelector('span');
+                const label = btn.querySelector('.toggle-label');
+                pill.classList.toggle('bg-green-500', active);
+                pill.classList.toggle('bg-gray-300', !active);
+                knob.classList.toggle('translate-x-4', active);
+                knob.classList.toggle('translate-x-0.5', !active);
+                label.textContent = active ? 'Active' : 'Inactive';
+                label.classList.toggle('text-green-700', active);
+                label.classList.toggle('text-gray-500', !active);
+            } catch (err) {
+                alert('Failed to update status.');
+            } finally {
+                btn.disabled = false;
+            }
+        });
+    });
+});
+</script>
 @endsection
