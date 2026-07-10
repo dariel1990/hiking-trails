@@ -3,15 +3,19 @@
 namespace App\Http\Controllers;
 
 use App\Models\Business;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\View\View;
 
 class BusinessPublicController extends Controller
 {
-    public function index(Request $request): \Illuminate\View\View|\Illuminate\Http\JsonResponse
+    public function index(Request $request): View|JsonResponse
     {
         $types = Business::getBusinessTypes();
 
-        $query = Business::active()->with(['media' => fn ($q) => $q->where('is_primary', true)->orWhere('media_type', 'photo')]);
+        $query = Business::active()->with(['media' => fn ($q) => $q->where(function ($q2) {
+            $q2->where('is_primary', true)->orWhere('media_type', 'photo');
+        })]);
 
         if ($search = $request->input('search')) {
             $query->where(function ($q) use ($search) {
@@ -60,7 +64,7 @@ class BusinessPublicController extends Controller
         return view('businesses.index', compact('grouped', 'types', 'businesses', 'paginatedGroups'));
     }
 
-    public function show(Business $business): \Illuminate\View\View
+    public function show(Business $business): View
     {
         abort_unless($business->is_active, 404);
 
