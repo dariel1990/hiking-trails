@@ -27,12 +27,26 @@ class SmithersEventsScraper
         try {
             Log::info('Starting to scrape events from SmithersEvents.com');
 
-            // Fetch the HTML content
+            // Fetch the HTML content. The site sits behind a WAF that can 403
+            // datacenter IPs — send regular browser headers and retry with
+            // backoff for transient blocks. Persistent 403s mean the server's
+            // IP needs to be allowlisted by the site owner.
             $response = Http::timeout(30)
+                ->retry(3, 5000, throw: false)
                 ->withHeaders([
-                    'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+                    'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
+                    'Accept' => 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                    'Accept-Language' => 'en-US,en;q=0.9',
+                    'Referer' => $this->baseUrl,
                 ])
                 ->get($this->baseUrl);
+
+            if ($response->status() === 403) {
+                throw new Exception(
+                    'Fetch blocked with HTTP 403 — the events site\'s firewall is rejecting this server\'s IP. '
+                    .'Ask the site owner to allowlist the server IP (find it with: curl -s ifconfig.me).'
+                );
+            }
 
             if (! $response->successful()) {
                 throw new Exception('Failed to fetch events page. Status: '.$response->status());

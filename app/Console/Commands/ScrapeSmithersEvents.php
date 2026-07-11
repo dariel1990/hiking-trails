@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Models\Event;
+use App\Services\EventImportService;
 use App\Support\DeveloperAlert;
 use Carbon\Carbon;
 use Exception;
@@ -12,9 +13,17 @@ use Symfony\Component\DomCrawler\Crawler;
 
 class ScrapeSmithersEvents extends Command
 {
-    protected $signature = 'events:scrape {--debug : Show debug information} {--force : Force scrape and auto-cleanup}';
+    protected $signature = 'events:scrape
+        {--debug : Show debug information}
+        {--force : Force scrape and auto-cleanup}
+        {--push : Also push the scraped events to the production import API}';
 
     protected $description = 'Scrape events from SmithersEvents.com';
+
+    public function __construct(private EventImportService $importer)
+    {
+        parent::__construct();
+    }
 
     public function handle()
     {
@@ -61,7 +70,9 @@ class ScrapeSmithersEvents extends Command
             $bar = $this->output->createProgressBar($eventNodes->count());
             $bar->start();
 
-            $eventNodes->each(function (Crawler $node, $index) use (&$stats, $bar) {
+            $payload = [];
+
+            $eventNodes->each(function (Crawler $node, $index) use (&$stats, &$payload, $bar) {
                 try {
                     // Extract data from visible elements
                     $title = $node->filter('h3 a')->count() ? trim($node->filter('h3 a')->text()) : null;
@@ -122,10 +133,7 @@ class ScrapeSmithersEvents extends Command
                         return;
                     }
 
-                    // Check if event exists
-                    $existingEvent = Event::where('source_id', $sourceId)->first();
-
-                    $eventData = [
+                    $payload[] = [
                         'title' => $finalTitle,
                         'description' => $finalDescription,
                         'event_date' => $parsedStartDate,
@@ -139,31 +147,13 @@ class ScrapeSmithersEvents extends Command
                         'image_url' => null,
                         'external_url' => $eventUrl,
                         'source_id' => $sourceId,
-                        'is_active' => true,
-                        'scraped_at' => now(),
                     ];
 
-                    if ($existingEvent) {
-                        $existingEvent->update($eventData);
-                        $stats['updated']++;
-
-                        if ($this->option('debug')) {
-                            $this->newLine();
-                            $this->line("✓ Updated: {$finalTitle}");
-                            if ($times['start_time'] && $times['end_time']) {
-                                $this->line("  Times: {$times['start_time']} - {$times['end_time']}");
-                            }
-                        }
-                    } else {
-                        Event::create($eventData);
-                        $stats['new']++;
-
-                        if ($this->option('debug')) {
-                            $this->newLine();
-                            $this->line("✓ Created: {$finalTitle}");
-                            if ($times['start_time'] && $times['end_time']) {
-                                $this->line("  Times: {$times['start_time']} - {$times['end_time']}");
-                            }
+                    if ($this->option('debug')) {
+                        $this->newLine();
+                        $this->line("✓ Scraped: {$finalTitle}");
+                        if ($times['start_time'] && $times['end_time']) {
+                            $this->line("  Times: {$times['start_time']} - {$times['end_time']}");
                         }
                     }
 
@@ -181,6 +171,12 @@ class ScrapeSmithersEvents extends Command
             $bar->finish();
             $this->newLine(2);
 
+            // Persist locally through the shared import service
+            $importStats = $this->importer->import($payload);
+            $stats['new'] = $importStats['new'];
+            $stats['updated'] = $importStats['updated'];
+            $stats['errors'] += $importStats['errors'];
+
             // Display results
             $this->displayResults($stats);
 
@@ -192,6 +188,11 @@ class ScrapeSmithersEvents extends Command
             // Clean up old events
             if ($this->option('force') || $this->confirm('Do you want to deactivate past events?', true)) {
                 $this->cleanupOldEvents();
+            }
+
+            // Push the same payload to the production import API
+            if ($this->option('push') && ! $this->pushToProduction($payload)) {
+                return 1;
             }
 
             $this->newLine();
@@ -298,18 +299,60 @@ class ScrapeSmithersEvents extends Command
     {
         $this->info('Cleaning up past events...');
 
-        $pastCount = Event::where('event_date', '<', now())
-            ->where('is_active', true)
-            ->count();
+        $pastCount = $this->importer->deactivatePastEvents();
 
         if ($pastCount > 0) {
-            Event::where('event_date', '<', now())
-                ->where('is_active', true)
-                ->update(['is_active' => false]);
-
             $this->info("✓ Deactivated {$pastCount} past events");
         } else {
             $this->info('No past events to clean up');
+        }
+    }
+
+    /**
+     * POST the scraped events to the production import API.
+     *
+     * @param  array<int, array<string, mixed>>  $payload
+     */
+    protected function pushToProduction(array $payload): bool
+    {
+        $url = (string) config('services.events_import.push_url', '');
+        $token = (string) config('services.events_import.token', '');
+
+        if ($url === '' || $token === '') {
+            $this->error('Push skipped: set EVENTS_PUSH_URL and EVENTS_IMPORT_TOKEN in .env first.');
+
+            return false;
+        }
+
+        $this->newLine();
+        $this->info('Pushing '.count($payload)." events to {$url}...");
+
+        try {
+            $response = Http::timeout(60)
+                ->retry(3, 5000, throw: false)
+                ->withToken($token)
+                ->acceptJson()
+                ->post($url, ['events' => $payload]);
+
+            if (! $response->successful()) {
+                throw new Exception("Import API responded with HTTP {$response->status()}: ".$response->body());
+            }
+
+            $remote = $response->json();
+            $this->info(sprintf(
+                '✓ Production import: %d new, %d updated, %d errors, %d past events deactivated',
+                $remote['new'] ?? 0,
+                $remote['updated'] ?? 0,
+                $remote['errors'] ?? 0,
+                $remote['deactivated'] ?? 0,
+            ));
+
+            return true;
+        } catch (Exception $e) {
+            $this->error('Push failed: '.$e->getMessage());
+            DeveloperAlert::send('events:scrape --push', 'Pushing scraped events to production failed: '.$e->getMessage());
+
+            return false;
         }
     }
 }

@@ -59,6 +59,13 @@ return [
         'integrity_enabled' => env('PLAY_INTEGRITY_ENABLED', false),
     ],
 
+    'events_import' => [
+        // Shared secret for POST /api/events/import (set on both environments).
+        'token' => env('EVENTS_IMPORT_TOKEN'),
+        // Where `events:scrape --push` sends the scraped events (local only).
+        'push_url' => env('EVENTS_PUSH_URL'),
+    ],
+
     'stripe' => [
         'key' => env('STRIPE_KEY'),
         'secret' => env('STRIPE_SECRET'),

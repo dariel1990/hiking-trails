@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\AppTokenController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\BillingController;
 use App\Http\Controllers\Api\EntitlementController;
+use App\Http\Controllers\Api\EventImportController;
 use App\Http\Controllers\Api\TrailPhotoController;
 use App\Http\Controllers\TrailController;
 use App\Http\Controllers\TrailNetworkController;
@@ -68,6 +69,15 @@ Route::get('/user', function (Request $request) {
  * Rate-limited tightly: a genuine install only needs one token; high volume = abuse.
  */
 Route::post('/auth/app-token', [AppTokenController::class, 'issue'])
+    ->withoutMiddleware(VerifyAppKey::class)
+    ->middleware('throttle:10,60');
+
+/*
+ * Event import — receives scraped events pushed from a trusted machine
+ * (see `events:scrape --push`). Authenticated by its own bearer token
+ * (EVENTS_IMPORT_TOKEN), so the app-key middleware is excluded.
+ */
+Route::post('/events/import', [EventImportController::class, 'store'])
     ->withoutMiddleware(VerifyAppKey::class)
     ->middleware('throttle:10,60');
 
