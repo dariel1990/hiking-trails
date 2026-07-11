@@ -2,14 +2,18 @@
 
 namespace App\Models;
 
+use App\Observers\SubscriptionObserver;
+use Database\Factories\SubscriptionFactory;
+use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+#[ObservedBy(SubscriptionObserver::class)]
 class Subscription extends Model
 {
-    /** @use HasFactory<\Database\Factories\SubscriptionFactory> */
+    /** @use HasFactory<SubscriptionFactory> */
     use HasFactory;
 
     /**
@@ -61,6 +65,7 @@ class Subscription extends Model
         'status',
         'expires_at',
         'auto_renewing',
+        'expiry_reminder_sent_at',
         'latest_notification_type',
         'raw_payload',
     ];
@@ -73,6 +78,7 @@ class Subscription extends Model
         return [
             'expires_at' => 'datetime',
             'auto_renewing' => 'boolean',
+            'expiry_reminder_sent_at' => 'datetime',
             'latest_notification_type' => 'integer',
             'raw_payload' => 'array',
         ];
@@ -81,6 +87,18 @@ class Subscription extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    /**
+     * Human-readable plan name for the subscription's product SKU.
+     */
+    public function productLabel(): string
+    {
+        return match ($this->product_id) {
+            'xs_offline_monthly', 'xs_pro_web_monthly' => 'Pro Monthly',
+            'xs_offline_annual', 'xs_pro_web_annual' => 'Pro Annual',
+            default => (string) $this->product_id,
+        };
     }
 
     /**

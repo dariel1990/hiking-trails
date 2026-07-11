@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Notifications\WelcomeNotification;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -43,6 +44,20 @@ class WebGoogleAuthController extends Controller
                 'google_id' => $googleUser->getId(),
             ]
         );
+
+        // A Google sign-in proves ownership of the address, even for accounts
+        // that registered earlier and never verified.
+        if ($user->email_verified_at === null) {
+            $user->forceFill(['email_verified_at' => now()])->save();
+        }
+
+        if ($user->wasRecentlyCreated) {
+            try {
+                $user->notify(new WelcomeNotification(viaGoogle: true));
+            } catch (Throwable $e) {
+                report($e);
+            }
+        }
 
         Auth::login($user, remember: true);
 

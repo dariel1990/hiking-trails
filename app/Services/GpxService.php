@@ -106,11 +106,10 @@ class GpxService
      */
     public function estimateTime(float $distance, int $elevation, float $difficulty = 3.0): float
     {
-        // Base time: 5 km per hour on flat terrain
-        $baseTime = $distance / 5.0;
+        // Naismith's Rule constants are admin-configurable global settings
+        $baseTime = $distance / (float) setting('naismith_base_speed_kmh');
 
-        // Add time for elevation: 1 hour per 600 meters of elevation gain
-        $elevationTime = $elevation / 600.0;
+        $elevationTime = $elevation / (float) setting('naismith_climb_rate_m_per_hr');
 
         // Calculate total time
         $totalTime = $baseTime + $elevationTime;
@@ -689,7 +688,7 @@ class GpxService
             throw new Exception('GPX file not found: '.$filePath);
         }
 
-        $gpx = new \phpGPX\phpGPX;
+        $gpx = new phpGPX;
         $file = $gpx->load($filePath);
 
         $tracks = $file->tracks;

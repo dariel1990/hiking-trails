@@ -56,7 +56,7 @@ class AdminTrailController extends Controller
             });
         }
 
-        $trails = $query->with(['activities:id,name,slug', 'trailNetwork:id,network_name,slug'])->latest()->paginate(15);
+        $trails = $query->with(['activities:id,name,slug', 'trailNetwork:id,network_name,slug'])->latest()->paginate(setting('admin_per_page'));
 
         $activityFilterOptions = ActivityType::where('is_active', true)
             ->orderBy('name')

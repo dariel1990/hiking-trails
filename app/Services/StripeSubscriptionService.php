@@ -55,7 +55,7 @@ class StripeSubscriptionService
             'allow_promotion_codes' => true,
             'currency' => strtolower($currency),
             'subscription_data' => [
-                'trial_period_days' => config('services.stripe.trial_days'),
+                'trial_period_days' => setting('trial_days', config('services.stripe.trial_days')),
                 'metadata' => ['user_id' => $user->id],
             ],
             'metadata' => ['user_id' => $user->id],

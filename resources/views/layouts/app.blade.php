@@ -5,8 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
-    <link rel="icon" type="image/png" href="{{ asset('images/logo.png') }}">
-    <title>{{ config('app.name', 'Hiking Trails') }} @yield('title')</title>
+    <link rel="icon" type="image/png" href="{{ asset(setting('footer_logo_path')) }}">
+    <title>{{ setting('site_name') }} @yield('title')</title>
 
     <!-- Fonts -->
     <link rel="dns-prefetch" href="//fonts.bunny.net">

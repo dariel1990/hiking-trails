@@ -50,7 +50,7 @@ class FacilityController extends Controller
             ->when($type !== 'all', fn ($q) => $q->where('facility_type', $type))
             ->orderBy('facility_type')
             ->orderBy('name')
-            ->paginate(12)
+            ->paginate(setting('admin_per_page'))
             ->withQueryString();
 
         return view('admin.facilities.index', compact(

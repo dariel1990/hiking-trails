@@ -11,14 +11,19 @@ use App\Http\Requests\Api\UpdateProfileRequest;
 use App\Http\Requests\Auth\ForgotPasswordRequest;
 use App\Http\Requests\Auth\ResetPasswordRequest;
 use App\Models\User;
+use App\Notifications\AccountDeletedNotification;
+use App\Notifications\PasswordChangedNotification;
+use App\Notifications\WelcomeNotification;
 use Google\Client as GoogleClient;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Throwable;
 
 class AuthController extends Controller
 {
@@ -34,6 +39,20 @@ class AuthController extends Controller
             'email' => $request->string('email')->value(),
             'password' => $request->string('password')->value(),
         ]);
+
+        try {
+            $user->notify(new WelcomeNotification);
+        } catch (Throwable $e) {
+            report($e);
+        }
+
+        // The Android app has no verification UX, so the email is sent but
+        // API access is not gated on verification.
+        try {
+            $user->sendEmailVerificationNotification();
+        } catch (Throwable $e) {
+            report($e);
+        }
 
         return response()->json([
             'token' => $this->issueToken($user, $request),
@@ -82,6 +101,20 @@ class AuthController extends Controller
                 'google_id' => $payload['sub'],
             ]
         );
+
+        // A verified Google sign-in proves ownership of the address, even for
+        // accounts that registered earlier and never verified.
+        if ($user->email_verified_at === null) {
+            $user->forceFill(['email_verified_at' => now()])->save();
+        }
+
+        if ($user->wasRecentlyCreated) {
+            try {
+                $user->notify(new WelcomeNotification(viaGoogle: true));
+            } catch (Throwable $e) {
+                report($e);
+            }
+        }
 
         return response()->json([
             'token' => $this->issueToken($user, $request),
@@ -148,14 +181,29 @@ class AuthController extends Controller
         $user->password = $request->string('password')->value();
         $user->save();
 
+        try {
+            $user->notify(new PasswordChangedNotification);
+        } catch (Throwable $e) {
+            report($e);
+        }
+
         return response()->noContent();
     }
 
     public function deleteAccount(Request $request): Response
     {
         $user = $request->user();
+        $email = $user->email;
+        $name = $user->name;
+
         $user->tokens()->delete();
         $user->delete();
+
+        try {
+            Notification::route('mail', $email)->notify(new AccountDeletedNotification($name));
+        } catch (Throwable $e) {
+            report($e);
+        }
 
         return response()->noContent();
     }
@@ -176,7 +224,24 @@ class AuthController extends Controller
             return response()->json(['message' => __($status)], Response::HTTP_UNPROCESSABLE_ENTITY);
         }
 
+        $this->sendPasswordChangedAlert($request->string('email')->value());
+
         return response()->json(['message' => __($status)]);
+    }
+
+    private function sendPasswordChangedAlert(string $email): void
+    {
+        $user = User::where('email', $email)->first();
+
+        if ($user === null) {
+            return;
+        }
+
+        try {
+            $user->notify(new PasswordChangedNotification);
+        } catch (Throwable $e) {
+            report($e);
+        }
     }
 
     private function issueToken(User $user, Request $request): string

@@ -32,7 +32,7 @@ class TrailController extends Controller
                 ->where('is_featured', true)
                 ->where('status', 'active')
                 ->with($mediaWith)
-                ->take(3)
+                ->take(setting('featured_trail_count'))
                 ->get();
 
             $needed = 3 - $featured->count();
@@ -76,7 +76,7 @@ class TrailController extends Controller
             ->where('location_type', 'trail')
             ->orderBy('is_featured', 'desc')
             ->orderBy('name')
-            ->paginate(9, ['*'], 'hiking_page');
+            ->paginate(setting('trails_per_page'), ['*'], 'hiking_page');
 
         $activities = ActivityType::where('is_active', true)
             ->orderBy('name')
@@ -102,7 +102,7 @@ class TrailController extends Controller
             ->where('location_type', 'fishing_lake')
             ->orderBy('is_featured', 'desc')
             ->orderBy('name')
-            ->paginate(9, ['*'], 'lake_page');
+            ->paginate(setting('trails_per_page'), ['*'], 'lake_page');
 
         $activities = ActivityType::where('is_active', true)
             ->orderBy('name')

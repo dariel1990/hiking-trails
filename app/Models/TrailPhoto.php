@@ -2,15 +2,20 @@
 
 namespace App\Models;
 
+use App\Notifications\TrailPhotoApprovedNotification;
+use App\Notifications\TrailPhotoRejectedNotification;
+use Database\Factories\TrailPhotoFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
+use Throwable;
 
 class TrailPhoto extends Model
 {
-    /** @use HasFactory<\Database\Factories\TrailPhotoFactory> */
+    /** @use HasFactory<TrailPhotoFactory> */
     use HasFactory;
 
     public const STATUS_PENDING = 'pending';
@@ -101,10 +106,13 @@ class TrailPhoto extends Model
     /**
      * Transition this photo to a new status and record the audit fields.
      * Moving to "rejected" also deletes the stored files (the row remains
-     * for auditing).
+     * for auditing). The guest submitter is emailed when the status actually
+     * changes to approved or rejected.
      */
     public function setStatus(string $status, ?User $reviewer = null): void
     {
+        $previous = $this->getOriginal('status');
+
         $this->status = $status;
         $this->reviewed_by = $reviewer?->id;
         $this->reviewed_at = now();
@@ -116,6 +124,33 @@ class TrailPhoto extends Model
                 'image_path' => null,
                 'thumbnail_path' => null,
             ])->save();
+        }
+
+        if ($status !== $previous) {
+            $this->notifySubmitter($status);
+        }
+    }
+
+    protected function notifySubmitter(string $status): void
+    {
+        if (! $this->email) {
+            return;
+        }
+
+        $notification = match ($status) {
+            self::STATUS_APPROVED => new TrailPhotoApprovedNotification($this),
+            self::STATUS_REJECTED => new TrailPhotoRejectedNotification($this),
+            default => null,
+        };
+
+        if ($notification === null) {
+            return;
+        }
+
+        try {
+            Notification::route('mail', $this->email)->notify($notification);
+        } catch (Throwable $e) {
+            report($e);
         }
     }
 

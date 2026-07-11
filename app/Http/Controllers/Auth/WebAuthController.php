@@ -6,9 +6,11 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
 use App\Http\Requests\Auth\RegisterRequest;
 use App\Models\User;
+use App\Notifications\WelcomeNotification;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Auth;
+use Throwable;
 
 class WebAuthController extends Controller
 {
@@ -66,10 +68,22 @@ class WebAuthController extends Controller
             'password' => $request->string('password')->value(),
         ]);
 
+        try {
+            $user->notify(new WelcomeNotification);
+        } catch (Throwable $e) {
+            report($e);
+        }
+
+        try {
+            $user->sendEmailVerificationNotification();
+        } catch (Throwable $e) {
+            report($e);
+        }
+
         Auth::login($user, remember: true);
 
         $request->session()->regenerate();
 
-        return redirect()->intended(route('home'));
+        return redirect()->route('verification.notice');
     }
 }

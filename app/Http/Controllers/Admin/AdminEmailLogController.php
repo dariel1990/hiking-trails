@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\EmailLog;
 use App\Models\User;
 use App\Notifications\ResetPasswordNotification;
+use App\Notifications\VerifyEmailNotification;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Notifications\Notification as BaseNotification;
@@ -34,7 +35,7 @@ class AdminEmailLogController extends Controller
         $logs = EmailLog::query()
             ->when($status, fn ($query) => $query->where('status', $status))
             ->orderByDesc('id')
-            ->paginate(20)
+            ->paginate(setting('admin_per_page'))
             ->withQueryString();
 
         return view('admin.email-logs.index', compact('logs', 'stats', 'status'));
@@ -52,6 +53,10 @@ class AdminEmailLogController extends Controller
 
         if ($emailLog->notification_type === ResetPasswordNotification::class) {
             return $this->resendPasswordReset($emailLog);
+        }
+
+        if ($emailLog->notification_type === VerifyEmailNotification::class) {
+            return $this->resendEmailVerification($emailLog);
         }
 
         if ($emailLog->payload === null) {
@@ -81,6 +86,35 @@ class AdminEmailLogController extends Controller
         $emailLog->update(['resent_at' => now()]);
 
         return back()->with('success', "Email resent to {$emailLog->recipient_email}.");
+    }
+
+    /**
+     * The stored signed verification URL is likely expired, so generate a
+     * fresh link instead of replaying the stored notification.
+     */
+    private function resendEmailVerification(EmailLog $emailLog): RedirectResponse
+    {
+        $user = $emailLog->notifiable;
+
+        if (! $user instanceof User) {
+            return back()->with('error', 'The user for this verification email no longer exists.');
+        }
+
+        if ($user->hasVerifiedEmail()) {
+            return back()->with('error', 'This user has already verified their email address.');
+        }
+
+        try {
+            $user->notifyNow(new VerifyEmailNotification);
+        } catch (Throwable $e) {
+            report($e);
+
+            return back()->with('error', 'Resend failed: '.$e->getMessage());
+        }
+
+        $emailLog->update(['resent_at' => now()]);
+
+        return back()->with('success', "Verification email resent to {$emailLog->recipient_email} with a fresh link.");
     }
 
     /**

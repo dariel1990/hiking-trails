@@ -32,11 +32,20 @@ class ExpireLapsedSubscriptions extends Command
      */
     public function handle(): int
     {
-        $expired = Subscription::query()
+        $expired = 0;
+
+        Subscription::query()
             ->whereIn('status', Subscription::ENTITLED_STATUSES)
             ->whereNotNull('expires_at')
             ->where('expires_at', '<', now())
-            ->update(['status' => 'expired']);
+            ->with('user')
+            ->chunkById(100, function ($subscriptions) use (&$expired): void {
+                foreach ($subscriptions as $subscription) {
+                    $subscription->status = 'expired';
+                    $subscription->save();
+                    $expired++;
+                }
+            });
 
         $this->info("Marked {$expired} lapsed subscription(s) as expired.");
 

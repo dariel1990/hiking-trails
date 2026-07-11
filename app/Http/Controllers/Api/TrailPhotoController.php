@@ -142,7 +142,7 @@ class TrailPhotoController extends Controller
 
     private function hasExceededEmailQuota(string $email): bool
     {
-        return Cache::get($this->emailQuotaKey($email), 0) >= self::EMAIL_DAILY_LIMIT;
+        return Cache::get($this->emailQuotaKey($email), 0) >= setting('photo_daily_limit', self::EMAIL_DAILY_LIMIT);
     }
 
     private function bumpEmailQuota(string $email): void

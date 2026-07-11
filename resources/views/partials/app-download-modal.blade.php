@@ -67,7 +67,7 @@
             <button type="button" class="xs-app-x" data-xs-app-close aria-label="Close">&times;</button>
             <img src="{{ asset('images/xploresmithers_white.png') }}" alt="XploreSmithers" class="xs-app-logo">
             <p class="xs-app-kicker">Get the App</p>
-            <h2 id="xs-app-title" class="xs-app-title">Get the Xplore Smithers App</h2>
+            <h2 id="xs-app-title" class="xs-app-title">Get the {{ setting('site_name') }} App</h2>
             <p class="xs-app-sub">The Interactive Map is built for the app — download it for a faster, offline-ready map of trails, lakes &amp; more in your pocket.</p>
         </div>
 

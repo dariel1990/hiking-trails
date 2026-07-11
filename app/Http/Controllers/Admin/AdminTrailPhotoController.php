@@ -21,7 +21,7 @@ class AdminTrailPhotoController extends Controller
             ->when(in_array($status, $this->validStatuses(), true), fn ($q) => $q->where('status', $status))
             ->when($trailId, fn ($q) => $q->where('trail_id', $trailId))
             ->latest()
-            ->paginate(24)
+            ->paginate(setting('admin_per_page'))
             ->withQueryString();
 
         $counts = TrailPhoto::query()

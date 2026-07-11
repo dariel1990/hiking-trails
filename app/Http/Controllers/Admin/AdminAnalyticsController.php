@@ -74,7 +74,7 @@ class AdminAnalyticsController extends Controller
             'active_annual' => $activeAnnual,
             'expiring_soon' => $entitled->filter(
                 fn (Subscription $s): bool => $s->expires_at !== null
-                    && $s->expires_at->lte(now()->addDays(7))
+                    && $s->expires_at->lte(now()->addDays(setting('grace_period_days')))
             )->count(),
             'mrr' => $mrr,
             'arr' => $mrr * 12,

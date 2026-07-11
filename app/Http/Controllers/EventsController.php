@@ -33,7 +33,7 @@ class EventsController extends Controller
         }
 
         // Get upcoming events for list view
-        $upcomingEvents = (clone $query)->upcoming()->paginate(8);
+        $upcomingEvents = (clone $query)->upcoming()->paginate(setting('events_per_page'));
 
         // Get events for calendar view (current month)
         $calendarEvents = (clone $query)

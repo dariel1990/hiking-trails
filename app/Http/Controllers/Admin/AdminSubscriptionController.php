@@ -23,14 +23,14 @@ class AdminSubscriptionController extends Controller
             'web' => Subscription::entitled()->where('platform', 'web')->count(),
             'expiring_soon' => Subscription::entitled()
                 ->whereNotNull('expires_at')
-                ->where('expires_at', '<=', now()->addDays(7))
+                ->where('expires_at', '<=', now()->addDays(setting('grace_period_days')))
                 ->count(),
         ];
 
         $subscriptions = Subscription::query()
             ->with('user')
             ->orderByDesc('created_at')
-            ->paginate(20);
+            ->paginate(setting('admin_per_page'));
 
         return view('admin.subscriptions.index', compact('subscriptions', 'stats'));
     }
@@ -44,7 +44,7 @@ class AdminSubscriptionController extends Controller
 
     public function cancel(Subscription $subscription): RedirectResponse
     {
-        $subscription->status = 'cancelled';
+        $subscription->status = 'canceled';
         $subscription->auto_renewing = false;
         $subscription->save();
 
@@ -64,7 +64,7 @@ class AdminSubscriptionController extends Controller
 
         $subscription->expires_at = $base->addDays($validated['days']);
 
-        if (in_array($subscription->status, ['expired', 'cancelled'], true)) {
+        if (in_array($subscription->status, ['expired', 'canceled', 'cancelled'], true)) {
             $subscription->status = 'active';
         }
 
@@ -82,7 +82,7 @@ class AdminSubscriptionController extends Controller
     public function notifyAdmins(Request $request): JsonResponse
     {
         // The site owner receives admin notifications even without an admin account.
-        $ownerEmail = 'thomcamus@gmail.com';
+        $ownerEmail = setting('owner_notification_email');
 
         $recipients = User::where('is_admin', true)->pluck('email')
             ->push($ownerEmail)

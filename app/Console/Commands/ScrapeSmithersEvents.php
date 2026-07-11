@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Models\Event;
+use App\Support\DeveloperAlert;
 use Carbon\Carbon;
 use Exception;
 use Illuminate\Console\Command;
@@ -20,19 +21,12 @@ class ScrapeSmithersEvents extends Command
         $this->info('Starting to scrape events from SmithersEvents.com...');
         $this->newLine();
 
-        // DELETE ALL OLD DATA WHEN --force IS USED
-        if ($this->option('force')) {
-            $this->info('Deleting all existing events...');
-            Event::truncate(); // Deletes ALL events from database
-            $this->info('✓ All events deleted.');
-            $this->newLine();
-        }
-
         try {
-            $url = 'https://smithersevents.com/';
+            $url = rtrim((string) setting('events_scraper_base_url', 'https://smithersevents.com'), '/').'/';
             $html = Http::timeout(30)
                 ->withHeaders(['User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'])
                 ->get($url)
+                ->throw()
                 ->body();
             $crawler = new Crawler($html);
 
@@ -47,8 +41,18 @@ class ScrapeSmithersEvents extends Command
 
             if ($eventNodes->count() === 0) {
                 $this->error('No events found on SmithersEvents.com');
+                DeveloperAlert::send('events:scrape', "The scraper found zero events at {$url} — the site may be down or its markup may have changed. Existing events were left untouched.");
 
                 return 1;
+            }
+
+            // Only clear existing data once we know the fetch succeeded, so a
+            // broken scrape can never wipe the events table.
+            if ($this->option('force')) {
+                $this->info('Deleting all existing events...');
+                Event::truncate();
+                $this->info('✓ All events deleted.');
+                $this->newLine();
             }
 
             $this->info('Found '.$eventNodes->count().' events. Processing...');
@@ -200,6 +204,8 @@ class ScrapeSmithersEvents extends Command
             if ($this->option('debug')) {
                 $this->error($e->getTraceAsString());
             }
+
+            DeveloperAlert::send('events:scrape', $e->getMessage());
 
             return 1;
         }

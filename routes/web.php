@@ -4,6 +4,7 @@ use App\Http\Controllers\Admin\ActivityTypeController;
 use App\Http\Controllers\Admin\AdminAnalyticsController;
 use App\Http\Controllers\Admin\AdminController;
 use App\Http\Controllers\Admin\AdminEmailLogController;
+use App\Http\Controllers\Admin\AdminSettingsController;
 use App\Http\Controllers\Admin\AdminSubscriptionController;
 use App\Http\Controllers\Admin\AdminTourController;
 use App\Http\Controllers\Admin\AdminTrailController;
@@ -17,6 +18,7 @@ use App\Http\Controllers\Admin\TrailHighlightController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Auth\NewPasswordController;
 use App\Http\Controllers\Auth\PasswordResetLinkController;
+use App\Http\Controllers\Auth\VerificationController;
 use App\Http\Controllers\Auth\WebAuthController;
 use App\Http\Controllers\Auth\WebGoogleAuthController;
 use App\Http\Controllers\BusinessPublicController;
@@ -76,6 +78,11 @@ Route::post('/login', [WebAuthController::class, 'login'])->name('login.post');
 Route::get('/register', [WebAuthController::class, 'showRegister'])->name('register');
 Route::post('/register', [WebAuthController::class, 'register'])->name('register.post');
 
+// Email verification — notice page, signed verify link, resend
+Route::get('/email/verify', [VerificationController::class, 'show'])->name('verification.notice');
+Route::get('/email/verify/{id}/{hash}', [VerificationController::class, 'verify'])->name('verification.verify');
+Route::post('/email/resend', [VerificationController::class, 'resend'])->name('verification.resend');
+
 // Password reset — request a link, then set a new password
 Route::get('/forgot-password', [PasswordResetLinkController::class, 'create'])->name('password.request');
 Route::post('/forgot-password', [PasswordResetLinkController::class, 'store'])->middleware('throttle:6,1')->name('password.email');
@@ -94,7 +101,7 @@ Route::middleware('auth')->group(function () {
 Route::post('/stripe/webhook', [StripeWebhookController::class, 'handle'])->name('stripe.webhook');
 
 // User settings — profile, account, subscription
-Route::middleware('auth')->prefix('settings')->name('settings.')->group(function () {
+Route::middleware(['auth', 'verified'])->prefix('settings')->name('settings.')->group(function () {
     Route::redirect('/', '/settings/profile');
     Route::get('/profile', [SettingsController::class, 'profile'])->name('profile');
     Route::put('/profile', [SettingsController::class, 'updateProfile'])->name('profile.update');
@@ -154,6 +161,10 @@ Route::prefix('admin')->name('admin.')->group(function () {
         // Email logs
         Route::get('email-logs', [AdminEmailLogController::class, 'index'])->name('email-logs.index');
         Route::post('email-logs/{emailLog}/resend', [AdminEmailLogController::class, 'resend'])->name('email-logs.resend');
+
+        // Site settings
+        Route::get('settings', [AdminSettingsController::class, 'edit'])->name('settings.edit');
+        Route::put('settings', [AdminSettingsController::class, 'update'])->name('settings.update');
 
         // Trail management
         Route::post('/trails/bulk-action', [AdminTrailController::class, 'bulkAction'])->name('trails.bulk-action');

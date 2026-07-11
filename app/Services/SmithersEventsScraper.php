@@ -10,7 +10,12 @@ use Symfony\Component\DomCrawler\Crawler;
 
 class SmithersEventsScraper
 {
-    protected $baseUrl = 'https://smithersevents.com';
+    protected $baseUrl;
+
+    public function __construct()
+    {
+        $this->baseUrl = setting('events_scraper_base_url', 'https://smithersevents.com');
+    }
 
     /**
      * Scrape events from SmithersEvents.com

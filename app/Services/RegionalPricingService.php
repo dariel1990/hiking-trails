@@ -31,8 +31,43 @@ class RegionalPricingService
     {
         $ip = request()->ip() ?? '';
         $country = $this->geo->countryCode($ip);
-        $pricing = self::PRICING[$country] ?? self::PRICING[self::DEFAULT_COUNTRY];
 
-        return array_merge($pricing, ['country' => $country]);
+        return array_merge($this->forCountry($country), ['country' => $country]);
+    }
+
+    /**
+     * Pricing entry for a country code, defensively falling back to the
+     * hardcoded table when the admin-edited setting is missing or malformed.
+     *
+     * @return array{currency: string, symbol: string, monthly: string, annual: string}
+     */
+    public function forCountry(string $country): array
+    {
+        $pricing = $this->pricingTable();
+        $default = $pricing[$this->defaultCountry()] ?? self::PRICING[self::DEFAULT_COUNTRY];
+        $entry = $pricing[$country] ?? $default;
+
+        foreach (['currency', 'symbol', 'monthly', 'annual'] as $field) {
+            if (empty($entry[$field]) || ! is_string($entry[$field])) {
+                return $default;
+            }
+        }
+
+        return $entry;
+    }
+
+    /**
+     * @return array<string, array{currency: string, symbol: string, monthly: string, annual: string}>
+     */
+    public function pricingTable(): array
+    {
+        $pricing = setting('regional_pricing');
+
+        return is_array($pricing) && $pricing !== [] ? $pricing : self::PRICING;
+    }
+
+    public function defaultCountry(): string
+    {
+        return setting('default_country', self::DEFAULT_COUNTRY);
     }
 }

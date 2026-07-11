@@ -20,7 +20,7 @@ class WebSubscriptionController extends Controller
 
     public function show(Request $request): View|RedirectResponse
     {
-        if (! config('subscriptions.enabled')) {
+        if (! subscriptions_enabled()) {
             return redirect()->route('home');
         }
 
@@ -33,13 +33,13 @@ class WebSubscriptionController extends Controller
             'priceAnnual' => $pricing['annual'],
             'symbol' => $pricing['symbol'],
             'currency' => $pricing['currency'],
-            'trialDays' => (int) config('services.stripe.trial_days'),
+            'trialDays' => (int) setting('trial_days', config('services.stripe.trial_days')),
         ]);
     }
 
     public function checkout(CheckoutRequest $request): RedirectResponse
     {
-        if (! config('subscriptions.enabled')) {
+        if (! subscriptions_enabled()) {
             return redirect()->route('home');
         }
 

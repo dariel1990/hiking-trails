@@ -553,7 +553,7 @@
 
                 <!-- Donate Button -->
                 <div class="text-center pt-8 border-t border-gray-200">
-                    <a href="https://xploresmithers.com/support/" 
+                    <a href="{{ setting('support_donation_url') }}"
                        class="inline-flex items-center gap-3 bg-gradient-to-r from-[#10221B] to-[#1DC5CE] text-white px-10 py-4 rounded-full font-semibold text-lg transition-all duration-300 shadow-lg hover:shadow-xl hover:-translate-y-1">
                         <i class="fas fa-hand-holding-heart text-xl"></i>
                         Donate & Support
@@ -869,8 +869,8 @@
         const heroMap = new mapboxgl.Map({
             container: 'hero-map',
             style: 'mapbox://styles/mapbox/outdoors-v12',
-            center: [-122.7927, 49.2827], // [lng, lat]
-            zoom: 9,
+            center: @js([(float) setting('map_default_lng'), (float) setting('map_default_lat')]), // [lng, lat]
+            zoom: {{ (int) setting('home_map_zoom') }},
             interactive: false,
             attributionControl: false,
         });

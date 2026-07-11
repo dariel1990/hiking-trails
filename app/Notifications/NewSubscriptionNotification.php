@@ -29,11 +29,7 @@ class NewSubscriptionNotification extends Notification implements ShouldQueue
 
         $platform = $subscription->platform === 'android' ? 'Android (Google Play)' : 'Web (Stripe)';
 
-        $product = match ($subscription->product_id) {
-            'xs_offline_monthly', 'xs_pro_web_monthly' => 'Pro Monthly',
-            'xs_offline_annual', 'xs_pro_web_annual' => 'Pro Annual',
-            default => $subscription->product_id,
-        };
+        $product = $subscription->productLabel();
 
         return (new MailMessage)
             ->subject('New XploreSmithers Pro subscription')

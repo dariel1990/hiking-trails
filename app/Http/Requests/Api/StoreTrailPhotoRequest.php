@@ -18,7 +18,7 @@ class StoreTrailPhotoRequest extends FormRequest
     {
         return [
             'trail_id' => ['required', 'integer', 'exists:trails,id'],
-            'image' => ['required', 'file', 'image', 'mimes:jpg,jpeg,png,webp', 'max:8192'],
+            'image' => ['required', 'file', 'image', 'mimes:jpg,jpeg,png,webp', 'max:'.setting('photo_upload_max_kb', 8192)],
             'caption' => ['nullable', 'string', 'max:255'],
             'name' => ['nullable', 'string', 'max:100'],
             'email' => ['required', 'email:rfc', 'max:150'],
@@ -36,7 +36,7 @@ class StoreTrailPhotoRequest extends FormRequest
             'image.required' => 'Please choose a photo to upload.',
             'image.image' => 'The file must be an image.',
             'image.mimes' => 'Only JPG, PNG, and WebP images are accepted.',
-            'image.max' => 'Photos must be 8 MB or smaller.',
+            'image.max' => 'Photos must be '.round(setting('photo_upload_max_kb', 8192) / 1024).' MB or smaller.',
             'email.required' => 'Please provide an email so we can follow up if needed.',
             'g-recaptcha-response.required' => 'Please complete the spam check before submitting.',
             'website.max' => 'Spam detected.',

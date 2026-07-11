@@ -10,15 +10,15 @@
          entitled so all Pro features are unlocked and the paywall never shows. --}}
     <script>
         window.xsWeb = {
-            subscriptionsEnabled: {{ config('subscriptions.enabled') ? 'true' : 'false' }},
-            entitled: {{ ! config('subscriptions.enabled') || (auth()->check() && auth()->user()->hasActiveProEntitlement()) ? 'true' : 'false' }},
+            subscriptionsEnabled: {{ subscriptions_enabled() ? 'true' : 'false' }},
+            entitled: {{ ! subscriptions_enabled() || (auth()->check() && auth()->user()->hasActiveProEntitlement()) ? 'true' : 'false' }},
             loggedIn: {{ auth()->check() ? 'true' : 'false' }},
             proUrl: @json(route('pro.show'))
         };
     </script>
     <style>[x-cloak]{display:none !important;}</style>
 
-    <title>@yield('title', 'Trail Finder - Discover Ethical Adventures')</title>
+    <title>@yield('title', setting('default_page_title'))</title>
     <!-- Meta Tags Stack -->
     @stack('meta')
     <!-- Google tag (gtag.js) -->
@@ -30,11 +30,11 @@
 
     gtag('config', 'G-E170L5ZVE8');
     </script>
-    <link rel="icon" type="image/png" href="{{ asset('images/logo.png') }}">
-    
+    <link rel="icon" type="image/png" href="{{ asset(setting('footer_logo_path')) }}">
+
     <!-- SEO Meta Tags -->
-    <meta name="description" content="Discover amazing hiking trails while promoting respectful, sustainable tourism. Explore with purpose, travel with respect.">
-    <meta name="keywords" content="hiking trails, sustainable tourism, ethical adventures, trail finder, outdoor exploration">
+    <meta name="description" content="{{ setting('meta_description') }}">
+    <meta name="keywords" content="{{ setting('meta_keywords') }}">
 
     <!-- Fonts - Using Inter like XploreSmithers -->
     <link href="https://fonts.bunny.net/css?family=Inter:300,400,500,600,700,800" rel="stylesheet">
@@ -54,15 +54,15 @@
         <div class="w-full px-4">
             <div class="flex justify-between items-center h-20">
                 <!-- Logo - Enhanced with brand elements -->
-                <a href="https://xploresmithers.com/" class="flex items-center space-x-2 {{ request()->routeIs('map') ? 'hidden md:flex' : 'flex' }}">
+                <a href="{{ setting('main_site_url') ?: url('/') }}" class="flex items-center space-x-2 {{ request()->routeIs('map') ? 'hidden md:flex' : 'flex' }}">
                     <div class="relative">
-                        <img src="{{ asset('images/xplore-smithers-logo.png') }}" 
-                            alt="Xplore Smithers Logo" 
+                        <img src="{{ asset(setting('header_logo_path')) }}"
+                            alt="{{ setting('site_name') }} Logo"
                             class="w-12 h-12 object-contain transition-all duration-300 group-hover:scale-105">
                     </div>
                     <div class="flex flex-col">
-                        <span class="text-2xl font-bold text-gray-900 tracking-tight">Xplore Smithers</span>
-                        <span class="text-xs text-accent-600 font-medium tracking-wider uppercase">Discover Smithers BC</span>
+                        <span class="text-2xl font-bold text-gray-900 tracking-tight">{{ setting('site_name') }}</span>
+                        <span class="text-xs text-accent-600 font-medium tracking-wider uppercase">{{ setting('tagline') }}</span>
                     </div>
                 </a>
 
@@ -157,7 +157,7 @@
                                 </div>
 
                                 <div class="py-1.5">
-                                    @if(config('subscriptions.enabled'))
+                                    @if(subscriptions_enabled())
                                         @if($navIsPro)
                                             <p class="flex items-center gap-2 px-4 pt-2 pb-1 text-[11px] font-semibold uppercase tracking-wide text-accent-600">
                                                 <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.286 3.957a1 1 0 00.95.69h4.162c.969 0 1.371 1.24.588 1.81l-3.368 2.447a1 1 0 00-.364 1.118l1.287 3.957c.3.921-.755 1.688-1.54 1.118l-3.367-2.447a1 1 0 00-1.176 0l-3.367 2.447c-.784.57-1.838-.197-1.539-1.118l1.286-3.957a1 1 0 00-.363-1.118L2.07 9.384c-.783-.57-.38-1.81.588-1.81h4.163a1 1 0 00.95-.69l1.286-3.957z"/></svg>
@@ -242,7 +242,7 @@
                                     <p class="text-xs text-gray-500 truncate">{{ auth()->user()->email }}</p>
                                 </div>
                             </div>
-                            @if(config('subscriptions.enabled'))
+                            @if(subscriptions_enabled())
                                 @if(auth()->user()->hasActiveProEntitlement())
                                     <a href="{{ route('pro.portal') }}" class="block px-6 py-3 font-medium text-accent-700 transition-colors">
                                         ★ Manage subscription
@@ -336,19 +336,18 @@
                 <!-- Brand Section - Enhanced -->
                 <div class="md:col-span-6">
                     <div class="flex flex-col md:flex-row items-center md:space-x-3 space-y-3 md:space-y-0 mb-6">
-                        <img src="{{ asset('images/logo.png') }}" 
-                        alt="Trail Finder Logo" 
+                        <img src="{{ asset(setting('footer_logo_path')) }}"
+                        alt="{{ setting('footer_brand_name') }} Logo"
                         class="w-12 h-12 object-contain">
                         <div class="text-center md:text-left">
-                            <span class="text-2xl font-bold block">Trail Finder</span>
-                            <p class="text-accent-400 text-sm font-medium">Ethical Adventures</p>
+                            <span class="text-2xl font-bold block">{{ setting('footer_brand_name') }}</span>
+                            <p class="text-accent-400 text-sm font-medium">{{ setting('footer_tagline') }}</p>
                         </div>
                     </div>
-                    
+
                     <!-- Mission statement inspired by XploreSmithers -->
                     <p class="text-gray-300 leading-relaxed mb-6">
-                        We inspire connection through trail discovery. Experience nature in a way that's real, mindful, 
-                        and unforgettable while promoting respectful, sustainable tourism.
+                        {{ setting('footer_mission_text') }}
                     </p>
                     
                     <div class="bg-emerald-900/30 rounded-xl p-4 border border-emerald-800/40">
@@ -440,18 +439,26 @@
                         <div>
                             <p class="text-gray-300 text-sm mb-4 font-medium">Follow our adventures</p>
                             <div class="flex space-x-3 justify-center md:justify-start">
-                                <a href="https://youtube.com/@xploresmithers?si=Q9jtjqElsvfcigNH" target="_blank" class="w-10 h-10 bg-green-700/60 hover:bg-accent-500 rounded-lg flex items-center justify-center transition-colors duration-300 group">
+                                @if(setting('social_youtube_url'))
+                                <a href="{{ setting('social_youtube_url') }}" target="_blank" class="w-10 h-10 bg-green-700/60 hover:bg-accent-500 rounded-lg flex items-center justify-center transition-colors duration-300 group">
                                     <svg class="w-5 h-5 text-gray-300 group-hover:text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>
                                 </a>
-                                <a href="https://www.instagram.com/xploresmithers?igsh=Y3huYTRtM243cTdi" target="_blank" class="w-10 h-10 bg-green-700/60 hover:bg-accent-500 rounded-lg flex items-center justify-center transition-colors duration-300 group">
+                                @endif
+                                @if(setting('social_instagram_url'))
+                                <a href="{{ setting('social_instagram_url') }}" target="_blank" class="w-10 h-10 bg-green-700/60 hover:bg-accent-500 rounded-lg flex items-center justify-center transition-colors duration-300 group">
                                     <svg class="w-5 h-5 text-gray-300 group-hover:text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/></svg>
                                 </a>
-                                <a href="https://www.tiktok.com/@xploresmithers?_t=ZS-90lIATag1Ld&_r=1" target="_blank" class="w-10 h-10 bg-green-700/60 hover:bg-accent-500 rounded-lg flex items-center justify-center transition-colors duration-300 group">
+                                @endif
+                                @if(setting('social_tiktok_url'))
+                                <a href="{{ setting('social_tiktok_url') }}" target="_blank" class="w-10 h-10 bg-green-700/60 hover:bg-accent-500 rounded-lg flex items-center justify-center transition-colors duration-300 group">
                                     <svg class="w-5 h-5 text-gray-300 group-hover:text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M19.589 6.686a4.793 4.793 0 0 1-3.77-4.245V2h-3.445v13.672a2.896 2.896 0 0 1-5.201 1.743l-.002-.001.002.001a2.895 2.895 0 0 1 3.183-4.51v-3.5a6.329 6.329 0 0 0-5.394 10.692 6.33 6.33 0 0 0 10.857-4.424V8.687a8.182 8.182 0 0 0 4.773 1.526V6.79a4.831 4.831 0 0 1-1.003-.104z"/></svg>
                                 </a>
-                                <a href="https://www.facebook.com/share/1C9Q3PAT7i/" target="_blank" class="w-10 h-10 bg-green-700/60 hover:bg-accent-500 rounded-lg flex items-center justify-center transition-colors duration-300 group">
+                                @endif
+                                @if(setting('social_facebook_url'))
+                                <a href="{{ setting('social_facebook_url') }}" target="_blank" class="w-10 h-10 bg-green-700/60 hover:bg-accent-500 rounded-lg flex items-center justify-center transition-colors duration-300 group">
                                     <svg class="w-5 h-5 text-gray-300 group-hover:text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
                                 </a>
+                                @endif
                             </div>
                         </div>
                     </div>
@@ -463,7 +470,7 @@
                 <div class="flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0 text-center md:text-left">
                     <div class="flex items-center space-x-6">
                         <p class="text-gray-400 text-sm">
-                            &copy; {{ date('Y') }} Trail Finder. 
+                            &copy; {{ date('Y') }} {{ setting('copyright_text') }}
                             <span class="text-emerald-400 font-medium">Discover responsibly.</span>
                         </p>
                         <div class="hidden md:flex items-center space-x-4 text-xs text-gray-500">

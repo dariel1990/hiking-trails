@@ -36,7 +36,7 @@ class ActivityTypeController extends Controller
             $query->where('is_active', $request->status);
         }
 
-        $activityTypes = $query->orderBy('name')->paginate(15);
+        $activityTypes = $query->orderBy('name')->paginate(setting('admin_per_page'));
 
         return view('admin.activity-types.index', compact('activityTypes'));
     }

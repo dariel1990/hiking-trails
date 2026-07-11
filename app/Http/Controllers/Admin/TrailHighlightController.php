@@ -42,7 +42,7 @@ class TrailHighlightController extends Controller
             })
             ->orderBy('trail_id')
             ->orderBy('name')
-            ->paginate(20)
+            ->paginate(setting('admin_per_page'))
             ->withQueryString();
 
         $trails = Trail::orderBy('name')->get(['id', 'name']);

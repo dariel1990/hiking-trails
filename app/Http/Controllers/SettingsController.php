@@ -7,12 +7,16 @@ use App\Http\Requests\Settings\UpdateAccountRequest;
 use App\Http\Requests\Settings\UpdateAvatarRequest;
 use App\Http\Requests\Settings\UpdateProfileRequest;
 use App\Models\Subscription;
+use App\Notifications\AccountDeactivatedNotification;
+use App\Notifications\PasswordChangedNotification;
+use App\Services\RegionalPricingService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
+use Throwable;
 
 class SettingsController extends Controller
 {
@@ -90,11 +94,28 @@ class SettingsController extends Controller
 
         $user->phone = $request->input('phone');
 
-        if ($request->filled('password')) {
+        $passwordChanged = $request->filled('password');
+        if ($passwordChanged) {
             $user->password = Hash::make($request->string('password')->value());
         }
 
         $user->save();
+
+        if ($user->wasChanged('email')) {
+            try {
+                $user->sendEmailVerificationNotification();
+            } catch (Throwable $e) {
+                report($e);
+            }
+        }
+
+        if ($passwordChanged) {
+            try {
+                $user->notify(new PasswordChangedNotification);
+            } catch (Throwable $e) {
+                report($e);
+            }
+        }
 
         $message = 'Account updated successfully!';
         if ($user->wasChanged('email')) {
@@ -109,6 +130,12 @@ class SettingsController extends Controller
         $user = $request->user();
         $user->is_active = false;
         $user->save();
+
+        try {
+            $user->notify(new AccountDeactivatedNotification);
+        } catch (Throwable $e) {
+            report($e);
+        }
 
         Auth::logout();
         $request->session()->invalidate();
@@ -132,17 +159,18 @@ class SettingsController extends Controller
         return redirect()->route('settings.account')->with('success', 'Google account disconnected.');
     }
 
-    public function subscription(Request $request): View
+    public function subscription(Request $request, RegionalPricingService $regionalPricing): View
     {
         $user = $request->user();
         $subscription = $user->currentProSubscription();
         $isPro = $user->hasActiveProEntitlement();
 
+        $pricing = $regionalPricing->forCountry($regionalPricing->defaultCountry());
         $prices = [
-            'xs_offline_monthly' => '4.99/mo',
-            'xs_pro_web_monthly' => '4.99/mo',
-            'xs_offline_annual' => '39.99/yr',
-            'xs_pro_web_annual' => '39.99/yr',
+            'xs_offline_monthly' => $pricing['monthly'].'/mo',
+            'xs_pro_web_monthly' => $pricing['monthly'].'/mo',
+            'xs_offline_annual' => $pricing['annual'].'/yr',
+            'xs_pro_web_annual' => $pricing['annual'].'/yr',
         ];
 
         return view('settings.subscription', [

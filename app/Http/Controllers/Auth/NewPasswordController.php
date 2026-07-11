@@ -5,11 +5,13 @@ namespace App\Http\Controllers\Auth;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\ResetPasswordRequest;
 use App\Models\User;
+use App\Notifications\PasswordChangedNotification;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Str;
+use Throwable;
 
 class NewPasswordController extends Controller
 {
@@ -30,6 +32,12 @@ class NewPasswordController extends Controller
                     'password' => $password,
                     'remember_token' => Str::random(60),
                 ])->save();
+
+                try {
+                    $user->notify(new PasswordChangedNotification);
+                } catch (Throwable $e) {
+                    report($e);
+                }
             }
         );
 

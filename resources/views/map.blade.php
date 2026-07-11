@@ -2241,8 +2241,8 @@
             this.map = new mapboxgl.Map({
                 container: 'main-map',
                 style: this.mapStyles[this.currentMapType],
-                center: hasInitialFocus ? [initialFocusCoordinates[1], initialFocusCoordinates[0]] : [-127.1698, 54.7804], // [lng, lat]
-                zoom: hasInitialFocus ? 12 : 10,
+                center: hasInitialFocus ? [initialFocusCoordinates[1], initialFocusCoordinates[0]] : @js([(float) setting('map_default_lng'), (float) setting('map_default_lat')]), // [lng, lat]
+                zoom: hasInitialFocus ? 12 : {{ (int) setting('map_default_zoom') }},
                 pitch: hasInitialFocus ? 0 : 60,
                 bearing: hasInitialFocus ? 0 : -10,
                 attributionControl: false,
@@ -2320,7 +2320,7 @@
                 });
             }
             if (this._is3D) {
-                this.map.setTerrain({ source: 'mapbox-dem', exaggeration: 1.5 });
+                this.map.setTerrain({ source: 'mapbox-dem', exaggeration: {{ (float) setting('map_terrain_exaggeration') }} });
             } else {
                 this.map.setTerrain(null);
             }
@@ -2989,7 +2989,7 @@
             if (next3D !== this._is3D) {
                 this._is3D = next3D;
                 if (this._is3D) {
-                    this.map.setTerrain({ source: 'mapbox-dem', exaggeration: 1.5 });
+                    this.map.setTerrain({ source: 'mapbox-dem', exaggeration: {{ (float) setting('map_terrain_exaggeration') }} });
                 } else {
                     this.map.setTerrain(null);
                 }
@@ -3742,7 +3742,7 @@
             // Stats: distance · elevation gain · time
             const statsEl = document.getElementById('mobile-trail-stats');
             if (isFishingLake) {
-                statsEl.textContent = trail.fishing_distance_from_town ? `${trail.fishing_distance_from_town} km from Smithers` : '';
+                statsEl.textContent = trail.fishing_distance_from_town ? `${trail.fishing_distance_from_town} km from ${@js(setting('town_name'))}` : '';
             } else {
                 const parts = [];
                 if (trail.distance) parts.push(`${parseFloat(trail.distance).toFixed(1)} km`);
@@ -3932,7 +3932,7 @@
                     </div>`
                     : '';
                 const distanceText = trail.fishing_distance_from_town
-                    ? `${trail.fishing_distance_from_town} KM from Smithers`
+                    ? `${trail.fishing_distance_from_town} KM from ${@js(setting('town_name'))}`
                     : null;
                 statsHTML = `
                     ${trail.fishing_location || distanceText ? `
@@ -5607,7 +5607,7 @@
 
             // Restore terrain exaggeration to normal
             if (this._is3D && this.map.getTerrain()) {
-                this.map.setTerrain({ source: 'mapbox-dem', exaggeration: 1.5 });
+                this.map.setTerrain({ source: 'mapbox-dem', exaggeration: {{ (float) setting('map_terrain_exaggeration') }} });
             }
         }
 

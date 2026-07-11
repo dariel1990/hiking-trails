@@ -37,7 +37,7 @@ class BusinessPublicController extends Controller
             $page = (int) $request->input('page', 1);
 
             $ajaxQuery = $typeKey ? (clone $query)->where('business_type', $typeKey) : clone $query;
-            $paginated = $ajaxQuery->paginate(6, ['*'], 'page', $page);
+            $paginated = $ajaxQuery->paginate(setting('businesses_per_page'), ['*'], 'page');
 
             $html = '';
             foreach ($paginated as $business) {
@@ -54,11 +54,11 @@ class BusinessPublicController extends Controller
         // Normal page load — paginate per type group
         $paginatedGroups = [];
         foreach ($types as $typeKey => $typeLabel) {
-            $paginatedGroups[$typeKey] = (clone $query)->where('business_type', $typeKey)->paginate(6);
+            $paginatedGroups[$typeKey] = (clone $query)->where('business_type', $typeKey)->paginate(setting('businesses_per_page'));
         }
 
         // For filtered/flat view
-        $businesses = $query->paginate(12);
+        $businesses = $query->paginate(setting('businesses_per_page_all'));
         $grouped = collect($paginatedGroups);
 
         return view('businesses.index', compact('grouped', 'types', 'businesses', 'paginatedGroups'));
