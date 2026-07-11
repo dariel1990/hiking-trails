@@ -2,18 +2,22 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\HasVideoEmbed;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
 
 class Tour extends Model
 {
+    use HasVideoEmbed;
+
     protected $fillable = [
         'title',
         'slug',
         'tagline',
         'description',
         'cover_image',
+        'video_url',
         'tour_type',
         'icon',
         'icon_image',

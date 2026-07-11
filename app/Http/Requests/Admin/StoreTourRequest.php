@@ -28,12 +28,20 @@ class StoreTourRequest extends FormRequest
             'is_featured' => ['boolean'],
             'sort_order' => ['nullable', 'integer', 'min:0'],
             'cover_image' => ['nullable', 'image', 'max:51200'],
+            'video_url' => ['nullable', 'url', 'max:500', 'regex:#^https?://(www\.)?(youtube\.com|youtu\.be|m\.youtube\.com|vimeo\.com)/#i'],
             'stops' => ['nullable', 'array'],
             'stops.*.trail_id' => ['required_with:stops', 'integer', 'exists:trails,id'],
             'stops.*.feature_id' => ['nullable', 'integer', 'exists:trail_features,id'],
             'stops.*.stop_label' => ['nullable', 'string', 'max:255'],
             'stops.*.driving_notes' => ['nullable', 'string', 'max:500'],
             'stops.*.estimated_visit_time' => ['nullable', 'string', 'max:100'],
+        ];
+    }
+
+    public function messages(): array
+    {
+        return [
+            'video_url.regex' => 'The video link must be a YouTube or Vimeo URL.',
         ];
     }
 }

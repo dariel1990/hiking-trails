@@ -2,6 +2,32 @@
 
 @section('title', $tour->title . ' — Xplore Smithers')
 
+@push('meta')
+<!-- Open Graph / Facebook Meta Tags -->
+<meta property="og:type" content="website">
+<meta property="og:url" content="{{ url()->current() }}">
+<meta property="og:title" content="{{ $tour->title }} — Xplore Smithers Tour">
+<meta property="og:description" content="{{ Str::limit($tour->tagline ?: strip_tags($tour->description ?? ''), 200) }}">
+@if($tour->cover_image_url)
+<meta property="og:image" content="{{ url($tour->cover_image_url) }}">
+<meta property="og:image:secure_url" content="{{ url($tour->cover_image_url) }}">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="{{ $tour->title }} - Tour Photo">
+@endif
+<meta property="og:site_name" content="Xplore Smithers">
+
+<!-- Twitter Card Meta Tags -->
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:url" content="{{ url()->current() }}">
+<meta name="twitter:title" content="{{ $tour->title }} — Xplore Smithers Tour">
+<meta name="twitter:description" content="{{ Str::limit($tour->tagline ?: strip_tags($tour->description ?? ''), 200) }}">
+@if($tour->cover_image_url)
+<meta name="twitter:image" content="{{ url($tour->cover_image_url) }}">
+<meta name="twitter:image:alt" content="{{ $tour->title }} - Tour Photo">
+@endif
+@endpush
+
 @push('styles')
 <link href="https://api.mapbox.com/mapbox-gl-js/v3.10.0/mapbox-gl.css" rel="stylesheet">
 <style>
@@ -137,6 +163,13 @@
                     <strong class="text-white">{{ number_format($tour->total_driving_km, 0) }} km</strong><span class="text-white/60 ml-1">drive</span>
                 </div>
             @endif
+            <button type="button" data-share-open="tour-share"
+                class="flex items-center gap-2 rounded-full bg-white/10 backdrop-blur-sm border border-white/15 px-3 py-1.5 text-sm text-white/90 hover:bg-white/20 transition-colors cursor-pointer">
+                <svg class="w-4 h-4 text-sand-100" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"/>
+                </svg>
+                <strong class="text-white">Share</strong>
+            </button>
         </div>
     </div>
 </div>
@@ -199,6 +232,13 @@
                     <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 mb-6">
                         <h2 class="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-2">About This Tour</h2>
                         <p class="text-gray-700 text-sm leading-relaxed">{{ $tour->description }}</p>
+                    </div>
+                @endif
+
+                @if($tour->video_url)
+                    <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 mb-6">
+                        <h2 class="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">Video</h2>
+                        @include('partials.video-embed', ['model' => $tour, 'embedId' => 'tour-video'])
                     </div>
                 @endif
 
@@ -459,4 +499,14 @@ function focusStop(index, coords) {
     map.flyTo({ center: [lng, lat], zoom: 13, duration: 800 });
 }
 </script>
+
+@include('partials.share-modal', [
+    'shareId' => 'tour-share',
+    'kicker' => 'Share This Tour',
+    'title' => $tour->title,
+    'subtitle' => $tour->tagline,
+    'shareText' => 'Check out the '.$tour->title.' tour in Smithers, BC! 🥾⛰️',
+    'emailSubject' => 'Check out this tour: '.$tour->title,
+    'emailBody' => 'I found this tour and thought you might be interested!'."\n\n".'Tour: '.$tour->title.($tour->tagline ? "\n".$tour->tagline : ''),
+])
 @endsection

@@ -2,12 +2,15 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\HasVideoEmbed;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
 
 class TrailNetwork extends Model
 {
+    use HasVideoEmbed;
+
     protected $fillable = [
         'network_name',
         'slug',
@@ -20,6 +23,7 @@ class TrailNetwork extends Model
         'longitude',
         'address',
         'website_url',
+        'video_url',
         'is_always_visible',
         'is_active',
     ];

@@ -339,6 +339,24 @@
                             <p class="text-sm text-gray-500">Not specified</p>
                         @endif
                     </div>
+                    <div>
+                        <p class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Video</p>
+                        @if($trailNetwork->video_url && $trailNetwork->video_embed_url)
+                            <div class="relative w-full max-w-md aspect-video rounded-lg overflow-hidden bg-gray-900">
+                                <iframe src="{{ $trailNetwork->video_embed_url }}"
+                                        class="absolute inset-0 w-full h-full"
+                                        frameborder="0"
+                                        allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                        allowfullscreen></iframe>
+                            </div>
+                            <a href="{{ $trailNetwork->video_url }}" target="_blank" rel="noopener"
+                               class="mt-1 inline-block text-blue-600 hover:underline text-xs break-all">
+                                {{ $trailNetwork->video_url }}
+                            </a>
+                        @else
+                            <p class="text-sm text-gray-500">Not specified</p>
+                        @endif
+                    </div>
                 </div>
             </div>
             {{-- Facilities --}}

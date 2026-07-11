@@ -83,9 +83,13 @@ class BillingController extends Controller
             && ($expiresAt === null || $expiresAt->isFuture());
 
         if ($isActive && $subscription->wasRecentlyCreated) {
-            User::where('is_admin', true)->each(
-                fn (User $admin) => $admin->notify(new NewSubscriptionNotification($subscription))
-            );
+            User::where('is_admin', true)->each(function (User $admin) use ($subscription): void {
+                try {
+                    $admin->notify(new NewSubscriptionNotification($subscription));
+                } catch (Throwable $e) {
+                    report($e);
+                }
+            });
         }
 
         if ($isActive && $acknowledgementState === 'ACKNOWLEDGEMENT_STATE_PENDING') {

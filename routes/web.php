@@ -3,6 +3,7 @@
 use App\Http\Controllers\Admin\ActivityTypeController;
 use App\Http\Controllers\Admin\AdminAnalyticsController;
 use App\Http\Controllers\Admin\AdminController;
+use App\Http\Controllers\Admin\AdminEmailLogController;
 use App\Http\Controllers\Admin\AdminSubscriptionController;
 use App\Http\Controllers\Admin\AdminTourController;
 use App\Http\Controllers\Admin\AdminTrailController;
@@ -149,6 +150,10 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::get('subscriptions/{subscription}', [AdminSubscriptionController::class, 'show'])->name('subscriptions.show');
         Route::post('subscriptions/{subscription}/cancel', [AdminSubscriptionController::class, 'cancel'])->name('subscriptions.cancel');
         Route::post('subscriptions/{subscription}/extend', [AdminSubscriptionController::class, 'extend'])->name('subscriptions.extend');
+
+        // Email logs
+        Route::get('email-logs', [AdminEmailLogController::class, 'index'])->name('email-logs.index');
+        Route::post('email-logs/{emailLog}/resend', [AdminEmailLogController::class, 'resend'])->name('email-logs.resend');
 
         // Trail management
         Route::post('/trails/bulk-action', [AdminTrailController::class, 'bulkAction'])->name('trails.bulk-action');

@@ -11,6 +11,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\View\View;
+use Throwable;
 
 class AdminSubscriptionController extends Controller
 {
@@ -109,9 +110,16 @@ class AdminSubscriptionController extends Controller
             ]);
         }
 
+        $failures = 0;
+
         foreach ($subscriptions as $subscription) {
             foreach ($recipients as $email) {
-                Notification::route('mail', $email)->notifyNow(new NewSubscriptionNotification($subscription));
+                try {
+                    Notification::route('mail', $email)->notifyNow(new NewSubscriptionNotification($subscription));
+                } catch (Throwable $e) {
+                    report($e);
+                    $failures++;
+                }
             }
         }
 
@@ -119,7 +127,8 @@ class AdminSubscriptionController extends Controller
             'sent' => true,
             'recipients' => $recipients,
             'active_subscriptions' => $summary,
-            'emails_sent' => $subscriptions->count() * $recipients->count(),
+            'emails_sent' => $subscriptions->count() * $recipients->count() - $failures,
+            'emails_failed' => $failures,
         ]);
     }
 }

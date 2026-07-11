@@ -10,6 +10,7 @@ use Stripe\BillingPortal\Session as PortalSession;
 use Stripe\Checkout\Session as CheckoutSession;
 use Stripe\StripeClient;
 use Stripe\Subscription as StripeSubscription;
+use Throwable;
 
 class StripeSubscriptionService
 {
@@ -116,9 +117,13 @@ class StripeSubscriptionService
         // Keying on wasRecentlyCreated dedupes across the two entry points (webhook and
         // the checkout success redirect) and skips renewal/update syncs of existing rows.
         if ($subscription->wasRecentlyCreated && $subscription->status === 'active') {
-            User::where('is_admin', true)->each(
-                fn (User $admin) => $admin->notify(new NewSubscriptionNotification($subscription))
-            );
+            User::where('is_admin', true)->each(function (User $admin) use ($subscription): void {
+                try {
+                    $admin->notify(new NewSubscriptionNotification($subscription));
+                } catch (Throwable $e) {
+                    report($e);
+                }
+            });
         }
 
         return $subscription;

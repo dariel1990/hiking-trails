@@ -11,8 +11,8 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('trail_networks', function (Blueprint $table) {
-            $table->string('icon')->nullable()->after('type');
+        Schema::table('tours', function (Blueprint $table) {
+            $table->string('video_url', 500)->nullable()->after('cover_image');
         });
     }
 
@@ -21,8 +21,8 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('trail_networks', function (Blueprint $table) {
-            $table->dropColumn('icon');
+        Schema::table('tours', function (Blueprint $table) {
+            $table->dropColumn('video_url');
         });
     }
 };

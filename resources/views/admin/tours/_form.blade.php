@@ -175,6 +175,31 @@ $existingStopsJson = $isEdit
                     @error('total_driving_km') <p class="text-sm text-red-600">{{ $message }}</p> @enderror
                 </div>
 
+                <div class="space-y-2 sm:col-span-3">
+                    <label for="video_url" class="text-sm font-medium leading-none">Video Link (YouTube or Vimeo)</label>
+                    <input type="url" name="video_url" id="video_url"
+                        value="{{ old('video_url', $isEdit ? $tour->video_url : '') }}"
+                        placeholder="https://www.youtube.com/watch?v=..."
+                        oninput="updateTourVideoPreview(this.value)"
+                        class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
+                    <p class="text-xs text-muted-foreground">Paste a YouTube or Vimeo link to show a video on the tour page</p>
+                    @error('video_url') <p class="text-sm text-red-600">{{ $message }}</p> @enderror
+
+                    @php $tourVideoThumb = $isEdit ? $tour->video_thumbnail_url : null; @endphp
+                    <div id="tour-video-preview" class="{{ $tourVideoThumb ? '' : 'hidden' }} pt-1">
+                        <button type="button" onclick="playAdminVideo(document.getElementById('video_url').value)"
+                            class="relative block w-full max-w-xs aspect-video rounded-md overflow-hidden bg-gray-900 group">
+                            <img id="tour-video-preview-img" src="{{ $tourVideoThumb ?? '' }}" alt="Video preview"
+                                class="absolute inset-0 w-full h-full object-cover {{ $tourVideoThumb ? '' : 'hidden' }}">
+                            <span class="absolute inset-0 flex items-center justify-center">
+                                <span class="w-12 h-12 rounded-full bg-white/90 flex items-center justify-center shadow group-hover:scale-110 transition-transform">
+                                    <svg class="w-5 h-5 text-gray-900 ml-0.5" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                                </span>
+                            </span>
+                        </button>
+                    </div>
+                </div>
+
             </div>
         </div>
 

@@ -2,6 +2,32 @@
 
 @section('title', $network->network_name)
 
+@push('meta')
+<!-- Open Graph / Facebook Meta Tags -->
+<meta property="og:type" content="website">
+<meta property="og:url" content="{{ url()->current() }}">
+<meta property="og:title" content="{{ $network->network_name }} — Xplore Smithers">
+<meta property="og:description" content="{{ Str::limit($network->description, 200) }}">
+@if($network->image)
+<meta property="og:image" content="{{ url('storage/'.$network->image) }}">
+<meta property="og:image:secure_url" content="{{ url('storage/'.$network->image) }}">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="{{ $network->network_name }}">
+@endif
+<meta property="og:site_name" content="Xplore Smithers">
+
+<!-- Twitter Card Meta Tags -->
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:url" content="{{ url()->current() }}">
+<meta name="twitter:title" content="{{ $network->network_name }} — Xplore Smithers">
+<meta name="twitter:description" content="{{ Str::limit($network->description, 200) }}">
+@if($network->image)
+<meta name="twitter:image" content="{{ url('storage/'.$network->image) }}">
+<meta name="twitter:image:alt" content="{{ $network->network_name }}">
+@endif
+@endpush
+
 @section('content')
 
 @include('partials.sponsor-banners', ['network' => $network])
@@ -615,11 +641,19 @@
                         {{ ucwords(str_replace('_', ' ', $network->type)) }}
                     </span>
                 </div>
-                <button id="sidebar-close" class="flex-shrink-0 ml-3 text-gray-400 hover:text-gray-600 transition-colors">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                    </svg>
-                </button>
+                <div class="flex items-center flex-shrink-0 ml-3 gap-2">
+                    <button type="button" data-share-open="network-share" title="Share this network"
+                        class="text-gray-400 hover:text-gray-600 transition-colors">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"/>
+                        </svg>
+                    </button>
+                    <button id="sidebar-close" class="text-gray-400 hover:text-gray-600 transition-colors">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                    </button>
+                </div>
             </div>
 
             @if($network->description)
@@ -682,6 +716,12 @@
         <div class="bg-white flex-1 min-h-0 flex flex-col">
             <!-- Scrollable Trails Container -->
             <div class="overflow-y-auto flex-1 min-h-0">
+                @if($network->video_url)
+                    <div class="p-3 pb-0">
+                        <h3 class="text-sm font-semibold text-gray-900 uppercase tracking-wide mb-2">Video</h3>
+                        @include('partials.video-embed', ['model' => $network, 'embedId' => 'network-video'])
+                    </div>
+                @endif
                 @if($network->trails->count() > 0)
                     <div class="p-3 space-y-2" id="trails-container">
                         @foreach($network->trails->sortBy('difficulty_level') as $trail)
@@ -1790,4 +1830,14 @@ document.addEventListener('keydown', function(e) {
     }
 });
 </script>
+
+@include('partials.share-modal', [
+    'shareId' => 'network-share',
+    'kicker' => 'Share This Network',
+    'title' => $network->network_name,
+    'subtitle' => $network->address ?: ucwords(str_replace('_', ' ', $network->type)),
+    'shareText' => 'Check out the '.$network->network_name.' trail network in Smithers, BC! 🥾⛰️',
+    'emailSubject' => 'Check out this trail network: '.$network->network_name,
+    'emailBody' => 'I found this trail network and thought you might be interested!'."\n\n".'Network: '.$network->network_name.($network->address ? "\n".'Location: '.$network->address : ''),
+])
 @endsection

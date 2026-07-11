@@ -35,7 +35,9 @@ class AdminTrailNetworkController extends Controller
      */
     public function store(Request $request)
     {
-        $validated = $request->validate($this->networkRules());
+        $validated = $request->validate($this->networkRules(), [
+            'video_url.regex' => 'The video link must be a YouTube or Vimeo URL.',
+        ]);
 
         if (empty($validated['slug'])) {
             $validated['slug'] = $this->uniqueSlug($validated['network_name']);
@@ -89,7 +91,9 @@ class AdminTrailNetworkController extends Controller
      */
     public function update(Request $request, TrailNetwork $trailNetwork)
     {
-        $validated = $request->validate($this->networkRules($trailNetwork->id));
+        $validated = $request->validate($this->networkRules($trailNetwork->id), [
+            'video_url.regex' => 'The video link must be a YouTube or Vimeo URL.',
+        ]);
 
         if (empty($validated['slug'])) {
             $validated['slug'] = $this->uniqueSlug($validated['network_name'], $trailNetwork->id);
@@ -160,7 +164,7 @@ class AdminTrailNetworkController extends Controller
     }
 
     /**
-     * @return array<string, string>
+     * @return array<string, mixed>
      */
     private function networkRules(?int $ignoreId = null): array
     {
@@ -181,6 +185,7 @@ class AdminTrailNetworkController extends Controller
             'longitude' => 'required|numeric|between:-180,180',
             'address' => 'nullable|string|max:500',
             'website_url' => 'nullable|url|max:500',
+            'video_url' => ['nullable', 'url', 'max:500', 'regex:#^https?://(www\.)?(youtube\.com|youtu\.be|m\.youtube\.com|vimeo\.com)/#i'],
             'is_always_visible' => 'boolean',
             'is_active' => 'boolean',
 

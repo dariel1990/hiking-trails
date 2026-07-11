@@ -20,6 +20,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Intervention\Image\Drivers\Gd\Driver;
 use Intervention\Image\ImageManager;
+use Throwable;
 
 class TrailPhotoController extends Controller
 {
@@ -131,7 +132,11 @@ class TrailPhotoController extends Controller
         $admins = User::query()->where('is_admin', true)->get();
 
         if ($admins->isNotEmpty()) {
-            Notification::send($admins, new NewTrailPhotoSubmitted($photo));
+            try {
+                Notification::send($admins, new NewTrailPhotoSubmitted($photo));
+            } catch (Throwable $e) {
+                report($e);
+            }
         }
     }
 
