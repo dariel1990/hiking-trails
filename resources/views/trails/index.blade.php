@@ -38,6 +38,8 @@
             </p>
         </div>
 
+        @include('partials.app-promo-banner')
+
         <!-- Enhanced Search Bar with Better Layout -->
         <div class="w-full max-w-5xl mx-auto scale-in" style="animation-delay: 0.4s;">
             <div class="bg-white/20 backdrop-blur-md rounded-2xl p-6 shadow-2xl border border-white/30">

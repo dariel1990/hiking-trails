@@ -42,11 +42,13 @@
         </div>
 
         <!-- Subtitle -->
-        <div class="slide-in-up" style="animation-delay: 0.2s;">
+        <div class="slide-in-up mb-12" style="animation-delay: 0.2s;">
             <p class="text-xl md:text-2xl text-white/80 leading-relaxed max-w-3xl mx-auto">
                 Curated driving tours that connect the region's most stunning natural landmarks — from roaring waterfalls to mountain vistas.
             </p>
         </div>
+
+        @include('partials.app-promo-banner')
     </div>
 </section>
 

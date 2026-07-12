@@ -15,6 +15,7 @@
             loggedIn: {{ auth()->check() ? 'true' : 'false' }},
             proUrl: @json(route('pro.show'))
         };
+        window.xsAppDownloadUrl = @json(config('services.android_app.play_store_url'));
     </script>
     <style>[x-cloak]{display:none !important;}</style>
 

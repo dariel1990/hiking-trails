@@ -104,7 +104,8 @@
                 <div class="aspect-video rounded-lg overflow-hidden bg-gray-100 border border-gray-200">
                     <img src="{{ asset('storage/slide-show/' . rawurlencode($filename)) }}"
                          alt="{{ $filename }}"
-                         class="w-full h-full object-cover">
+                         data-zoomable data-caption="{{ $filename }}"
+                         class="w-full h-full object-cover cursor-zoom-in hover:opacity-90 transition-opacity">
                 </div>
                 <p class="text-xs text-gray-500 truncate" title="{{ $filename }}">{{ $filename }}</p>
                 <form action="{{ route('admin.carousel.import') }}" method="POST">
@@ -145,7 +146,8 @@
                     {{-- Thumbnail --}}
                     <div class="w-24 h-16 rounded-lg overflow-hidden bg-gray-100 shrink-0 border border-gray-200">
                         <img src="{{ $slide->url }}" alt="{{ $slide->caption }}"
-                             class="w-full h-full object-cover">
+                             data-zoomable data-caption="{{ $slide->caption }}"
+                             class="w-full h-full object-cover cursor-zoom-in hover:opacity-90 transition-opacity">
                     </div>
 
                     {{-- Edit form --}}
@@ -223,6 +225,22 @@
         @endif
     </div>
 
+{{-- Image Zoom Modal --}}
+<div id="image-zoom-modal" class="hidden fixed inset-0 z-[200] items-center justify-center p-4 cursor-zoom-out">
+    <div id="image-zoom-backdrop" class="absolute inset-0 bg-black/90 opacity-0 transition-opacity duration-200"></div>
+    <button type="button" id="image-zoom-close"
+            class="absolute top-4 right-4 z-10 text-white/80 hover:text-white bg-white/10 hover:bg-white/20 rounded-full p-2 transition-colors">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+        </svg>
+    </button>
+    <div class="relative max-w-6xl max-h-[90vh] flex flex-col items-center gap-3">
+        <img id="image-zoom-img" src="" alt=""
+             class="max-w-full max-h-[80vh] object-contain rounded-lg shadow-2xl cursor-default opacity-0 scale-95 transition-all duration-200 ease-out">
+        <p id="image-zoom-caption" class="text-white/80 text-sm"></p>
+    </div>
+</div>
+
 </div>
 
 <script>
@@ -230,5 +248,45 @@ function confirmDelete(url) {
     document.getElementById('delete-form').action = url;
     document.getElementById('confirm-modal').style.display = 'flex';
 }
+
+(function () {
+    const modal = document.getElementById('image-zoom-modal');
+    const backdrop = document.getElementById('image-zoom-backdrop');
+    const img = document.getElementById('image-zoom-img');
+    const caption = document.getElementById('image-zoom-caption');
+
+    function openImageZoom(src, captionText) {
+        img.src = src;
+        caption.textContent = captionText || '';
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+        // Force layout so the opacity/scale transition actually plays.
+        void modal.offsetWidth;
+        backdrop.classList.remove('opacity-0');
+        img.classList.remove('opacity-0', 'scale-95');
+    }
+
+    function closeImageZoom() {
+        backdrop.classList.add('opacity-0');
+        img.classList.add('opacity-0', 'scale-95');
+        setTimeout(function () {
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+            img.src = '';
+        }, 200);
+    }
+
+    document.querySelectorAll('img[data-zoomable]').forEach(function (el) {
+        el.addEventListener('click', function () {
+            openImageZoom(el.currentSrc || el.src, el.dataset.caption);
+        });
+    });
+
+    backdrop.addEventListener('click', closeImageZoom);
+    document.getElementById('image-zoom-close').addEventListener('click', closeImageZoom);
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape' && !modal.classList.contains('hidden')) { closeImageZoom(); }
+    });
+})();
 </script>
 @endsection

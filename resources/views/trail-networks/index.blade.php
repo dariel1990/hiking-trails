@@ -47,6 +47,8 @@
             </p>
         </div>
 
+        @include('partials.app-promo-banner')
+
         <!-- Type switcher tabs -->
         <div class="slide-in-up flex flex-wrap justify-center gap-3" style="animation-delay: 0.3s;">
             <a href="{{ route('trail-networks.index', ['type' => 'ski']) }}"

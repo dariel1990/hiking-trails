@@ -1613,6 +1613,52 @@
     font-size: 10px;
 }
 
+.facility-media-section + .facility-media-section {
+    margin-top: 14px;
+}
+
+.facility-media-heading {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin: 0 0 8px 0;
+    font-size: 13px;
+    font-weight: 700;
+    color: #374151;
+}
+
+.facility-media-pro-badge {
+    display: inline-flex;
+    align-items: center;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    color: #92400e;
+    background: #fef3c7;
+    border-radius: 999px;
+    padding: 1px 8px;
+}
+
+.facility-media-item-locked .facility-media-thumbnail {
+    filter: brightness(0.55);
+}
+
+.facility-media-lock {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.25);
+}
+
+.facility-media-lock svg {
+    width: 22px;
+    height: 22px;
+    color: #fff;
+    filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.5));
+}
+
 #mobile-trail-hero-grid:not(.hidden) {
     display: flex;
     justify-content: center;
@@ -1625,6 +1671,11 @@
     flex-shrink: 0;
     border-radius: 6px;
     cursor: pointer;
+}
+
+#mobile-trail-hero-grid .facility-media-lock svg {
+    width: 16px;
+    height: 16px;
 }
 
 #mobile-trail-hero:not(.hidden) {
@@ -1903,34 +1954,68 @@
     // Facility Media Modal — carousel through every photo/video for the facility.
     // Media is cached per facility id by loadFacilities().
     window._facilityMediaCache = window._facilityMediaCache || {};
-    let _facilityModalState = { facilityId: null, index: 0 };
+    let _facilityModalState = { facilityId: null, index: 0, items: null };
+
+    function _isVideoMedia(media) {
+        return !!(media && (media.media_type === 'video_url' || media.media_type === 'video'));
+    }
 
     // Pro video content is gated; photos in the gallery stay free.
     function _facilityMediaIsGatedVideo(media) {
-        const isVideo = media && (media.media_type === 'video_url' || media.media_type === 'video');
-        return isVideo && !window.xsIsPro();
+        return _isVideoMedia(media) && !window.xsIsPro();
+    }
+
+    const _lockIconSVG = '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>';
+
+    // Renders one labeled media section (Photos / Videos) for the trail gallery — photos are
+    // always free to view, videos are blurred/locked behind a padlock for non-Pro visitors.
+    function renderMediaGallerySection(title, items, allMedia, cacheKey, isVideoSection) {
+        if (!items.length) { return ''; }
+        const locked = isVideoSection && !window.xsIsPro();
+        const heading = isVideoSection
+            ? `${title} <span class="facility-media-pro-badge">Pro</span>`
+            : title;
+        const maxVisible = 4;
+        const remaining = items.length - maxVisible;
+        const itemsHTML = items.slice(0, maxVisible).map((media, idx) => {
+            const realIndex = allMedia.indexOf(media);
+            const thumbnailUrl = media.thumbnail_url || media.url;
+            const overlay = (idx === maxVisible - 1 && remaining > 0 && !locked)
+                ? `<div class="facility-media-overlay">+${remaining} more</div>` : '';
+            const videoBadge = (isVideoSection && !locked) ? '<div class="facility-video-badge">▶</div>' : '';
+            const lockOverlay = locked ? `<div class="facility-media-lock">${_lockIconSVG}</div>` : '';
+            return `<div class="facility-media-item${locked ? ' facility-media-item-locked' : ''}" onclick="openFacilityMediaModal('${cacheKey}', ${realIndex})"><img src="${thumbnailUrl}" class="facility-media-thumbnail" loading="lazy">${overlay}${videoBadge}${lockOverlay}</div>`;
+        }).join('');
+        return `<div class="facility-media-section">
+            <p class="facility-media-heading">${heading}</p>
+            <div class="facility-media-grid">${itemsHTML}</div>
+        </div>`;
     }
 
     function openFacilityMediaModal(facilityId, index) {
         const data = window._facilityMediaCache[facilityId];
         if (!data || !data.media || !data.media.length) { return; }
         const targetIndex = Math.max(0, Math.min(index || 0, data.media.length - 1));
-        if (_facilityMediaIsGatedVideo(data.media[targetIndex])) {
+        const clicked = data.media[targetIndex];
+        if (_facilityMediaIsGatedVideo(clicked)) {
             window.xsRequirePro('video');
             return;
         }
+        // Only cycle through items of the same type as what was clicked —
+        // photos and videos are separate slideshows, not mixed together.
+        const items = data.media.filter(m => _isVideoMedia(m) === _isVideoMedia(clicked));
         _facilityModalState.facilityId = facilityId;
-        _facilityModalState.index = targetIndex;
+        _facilityModalState.items = items;
+        _facilityModalState.index = Math.max(0, items.indexOf(clicked));
         document.getElementById('facility-media-modal').classList.remove('hidden');
         _renderFacilityMediaItem();
     }
 
     function _renderFacilityMediaItem() {
-        const { facilityId, index } = _facilityModalState;
-        const data = window._facilityMediaCache[facilityId];
-        if (!data) { return; }
-        const media = data.media[index];
-        const total = data.media.length;
+        const { items, index } = _facilityModalState;
+        if (!items || !items.length) { return; }
+        const media = items[index];
+        const total = items.length;
         const content   = document.getElementById('facility-modal-content');
         const counter   = document.getElementById('facility-modal-counter');
         const captionEl = document.getElementById('facility-modal-caption');
@@ -1970,11 +2055,11 @@
     }
 
     function _facilityMediaStep(delta) {
-        const data = window._facilityMediaCache[_facilityModalState.facilityId];
-        if (!data || !data.media.length) { return; }
-        const total = data.media.length;
+        const { items } = _facilityModalState;
+        if (!items || !items.length) { return; }
+        const total = items.length;
         const nextIndex = (_facilityModalState.index + delta + total) % total;
-        if (_facilityMediaIsGatedVideo(data.media[nextIndex])) {
+        if (_facilityMediaIsGatedVideo(items[nextIndex])) {
             window.xsRequirePro('video');
             return;
         }
@@ -1988,6 +2073,7 @@
         modal.classList.add('hidden');
         content.innerHTML = ''; // stop any video playback
         _facilityModalState.facilityId = null;
+        _facilityModalState.items = null;
     }
 
     document.getElementById('facility-modal-prev')?.addEventListener('click', (e) => {
@@ -3676,10 +3762,12 @@
             const remaining = items.length - maxVisible;
             heroGrid.innerHTML = items.slice(0, maxVisible).map((item, idx) => {
                 const isVideo = item.media_type === 'video_url' || item.media_type === 'video';
+                const locked = isVideo && !window.xsIsPro();
                 const thumbnailUrl = item.thumbnail_url || item.url;
-                const overlay = (idx === maxVisible - 1 && remaining > 0) ? `<div class="facility-media-overlay">+${remaining} more</div>` : '';
-                const videoBadge = isVideo ? '<div class="facility-video-badge">▶</div>' : '';
-                return `<div class="facility-media-item" onclick="openFacilityMediaModal('${cacheKey}', ${idx})"><img src="${thumbnailUrl}" class="facility-media-thumbnail" loading="lazy">${overlay}${videoBadge}</div>`;
+                const overlay = (idx === maxVisible - 1 && remaining > 0 && !locked) ? `<div class="facility-media-overlay">+${remaining} more</div>` : '';
+                const videoBadge = (isVideo && !locked) ? '<div class="facility-video-badge">▶</div>' : '';
+                const lockOverlay = locked ? `<div class="facility-media-lock">${_lockIconSVG}</div>` : '';
+                return `<div class="facility-media-item${locked ? ' facility-media-item-locked' : ''}" onclick="openFacilityMediaModal('${cacheKey}', ${idx})"><img src="${thumbnailUrl}" class="facility-media-thumbnail" loading="lazy">${overlay}${videoBadge}${lockOverlay}</div>`;
             }).join('');
         }
 
@@ -3808,29 +3896,21 @@
                 ? `<div class="biz-panel-hero"><img src="${imageUrl}" alt="${escapeHtml(trail.name)}"></div>`
                 : `<div class="biz-panel-hero" style="background:${heroGradient};"><div class="biz-panel-hero-placeholder"><img src="/images/xplore-smithers-logo.png" alt="Xplore Smithers"></div></div>`;
 
-            // Media gallery — all photos/videos other than the one already used as the hero
+            // Media gallery — photos and videos shown as separate labeled sections;
+            // videos other than the one already used as the hero.
             const trailMediaCacheKey = `trail-${trail.id}`;
-            const trailMediaItems = [...(trail.photos || []), ...(trail.videos || [])]
-                .filter(item => item.url !== imageUrl);
+            const allMedia = [...(trail.photos || []), ...(trail.videos || [])];
             window._facilityMediaCache = window._facilityMediaCache || {};
-            window._facilityMediaCache[trailMediaCacheKey] = { name: trail.name, media: [...(trail.photos || []), ...(trail.videos || [])] };
+            window._facilityMediaCache[trailMediaCacheKey] = { name: trail.name, media: allMedia };
+            const galleryPhotos = (trail.photos || []).filter(item => item.url !== imageUrl);
+            const galleryVideos = trail.videos || [];
             let mediaHTML = '';
-            if (trailMediaItems.length > 0) {
+            if (galleryPhotos.length > 0 || galleryVideos.length > 0) {
                 mediaHTML = `<hr class="biz-panel-divider">
                     <div class="facility-media-gallery" style="border-top:none;margin-top:0;padding-top:0;">
-                        <p class="facility-media-count">${trailMediaItems.length} more ${trailMediaItems.length === 1 ? 'photo/video' : 'photos/videos'}</p>
-                        <div class="facility-media-grid">`;
-                const allMedia = [...(trail.photos || []), ...(trail.videos || [])];
-                trailMediaItems.slice(0, 4).forEach((media, idx) => {
-                    const realIndex = allMedia.indexOf(media);
-                    const isVideo = media.media_type === 'video_url' || media.media_type === 'video';
-                    const thumbnailUrl = media.thumbnail_url || media.url;
-                    const remaining = trailMediaItems.length - 4;
-                    const overlay = (idx === 3 && remaining > 0) ? `<div class="facility-media-overlay">+${remaining} more</div>` : '';
-                    const videoBadge = isVideo ? '<div class="facility-video-badge">▶</div>' : '';
-                    mediaHTML += `<div class="facility-media-item" onclick="openFacilityMediaModal('${trailMediaCacheKey}', ${realIndex})"><img src="${thumbnailUrl}" class="facility-media-thumbnail" loading="lazy">${overlay}${videoBadge}</div>`;
-                });
-                mediaHTML += `</div></div>`;
+                        ${renderMediaGallerySection('Photos', galleryPhotos, allMedia, trailMediaCacheKey, false)}
+                        ${renderMediaGallerySection('Videos', galleryVideos, allMedia, trailMediaCacheKey, true)}
+                    </div>`;
             }
 
             // Meta badges — type tag + activities
