@@ -113,9 +113,18 @@
 
     <!-- Hero content -->
     <div class="relative z-10 max-w-7xl mx-auto px-4 pb-10 pt-6">
+        @php
+            $tourTypeLabel = App\Models\Tour::getTourTypes()[$tour->tour_type] ?? ucfirst($tour->tour_type);
+            $tourTypeText = explode(' ', $tourTypeLabel, 2)[1] ?? $tourTypeLabel;
+        @endphp
         <div class="flex flex-wrap items-center gap-2 mb-4">
-            <span class="inline-flex items-center rounded-full bg-white/15 border border-white/25 backdrop-blur-sm px-3 py-1 text-xs font-semibold text-white/90">
-                {{ App\Models\Tour::getTourTypes()[$tour->tour_type] ?? ucfirst($tour->tour_type) }}
+            <span class="inline-flex items-center gap-1.5 rounded-full bg-white/15 border border-white/25 backdrop-blur-sm px-3 py-1 text-xs font-semibold text-white/90">
+                @if($tour->icon_image_url)
+                    <img src="{{ $tour->icon_image_url }}" alt="" class="w-4 h-4 rounded-full object-cover">
+                    {{ $tourTypeText }}
+                @else
+                    {{ $tourTypeLabel }}
+                @endif
             </span>
             @if($tour->is_featured)
                 <span class="inline-flex items-center rounded-full bg-accent-500 px-3 py-1 text-xs font-semibold text-white">
