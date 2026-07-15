@@ -154,7 +154,15 @@
 
                             {{-- Plan --}}
                             <td class="px-4 py-4 align-middle">
-                                <span class="text-sm text-gray-700">Pro {{ $isMonthly ? 'Monthly' : 'Annual' }}</span>
+                                @if($isMonthly)
+                                    <span class="inline-flex items-center gap-1.5 rounded bg-indigo-50 px-2 py-1 text-xs font-semibold text-indigo-700 ring-1 ring-inset ring-indigo-200">
+                                        Pro Monthly
+                                    </span>
+                                @else
+                                    <span class="inline-flex items-center gap-1.5 rounded bg-amber-50 px-2 py-1 text-xs font-semibold text-amber-700 ring-1 ring-inset ring-amber-200">
+                                        Pro Annual
+                                    </span>
+                                @endif
                             </td>
 
                             {{-- Status --}}

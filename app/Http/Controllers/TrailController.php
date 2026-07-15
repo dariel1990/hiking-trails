@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Jenssegers\Agent\Agent;
 
 class TrailController extends Controller
 {
@@ -124,7 +125,10 @@ class TrailController extends Controller
      */
     private function buildListingQuery(Request $request): Builder
     {
-        $query = Trail::query()->where('status', 'active');
+        $query = Trail::query()->where('status', 'active')
+            ->whereDoesntHave('trailNetwork', function ($q) {
+                $q->where('is_active', false);
+            });
 
         if ($request->search) {
             $query->where(function ($q) use ($request) {
@@ -185,8 +189,13 @@ class TrailController extends Controller
             'trailNetwork',
         ])->findOrFail($id);
 
+        if ($trail->status === 'closed' || ($trail->trailNetwork && ! $trail->trailNetwork->is_active)) {
+            abort(404);
+        }
+
         // Increment view count
         $trail->increment('view_count');
+        $this->recordVisit($trail);
 
         // Get only general trail media (excludes feature-linked media)
         $generalMedia = $trail->generalMedia;
@@ -194,6 +203,26 @@ class TrailController extends Controller
         $mapboxToken = config('services.mapbox.access_token');
 
         return view('trails.show', compact('trail', 'generalMedia', 'mapboxToken'));
+    }
+
+    private function recordVisit(Trail $trail): void
+    {
+        $agent = new Agent;
+
+        $deviceType = match (true) {
+            $agent->isTablet() => 'tablet',
+            $agent->isMobile() => 'mobile',
+            $agent->isDesktop() => 'desktop',
+            default => 'other',
+        };
+
+        $trail->visits()->create([
+            'user_id' => auth()->id(),
+            'device_type' => $deviceType,
+            'platform' => $agent->platform() ?: null,
+            'browser' => $agent->browser() ?: null,
+            'ip_address' => request()->ip(),
+        ]);
     }
 
     /**

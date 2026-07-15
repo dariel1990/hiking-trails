@@ -222,7 +222,11 @@
         <img src="{{ $heroUrl }}" alt="{{ $business->name }}" class="w-full h-full object-cover">
     @else
         <div class="absolute inset-0 flex items-center justify-center hero-gradient">
-            <span class="text-9xl opacity-40">{{ $business->icon }}</span>
+            @if($business->icon_image_url)
+                <img src="{{ $business->icon_image_url }}" alt="{{ $business->name }}" class="w-40 h-40 rounded-full object-cover opacity-60">
+            @else
+                <span class="text-9xl opacity-40">{{ $business->icon }}</span>
+            @endif
         </div>
     @endif
 
@@ -262,8 +266,13 @@
                     @if($business->is_featured)
                         <span class="px-4 py-2 bg-amber-400 text-amber-900 rounded-full font-bold text-sm shadow-lg">⭐ Featured</span>
                     @endif
-                    <span class="px-5 py-2 bg-white/95 backdrop-blur text-blue-700 rounded-full font-bold text-base shadow-lg">
-                        {{ $business->business_type_label }}
+                    <span class="px-5 py-2 bg-white/95 backdrop-blur text-blue-700 rounded-full font-bold text-base shadow-lg inline-flex items-center gap-2">
+                        @if($business->icon_image_url)
+                            <img src="{{ $business->icon_image_url }}" alt="" class="w-5 h-5 rounded-full object-cover">
+                            {{ implode(' ', array_slice(explode(' ', $business->business_type_label), 1)) }}
+                        @else
+                            {{ $business->business_type_label }}
+                        @endif
                     </span>
                     @if($business->price_range && $business->price_range !== 'free')
                         <span class="px-4 py-2 bg-white/95 backdrop-blur text-gray-700 rounded-full font-bold text-base shadow-lg">
@@ -512,7 +521,11 @@
 <section class="section bg-gray-50">
     <div class="max-w-7xl mx-auto px-4">
         <div class="flex items-center gap-3 mb-8">
-            <span class="text-2xl">{{ explode(' ', $business->business_type_label)[0] }}</span>
+            @if($business->icon_image_url)
+                <img src="{{ $business->icon_image_url }}" alt="" class="w-7 h-7 rounded-full object-cover">
+            @else
+                <span class="text-2xl">{{ explode(' ', $business->business_type_label)[0] }}</span>
+            @endif
             <h2 class="text-2xl font-bold text-gray-800">More {{ implode(' ', array_slice(explode(' ', $business->business_type_label), 1)) ?: $business->business_type_label }}</h2>
             <div class="flex-1 h-px bg-gray-300"></div>
         </div>
@@ -593,7 +606,11 @@
             map.addControl(new mapboxgl.NavigationControl({ showCompass: false }), 'top-right');
 
             const el = document.createElement('div');
-            el.innerHTML = '<div style="font-size:32px;line-height:1;">{{ $business->icon }}</div>';
+            @if($business->icon_image_url)
+                el.innerHTML = '<img src="{{ $business->icon_image_url }}" style="width:32px;height:32px;object-fit:cover;border-radius:50%;box-shadow:0 1px 4px rgba(0,0,0,0.35);">';
+            @else
+                el.innerHTML = '<div style="font-size:32px;line-height:1;">{{ $business->icon }}</div>';
+            @endif
             const popup = new mapboxgl.Popup({ offset: 28 })
                 .setHTML('<strong>{{ addslashes($business->name) }}</strong>@if($business->address)<br>{{ addslashes($business->address) }}@endif');
             const marker = new mapboxgl.Marker({ element: el, anchor: 'bottom' })

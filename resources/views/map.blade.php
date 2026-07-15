@@ -1875,6 +1875,16 @@
             .replace(/'/g, '&#039;');
     }
 
+    // Swaps a broken/missing photo (e.g. deleted from storage but still referenced
+    // in the database) for the Xplore Smithers logo instead of a broken-image icon.
+    window.xsImgFallback = function(el) {
+        el.onerror = null;
+        el.src = '/images/xplore-smithers-logo.png';
+        el.style.objectFit = 'contain';
+        el.style.padding = '14%';
+        el.style.background = 'linear-gradient(135deg, #166534, #22c55e)';
+    };
+
     // Video Thumbnail Generator Functions
     function getVideoThumbnail(videoUrl) {
         // YouTube
@@ -1984,7 +1994,7 @@
                 ? `<div class="facility-media-overlay">+${remaining} more</div>` : '';
             const videoBadge = (isVideoSection && !locked) ? '<div class="facility-video-badge">▶</div>' : '';
             const lockOverlay = locked ? `<div class="facility-media-lock">${_lockIconSVG}</div>` : '';
-            return `<div class="facility-media-item${locked ? ' facility-media-item-locked' : ''}" onclick="openFacilityMediaModal('${cacheKey}', ${realIndex})"><img src="${thumbnailUrl}" class="facility-media-thumbnail" loading="lazy">${overlay}${videoBadge}${lockOverlay}</div>`;
+            return `<div class="facility-media-item${locked ? ' facility-media-item-locked' : ''}" onclick="openFacilityMediaModal('${cacheKey}', ${realIndex})"><img src="${thumbnailUrl}" class="facility-media-thumbnail" loading="lazy" onerror="window.xsImgFallback(this)">${overlay}${videoBadge}${lockOverlay}</div>`;
         }).join('');
         return `<div class="facility-media-section">
             <p class="facility-media-heading">${heading}</p>
@@ -3449,6 +3459,12 @@
             const img = document.getElementById('mobile-trail-img');
             const placeholder = document.getElementById('mobile-trail-placeholder');
             if (imageUrl) {
+                img.onerror = () => {
+                    img.classList.add('hidden');
+                    placeholder.classList.remove('hidden');
+                    placeholder.style.background = placeholderBg || 'linear-gradient(135deg,#4b5563,#1f2937)';
+                    placeholder.innerHTML = '<img src="/images/xplore-smithers-logo.png" alt="Xplore Smithers" style="max-width:60%;max-height:60%;object-fit:contain;">';
+                };
                 img.src = imageUrl;
                 img.classList.remove('hidden');
                 placeholder.classList.add('hidden');
@@ -3531,7 +3547,7 @@
                 ? `<img src="${highlight.icon_image_url}" style="width:56px;height:56px;object-fit:contain;" alt="">`
                 : (highlight.icon || '📍');
             const hero = firstPhoto
-                ? `<div class="biz-panel-hero"><img src="${firstPhoto.url}" alt="${escapeHtml(highlight.name)}"></div>`
+                ? `<div class="biz-panel-hero"><img src="${firstPhoto.url}" alt="${escapeHtml(highlight.name)}" onerror="window.xsImgFallback(this)"></div>`
                 : `<div class="biz-panel-hero" style="background:${heroGradient};"><div class="biz-panel-hero-placeholder">${heroIconHtml}</div></div>`;
 
             // Action buttons
@@ -3749,6 +3765,7 @@
                 heroGrid.classList.add('hidden');
                 heroGrid.innerHTML = '';
                 heroImg.classList.remove('hidden');
+                heroImg.onerror = () => window.xsImgFallback(heroImg);
                 heroImg.src = items[0].thumbnail_url || items[0].url;
                 heroImg.alt = name || '';
                 heroImg.onclick = () => openFacilityMediaModal(cacheKey, 0);
@@ -3767,7 +3784,7 @@
                 const overlay = (idx === maxVisible - 1 && remaining > 0 && !locked) ? `<div class="facility-media-overlay">+${remaining} more</div>` : '';
                 const videoBadge = (isVideo && !locked) ? '<div class="facility-video-badge">▶</div>' : '';
                 const lockOverlay = locked ? `<div class="facility-media-lock">${_lockIconSVG}</div>` : '';
-                return `<div class="facility-media-item${locked ? ' facility-media-item-locked' : ''}" onclick="openFacilityMediaModal('${cacheKey}', ${idx})"><img src="${thumbnailUrl}" class="facility-media-thumbnail" loading="lazy">${overlay}${videoBadge}${lockOverlay}</div>`;
+                return `<div class="facility-media-item${locked ? ' facility-media-item-locked' : ''}" onclick="openFacilityMediaModal('${cacheKey}', ${idx})"><img src="${thumbnailUrl}" class="facility-media-thumbnail" loading="lazy" onerror="window.xsImgFallback(this)">${overlay}${videoBadge}${lockOverlay}</div>`;
             }).join('');
         }
 
@@ -3782,6 +3799,12 @@
             const img = document.getElementById('mobile-trail-img');
             const placeholder = document.getElementById('mobile-trail-placeholder');
             if (trail.preview_photo) {
+                img.onerror = () => {
+                    img.classList.add('hidden');
+                    placeholder.classList.remove('hidden');
+                    placeholder.style.background = 'linear-gradient(135deg,#166534,#22c55e)';
+                    placeholder.innerHTML = '<img src="/images/xplore-smithers-logo.png" alt="Xplore Smithers" style="max-width:60%;max-height:60%;object-fit:contain;">';
+                };
                 img.src = trail.preview_photo;
                 img.classList.remove('hidden');
                 placeholder.classList.add('hidden');
@@ -3893,7 +3916,7 @@
                 ? 'linear-gradient(135deg, #0369a1, #0ea5e9)'
                 : 'linear-gradient(135deg, #166534, #22c55e)';
             const hero = imageUrl
-                ? `<div class="biz-panel-hero"><img src="${imageUrl}" alt="${escapeHtml(trail.name)}"></div>`
+                ? `<div class="biz-panel-hero"><img src="${imageUrl}" alt="${escapeHtml(trail.name)}" onerror="window.xsImgFallback(this)"></div>`
                 : `<div class="biz-panel-hero" style="background:${heroGradient};"><div class="biz-panel-hero-placeholder"><img src="/images/xplore-smithers-logo.png" alt="Xplore Smithers"></div></div>`;
 
             // Media gallery — photos and videos shown as separate labeled sections;
@@ -4407,6 +4430,12 @@
             const img = document.getElementById('mobile-trail-img');
             const placeholder = document.getElementById('mobile-trail-placeholder');
             if (business.photo_url) {
+                img.onerror = () => {
+                    img.classList.add('hidden');
+                    placeholder.classList.remove('hidden');
+                    placeholder.style.background = 'linear-gradient(135deg,#166534,#22c55e)';
+                    placeholder.innerHTML = '<img src="/images/xplore-smithers-logo.png" alt="Xplore Smithers" style="max-width:60%;max-height:60%;object-fit:contain;">';
+                };
                 img.src = business.photo_url;
                 img.classList.remove('hidden');
                 placeholder.classList.add('hidden');
@@ -4449,6 +4478,12 @@
                 heroUrl = first.url || first.thumbnail_url || null;
             }
             if (heroUrl) {
+                img.onerror = () => {
+                    img.classList.add('hidden');
+                    placeholder.classList.remove('hidden');
+                    placeholder.style.background = 'linear-gradient(135deg,#166534,#22c55e)';
+                    placeholder.innerHTML = '<img src="/images/xplore-smithers-logo.png" alt="Xplore Smithers" style="max-width:60%;max-height:60%;object-fit:contain;">';
+                };
                 img.src = heroUrl;
                 img.classList.remove('hidden');
                 placeholder.classList.add('hidden');
@@ -4485,7 +4520,7 @@
                 ? `<img src="${business.icon_image_url}" style="width:56px;height:56px;object-fit:contain;" alt="">`
                 : business.icon;
             const hero = business.photo_url
-                ? `<div class="biz-panel-hero"><img src="${business.photo_url}" alt="${business.name}"></div>`
+                ? `<div class="biz-panel-hero"><img src="${business.photo_url}" alt="${business.name}" onerror="window.xsImgFallback(this)"></div>`
                 : `<div class="biz-panel-hero"><div class="biz-panel-hero-placeholder">${businessHeroIconHtml}</div></div>`;
 
             // Media gallery (skip the item already shown as the hero)
@@ -4508,7 +4543,7 @@
                         const remaining = galleryItems.length - 4;
                         const overlay = (idx === 3 && remaining > 0) ? `<div class="facility-media-overlay">+${remaining} more</div>` : '';
                         const videoBadge = isVideo ? '<div class="facility-video-badge">▶</div>' : '';
-                        mediaHTML += `<div class="facility-media-item" onclick="openFacilityMediaModal('${businessMediaCacheKey}', ${realIndex})"><img src="${thumbnailUrl}" class="facility-media-thumbnail" loading="lazy">${overlay}${videoBadge}</div>`;
+                        mediaHTML += `<div class="facility-media-item" onclick="openFacilityMediaModal('${businessMediaCacheKey}', ${realIndex})"><img src="${thumbnailUrl}" class="facility-media-thumbnail" loading="lazy" onerror="window.xsImgFallback(this)">${overlay}${videoBadge}</div>`;
                     });
                     mediaHTML += `</div></div>`;
                 }
@@ -4658,7 +4693,7 @@
                 heroUrl = firstPhoto.url || firstPhoto.thumbnail_url || null;
             }
             const hero = heroUrl
-                ? `<div class="biz-panel-hero"><img src="${heroUrl}" alt="${escapeHtml(facility.name)}"></div>`
+                ? `<div class="biz-panel-hero"><img src="${heroUrl}" alt="${escapeHtml(facility.name)}" onerror="window.xsImgFallback(this)"></div>`
                 : `<div class="biz-panel-hero" style="background:linear-gradient(135deg,#166534,#22c55e);"><div class="biz-panel-hero-placeholder"><img src="/images/xplore-smithers-logo.png" alt="Xplore Smithers"></div></div>`;
 
             const meta = `<span class="biz-panel-type">${facility.icon || '📍'} ${escapeHtml(facility.facility_type_label || 'Facility')}</span>`;
@@ -4689,7 +4724,7 @@
                         const remaining = galleryItems.length - 4;
                         const overlay = (idx === 3 && remaining > 0) ? `<div class="facility-media-overlay">+${remaining} more</div>` : '';
                         const videoBadge = isVideo ? '<div class="facility-video-badge">▶</div>' : '';
-                        mediaHTML += `<div class="facility-media-item" onclick="openFacilityMediaModal(${facility.id}, ${realIndex})"><img src="${thumbnailUrl}" class="facility-media-thumbnail" loading="lazy">${overlay}${videoBadge}</div>`;
+                        mediaHTML += `<div class="facility-media-item" onclick="openFacilityMediaModal(${facility.id}, ${realIndex})"><img src="${thumbnailUrl}" class="facility-media-thumbnail" loading="lazy" onerror="window.xsImgFallback(this)">${overlay}${videoBadge}</div>`;
                     });
                     mediaHTML += `</div></div>`;
                 }
@@ -5030,7 +5065,7 @@
             }
 
             const hero = network.image
-                ? `<div class="biz-panel-hero" style="background-image:url('${network.image}');background-size:cover;background-position:center;"></div>`
+                ? `<div class="biz-panel-hero"><img src="${network.image}" alt="${escapeHtml(network.name || network.network_name || '')}" onerror="window.xsImgFallback(this)"></div>`
                 : `<div class="biz-panel-hero" style="background:linear-gradient(135deg,#14532d,#166534);"><div class="biz-panel-hero-placeholder">${heroIcon}</div></div>`;
 
             const actions = [];
@@ -5151,7 +5186,7 @@
                 return `
                     <div class="trail-list-card" data-location-type="${trail.location_type}" ${accentStyle} onclick="window.trailMap.focusOnTrailById(${trail.id})">
                         ${imageUrl ?
-                            `<img src="${imageUrl}" alt="${trail.name}" class="trail-list-image">` :
+                            `<img src="${imageUrl}" alt="${trail.name}" class="trail-list-image" onerror="window.xsImgFallback(this)">` :
                             `<div class="trail-list-image-placeholder" style="background: ${trail.location_type === 'fishing_lake' ? 'linear-gradient(135deg, #0369a1, #0ea5e9)' : 'linear-gradient(135deg, #166534, #22c55e)'};">
                                 <img src="/images/xplore-smithers-logo.png" alt="Xplore Smithers">
                             </div>`

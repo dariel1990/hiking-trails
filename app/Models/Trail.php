@@ -102,9 +102,9 @@ class Trail extends Model
     }
 
     /**
-     * Accessor to get a safe featured media URL (thumbnail for videos, url for photos)
+     * Accessor to get the full-size URL of the trail's featured photo (videos are excluded)
      */
-    public function getFeaturedMediaUrlAttribute()
+    public function getFeaturedMediaUrlAttribute(): ?string
     {
         // Prefer a featured photo
         $media = $this->trailMedia()
@@ -115,15 +115,6 @@ class Trail extends Model
         // Fallback to first photo only (do not return videos)
         if (! $media) {
             $media = $this->trailMedia()->where('media_type', 'photo')->first();
-        }
-
-        if (! $media) {
-            return null;
-        }
-
-        // Prefer thumbnail (for videos or generated thumbnails), otherwise full url
-        if (method_exists($media, 'getThumbnailUrlAttribute')) {
-            return $media->thumbnail_url ?? $media->url ?? null;
         }
 
         return $media->url ?? null;
@@ -328,6 +319,11 @@ class Trail extends Model
     public function photos(): HasMany
     {
         return $this->hasMany(TrailPhoto::class);
+    }
+
+    public function visits(): HasMany
+    {
+        return $this->hasMany(TrailVisit::class);
     }
 
     /**

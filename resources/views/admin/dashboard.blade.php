@@ -194,6 +194,61 @@
         </div>
     </div>
 
+    <!-- Device Analytics -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div class="admin-card">
+            <div class="card-header flex flex-row items-center justify-between space-y-0">
+                <div>
+                    <h3 class="card-title">Device Analytics</h3>
+                    <p class="card-description">{{ $stats['total_visits'] }} trail page visits recorded</p>
+                </div>
+                <a href="{{ route('admin.device-analytics.index') }}" class="btn-outline btn-sm">View Report</a>
+            </div>
+            <div class="card-content">
+                @if(count($stats['device_breakdown']) > 0)
+                    @php
+                        $deviceColors = ['desktop' => 'bg-blue-500', 'mobile' => 'bg-emerald-500', 'tablet' => 'bg-amber-500', 'other' => 'bg-gray-400'];
+                        $deviceTotal = array_sum($stats['device_breakdown']);
+                    @endphp
+                    <div class="space-y-3">
+                        @foreach($stats['device_breakdown'] as $device => $count)
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center gap-2">
+                                    <div class="w-3 h-3 rounded-full {{ $deviceColors[$device] ?? 'bg-gray-400' }}"></div>
+                                    <span class="text-sm text-gray-700 capitalize">{{ $device }}</span>
+                                </div>
+                                <span class="text-sm font-semibold">{{ $count }} <span class="text-gray-400 font-normal">({{ round(($count / $deviceTotal) * 100) }}%)</span></span>
+                            </div>
+                        @endforeach
+                    </div>
+                @else
+                    <p class="text-sm text-gray-600 text-center py-4">No visits recorded yet.</p>
+                @endif
+            </div>
+        </div>
+
+        <div class="admin-card">
+            <div class="card-header">
+                <h3 class="card-title">Most Visited Trails</h3>
+                <p class="card-description">Top trails by page visits</p>
+            </div>
+            <div class="card-content">
+                @if($stats['top_visited_trails']->count() > 0)
+                    <div class="space-y-4">
+                        @foreach($stats['top_visited_trails'] as $trail)
+                            <div class="flex items-center justify-between">
+                                <p class="text-sm font-medium text-gray-900 truncate pr-2">{{ $trail->name }}</p>
+                                <span class="text-sm font-semibold text-gray-700 shrink-0">{{ $trail->visits_count }} visits</span>
+                            </div>
+                        @endforeach
+                    </div>
+                @else
+                    <p class="text-sm text-gray-600 text-center py-4">No visits recorded yet.</p>
+                @endif
+            </div>
+        </div>
+    </div>
+
     <!-- Recent Activity -->
     <div class="admin-card">
         <div class="card-header">

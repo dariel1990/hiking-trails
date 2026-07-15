@@ -479,6 +479,28 @@
     @apply bg-emerald-500;
   }
 
+  /* Subtle Scrollbar (for sidebars/panels where a bold scrollbar is too heavy) */
+  .subtle-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: #d1d5db transparent;
+  }
+
+  .subtle-scrollbar::-webkit-scrollbar {
+    width: 4px;
+  }
+
+  .subtle-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .subtle-scrollbar::-webkit-scrollbar-thumb {
+    @apply bg-gray-300 rounded-full;
+  }
+
+  .subtle-scrollbar::-webkit-scrollbar-thumb:hover {
+    @apply bg-gray-400;
+  }
+
   /* Animation Classes */
   .fade-in {
     animation: fadeIn 0.6s ease-out;

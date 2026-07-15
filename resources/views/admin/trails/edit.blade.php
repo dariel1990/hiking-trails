@@ -591,9 +591,9 @@
                                     <div class="space-y-2">
                                         <label class="text-sm font-medium">Trail Status *</label>
                                         <select name="status" required class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
-                                            <option value="active" selected>Active - Open to public</option>
-                                            <option value="closed">Closed - Temporarily unavailable</option>
-                                            <option value="seasonal">Seasonal - Check conditions</option>
+                                            <option value="active" {{ old('status', $trail->status) === 'active' ? 'selected' : '' }}>Active - Open to public</option>
+                                            <option value="closed" {{ old('status', $trail->status) === 'closed' ? 'selected' : '' }}>Closed - Temporarily unavailable</option>
+                                            <option value="seasonal" {{ old('status', $trail->status) === 'seasonal' ? 'selected' : '' }}>Seasonal - Check conditions</option>
                                         </select>
                                     </div>
                                 </div>

@@ -12,6 +12,7 @@ use App\Http\Controllers\Admin\AdminTrailNetworkController;
 use App\Http\Controllers\Admin\AdminTrailPhotoController;
 use App\Http\Controllers\Admin\BusinessController;
 use App\Http\Controllers\Admin\CarouselSlideController;
+use App\Http\Controllers\Admin\DeviceAnalyticsController;
 use App\Http\Controllers\Admin\FacilityController;
 use App\Http\Controllers\Admin\MediaController;
 use App\Http\Controllers\Admin\TrailHighlightController;
@@ -147,6 +148,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::post('/logout', [AdminController::class, 'logout'])->name('logout');
         Route::get('/dashboard', [AdminController::class, 'dashboard'])->name('dashboard');
         Route::get('/analytics', [AdminAnalyticsController::class, 'index'])->name('analytics.index');
+        Route::get('/device-analytics', [DeviceAnalyticsController::class, 'index'])->name('device-analytics.index');
 
         // User management
         Route::resource('users', UserController::class)->only(['index', 'create', 'store', 'edit', 'update', 'destroy']);

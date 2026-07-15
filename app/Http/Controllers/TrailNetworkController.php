@@ -17,7 +17,7 @@ class TrailNetworkController extends Controller
     {
         $type = $request->get('type');
 
-        $query = TrailNetwork::withCount('trails')->orderBy('network_name');
+        $query = TrailNetwork::active()->withCount('trails')->orderBy('network_name');
 
         if ($type === 'ski') {
             $query->whereIn('type', ['nordic_skiing', 'downhill_skiing']);
@@ -36,6 +36,7 @@ class TrailNetworkController extends Controller
     public function show($slug)
     {
         $network = TrailNetwork::where('slug', $slug)
+            ->active()
             ->with(['trails' => function ($query) {
                 $query->select('id', 'trail_network_id', 'name', 'description', 'difficulty_level', 'distance_km', 'elevation_gain_m', 'estimated_time_hours', 'trail_type', 'route_coordinates', 'start_coordinates', 'status')
                     ->with(['trailMedia' => function ($q) {

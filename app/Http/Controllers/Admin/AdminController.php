@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Trail;
 use App\Models\TrailMedia;
+use App\Models\TrailVisit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -85,6 +86,20 @@ class AdminController extends Controller
             'gpx_trails' => Trail::where('data_source', 'gpx')->count(),
             'manual_trails' => Trail::where('data_source', 'manual')->count(),
             'mixed_trails' => Trail::where('data_source', 'mixed')->count(),
+
+            'total_visits' => TrailVisit::count(),
+            'device_breakdown' => TrailVisit::query()
+                ->get(['device_type'])
+                ->groupBy('device_type')
+                ->map->count()
+                ->sortDesc()
+                ->all(),
+            'top_visited_trails' => Trail::query()
+                ->withCount('visits')
+                ->having('visits_count', '>', 0)
+                ->orderByDesc('visits_count')
+                ->limit(5)
+                ->get(['id', 'name']),
         ];
 
         return view('admin.dashboard', compact('stats'));

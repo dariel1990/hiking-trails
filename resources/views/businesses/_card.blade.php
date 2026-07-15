@@ -11,7 +11,11 @@
             <img src="{{ $photoUrl }}" alt="{{ $business->name }}" class="w-full h-full object-cover" loading="lazy">
         @else
             <div class="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-emerald-50 to-primary-100">
-                <span class="text-7xl opacity-60">{{ $business->icon }}</span>
+                @if($business->icon_image_url)
+                    <img src="{{ $business->icon_image_url }}" alt="{{ $business->name }}" class="w-20 h-20 rounded-full object-cover opacity-80">
+                @else
+                    <span class="text-7xl opacity-60">{{ $business->icon }}</span>
+                @endif
             </div>
         @endif
 
@@ -22,9 +26,13 @@
         @endif
 
         <div class="absolute top-3 right-3">
-            <span class="badge bg-primary-600 text-white font-semibold shadow-lg text-xs">
-                {{ explode(' ', $business->business_type_label)[0] }}
-                {{ implode(' ', array_slice(explode(' ', $business->business_type_label), 1)) }}
+            <span class="badge bg-primary-600 text-white font-semibold shadow-lg text-xs inline-flex items-center gap-1">
+                @if($business->icon_image_url)
+                    <img src="{{ $business->icon_image_url }}" alt="" class="w-4 h-4 rounded-full object-cover">
+                    {{ implode(' ', array_slice(explode(' ', $business->business_type_label), 1)) }}
+                @else
+                    {{ $business->business_type_label }}
+                @endif
             </span>
         </div>
 

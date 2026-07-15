@@ -1260,6 +1260,11 @@ map.on('load', () => {
         facilityMarkers.push(marker);
     });
 
+    // Auto-focus a specific trail when navigated here with ?trail={id}
+    const requestedTrailId = new URLSearchParams(window.location.search).get('trail');
+    if (requestedTrailId) {
+        setTimeout(() => window.focusTrail(parseInt(requestedTrailId, 10)), 300);
+    }
 });
 
 
@@ -1485,7 +1490,6 @@ function showTrailDetailsCard(trailId) {
                 <p style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:#6b7280;margin:0 0 8px;">Elevation Profile</p>
                 <div id="tdc-elevation-loading" style="text-align:center;padding:16px 0;color:#9ca3af;font-size:12px;">Loading profile…</div>
                 <canvas id="tdc-elevation-canvas" style="display:none;width:100%;height:90px;border-radius:6px;"></canvas>
-                <div id="tdc-elevation-stats" style="display:none;display:none;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px;"></div>
             </div>
         </div>
     `;
@@ -1502,8 +1506,7 @@ function showTrailDetailsCard(trailId) {
 async function loadTrailElevationProfile(routeCoords) {
     const loadingEl = document.getElementById('tdc-elevation-loading');
     const canvas    = document.getElementById('tdc-elevation-canvas');
-    const statsEl   = document.getElementById('tdc-elevation-stats');
-    if (!loadingEl || !canvas || !statsEl) return;
+    if (!loadingEl || !canvas) return;
 
     try {
         const res = await fetch('/api/elevation-profile', {
@@ -1524,11 +1527,6 @@ async function loadTrailElevationProfile(routeCoords) {
         const elevs  = coords.map(c => c[2]);
         const maxEl  = Math.max(...elevs);
         const minEl  = Math.min(...elevs);
-        let gain = 0, loss = 0;
-        for (let i = 1; i < elevs.length; i++) {
-            const diff = elevs[i] - elevs[i - 1];
-            if (diff > 0) gain += diff; else loss += Math.abs(diff);
-        }
 
         // Draw chart
         loadingEl.style.display = 'none';
@@ -1539,42 +1537,135 @@ async function loadTrailElevationProfile(routeCoords) {
         const range = maxEl - minEl || 1;
         const pad = 4;
 
-        // Gradient fill
-        const grad = ctx.createLinearGradient(0, 0, 0, h);
-        grad.addColorStop(0, 'rgba(59,130,246,0.35)');
-        grad.addColorStop(1, 'rgba(59,130,246,0.02)');
+        const drawChart = (hoverIdx = -1) => {
+            ctx.clearRect(0, 0, w, h);
 
-        ctx.beginPath();
-        elevs.forEach((el, i) => {
-            const x = pad + (i / (elevs.length - 1)) * (w - pad * 2);
-            const y = pad + (1 - (el - minEl) / range) * (h - pad * 2);
-            i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
-        });
-        ctx.strokeStyle = '#3b82f6';
-        ctx.lineWidth = 2;
-        ctx.lineJoin = 'round';
-        ctx.stroke();
-        ctx.lineTo(w - pad, h);
-        ctx.lineTo(pad, h);
-        ctx.closePath();
-        ctx.fillStyle = grad;
-        ctx.fill();
+            // Gradient fill
+            const grad = ctx.createLinearGradient(0, 0, 0, h);
+            grad.addColorStop(0, 'rgba(59,130,246,0.35)');
+            grad.addColorStop(1, 'rgba(59,130,246,0.02)');
 
-        // Stats
-        statsEl.style.display = 'grid';
-        statsEl.style.gridTemplateColumns = '1fr 1fr';
-        statsEl.style.gap = '6px';
-        statsEl.style.marginTop = '8px';
-        statsEl.innerHTML = [
-            { label: '▲ Gain', value: `${Math.round(gain)} m`, color: '#16a34a' },
-            { label: '▼ Loss', value: `${Math.round(loss)} m`, color: '#dc2626' },
-            { label: 'Max', value: `${Math.round(maxEl)} m`, color: '#2563eb' },
-            { label: 'Min', value: `${Math.round(minEl)} m`, color: '#6b7280' },
-        ].map(s => `
-            <div style="background:#f9fafb;border-radius:6px;padding:6px 8px;border:1px solid #f3f4f6;">
-                <div style="font-size:13px;font-weight:700;color:${s.color};">${s.value}</div>
-                <div style="font-size:10px;color:#9ca3af;text-transform:uppercase;letter-spacing:.04em;">${s.label}</div>
-            </div>`).join('');
+            ctx.beginPath();
+            elevs.forEach((el, i) => {
+                const x = pad + (i / (elevs.length - 1)) * (w - pad * 2);
+                const y = pad + (1 - (el - minEl) / range) * (h - pad * 2);
+                i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+            });
+            ctx.strokeStyle = '#3b82f6';
+            ctx.lineWidth = 2;
+            ctx.lineJoin = 'round';
+            ctx.stroke();
+            ctx.lineTo(w - pad, h);
+            ctx.lineTo(pad, h);
+            ctx.closePath();
+            ctx.fillStyle = grad;
+            ctx.fill();
+
+            if (hoverIdx >= 0 && hoverIdx < elevs.length) {
+                const el = elevs[hoverIdx];
+                const x = pad + (hoverIdx / (elevs.length - 1)) * (w - pad * 2);
+                const y = pad + (1 - (el - minEl) / range) * (h - pad * 2);
+
+                // Dashed vertical line
+                ctx.beginPath();
+                ctx.strokeStyle = 'rgba(59,130,246,0.35)';
+                ctx.lineWidth = 1;
+                ctx.setLineDash([3, 3]);
+                ctx.moveTo(x, 0); ctx.lineTo(x, h);
+                ctx.stroke();
+                ctx.setLineDash([]);
+
+                // Circle on the line
+                ctx.beginPath();
+                ctx.arc(x, y, 5, 0, Math.PI * 2);
+                ctx.fillStyle = '#3b82f6';
+                ctx.fill();
+                ctx.strokeStyle = '#fff';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+
+                // Tooltip
+                const label = Math.round(el) + 'm';
+                ctx.font = 'bold 10px Inter, system-ui, sans-serif';
+                const boxW = ctx.measureText(label).width + 12;
+                const boxH = 18;
+                let bx = x - boxW / 2;
+                bx = Math.max(2, Math.min(w - boxW - 2, bx));
+                const by = Math.max(2, y - boxH - 8);
+
+                ctx.fillStyle = 'rgba(17,24,39,0.82)';
+                ctx.beginPath();
+                ctx.rect(bx, by, boxW, boxH);
+                ctx.fill();
+
+                ctx.fillStyle = '#fff';
+                ctx.fillText(label, bx + 6, by + 12);
+            }
+        };
+
+        drawChart();
+
+        // ── Mapbox hover point ────────────────────────────────────────────
+        const HOVER_SOURCE = 'elev-hover-point';
+        const HOVER_LAYER  = 'elev-hover-layer';
+
+        const ensureHoverLayer = () => {
+            if (!map.getSource(HOVER_SOURCE)) {
+                map.addSource(HOVER_SOURCE, {
+                    type: 'geojson',
+                    data: { type: 'FeatureCollection', features: [] },
+                });
+            }
+            if (!map.getLayer(HOVER_LAYER)) {
+                map.addLayer({
+                    id: HOVER_LAYER,
+                    type: 'circle',
+                    source: HOVER_SOURCE,
+                    paint: {
+                        'circle-radius': 9,
+                        'circle-color': '#fff',
+                        'circle-stroke-width': 3,
+                        'circle-stroke-color': '#3b82f6',
+                    },
+                });
+            }
+        };
+
+        const setMapPoint = (lng, lat) => {
+            try {
+                ensureHoverLayer();
+                map.getSource(HOVER_SOURCE).setData({
+                    type: 'FeatureCollection',
+                    features: [{ type: 'Feature', geometry: { type: 'Point', coordinates: [lng, lat] } }],
+                });
+            } catch (err) {}
+        };
+
+        const clearMapPoint = () => {
+            try {
+                map.getSource(HOVER_SOURCE)?.setData({ type: 'FeatureCollection', features: [] });
+            } catch (_) {}
+            drawChart();
+        };
+
+        const getIdx = (clientX) => {
+            const rect = canvas.getBoundingClientRect();
+            const frac = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+            return Math.round(frac * (elevs.length - 1));
+        };
+
+        const onScrub = (clientX) => {
+            const idx = getIdx(clientX);
+            drawChart(idx);
+            const coord = coords[idx];
+            if (coord) setMapPoint(coord[0], coord[1]);
+        };
+
+        canvas.style.cursor = 'crosshair';
+        canvas.addEventListener('mousemove', e => onScrub(e.clientX));
+        canvas.addEventListener('mouseleave', clearMapPoint);
+        canvas.addEventListener('touchmove', e => { e.preventDefault(); onScrub(e.touches[0].clientX); }, { passive: false });
+        canvas.addEventListener('touchend', clearMapPoint);
 
     } catch {
         if (loadingEl) loadingEl.textContent = 'Elevation data unavailable.';

@@ -2892,7 +2892,11 @@ document.addEventListener('DOMContentLoaded', function() {
         if (window.xsShouldPromptAppForMap && window.xsShouldPromptAppForMap() && window.xsPromptAppDownload()) {
             return;
         }
-        window.location.href = '{{ route('map') }}?trail={{ $trail->id }}';
+        @if($trail->trailNetwork)
+            window.location.href = '{{ route('trail-networks.show', $trail->trailNetwork->slug) }}?trail={{ $trail->id }}';
+        @else
+            window.location.href = '{{ route('map') }}?trail={{ $trail->id }}';
+        @endif
     });
 
     // ── Download GPX ─────────────────────────────────────────────────────────
