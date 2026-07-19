@@ -57,6 +57,19 @@ class Subscription extends Model
         'in_grace_period',
     ];
 
+    /**
+     * Map of Google Play SubscriptionState → local status column.
+     *
+     * @var array<string, string>
+     */
+    public const GOOGLE_STATE_MAP = [
+        'SUBSCRIPTION_STATE_ACTIVE' => 'active',
+        'SUBSCRIPTION_STATE_IN_GRACE_PERIOD' => 'in_grace_period',
+        'SUBSCRIPTION_STATE_ON_HOLD' => 'on_hold',
+        'SUBSCRIPTION_STATE_CANCELED' => 'canceled',
+        'SUBSCRIPTION_STATE_EXPIRED' => 'expired',
+    ];
+
     protected $fillable = [
         'user_id',
         'platform',

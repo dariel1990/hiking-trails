@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Subscription;
 use App\Models\User;
 use App\Notifications\NewSubscriptionNotification;
+use App\Notifications\TrialEndingSoonNotification;
 use Illuminate\Support\Carbon;
 use Stripe\BillingPortal\Session as PortalSession;
 use Stripe\Checkout\Session as CheckoutSession;
@@ -132,6 +133,36 @@ class StripeSubscriptionService
     /**
      * Map a Stripe subscription status to our local entitlement status.
      */
+    /**
+     * Stripe's customer.subscription.trial_will_end event (fired ~3 days before
+     * a trial converts to a paid subscription). Tells the user their card is
+     * about to be charged. The expiry_reminder_sent_at stamp dedupes webhook
+     * retries — one reminder per billing period.
+     */
+    public function handleTrialWillEnd(StripeSubscription $sub, User $user): void
+    {
+        $subscription = $this->syncSubscriptionFromStripe($sub, $user);
+
+        if (! $subscription->isEntitled()) {
+            return;
+        }
+
+        $alreadyReminded = $subscription->expiry_reminder_sent_at !== null
+            && ($subscription->expires_at === null
+                || $subscription->expiry_reminder_sent_at->gte($subscription->expires_at->copy()->subDays(8)));
+
+        if ($alreadyReminded) {
+            return;
+        }
+
+        try {
+            $user->notify(new TrialEndingSoonNotification($subscription));
+            $subscription->forceFill(['expiry_reminder_sent_at' => now()])->save();
+        } catch (Throwable $e) {
+            report($e);
+        }
+    }
+
     public function mapStatus(string $stripeStatus): string
     {
         return match ($stripeStatus) {

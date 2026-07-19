@@ -938,23 +938,6 @@ window.xsRequirePro = function (featureKey, onAllowed) {
 };
 window.gateProFeature = window.xsRequirePro; // back-compat alias
 
-// ── Prompt app download on mobile/tablet ─────────────────────────────────
-// This page is itself a full interactive map (like the main /map page), so
-// mobile/tablet visitors get the same "get the app" prompt as the "View on
-// Interactive Map" button elsewhere — and the heavy Mapbox map below is
-// skipped entirely for them rather than loading behind the modal.
-// Computed locally (not via window.xsShouldPromptAppForMap) because the
-// layout script that defines that helper renders after this one and isn't
-// available yet at this point in the page.
-const xsSkipNetworkMap = !navigator.userAgent.includes('; wv)')
-    && /Mobi|Android|iPhone|iPad|iPod|Tablet/i.test(navigator.userAgent);
-
-document.addEventListener('DOMContentLoaded', function () {
-    if (window.xsShouldPromptAppForMap && window.xsShouldPromptAppForMap()) {
-        window.xsPromptAppDownload();
-    }
-});
-
 // Network data
 const networkData = @json($network);
 const trails = @json($network->trails);
@@ -1015,23 +998,18 @@ const mapStyles = {
 };
 let currentMapType = 'standard';
 
-// Initialize Mapbox map — skipped on mobile/tablet, where the app-download
-// modal is shown instead (see xsSkipNetworkMap above).
 mapboxgl.accessToken = '{{ $mapboxToken }}';
 
-let map;
-if (!xsSkipNetworkMap) {
-    map = new mapboxgl.Map({
-        container: 'network-map',
-        style: mapStyles[currentMapType],
-        center: [networkData.longitude || -127.2, networkData.latitude || 54.7],
-        zoom: 13,
-        attributionControl: false,
-    });
+const map = new mapboxgl.Map({
+    container: 'network-map',
+    style: mapStyles[currentMapType],
+    center: [networkData.longitude || -127.2, networkData.latitude || 54.7],
+    zoom: 13,
+    attributionControl: false,
+});
 
-    map.addControl(new mapboxgl.NavigationControl({ showCompass: false }), 'bottom-right');
-    map.addControl(new mapboxgl.AttributionControl({ compact: true }), 'bottom-left');
-}
+map.addControl(new mapboxgl.NavigationControl({ showCompass: false }), 'bottom-right');
+map.addControl(new mapboxgl.AttributionControl({ compact: true }), 'bottom-left');
 
 // ── Trail GeoJSON features ────────────────────────────────────────────────────
 const trailFeatures = trails
@@ -1190,7 +1168,6 @@ function fitNetworkBounds(options = {}) {
     map.fitBounds(bounds, { ...padding, ...options });
 }
 
-if (!xsSkipNetworkMap) {
 map.on('load', () => {
     _mapLoaded = true;
     initMapLayers();
@@ -1279,7 +1256,6 @@ map.on('click', (e) => {
         closeNetworkMobileCard();
     }
 });
-} // end if (!xsSkipNetworkMap)
 
 // Layers dropdown toggle
 document.getElementById('layers-toggle').addEventListener('click', (e) => {

@@ -16,19 +16,6 @@ use Throwable;
 
 class BillingController extends Controller
 {
-    /**
-     * Map of Google Play SubscriptionState → local status column.
-     *
-     * @var array<string, string>
-     */
-    private const STATE_MAP = [
-        'SUBSCRIPTION_STATE_ACTIVE' => 'active',
-        'SUBSCRIPTION_STATE_IN_GRACE_PERIOD' => 'in_grace_period',
-        'SUBSCRIPTION_STATE_ON_HOLD' => 'on_hold',
-        'SUBSCRIPTION_STATE_CANCELED' => 'canceled',
-        'SUBSCRIPTION_STATE_EXPIRED' => 'expired',
-    ];
-
     public function verifyPurchase(Request $request, GooglePlaySubscriptionVerifier $verifier): JsonResponse
     {
         $validated = $request->validate([
@@ -59,7 +46,7 @@ class BillingController extends Controller
         }
 
         $state = (string) ($payload['subscriptionState'] ?? '');
-        $status = self::STATE_MAP[$state] ?? 'expired';
+        $status = Subscription::GOOGLE_STATE_MAP[$state] ?? 'expired';
 
         $expiryRaw = $payload['lineItems'][0]['expiryTime'] ?? null;
         $expiresAt = $expiryRaw ? Carbon::parse($expiryRaw) : null;

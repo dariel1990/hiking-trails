@@ -36,6 +36,7 @@ class StripeWebhookController extends Controller
                 'customer.subscription.created',
                 'customer.subscription.updated',
                 'customer.subscription.deleted' => $this->onSubscriptionChange($event->data->object),
+                'customer.subscription.trial_will_end' => $this->onTrialWillEnd($event->data->object),
                 default => null,
             };
         } catch (Throwable $e) {
@@ -73,6 +74,15 @@ class StripeWebhookController extends Controller
 
         if ($user) {
             $this->stripe->syncSubscriptionFromStripe($sub, $user);
+        }
+    }
+
+    private function onTrialWillEnd(StripeSubscription $sub): void
+    {
+        $user = $this->resolveUser($sub->metadata->user_id ?? null, $sub->customer ?? null);
+
+        if ($user) {
+            $this->stripe->handleTrialWillEnd($sub, $user);
         }
     }
 
