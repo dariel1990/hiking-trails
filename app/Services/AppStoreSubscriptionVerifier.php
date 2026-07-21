@@ -92,9 +92,11 @@ class AppStoreSubscriptionVerifier
     }
 
     /**
-     * GET /inApps/v1/subscriptions/{originalTransactionId}. Production first;
-     * a 404 means the transaction lives in the sandbox environment (Apple's
-     * documented pattern), so retry there.
+     * GET /inApps/v1/subscriptions/{originalTransactionId}. Production first,
+     * then sandbox. 404 = transaction lives in the sandbox environment
+     * (Apple's documented pattern). 401 also falls back: production answers
+     * Unauthenticated — not 404 — for apps that have never been released to
+     * the App Store, even with valid credentials.
      *
      * @return array<string, mixed>
      */
@@ -105,7 +107,7 @@ class AppStoreSubscriptionVerifier
 
         $response = $this->http($jwt)->get(self::PROD_BASE.$path);
 
-        if ($response->status() === 404) {
+        if (in_array($response->status(), [401, 404], true)) {
             $response = $this->http($jwt)->get(self::SANDBOX_BASE.$path);
         }
 
