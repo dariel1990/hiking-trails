@@ -37,6 +37,7 @@ class StripeWebhookController extends Controller
                 'customer.subscription.updated',
                 'customer.subscription.deleted' => $this->onSubscriptionChange($event->data->object),
                 'customer.subscription.trial_will_end' => $this->onTrialWillEnd($event->data->object),
+                'invoice.payment_failed' => $this->onInvoicePaymentFailed($event->data->object),
                 default => null,
             };
         } catch (Throwable $e) {
@@ -84,6 +85,29 @@ class StripeWebhookController extends Controller
         if ($user) {
             $this->stripe->handleTrialWillEnd($sub, $user);
         }
+    }
+
+    /**
+     * A failed charge. Stripe usually also emits customer.subscription.updated
+     * with past_due, but not always immediately for the first charge after a
+     * trial — handling the invoice event closes that gap. Re-syncing is safe:
+     * the observer only emails on a real status change, so if the subscription
+     * event already moved the row, this one is silent.
+     */
+    private function onInvoicePaymentFailed(object $invoice): void
+    {
+        if (empty($invoice->subscription)) {
+            return;
+        }
+
+        $user = $this->resolveUser(null, $invoice->customer ?? null);
+
+        if (! $user) {
+            return;
+        }
+
+        $sub = $this->stripe->retrieveSubscription((string) $invoice->subscription);
+        $this->stripe->syncSubscriptionFromStripe($sub, $user);
     }
 
     private function resolveUser(int|string|null $userId, int|string|null $customerId): ?User

@@ -17,7 +17,9 @@ class Subscription extends Model
     use HasFactory;
 
     /**
-     * Known Google Play subscription SKUs that grant the offline-maps entitlement.
+     * Mobile store subscription SKUs that grant the offline-maps entitlement.
+     * The iOS App Store products use the same identifiers as Google Play, so
+     * these cover both mobile platforms.
      *
      * @var list<string>
      */
@@ -70,12 +72,30 @@ class Subscription extends Model
         'SUBSCRIPTION_STATE_EXPIRED' => 'expired',
     ];
 
+    /**
+     * Map of App Store Server API subscription status → local status column.
+     * (1 active, 2 expired, 3 billing retry, 4 billing grace period, 5 revoked.)
+     *
+     * @var array<int, string>
+     */
+    public const APPLE_STATE_MAP = [
+        1 => 'active',
+        2 => 'expired',
+        3 => 'on_hold',
+        4 => 'in_grace_period',
+        5 => 'canceled',
+    ];
+
     protected $fillable = [
         'user_id',
         'platform',
         'product_id',
         'purchase_token',
+        'original_transaction_id',
         'status',
+        'is_trial',
+        'trial_ends_at',
+        'trial_reminder_sent_at',
         'expires_at',
         'auto_renewing',
         'expiry_reminder_sent_at',
@@ -90,6 +110,9 @@ class Subscription extends Model
     {
         return [
             'expires_at' => 'datetime',
+            'is_trial' => 'boolean',
+            'trial_ends_at' => 'datetime',
+            'trial_reminder_sent_at' => 'datetime',
             'auto_renewing' => 'boolean',
             'expiry_reminder_sent_at' => 'datetime',
             'latest_notification_type' => 'integer',
@@ -111,6 +134,20 @@ class Subscription extends Model
             'xs_offline_monthly', 'xs_pro_web_monthly' => 'Pro Monthly',
             'xs_offline_annual', 'xs_pro_web_annual' => 'Pro Annual',
             default => (string) $this->product_id,
+        };
+    }
+
+    /**
+     * Human-readable store name for the subscription's platform. Callers used to
+     * inline a two-way android/web ternary, which mislabels iOS.
+     */
+    public function platformLabel(): string
+    {
+        return match ($this->platform) {
+            'ios' => 'App Store',
+            'android' => 'Google Play',
+            'web' => 'Web',
+            default => (string) $this->platform,
         };
     }
 

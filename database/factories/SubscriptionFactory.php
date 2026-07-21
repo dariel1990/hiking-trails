@@ -7,7 +7,7 @@ use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
- * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\Subscription>
+ * @extends Factory<Subscription>
  */
 class SubscriptionFactory extends Factory
 {
@@ -22,6 +22,8 @@ class SubscriptionFactory extends Factory
             'product_id' => fake()->randomElement(Subscription::OFFLINE_PRODUCT_IDS),
             'purchase_token' => fake()->unique()->sha256(),
             'status' => 'active',
+            'is_trial' => false,
+            'trial_ends_at' => null,
             'expires_at' => now()->addMonth(),
             'auto_renewing' => true,
             'latest_notification_type' => 4,
@@ -53,6 +55,35 @@ class SubscriptionFactory extends Factory
             'status' => 'expired',
             'expires_at' => now()->subMonth(),
             'auto_renewing' => false,
+        ]);
+    }
+
+    /**
+     * A subscription currently inside its free trial. Status stays "active" —
+     * the trial is carried by is_trial, mirroring how the platforms report it.
+     */
+    public function trialing(): self
+    {
+        return $this->state(fn (): array => [
+            'status' => 'active',
+            'is_trial' => true,
+            'trial_ends_at' => now()->addDays(7),
+            'expires_at' => now()->addDays(7),
+            'auto_renewing' => true,
+        ]);
+    }
+
+    /**
+     * An Apple App Store subscription row.
+     */
+    public function ios(): self
+    {
+        return $this->state(fn (): array => [
+            'platform' => 'ios',
+            'product_id' => fake()->randomElement(Subscription::OFFLINE_PRODUCT_IDS),
+            'purchase_token' => (string) fake()->unique()->randomNumber(9, true),
+            'original_transaction_id' => (string) fake()->unique()->randomNumber(9, true),
+            'latest_notification_type' => null,
         ]);
     }
 

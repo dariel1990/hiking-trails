@@ -8,7 +8,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
-class SubscriptionPurchasedNotification extends Notification implements ShouldQueue
+class TrialConvertedNotification extends Notification implements ShouldQueue
 {
     use Queueable;
 
@@ -26,23 +26,21 @@ class SubscriptionPurchasedNotification extends Notification implements ShouldQu
     {
         $subscription = $this->subscription;
 
-        $platform = $subscription->platformLabel();
-
         $message = (new MailMessage)
-            ->subject('Welcome to XploreSmithers Pro')
-            ->greeting('Thanks for subscribing!')
-            ->line('Your XploreSmithers Pro subscription is now active. You have full access to Pro features on both the website and the Android app.')
+            ->subject('Your XploreSmithers Pro subscription has started')
+            ->greeting('Your free trial has ended — you are now on Pro.')
+            ->line('Your first payment went through and your XploreSmithers Pro subscription is active. Nothing changes for you: all Pro features stay unlocked.')
             ->line('**Plan:** '.$subscription->productLabel())
-            ->line('**Purchased via:** '.$platform);
+            ->line('**Billed via:** '.$subscription->platformLabel());
 
         if ($subscription->expires_at !== null) {
-            $label = $subscription->auto_renewing ? 'Renews on' : 'Active until';
+            $label = $subscription->auto_renewing ? 'Next renewal' : 'Active until';
             $message->line("**{$label}:** ".$subscription->expires_at->toFormattedDateString());
         }
 
         return $message
             ->action('Manage your subscription', route('settings.subscription'))
-            ->line('Happy exploring!');
+            ->line('Thanks for supporting XploreSmithers!');
     }
 
     /**

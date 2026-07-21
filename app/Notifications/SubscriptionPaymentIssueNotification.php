@@ -41,6 +41,10 @@ class SubscriptionPaymentIssueNotification extends Notification implements Shoul
             $message
                 ->line('Please open the Google Play Store on your device and update your payment method under Payments & subscriptions.')
                 ->action('Open your subscription settings', route('settings.subscription'));
+        } elseif ($subscription->platform === 'ios') {
+            $message
+                ->line('Please open Settings on your iPhone, tap your name, then Subscriptions, and update your payment method.')
+                ->action('Open your subscription settings', route('settings.subscription'));
         } else {
             $message
                 ->line('Please update your payment method to keep your Pro access.')

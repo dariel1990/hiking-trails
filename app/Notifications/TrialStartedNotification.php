@@ -8,7 +8,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
-class SubscriptionPurchasedNotification extends Notification implements ShouldQueue
+class TrialStartedNotification extends Notification implements ShouldQueue
 {
     use Queueable;
 
@@ -26,18 +26,18 @@ class SubscriptionPurchasedNotification extends Notification implements ShouldQu
     {
         $subscription = $this->subscription;
 
-        $platform = $subscription->platformLabel();
-
         $message = (new MailMessage)
-            ->subject('Welcome to XploreSmithers Pro')
-            ->greeting('Thanks for subscribing!')
-            ->line('Your XploreSmithers Pro subscription is now active. You have full access to Pro features on both the website and the Android app.')
-            ->line('**Plan:** '.$subscription->productLabel())
-            ->line('**Purchased via:** '.$platform);
+            ->subject('Your XploreSmithers Pro free trial has started')
+            ->greeting('Your free trial is live!')
+            ->line('You now have full access to XploreSmithers Pro — offline maps, GPX downloads, recreation sites and Pro videos.')
+            ->line('**Plan after trial:** '.$subscription->productLabel())
+            ->line('**Started via:** '.$subscription->platformLabel());
 
-        if ($subscription->expires_at !== null) {
-            $label = $subscription->auto_renewing ? 'Renews on' : 'Active until';
-            $message->line("**{$label}:** ".$subscription->expires_at->toFormattedDateString());
+        $endsAt = $subscription->trial_ends_at ?? $subscription->expires_at;
+
+        if ($endsAt !== null) {
+            $message->line('**Free until:** '.$endsAt->toFormattedDateString());
+            $message->line('We will remind you before the trial ends. If you keep it, your subscription continues automatically from that date.');
         }
 
         return $message
@@ -53,6 +53,7 @@ class SubscriptionPurchasedNotification extends Notification implements ShouldQu
         return [
             'subscription_id' => $this->subscription->id,
             'user_id' => $this->subscription->user_id,
+            'trial_ends_at' => $this->subscription->trial_ends_at?->toIso8601String(),
         ];
     }
 }

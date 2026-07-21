@@ -27,7 +27,7 @@ class NewSubscriptionNotification extends Notification implements ShouldQueue
         $subscription = $this->subscription;
         $user = $subscription->user;
 
-        $platform = $subscription->platform === 'android' ? 'Android (Google Play)' : 'Web (Stripe)';
+        $platform = $subscription->platformLabel();
 
         $product = $subscription->productLabel();
 

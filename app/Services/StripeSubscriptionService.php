@@ -4,14 +4,11 @@ namespace App\Services;
 
 use App\Models\Subscription;
 use App\Models\User;
-use App\Notifications\NewSubscriptionNotification;
-use App\Notifications\TrialEndingSoonNotification;
 use Illuminate\Support\Carbon;
 use Stripe\BillingPortal\Session as PortalSession;
 use Stripe\Checkout\Session as CheckoutSession;
 use Stripe\StripeClient;
 use Stripe\Subscription as StripeSubscription;
-use Throwable;
 
 class StripeSubscriptionService
 {
@@ -108,59 +105,34 @@ class StripeSubscriptionService
                 'platform' => 'web',
                 'product_id' => $this->productIdForPrice($priceId),
                 'status' => $this->mapStatus($sub->status),
+                // mapStatus collapses trialing into active, so the trial is
+                // carried separately — without it a trial start is
+                // indistinguishable from a purchase, and a trial converting to
+                // paid changes no column at all.
+                'is_trial' => $sub->status === 'trialing',
+                'trial_ends_at' => $sub->trial_end ? Carbon::createFromTimestampUTC($sub->trial_end) : null,
                 'expires_at' => $periodEnd ? Carbon::createFromTimestampUTC($periodEnd) : null,
                 'auto_renewing' => ! ($sub->cancel_at_period_end ?? false),
                 'raw_payload' => $sub->toArray(),
             ]
         );
 
-        // Notify admins the first time a subscription is created in an active state.
-        // Keying on wasRecentlyCreated dedupes across the two entry points (webhook and
-        // the checkout success redirect) and skips renewal/update syncs of existing rows.
-        if ($subscription->wasRecentlyCreated && $subscription->status === 'active') {
-            User::where('is_admin', true)->each(function (User $admin) use ($subscription): void {
-                try {
-                    $admin->notify(new NewSubscriptionNotification($subscription));
-                } catch (Throwable $e) {
-                    report($e);
-                }
-            });
-        }
-
         return $subscription;
     }
 
     /**
-     * Map a Stripe subscription status to our local entitlement status.
-     */
-    /**
-     * Stripe's customer.subscription.trial_will_end event (fired ~3 days before
-     * a trial converts to a paid subscription). Tells the user their card is
-     * about to be charged. The expiry_reminder_sent_at stamp dedupes webhook
-     * retries — one reminder per billing period.
+     * Stripe's customer.subscription.trial_will_end event. This only refreshes
+     * the local row now — the reminder email itself is sent by
+     * `subscriptions:send-trial-reminders`, so that all three platforms use one
+     * code path (Apple emits no equivalent event, and Google Play none either).
+     *
+     * Sending here as well would double-mail Stripe customers, and the old
+     * dedupe shared `expiry_reminder_sent_at` with the cancellation-expiry
+     * reminder, so one silently suppressed the other.
      */
     public function handleTrialWillEnd(StripeSubscription $sub, User $user): void
     {
-        $subscription = $this->syncSubscriptionFromStripe($sub, $user);
-
-        if (! $subscription->isEntitled()) {
-            return;
-        }
-
-        $alreadyReminded = $subscription->expiry_reminder_sent_at !== null
-            && ($subscription->expires_at === null
-                || $subscription->expiry_reminder_sent_at->gte($subscription->expires_at->copy()->subDays(8)));
-
-        if ($alreadyReminded) {
-            return;
-        }
-
-        try {
-            $user->notify(new TrialEndingSoonNotification($subscription));
-            $subscription->forceFill(['expiry_reminder_sent_at' => now()])->save();
-        } catch (Throwable $e) {
-            report($e);
-        }
+        $this->syncSubscriptionFromStripe($sub, $user);
     }
 
     public function mapStatus(string $stripeStatus): string

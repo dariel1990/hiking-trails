@@ -310,6 +310,15 @@ return [
             'default' => 7,
             'rules' => ['required', 'integer', 'between:0,90'],
         ],
+        'trial_reminder_days' => [
+            'group' => 'subscriptions',
+            'label' => 'Trial reminder lead time (days)',
+            'type' => 'int',
+            'input' => 'number',
+            'default' => 3,
+            'rules' => ['required', 'integer', 'between:1,30'],
+            'hint' => 'How many days before a free trial ends the "you are about to be billed" email is sent.',
+        ],
         'grace_period_days' => [
             'group' => 'subscriptions',
             'label' => 'Grace period (days)',

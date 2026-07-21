@@ -108,7 +108,7 @@
                             $colors = ['from-violet-500 to-purple-600','from-blue-500 to-cyan-600','from-emerald-500 to-teal-600','from-orange-400 to-rose-500','from-pink-500 to-fuchsia-600','from-amber-400 to-orange-500'];
                             $avatarGradient = $colors[($subscription->user?->id ?? 0) % count($colors)];
 
-                            $isAndroid = $subscription->platform === 'android';
+                            $platformLabel = $subscription->platformLabel();
                             $isMonthly = str_contains($subscription->product_id, 'monthly');
 
                             $statusColors = [
@@ -141,15 +141,16 @@
 
                             {{-- Platform --}}
                             <td class="px-4 py-4 align-middle">
-                                @if($isAndroid)
-                                    <span class="inline-flex items-center gap-1.5 rounded bg-blue-50 px-2 py-1 text-xs font-semibold text-blue-700 ring-1 ring-inset ring-blue-200">
-                                        Android
-                                    </span>
-                                @else
-                                    <span class="inline-flex items-center gap-1.5 rounded bg-violet-50 px-2 py-1 text-xs font-semibold text-violet-700 ring-1 ring-inset ring-violet-200">
-                                        Web
-                                    </span>
-                                @endif
+                                @php
+                                    $platformBadge = match($subscription->platform) {
+                                        'android' => 'bg-blue-50 text-blue-700 ring-blue-200',
+                                        'ios' => 'bg-slate-100 text-slate-700 ring-slate-300',
+                                        default => 'bg-violet-50 text-violet-700 ring-violet-200',
+                                    };
+                                @endphp
+                                <span class="inline-flex items-center gap-1.5 rounded px-2 py-1 text-xs font-semibold ring-1 ring-inset {{ $platformBadge }}">
+                                    {{ $platformLabel }}
+                                </span>
                             </td>
 
                             {{-- Plan --}}

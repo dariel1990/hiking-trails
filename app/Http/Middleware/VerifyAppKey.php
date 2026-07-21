@@ -12,6 +12,15 @@ class VerifyAppKey
 {
     public function handle(Request $request, Closure $next): Response
     {
+        $staticKey = (string) config('services.app_api_key', '');
+
+        // Local development / test-suite bypass: no key configured means the
+        // gate isn't set up in this environment. Must run before the missing-
+        // header check or requests without X-App-Key can never pass it.
+        if (empty($staticKey) && app()->environment('local', 'testing')) {
+            return $next($request);
+        }
+
         $provided = (string) $request->header('X-App-Key', '');
 
         if (empty($provided)) {
@@ -20,8 +29,6 @@ class VerifyAppKey
 
         // 1. Accept the legacy static key while old app versions are still in the wild.
         //    Remove this branch once all installs have migrated to per-install tokens.
-        $staticKey = (string) config('services.app_api_key', '');
-
         if (! empty($staticKey) && hash_equals($staticKey, $provided)) {
             return $next($request);
         }
@@ -39,11 +46,6 @@ class VerifyAppKey
             AppToken::where('token', $provided)
                 ->update(['last_used_at' => now()]);
 
-            return $next($request);
-        }
-
-        // 3. Local development bypass (no key configured).
-        if (empty($staticKey) && app()->environment('local')) {
             return $next($request);
         }
 

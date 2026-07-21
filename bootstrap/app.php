@@ -38,6 +38,8 @@ return Application::configure(basePath: dirname(__DIR__))
             ->onFailure(fn () => DeveloperAlert::send('subscriptions:expire-lapsed', 'Command exited with a non-zero status.'));
         $schedule->command('subscriptions:send-expiry-reminders')->dailyAt('09:00')
             ->onFailure(fn () => DeveloperAlert::send('subscriptions:send-expiry-reminders', 'Command exited with a non-zero status.'));
+        $schedule->command('subscriptions:send-trial-reminders')->dailyAt('09:15')
+            ->onFailure(fn () => DeveloperAlert::send('subscriptions:send-trial-reminders', 'Command exited with a non-zero status.'));
 
         // Drains the database queue (notification emails) every minute via the
         // same schedule:run cron — no persistent worker process needed.

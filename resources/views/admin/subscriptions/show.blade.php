@@ -5,7 +5,7 @@
 
 @section('content')
 @php
-    $isAndroid = $subscription->platform === 'android';
+    $platformLabel = $subscription->platformLabel();
     $isMonthly = str_contains($subscription->product_id, 'monthly');
 
     $statusColors = [
@@ -72,11 +72,14 @@
                     <div class="flex items-center justify-between px-6 py-4">
                         <dt class="text-sm text-gray-500">Platform</dt>
                         <dd>
-                            @if($isAndroid)
-                                <span class="inline-flex items-center rounded bg-blue-50 px-2 py-1 text-xs font-semibold text-blue-700 ring-1 ring-inset ring-blue-200">Android (Google Play)</span>
-                            @else
-                                <span class="inline-flex items-center rounded bg-violet-50 px-2 py-1 text-xs font-semibold text-violet-700 ring-1 ring-inset ring-violet-200">Web (Stripe)</span>
-                            @endif
+                            @php
+                                $platformBadge = match($subscription->platform) {
+                                    'android' => 'bg-blue-50 text-blue-700 ring-blue-200',
+                                    'ios' => 'bg-slate-100 text-slate-700 ring-slate-300',
+                                    default => 'bg-violet-50 text-violet-700 ring-violet-200',
+                                };
+                            @endphp
+                            <span class="inline-flex items-center rounded px-2 py-1 text-xs font-semibold ring-1 ring-inset {{ $platformBadge }}">{{ $platformLabel }}</span>
                         </dd>
                     </div>
                     <div class="flex items-center justify-between px-6 py-4">

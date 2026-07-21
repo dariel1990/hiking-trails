@@ -4,8 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Subscription;
-use App\Models\User;
-use App\Notifications\NewSubscriptionNotification;
+use App\Services\AppStoreSubscriptionVerifier;
 use App\Services\GooglePlaySubscriptionVerifier;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -16,10 +15,13 @@ use Throwable;
 
 class BillingController extends Controller
 {
-    public function verifyPurchase(Request $request, GooglePlaySubscriptionVerifier $verifier): JsonResponse
-    {
+    public function verifyPurchase(
+        Request $request,
+        GooglePlaySubscriptionVerifier $verifier,
+        AppStoreSubscriptionVerifier $appStoreVerifier,
+    ): JsonResponse {
         $validated = $request->validate([
-            'platform' => ['required', 'string', 'in:android'],
+            'platform' => ['required', 'string', 'in:android,ios'],
             'productId' => ['required', 'string', 'in:'.implode(',', Subscription::OFFLINE_PRODUCT_IDS)],
             'purchaseToken' => ['required', 'string'],
         ]);
@@ -27,6 +29,10 @@ class BillingController extends Controller
         $userId = $request->user()->id;
         $productId = $validated['productId'];
         $purchaseToken = $validated['purchaseToken'];
+
+        if ($validated['platform'] === 'ios') {
+            return $this->verifyIosPurchase($appStoreVerifier, $userId, $productId, $purchaseToken);
+        }
 
         $existing = Subscription::query()->where('purchase_token', $purchaseToken)->first();
 
@@ -69,16 +75,6 @@ class BillingController extends Controller
         $isActive = in_array($status, Subscription::ENTITLED_STATUSES, true)
             && ($expiresAt === null || $expiresAt->isFuture());
 
-        if ($isActive && $subscription->wasRecentlyCreated) {
-            User::where('is_admin', true)->each(function (User $admin) use ($subscription): void {
-                try {
-                    $admin->notify(new NewSubscriptionNotification($subscription));
-                } catch (Throwable $e) {
-                    report($e);
-                }
-            });
-        }
-
         if ($isActive && $acknowledgementState === 'ACKNOWLEDGEMENT_STATE_PENDING') {
             try {
                 $verifier->acknowledge($productId, $purchaseToken);
@@ -87,6 +83,68 @@ class BillingController extends Controller
             }
         }
 
+        return $this->entitlementResponse($subscription, $isActive);
+    }
+
+    /**
+     * iOS mirror of the Android flow. `purchaseToken` is the StoreKit 2 signed
+     * transaction (JWS); the verifier resolves it against Apple's App Store
+     * Server API. The stable originalTransactionId — not the per-launch JWS —
+     * is what identifies the subscription row, so the account-conflict check
+     * runs after verification.
+     */
+    private function verifyIosPurchase(
+        AppStoreSubscriptionVerifier $verifier,
+        int $userId,
+        string $productId,
+        string $signedTransaction,
+    ): JsonResponse {
+        try {
+            $result = $verifier->verify($signedTransaction);
+        } catch (Throwable $e) {
+            Log::warning('App Store verifyPurchase failed', ['error' => $e->getMessage()]);
+
+            return response()->json(['message' => 'Could not verify purchase'], Response::HTTP_UNPROCESSABLE_ENTITY);
+        }
+
+        $originalTransactionId = $result['originalTransactionId'];
+
+        $existing = Subscription::query()->where('purchase_token', $originalTransactionId)->first();
+
+        if ($existing && $existing->user_id !== $userId) {
+            return response()->json(
+                ['message' => 'Purchase token already bound to another account.'],
+                Response::HTTP_CONFLICT,
+            );
+        }
+
+        // Prefer the product Apple reports; fall back to the client's claim.
+        $verifiedProductId = $result['productId'];
+        if (! in_array($verifiedProductId, Subscription::OFFLINE_PRODUCT_IDS, true)) {
+            $verifiedProductId = $productId;
+        }
+
+        $subscription = Subscription::updateOrCreate(
+            ['purchase_token' => $originalTransactionId],
+            [
+                'user_id' => $userId,
+                'platform' => 'ios',
+                'product_id' => $verifiedProductId,
+                'original_transaction_id' => $originalTransactionId,
+                'status' => $result['status'],
+                'expires_at' => $result['expiresAt'],
+                'auto_renewing' => $result['autoRenewing'],
+                'raw_payload' => $result['raw'],
+            ],
+        );
+
+        // No acknowledge step on iOS — StoreKit transactions are finished by
+        // the app itself (completePurchase).
+        return $this->entitlementResponse($subscription, $subscription->isEntitled());
+    }
+
+    private function entitlementResponse(Subscription $subscription, bool $isActive): JsonResponse
+    {
         return response()->json([
             'entitlement' => [
                 'active' => $isActive,

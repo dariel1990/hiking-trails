@@ -37,8 +37,12 @@ class TrialEndingSoonNotification extends Notification implements ShouldQueue
             ->subject('Your XploreSmithers Pro trial is ending soon')
             ->greeting('Your free trial is almost over.');
 
-        if ($subscription->expires_at !== null) {
-            $message->line('Your XploreSmithers Pro trial ends on **'.$subscription->expires_at->toFormattedDateString().'**.');
+        // Prefer the explicit trial end date; expires_at is the renewal date and
+        // only coincides with it while the trial is the current period.
+        $endsAt = $subscription->trial_ends_at ?? $subscription->expires_at;
+
+        if ($endsAt !== null) {
+            $message->line('Your XploreSmithers Pro trial ends on **'.$endsAt->toFormattedDateString().'**.');
         } else {
             $message->line('Your XploreSmithers Pro trial is ending in a few days.');
         }

@@ -59,6 +59,16 @@ return [
         'integrity_enabled' => env('PLAY_INTEGRITY_ENABLED', false),
     ],
 
+    'app_store' => [
+        // App Store Connect → Users and Access → Integrations → In-App Purchase
+        // key. private_key is a path (absolute or relative to base_path) to the
+        // downloaded .p8 file.
+        'issuer_id' => env('APP_STORE_ISSUER_ID'),
+        'key_id' => env('APP_STORE_KEY_ID'),
+        'private_key' => env('APP_STORE_PRIVATE_KEY'),
+        'bundle_id' => env('APP_STORE_BUNDLE_ID', 'com.xploresmithers.app'),
+    ],
+
     'events_import' => [
         // Shared secret for POST /api/events/import (set on both environments).
         'token' => env('EVENTS_IMPORT_TOKEN'),
