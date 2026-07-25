@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Api\AppleSignInRequest;
 use App\Http\Requests\Api\GoogleSignInRequest;
 use App\Http\Requests\Api\LoginRequest;
 use App\Http\Requests\Api\RegisterRequest;
@@ -14,6 +15,7 @@ use App\Models\User;
 use App\Notifications\AccountDeletedNotification;
 use App\Notifications\PasswordChangedNotification;
 use App\Notifications\WelcomeNotification;
+use App\Services\AppleIdTokenVerifier;
 use Google\Client as GoogleClient;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -110,7 +112,62 @@ class AuthController extends Controller
 
         if ($user->wasRecentlyCreated) {
             try {
-                $user->notify(new WelcomeNotification(viaGoogle: true));
+                $user->notify(new WelcomeNotification(provider: 'google'));
+            } catch (Throwable $e) {
+                report($e);
+            }
+        }
+
+        return response()->json([
+            'token' => $this->issueToken($user, $request),
+            'user' => $this->userPayload($user),
+        ]);
+    }
+
+    public function appleSignIn(AppleSignInRequest $request): JsonResponse
+    {
+        $claims = app(AppleIdTokenVerifier::class)->verify($request->string('id_token')->value());
+
+        if ($claims === null || empty($claims['sub'])) {
+            return response()->json(['message' => 'Invalid Apple token'], Response::HTTP_UNAUTHORIZED);
+        }
+
+        // Apple only sends email (and the client-side name) on the FIRST
+        // authorization, so repeat sign-ins must match by the stable `sub`.
+        $email = $claims['email'] ?? null;
+        $user = User::where('apple_id', $claims['sub'])->first()
+            ?? ($email ? User::where('email', $email)->first() : null);
+
+        if ($user && ! $user->is_active) {
+            return response()->json(['message' => 'This account has been deactivated'], Response::HTTP_FORBIDDEN);
+        }
+
+        if ($user) {
+            $user->forceFill(['apple_id' => $claims['sub']])->save();
+        } else {
+            if (empty($email)) {
+                return response()->json([
+                    'message' => 'Apple did not provide an email address. In Settings > Apple ID > Sign-In & Security > Sign in with Apple, remove XploreSmithers and try again.',
+                ], Response::HTTP_UNPROCESSABLE_ENTITY);
+            }
+
+            $user = User::create([
+                'name' => $request->string('name')->value() ?: $email,
+                'email' => $email,
+                'apple_id' => $claims['sub'],
+            ]);
+        }
+
+        // A verified Apple sign-in proves ownership of the address (including
+        // private-relay addresses), even for accounts that registered earlier
+        // and never verified.
+        if ($user->email_verified_at === null) {
+            $user->forceFill(['email_verified_at' => now()])->save();
+        }
+
+        if ($user->wasRecentlyCreated) {
+            try {
+                $user->notify(new WelcomeNotification(provider: 'apple'));
             } catch (Throwable $e) {
                 report($e);
             }

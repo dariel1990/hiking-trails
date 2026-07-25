@@ -11,7 +11,11 @@ class WelcomeNotification extends Notification implements ShouldQueue
 {
     use Queueable;
 
-    public function __construct(public bool $viaGoogle = false) {}
+    /**
+     * @param  'google'|'apple'|null  $provider  social provider used to sign up,
+     *                                           or null for email/password.
+     */
+    public function __construct(public ?string $provider = null) {}
 
     /**
      * @return array<int, string>
@@ -28,8 +32,10 @@ class WelcomeNotification extends Notification implements ShouldQueue
             ->greeting('Welcome, '.$notifiable->name.'!')
             ->line('Thanks for joining XploreSmithers — your guide to hiking trails, fishing lakes, and outdoor adventures around Smithers, BC.');
 
-        if ($this->viaGoogle) {
+        if ($this->provider === 'google') {
             $message->line('You signed up with your Google account, so there is no password to remember — just use **Sign in with Google** whenever you come back.');
+        } elseif ($this->provider === 'apple') {
+            $message->line('You signed up with your Apple ID, so there is no password to remember — just use **Sign in with Apple** whenever you come back.');
         } else {
             $message->line('Keep an eye out for a separate email asking you to verify your email address.');
         }
@@ -46,7 +52,7 @@ class WelcomeNotification extends Notification implements ShouldQueue
     public function toArray(object $notifiable): array
     {
         return [
-            'via_google' => $this->viaGoogle,
+            'provider' => $this->provider,
         ];
     }
 }

@@ -29,7 +29,9 @@ class EmailLogTest extends TestCase
 
     private function subscription(): Subscription
     {
-        return Subscription::factory()->active()->create();
+        // createQuietly: the SubscriptionObserver would otherwise email the
+        // subscriber and add an email_logs row these tests don't expect.
+        return Subscription::factory()->active()->createQuietly();
     }
 
     private function failedLogWithPayload(User $notifiable, Subscription $subscription): EmailLog

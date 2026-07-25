@@ -53,7 +53,7 @@ class WebGoogleAuthController extends Controller
 
         if ($user->wasRecentlyCreated) {
             try {
-                $user->notify(new WelcomeNotification(viaGoogle: true));
+                $user->notify(new WelcomeNotification(provider: 'google'));
             } catch (Throwable $e) {
                 report($e);
             }

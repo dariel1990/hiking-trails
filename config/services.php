@@ -52,6 +52,10 @@ return [
         'package_name' => env('GOOGLE_PLAY_PACKAGE_NAME', 'com.xploresmithers.app'),
         'service_account_json' => env('GOOGLE_PLAY_SERVICE_ACCOUNT_JSON'),
         'rtdn_token' => env('GOOGLE_PLAY_RTDN_TOKEN'),
+        // Comma-separated Play Console offer ids that represent a free trial, so
+        // an incoming subscription can be flagged is_trial. Play returns no
+        // boolean for this.
+        'trial_offer_ids' => env('GOOGLE_PLAY_TRIAL_OFFER_IDS', ''),
         // Play Integrity API reuses the same service account JSON above.
         // Before deploying, enable "Play Integrity API" for the linked Google Cloud
         // project in Play Console → Setup → API access, then grant the service
@@ -67,6 +71,12 @@ return [
         'key_id' => env('APP_STORE_KEY_ID'),
         'private_key' => env('APP_STORE_PRIVATE_KEY'),
         'bundle_id' => env('APP_STORE_BUNDLE_ID', 'com.xploresmithers.app'),
+    ],
+
+    'apple' => [
+        // Sign in with Apple (native app flow): the identity token's `aud`
+        // claim is the iOS bundle id. Distinct from the app_store billing keys.
+        'signin_bundle_id' => env('APPLE_SIGNIN_BUNDLE_ID', 'com.xploresmithers.app'),
     ],
 
     'events_import' => [

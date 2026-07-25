@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use App\Models\Subscription;
 use App\Models\User;
 use Illuminate\Console\Command;
+use Illuminate\Support\Str;
 
 class SimulateSubscriptionEvent extends Command
 {
@@ -117,10 +118,11 @@ class SimulateSubscriptionEvent extends Command
 
     private function newTrial(User $user, string $platform): Subscription
     {
-        return Subscription::factory()->trialing()->create([
-            'user_id' => $user->id,
-            'platform' => $platform,
-        ]);
+        return Subscription::create($this->attributes($user, $platform, [
+            'is_trial' => true,
+            'trial_ends_at' => now()->addDays(7),
+            'expires_at' => now()->addDays(7),
+        ]));
     }
 
     /**
@@ -129,10 +131,39 @@ class SimulateSubscriptionEvent extends Command
      */
     private function newPaid(User $user, string $platform): Subscription
     {
-        return Subscription::factory()->active()->createQuietly([
+        $subscription = new Subscription($this->attributes($user, $platform));
+        $subscription->saveQuietly();
+
+        return $subscription;
+    }
+
+    /**
+     * Base attributes for a simulated subscription.
+     *
+     * Built by hand rather than with a model factory: factories live under
+     * composer's autoload-dev, so they don't exist on a production install
+     * (`composer install --no-dev`), which is exactly where this command is
+     * most useful.
+     *
+     * @param  array<string, mixed>  $overrides
+     * @return array<string, mixed>
+     */
+    private function attributes(User $user, string $platform, array $overrides = []): array
+    {
+        return array_merge([
             'user_id' => $user->id,
             'platform' => $platform,
-        ]);
+            'product_id' => Subscription::OFFLINE_PRODUCT_IDS[0],
+            // Prefixed so simulated rows are obvious in the admin panel and
+            // can never collide with a real store token.
+            'purchase_token' => 'simulated_'.Str::random(24),
+            'status' => 'active',
+            'is_trial' => false,
+            'trial_ends_at' => null,
+            'expires_at' => now()->addMonth(),
+            'auto_renewing' => true,
+            'raw_payload' => ['simulated' => true],
+        ], $overrides);
     }
 
     private function resolveUser(): ?User

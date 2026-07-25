@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\AppleNotificationController;
 use App\Http\Controllers\Api\AppTokenController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\BillingController;
@@ -89,6 +90,7 @@ Route::prefix('auth')->group(function () {
     Route::post('/register', [AuthController::class, 'register'])->middleware('throttle:300,1');
     Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:300,1');
     Route::post('/google', [AuthController::class, 'googleSignIn'])->middleware('throttle:300,1');
+    Route::post('/apple', [AuthController::class, 'appleSignIn'])->middleware('throttle:300,1');
     Route::post('/forgot-password', [AuthController::class, 'forgotPassword'])->middleware('throttle:300,1');
     Route::post('/reset-password', [AuthController::class, 'resetPassword'])->middleware('throttle:300,1');
     Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth:sanctum');
@@ -108,7 +110,15 @@ Route::middleware('auth:sanctum')->group(function () {
 });
 
 // Google Real-Time Developer Notifications (Pub/Sub push) — public, secret-gated.
-Route::post('/billing/rtdn', [BillingController::class, 'rtdn']);
+// VerifyAppKey must be excluded: Google Pub/Sub sends no X-App-Key header, so
+// with the middleware applied every push is rejected before the handler runs.
+Route::post('/billing/rtdn', [BillingController::class, 'rtdn'])
+    ->withoutMiddleware(VerifyAppKey::class);
+
+// Apple App Store Server Notifications (V2). Public, exempt from VerifyAppKey
+// (Apple sends no X-App-Key); the payload is a signed JWS from Apple.
+Route::post('/billing/apple/notifications', [AppleNotificationController::class, 'handle'])
+    ->withoutMiddleware(VerifyAppKey::class);
 
 // Public routes — called by both the website JS map and the Android app.
 // VerifyAppKey is excluded: the website map JS never sends X-App-Key.

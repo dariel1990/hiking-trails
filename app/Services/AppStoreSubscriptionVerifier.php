@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Subscription;
 use Firebase\JWT\JWT;
+use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Http;
@@ -63,6 +64,27 @@ class AppStoreSubscriptionVerifier
             throw new RuntimeException("Signed transaction bundle mismatch ({$claimedBundle}).");
         }
 
+        return $this->statusForOriginalTransactionId($originalTransactionId);
+    }
+
+    /**
+     * Authoritative state for a subscription, fetched from Apple's App Store
+     * Server API. Both the client verify flow and the server-notification
+     * webhook resolve down to this, so the App Store API — not any client- or
+     * push-supplied payload — is always the trust anchor.
+     *
+     * @return array{
+     *     status: string,
+     *     expiresAt: ?Carbon,
+     *     autoRenewing: bool,
+     *     isTrial: bool,
+     *     originalTransactionId: string,
+     *     productId: ?string,
+     *     raw: array<string, mixed>,
+     * }
+     */
+    public function statusForOriginalTransactionId(string $originalTransactionId): array
+    {
         $statuses = $this->fetchStatuses($originalTransactionId);
 
         $last = $this->latestTransaction($statuses, $originalTransactionId);
@@ -81,6 +103,10 @@ class AppStoreSubscriptionVerifier
             'status' => $status,
             'expiresAt' => $expiresMs ? Carbon::createFromTimestampMs((int) $expiresMs) : null,
             'autoRenewing' => (int) ($renewal['autoRenewStatus'] ?? 0) === 1,
+            // A free trial is an introductory offer of type FREE_TRIAL on the
+            // current transaction; it clears once the paid period begins, which
+            // is what surfaces the trial-converted event.
+            'isTrial' => ($transaction['offerDiscountType'] ?? null) === 'FREE_TRIAL',
             'originalTransactionId' => $originalTransactionId,
             'productId' => isset($transaction['productId']) ? (string) $transaction['productId'] : null,
             'raw' => [
@@ -88,6 +114,50 @@ class AppStoreSubscriptionVerifier
                 'transaction' => $transaction,
                 'renewal' => $renewal,
             ],
+        ];
+    }
+
+    /**
+     * Decode an App Store Server Notification (V2) signedPayload down to the
+     * fields the webhook needs. The signature is not verified here — like the
+     * client transaction, the push is treated as an untrusted hint and the real
+     * state is re-fetched via {@see statusForOriginalTransactionId}. The bundle
+     * check is a cheap sanity filter, not the trust boundary.
+     *
+     * @return array{
+     *     notificationType: ?string,
+     *     subtype: ?string,
+     *     originalTransactionId: string,
+     *     appAccountToken: ?string,
+     *     environment: ?string,
+     * }
+     */
+    public function decodeNotification(string $signedPayload): array
+    {
+        $payload = $this->decodeJwsPayload($signedPayload);
+        $data = (array) ($payload['data'] ?? []);
+
+        $claimedBundle = (string) ($data['bundleId'] ?? '');
+        if ($claimedBundle !== '' && $claimedBundle !== $this->bundle()) {
+            throw new RuntimeException("Notification bundle mismatch ({$claimedBundle}).");
+        }
+
+        $transaction = [];
+        if (! empty($data['signedTransactionInfo'])) {
+            $transaction = $this->decodeJwsPayload((string) $data['signedTransactionInfo']);
+        }
+
+        $originalTransactionId = (string) ($transaction['originalTransactionId'] ?? '');
+        if ($originalTransactionId === '') {
+            throw new RuntimeException('Notification carries no originalTransactionId.');
+        }
+
+        return [
+            'notificationType' => isset($payload['notificationType']) ? (string) $payload['notificationType'] : null,
+            'subtype' => isset($payload['subtype']) ? (string) $payload['subtype'] : null,
+            'originalTransactionId' => $originalTransactionId,
+            'appAccountToken' => isset($transaction['appAccountToken']) ? (string) $transaction['appAccountToken'] : null,
+            'environment' => isset($data['environment']) ? (string) $data['environment'] : null,
         ];
     }
 
@@ -221,7 +291,7 @@ class AppStoreSubscriptionVerifier
         return $payload;
     }
 
-    private function http(string $jwt): \Illuminate\Http\Client\PendingRequest
+    private function http(string $jwt): PendingRequest
     {
         return Http::withToken($jwt)->acceptJson()->timeout(10);
     }

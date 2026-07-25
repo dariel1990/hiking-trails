@@ -4,6 +4,7 @@ namespace Tests\Feature\Api;
 
 use App\Models\Subscription;
 use App\Models\User;
+use App\Services\AppStoreSubscriptionVerifier;
 use App\Services\GooglePlaySubscriptionVerifier;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
@@ -25,7 +26,7 @@ class BillingVerifyPurchaseTest extends TestCase
         Sanctum::actingAs(User::factory()->create());
 
         $this->postJson('/api/billing/verify-purchase', [
-            'platform' => 'ios',
+            'platform' => 'windows',
             'productId' => 'not_a_real_sku',
             'purchaseToken' => '',
         ])->assertStatus(422)
@@ -153,6 +154,143 @@ class BillingVerifyPurchaseTest extends TestCase
             'platform' => 'android',
             'productId' => 'xs_offline_monthly',
             'purchaseToken' => 'tok_fail',
+        ])->assertStatus(422)
+            ->assertExactJson(['message' => 'Could not verify purchase']);
+    }
+
+    public function test_ios_active_purchase_is_verified(): void
+    {
+        $user = User::factory()->create();
+        Sanctum::actingAs($user);
+
+        $expiry = now()->addMonth()->startOfSecond();
+
+        $this->mock(AppStoreSubscriptionVerifier::class, function (MockInterface $m) use ($expiry): void {
+            $m->shouldReceive('verify')->once()->with('SIGNED_JWS')->andReturn([
+                'status' => 'active',
+                'expiresAt' => $expiry,
+                'autoRenewing' => true,
+                'isTrial' => false,
+                'originalTransactionId' => '2000000123456789',
+                'productId' => 'xs_offline_monthly',
+                'raw' => ['appleStatus' => 1],
+            ]);
+        });
+
+        $this->postJson('/api/billing/verify-purchase', [
+            'platform' => 'ios',
+            'productId' => 'xs_offline_monthly',
+            'purchaseToken' => 'SIGNED_JWS',
+        ])->assertOk()
+            ->assertJsonPath('entitlement.active', true)
+            ->assertJsonPath('entitlement.status', 'active')
+            ->assertJsonPath('entitlement.productId', 'xs_offline_monthly')
+            ->assertJsonPath('entitlement.inGracePeriod', false);
+
+        $this->assertDatabaseHas('subscriptions', [
+            'user_id' => $user->id,
+            'platform' => 'ios',
+            'purchase_token' => '2000000123456789',
+            'original_transaction_id' => '2000000123456789',
+            'product_id' => 'xs_offline_monthly',
+            'status' => 'active',
+            'auto_renewing' => true,
+        ]);
+    }
+
+    public function test_ios_grace_period_marks_entitlement_active(): void
+    {
+        Sanctum::actingAs(User::factory()->create());
+
+        $this->mock(AppStoreSubscriptionVerifier::class, function (MockInterface $m): void {
+            $m->shouldReceive('verify')->once()->andReturn([
+                'status' => 'in_grace_period',
+                'expiresAt' => now()->addDays(3),
+                'autoRenewing' => true,
+                'isTrial' => false,
+                'originalTransactionId' => '2000000000000001',
+                'productId' => 'xs_offline_annual',
+                'raw' => ['appleStatus' => 4],
+            ]);
+        });
+
+        $this->postJson('/api/billing/verify-purchase', [
+            'platform' => 'ios',
+            'productId' => 'xs_offline_annual',
+            'purchaseToken' => 'SIGNED_JWS',
+        ])->assertOk()
+            ->assertJsonPath('entitlement.active', true)
+            ->assertJsonPath('entitlement.status', 'in_grace_period')
+            ->assertJsonPath('entitlement.inGracePeriod', true);
+    }
+
+    public function test_ios_expired_state_marks_entitlement_inactive(): void
+    {
+        Sanctum::actingAs(User::factory()->create());
+
+        $this->mock(AppStoreSubscriptionVerifier::class, function (MockInterface $m): void {
+            $m->shouldReceive('verify')->once()->andReturn([
+                'status' => 'expired',
+                'expiresAt' => now()->subDay(),
+                'autoRenewing' => false,
+                'isTrial' => false,
+                'originalTransactionId' => '2000000000000002',
+                'productId' => 'xs_offline_monthly',
+                'raw' => ['appleStatus' => 2],
+            ]);
+        });
+
+        $this->postJson('/api/billing/verify-purchase', [
+            'platform' => 'ios',
+            'productId' => 'xs_offline_monthly',
+            'purchaseToken' => 'SIGNED_JWS',
+        ])->assertOk()
+            ->assertJsonPath('entitlement.active', false)
+            ->assertJsonPath('entitlement.status', 'expired');
+    }
+
+    public function test_ios_transaction_bound_to_another_user_returns_409(): void
+    {
+        $owner = User::factory()->create();
+        Subscription::factory()->active()->create([
+            'user_id' => $owner->id,
+            'platform' => 'ios',
+            'purchase_token' => '2000000000000003',
+        ]);
+
+        Sanctum::actingAs(User::factory()->create());
+
+        $this->mock(AppStoreSubscriptionVerifier::class, function (MockInterface $m): void {
+            $m->shouldReceive('verify')->once()->andReturn([
+                'status' => 'active',
+                'expiresAt' => now()->addMonth(),
+                'autoRenewing' => true,
+                'isTrial' => false,
+                'originalTransactionId' => '2000000000000003',
+                'productId' => 'xs_offline_monthly',
+                'raw' => ['appleStatus' => 1],
+            ]);
+        });
+
+        $this->postJson('/api/billing/verify-purchase', [
+            'platform' => 'ios',
+            'productId' => 'xs_offline_monthly',
+            'purchaseToken' => 'SIGNED_JWS',
+        ])->assertStatus(409);
+    }
+
+    public function test_apple_api_failure_returns_422(): void
+    {
+        Sanctum::actingAs(User::factory()->create());
+
+        $this->mock(AppStoreSubscriptionVerifier::class, function (MockInterface $m): void {
+            $m->shouldReceive('verify')->once()->andThrow(new \RuntimeException('boom'));
+        });
+
+        $this->postJson('/api/billing/verify-purchase', [
+            'platform' => 'ios',
+            'productId' => 'xs_offline_monthly',
+            'purchaseToken' => 'SIGNED_JWS',
         ])->assertStatus(422)
             ->assertExactJson(['message' => 'Could not verify purchase']);
     }
