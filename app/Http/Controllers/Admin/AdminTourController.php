@@ -121,6 +121,19 @@ class AdminTourController extends Controller
         return redirect()->route('admin.tours.index')->with('success', 'Tour updated successfully.');
     }
 
+    /**
+     * Remove this tour's cover image without requiring a replacement upload.
+     */
+    public function deleteCoverImage(Tour $tour): JsonResponse
+    {
+        if ($tour->cover_image) {
+            Storage::disk('public')->delete($tour->cover_image);
+            $tour->update(['cover_image' => null]);
+        }
+
+        return response()->json(['success' => true]);
+    }
+
     public function destroy(Tour $tour): RedirectResponse
     {
         if ($tour->cover_image) {

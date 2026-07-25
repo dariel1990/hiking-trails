@@ -85,6 +85,7 @@ class FacilityController extends Controller
             'trail_network_id' => 'nullable|exists:trail_networks,id',
             'photos' => 'nullable|array',
             'photos.*' => 'image|mimes:jpg,jpeg,png,webp|max:51200',
+            'uploaded_photos' => 'nullable|string',
             'video_urls' => 'nullable|array',
             'video_urls.*' => 'nullable|url|max:500',
         ]);
@@ -144,6 +145,7 @@ class FacilityController extends Controller
             'trail_network_id' => 'nullable|exists:trail_networks,id',
             'photos' => 'nullable|array',
             'photos.*' => 'image|mimes:jpg,jpeg,png,webp|max:51200',
+            'uploaded_photos' => 'nullable|string',
             'video_urls' => 'nullable|array',
             'video_urls.*' => 'nullable|url|max:500',
         ]);
@@ -208,6 +210,54 @@ class FacilityController extends Controller
     }
 
     /**
+     * Upload a single facility photo to temporary storage ahead of the facility
+     * being saved, so the UI can upload photos one-by-one as they're picked
+     * instead of waiting for the form submit.
+     */
+    public function uploadPhoto(Request $request): JsonResponse
+    {
+        $request->validate([
+            'photo' => 'required|image|mimes:jpg,jpeg,png,webp|max:51200',
+        ]);
+
+        $processed = $this->compressAndStorePhoto($request->file('photo'), 'facilities/tmp/photos');
+
+        return response()->json([
+            'path' => $processed['path'],
+            'thumbnail_path' => $processed['thumbnail_path'],
+            'url' => asset('storage/'.$processed['path']),
+            'thumbnail_url' => asset('storage/'.$processed['thumbnail_path']),
+        ]);
+    }
+
+    /**
+     * Delete a temporarily uploaded facility photo that hasn't been attached
+     * to a facility yet (e.g. the user removed it before saving).
+     */
+    public function deleteUploadedPhoto(Request $request): JsonResponse
+    {
+        $request->validate([
+            'path' => 'required|string',
+            'thumbnail_path' => 'nullable|string',
+        ]);
+
+        $path = $request->string('path')->toString();
+        $thumbnailPath = $request->string('thumbnail_path')->toString();
+
+        if (! str_starts_with($path, 'facilities/tmp/photos/') || str_contains($path, '..')) {
+            abort(422, 'Invalid photo path.');
+        }
+
+        Storage::disk('public')->delete($path);
+
+        if ($thumbnailPath !== '' && str_starts_with($thumbnailPath, 'facilities/tmp/photos/') && ! str_contains($thumbnailPath, '..')) {
+            Storage::disk('public')->delete($thumbnailPath);
+        }
+
+        return response()->json(['deleted' => true]);
+    }
+
+    /**
      * Delete a facility icon.
      */
     public function deleteIcon(Request $request): JsonResponse
@@ -267,6 +317,43 @@ class FacilityController extends Controller
                     'file_path' => $compressed['path'],
                     'thumbnail_path' => $compressed['thumbnail_path'],
                     'caption' => $request->input("photo_captions.{$index}"),
+                    'is_primary' => $index === 0 && ! $facility->media()->exists(),
+                    'sort_order' => $facility->media()->count() + $index,
+                ]);
+            }
+        }
+
+        $uploadedPhotos = json_decode($request->input('uploaded_photos', '[]'), true);
+
+        if (is_array($uploadedPhotos)) {
+            foreach ($uploadedPhotos as $index => $photo) {
+                $tempPath = $photo['path'] ?? null;
+                $tempThumbnailPath = $photo['thumbnail_path'] ?? null;
+
+                if (! is_string($tempPath) || ! str_starts_with($tempPath, 'facilities/tmp/photos/') || str_contains($tempPath, '..')) {
+                    continue;
+                }
+
+                if (! Storage::disk('public')->exists($tempPath)) {
+                    continue;
+                }
+
+                $directory = 'facilities/'.$facility->id.'/photos';
+                $filename = basename($tempPath);
+                $finalPath = $directory.'/'.$filename;
+                Storage::disk('public')->move($tempPath, $finalPath);
+
+                $finalThumbnailPath = null;
+                if (is_string($tempThumbnailPath) && str_starts_with($tempThumbnailPath, 'facilities/tmp/photos/') && ! str_contains($tempThumbnailPath, '..') && Storage::disk('public')->exists($tempThumbnailPath)) {
+                    $finalThumbnailPath = $directory.'/thumbs/'.basename($tempThumbnailPath);
+                    Storage::disk('public')->move($tempThumbnailPath, $finalThumbnailPath);
+                }
+
+                FacilityMedia::create([
+                    'facility_id' => $facility->id,
+                    'media_type' => 'photo',
+                    'file_path' => $finalPath,
+                    'thumbnail_path' => $finalThumbnailPath,
                     'is_primary' => $index === 0 && ! $facility->media()->exists(),
                     'sort_order' => $facility->media()->count() + $index,
                 ]);

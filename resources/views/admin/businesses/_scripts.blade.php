@@ -132,47 +132,218 @@ function refreshBusinessIconPreview() {
     preview.textContent = custom || businessTypeIcon;
 }
 
-async function handlePhotoSelection(input) {
-    const container = document.getElementById('photo-preview');
-    if (!input.files || input.files.length === 0) {
-        container.innerHTML = '';
-        return;
+// ── Business photo upload queue ──────────────────────────────────────────────
+// Photos upload one-by-one as soon as they're picked/dropped, instead of
+// waiting for the form to be submitted. Each thumbnail shows its own
+// uploading/error/uploaded state.
+
+const businessPhotoUploads = [];
+const businessPhotoQueue = [];
+let businessPhotoQueueRunning = false;
+
+function handlePhotoSelection(input) {
+    if (!input.files || input.files.length === 0) { return; }
+    enqueueBusinessPhotos(input.files);
+    input.value = ''; // files are uploaded via AJAX, not the form submit
+}
+
+function enqueueBusinessPhotos(files) {
+    Array.from(files).forEach(file => {
+        if (!file.type || !file.type.startsWith('image/')) { return; }
+
+        const item = {
+            id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+            status: 'queued',
+            file,
+            previewUrl: URL.createObjectURL(file),
+        };
+        businessPhotoUploads.push(item);
+        businessPhotoQueue.push(item);
+    });
+
+    renderBusinessPhotoPreview();
+    runBusinessPhotoQueue();
+}
+
+async function runBusinessPhotoQueue() {
+    if (businessPhotoQueueRunning) { return; }
+    businessPhotoQueueRunning = true;
+    updateBusinessPhotoSubmitState();
+
+    while (businessPhotoQueue.length > 0) {
+        const item = businessPhotoQueue.shift();
+        if (!businessPhotoUploads.includes(item)) { continue; } // removed before its turn
+
+        item.status = 'uploading';
+        renderBusinessPhotoPreview();
+
+        item.file = await compressImageForUpload(item.file);
+        URL.revokeObjectURL(item.previewUrl);
+        item.previewUrl = URL.createObjectURL(item.file);
+
+        await uploadSingleBusinessPhoto(item);
     }
 
-    // Large phone photos (30MB+) make the upload and the server-side processing
-    // slow. Shrinking them in the browser before they ever hit the network fixes
-    // both: the transfer is smaller, and the server has less work to do.
-    const submitBtn = document.querySelector('button[type="submit"]');
-    const originalSubmitText = submitBtn ? submitBtn.textContent : null;
-    if (submitBtn) {
-        submitBtn.disabled = true;
-        submitBtn.textContent = 'Compressing images…';
-    }
-    container.innerHTML = '<div class="col-span-full text-sm text-muted-foreground py-2">Compressing images…</div>';
+    businessPhotoQueueRunning = false;
+    updateBusinessPhotoSubmitState();
+}
 
+async function uploadSingleBusinessPhoto(item) {
     try {
-        const files = Array.from(input.files);
-        const compressed = await Promise.all(files.map(file => compressImageForUpload(file)));
+        const fd = new FormData();
+        fd.append('photo', item.file);
+        fd.append('_token', document.querySelector('meta[name="csrf-token"]').content);
 
-        const dataTransfer = new DataTransfer();
-        compressed.forEach(file => dataTransfer.items.add(file));
-        input.files = dataTransfer.files;
+        const res = await fetch('{{ route("admin.businesses.photos.upload") }}', { method: 'POST', body: fd });
+        if (!res.ok) { throw new Error('Upload failed'); }
 
-        container.innerHTML = '';
-        compressed.forEach(file => {
-            const url = URL.createObjectURL(file);
-            const div = document.createElement('div');
-            div.className = 'relative aspect-square rounded-md overflow-hidden border';
-            div.innerHTML = `<img src="${url}" class="w-full h-full object-cover">`;
-            container.appendChild(div);
-        });
-    } finally {
-        if (submitBtn) {
-            submitBtn.disabled = false;
-            submitBtn.textContent = originalSubmitText;
-        }
+        const data = await res.json();
+        item.status = 'done';
+        item.path = data.path;
+        item.thumbnail_path = data.thumbnail_path;
+    } catch {
+        item.status = 'error';
+    }
+
+    renderBusinessPhotoPreview();
+}
+
+function retryBusinessPhotoUpload(id) {
+    const item = businessPhotoUploads.find(p => p.id === id);
+    if (!item) { return; }
+
+    item.status = 'queued';
+    businessPhotoQueue.push(item);
+    renderBusinessPhotoPreview();
+    runBusinessPhotoQueue();
+}
+
+async function removeBusinessPhoto(id) {
+    const index = businessPhotoUploads.findIndex(p => p.id === id);
+    if (index === -1) { return; }
+
+    const [item] = businessPhotoUploads.splice(index, 1);
+    const queueIndex = businessPhotoQueue.indexOf(item);
+    if (queueIndex !== -1) { businessPhotoQueue.splice(queueIndex, 1); }
+
+    renderBusinessPhotoPreview();
+
+    if (item.path) {
+        try {
+            await fetch('{{ route("admin.businesses.photos.upload.delete") }}', {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                },
+                body: JSON.stringify({ path: item.path, thumbnail_path: item.thumbnail_path }),
+            });
+        } catch { /* best-effort cleanup; hourly job sweeps orphaned temp photos anyway */ }
     }
 }
+
+function renderBusinessPhotoPreview() {
+    const container = document.getElementById('photo-preview');
+    if (!container) { return; }
+
+    container.innerHTML = businessPhotoUploads.map(item => `
+        <div class="relative aspect-square rounded-md overflow-hidden border">
+            <img src="${item.previewUrl}" class="w-full h-full object-cover">
+            ${item.status === 'uploading' ? `
+                <div class="absolute inset-0 bg-black/50 flex flex-col items-center justify-center gap-1.5 text-white">
+                    <svg class="animate-spin w-5 h-5" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <span class="text-[10px] font-medium">Uploading…</span>
+                </div>
+            ` : ''}
+            ${item.status === 'queued' ? `
+                <div class="absolute inset-0 bg-black/40 flex items-center justify-center text-white">
+                    <span class="text-[10px] font-medium">Queued…</span>
+                </div>
+            ` : ''}
+            ${item.status === 'error' ? `
+                <div class="absolute inset-0 bg-red-900/70 flex flex-col items-center justify-center gap-1 text-white p-1 text-center">
+                    <span class="text-[10px] font-medium">Upload failed</span>
+                    <button type="button" class="text-[10px] underline" data-retry="${item.id}">Retry</button>
+                    <button type="button" class="text-[10px] underline" data-remove="${item.id}">Remove</button>
+                </div>
+            ` : ''}
+            ${item.status === 'done' ? `
+                <button type="button" class="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/60 text-white text-xs flex items-center justify-center hover:bg-red-600 transition-colors" data-remove="${item.id}" title="Remove">✕</button>
+                <span class="absolute bottom-1 left-1 bg-green-600/90 text-white text-[9px] font-medium px-1.5 py-0.5 rounded">Uploaded</span>
+            ` : ''}
+        </div>
+    `).join('');
+
+    container.querySelectorAll('[data-remove]').forEach(btn => {
+        btn.addEventListener('click', (e) => { e.stopPropagation(); removeBusinessPhoto(btn.dataset.remove); });
+    });
+    container.querySelectorAll('[data-retry]').forEach(btn => {
+        btn.addEventListener('click', (e) => { e.stopPropagation(); retryBusinessPhotoUpload(btn.dataset.retry); });
+    });
+
+    updateUploadedBusinessPhotosField();
+}
+
+function updateUploadedBusinessPhotosField() {
+    const field = document.getElementById('uploaded_photos');
+    if (!field) { return; }
+
+    field.value = JSON.stringify(
+        businessPhotoUploads
+            .filter(p => p.status === 'done')
+            .map(p => ({ path: p.path, thumbnail_path: p.thumbnail_path }))
+    );
+}
+
+function updateBusinessPhotoSubmitState() {
+    const submitBtn = document.querySelector('button[type="submit"]');
+    if (!submitBtn) { return; }
+
+    if (!submitBtn.dataset.originalText) { submitBtn.dataset.originalText = submitBtn.textContent; }
+
+    const uploading = businessPhotoUploads.some(p => p.status === 'uploading' || p.status === 'queued');
+    submitBtn.disabled = uploading;
+    submitBtn.textContent = uploading ? 'Uploading photos…' : submitBtn.dataset.originalText;
+}
+
+// Drag-and-drop support for a file input's dropzone label/container
+function enableDropzone(dropzoneEl, inputEl, onDrop) {
+    if (!dropzoneEl || !inputEl) { return; }
+
+    ['dragenter', 'dragover'].forEach(eventName => {
+        dropzoneEl.addEventListener(eventName, (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            dropzoneEl.classList.add('border-green-500', 'bg-green-50');
+        });
+    });
+
+    ['dragleave', 'dragend', 'drop'].forEach(eventName => {
+        dropzoneEl.addEventListener(eventName, (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            dropzoneEl.classList.remove('border-green-500', 'bg-green-50');
+        });
+    });
+
+    dropzoneEl.addEventListener('drop', (e) => {
+        const files = e.dataTransfer && e.dataTransfer.files;
+        if (!files || files.length === 0) { return; }
+        onDrop(files);
+    });
+}
+
+['dragover', 'drop'].forEach(eventName => {
+    window.addEventListener(eventName, (e) => {
+        if (!e.target.closest('#photos-dropzone, #business-icon-dropzone')) {
+            e.preventDefault();
+        }
+    });
+});
 
 function compressImageForUpload(file, maxDimension = 1920, quality = 0.85) {
     return new Promise((resolve) => {
@@ -414,41 +585,52 @@ async function deleteBusinessIcon(path, wrapperEl) {
     }
 }
 
+async function uploadBusinessIcon(file) {
+    if (!file) { return; }
+    const statusEl = document.getElementById('business-icon-upload-status');
+    if (statusEl) { statusEl.textContent = 'Uploading…'; }
+
+    const fd = new FormData();
+    fd.append('icon', file);
+    fd.append('_token', document.querySelector('meta[name="csrf-token"]').content);
+
+    try {
+        const res = await fetch('{{ route("admin.businesses.icons.upload") }}', { method: 'POST', body: fd });
+        const data = await res.json();
+        if (data.path && data.url) {
+            selectBusinessIcon(data.path, data.url);
+            addToBusinessIconGallery(data.path, data.url);
+            if (statusEl) { statusEl.textContent = 'Uploaded!'; }
+            setTimeout(() => { if (statusEl) { statusEl.textContent = ''; } }, 2000);
+        }
+    } catch {
+        if (statusEl) { statusEl.textContent = 'Upload failed.'; }
+    }
+
+    const iconUploadInput = document.getElementById('business-icon-image-input');
+    if (iconUploadInput) { iconUploadInput.value = ''; }
+}
+
 document.addEventListener('DOMContentLoaded', function () {
     initBusinessIconGallery();
 
     const iconUploadInput = document.getElementById('business-icon-image-input');
     if (iconUploadInput) {
-        iconUploadInput.addEventListener('change', async (e) => {
-            const file = e.target.files[0];
-            if (!file) { return; }
-            const statusEl = document.getElementById('business-icon-upload-status');
-            if (statusEl) { statusEl.textContent = 'Uploading…'; }
-
-            const fd = new FormData();
-            fd.append('icon', file);
-            fd.append('_token', document.querySelector('meta[name="csrf-token"]').content);
-
-            try {
-                const res = await fetch('{{ route("admin.businesses.icons.upload") }}', { method: 'POST', body: fd });
-                const data = await res.json();
-                if (data.path && data.url) {
-                    selectBusinessIcon(data.path, data.url);
-                    addToBusinessIconGallery(data.path, data.url);
-                    if (statusEl) { statusEl.textContent = 'Uploaded!'; }
-                    setTimeout(() => { if (statusEl) { statusEl.textContent = ''; } }, 2000);
-                }
-            } catch {
-                if (statusEl) { statusEl.textContent = 'Upload failed.'; }
-            }
-            iconUploadInput.value = '';
-        });
+        iconUploadInput.addEventListener('change', (e) => uploadBusinessIcon(e.target.files[0]));
     }
+
+    enableDropzone(document.getElementById('business-icon-dropzone'), iconUploadInput, (files) => {
+        uploadBusinessIcon(files[0]);
+    });
 
     const iconClearBtn = document.getElementById('business-icon-image-clear');
     if (iconClearBtn) {
         iconClearBtn.addEventListener('click', clearBusinessIcon);
     }
+
+    enableDropzone(document.getElementById('photos-dropzone'), document.getElementById('photos'), (files) => {
+        enqueueBusinessPhotos(files);
+    });
 });
 
 const adminMapStyles = {
@@ -487,6 +669,95 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 });
+
+// ── Existing media actions (edit page) ───────────────────────────────────────
+// Both run over AJAX and patch the DOM in place instead of reloading the page,
+// so deleting/re-featuring a photo doesn't jerk the admin's scroll back to top.
+
+function updateExistingMediaCount() {
+    const grid = document.getElementById('existing-media-grid');
+    const countEl = document.getElementById('existing-media-count');
+    const section = document.getElementById('existing-media-section');
+    if (!grid || !countEl || !section) { return; }
+
+    const count = grid.querySelectorAll('[data-media-id]').length;
+    countEl.textContent = `${count} item${count !== 1 ? 's' : ''}`;
+    section.classList.toggle('hidden', count === 0);
+}
+
+async function deleteBusinessMedia(businessId, mediaId, button) {
+    if (!confirm('Delete this media?')) { return; }
+    button.disabled = true;
+
+    try {
+        const res = await fetch(`/admin/businesses/${businessId}/media/${mediaId}`, {
+            method: 'DELETE',
+            headers: {
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                'Accept': 'application/json',
+            },
+        });
+        const data = await res.json();
+
+        if (!data.success) {
+            alert(data.message || 'Failed to delete media.');
+            button.disabled = false;
+            return;
+        }
+
+        document.querySelector(`#existing-media-grid [data-media-id="${mediaId}"]`)?.remove();
+        updateExistingMediaCount();
+    } catch {
+        alert('Failed to delete media.');
+        button.disabled = false;
+    }
+}
+
+async function setPrimaryBusinessMedia(businessId, mediaId, button) {
+    button.disabled = true;
+
+    try {
+        const res = await fetch(`/admin/businesses/${businessId}/media/${mediaId}/primary`, {
+            method: 'PATCH',
+            headers: {
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                'Accept': 'application/json',
+            },
+        });
+        const data = await res.json();
+
+        if (!data.success) {
+            alert(data.message || 'Failed to set primary media.');
+            button.disabled = false;
+            return;
+        }
+
+        const grid = document.getElementById('existing-media-grid');
+        grid?.querySelectorAll('[data-media-id]').forEach((card) => {
+            const cardMediaId = card.dataset.mediaId;
+            const isNowPrimary = cardMediaId === String(mediaId);
+            const imageWrap = card.querySelector('.relative.aspect-square');
+            const badge = imageWrap?.querySelector(':scope > .absolute.left-1\\.5');
+            const actions = card.querySelector('[data-media-actions]');
+            const primaryBtn = actions?.querySelector('button[onclick^="setPrimaryBusinessMedia"]');
+
+            if (isNowPrimary) {
+                if (!badge && imageWrap) {
+                    imageWrap.insertAdjacentHTML('beforeend', '<div class="absolute left-1.5 top-1.5"><span class="inline-flex items-center rounded-full bg-yellow-400 px-1.5 py-0.5 text-xs font-semibold text-yellow-900">★</span></div>');
+                }
+                primaryBtn?.remove();
+            } else {
+                badge?.remove();
+                if (!primaryBtn && actions) {
+                    actions.insertAdjacentHTML('afterbegin', `<button type="button" title="Set as primary" onclick="setPrimaryBusinessMedia(${businessId}, ${cardMediaId}, this)" class="flex-1 w-full inline-flex h-6 items-center justify-center rounded border border-input bg-background text-xs text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors">Primary</button>`);
+                }
+            }
+        });
+    } catch {
+        alert('Failed to set primary media.');
+        button.disabled = false;
+    }
+}
 </script>
 
 <style>

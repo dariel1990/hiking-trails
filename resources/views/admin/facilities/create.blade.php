@@ -132,11 +132,11 @@
 
                                     {{-- Upload new icon --}}
                                     <div class="flex items-center gap-2">
-                                        <label for="facility-icon-image-input" class="cursor-pointer inline-flex items-center gap-1.5 rounded-md border border-dashed border-gray-300 px-3 py-1.5 text-xs text-gray-500 hover:bg-gray-50 hover:text-gray-700 transition-colors">
+                                        <label for="facility-icon-image-input" id="facility-icon-dropzone" class="cursor-pointer inline-flex items-center gap-1.5 rounded-md border border-dashed border-gray-300 px-3 py-1.5 text-xs text-gray-500 hover:bg-gray-50 hover:text-gray-700 transition-colors">
                                             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
                                             </svg>
-                                            Upload new icon
+                                            Upload or drag new icon
                                         </label>
                                         <input type="file" id="facility-icon-image-input" accept="image/*" class="hidden">
                                         <span id="facility-icon-upload-status" class="text-xs text-gray-400"></span>
@@ -212,17 +212,18 @@
                             <label class="block text-sm font-medium text-gray-700 mb-2">Photos</label>
                             <input type="file" id="photos" name="photos[]" multiple accept="image/*"
                                    class="hidden" onchange="handlePhotoSelection(this)">
-                            <label for="photos"
+                            <label for="photos" id="photos-dropzone"
                                    class="flex flex-col items-center justify-center gap-2 w-full h-44 rounded-lg border-2 border-dashed border-gray-400 bg-gray-50 hover:bg-gray-100 hover:border-gray-400 cursor-pointer transition-colors">
                                 <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
                                 </svg>
                                 <div class="text-center">
-                                    <p class="text-sm font-medium text-gray-700">Click to upload photos</p>
+                                    <p class="text-sm font-medium text-gray-700">Click or drag photos here to upload</p>
                                     <p class="text-xs text-gray-500 mt-0.5">Multiple images supported · JPG, PNG, WebP</p>
                                 </div>
                             </label>
                             <div id="photo-preview" class="grid grid-cols-3 sm:grid-cols-4 gap-3 mt-4"></div>
+                            <input type="hidden" name="uploaded_photos" id="uploaded_photos" value="[]">
                         </div>
 
                         {{-- Video URLs --}}
@@ -575,44 +576,209 @@ function compressImageForUpload(file, maxDimension = 1920, quality = 0.85) {
     });
 }
 
-// Photo preview
-async function handlePhotoSelection(input) {
-    const previewContainer = document.getElementById('photo-preview');
-    if (!input.files || input.files.length === 0) {
-        previewContainer.innerHTML = '';
-        return;
+// ── Facility photo upload queue ──────────────────────────────────────────────
+// Photos upload one-by-one as soon as they're picked/dropped, instead of
+// waiting for the form to be submitted. Each thumbnail shows its own
+// uploading/error/uploaded state.
+
+const facilityPhotoUploads = [];
+const facilityPhotoQueue = [];
+let facilityPhotoQueueRunning = false;
+
+function handlePhotoSelection(input) {
+    if (!input.files || input.files.length === 0) { return; }
+    enqueueFacilityPhotos(input.files);
+    input.value = ''; // files are uploaded via AJAX, not the form submit
+}
+
+function enqueueFacilityPhotos(files) {
+    Array.from(files).forEach(file => {
+        if (!file.type || !file.type.startsWith('image/')) { return; }
+
+        const item = {
+            id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+            status: 'queued',
+            file,
+            previewUrl: URL.createObjectURL(file),
+        };
+        facilityPhotoUploads.push(item);
+        facilityPhotoQueue.push(item);
+    });
+
+    renderPhotoPreview();
+    runFacilityPhotoQueue();
+}
+
+async function runFacilityPhotoQueue() {
+    if (facilityPhotoQueueRunning) { return; }
+    facilityPhotoQueueRunning = true;
+    updatePhotoSubmitState();
+
+    while (facilityPhotoQueue.length > 0) {
+        const item = facilityPhotoQueue.shift();
+        if (!facilityPhotoUploads.includes(item)) { continue; } // removed before its turn
+
+        item.status = 'uploading';
+        renderPhotoPreview();
+
+        item.file = await compressImageForUpload(item.file);
+        URL.revokeObjectURL(item.previewUrl);
+        item.previewUrl = URL.createObjectURL(item.file);
+
+        await uploadSingleFacilityPhoto(item);
     }
 
-    const submitBtn = document.querySelector('button[type="submit"]');
-    const originalSubmitText = submitBtn ? submitBtn.textContent : null;
-    if (submitBtn) {
-        submitBtn.disabled = true;
-        submitBtn.textContent = 'Compressing images…';
-    }
-    previewContainer.innerHTML = '<div class="col-span-full text-sm text-gray-500 py-2">Compressing images…</div>';
+    facilityPhotoQueueRunning = false;
+    updatePhotoSubmitState();
+}
 
+async function uploadSingleFacilityPhoto(item) {
     try {
-        const files = Array.from(input.files);
-        const compressed = await Promise.all(files.map(file => compressImageForUpload(file)));
+        const fd = new FormData();
+        fd.append('photo', item.file);
+        fd.append('_token', document.querySelector('meta[name="csrf-token"]').content);
 
-        const dataTransfer = new DataTransfer();
-        compressed.forEach(file => dataTransfer.items.add(file));
-        input.files = dataTransfer.files;
+        const res = await fetch('{{ route("admin.facilities.photos.upload") }}', { method: 'POST', body: fd });
+        if (!res.ok) { throw new Error('Upload failed'); }
 
-        previewContainer.innerHTML = '';
-        compressed.forEach(file => {
-            const url = URL.createObjectURL(file);
-            const div = document.createElement('div');
-            div.className = 'relative aspect-square rounded-lg overflow-hidden border border-gray-200 bg-gray-100';
-            div.innerHTML = `<img src="${url}" class="w-full h-full object-cover">`;
-            previewContainer.appendChild(div);
-        });
-    } finally {
-        if (submitBtn) {
-            submitBtn.disabled = false;
-            submitBtn.textContent = originalSubmitText;
-        }
+        const data = await res.json();
+        item.status = 'done';
+        item.path = data.path;
+        item.thumbnail_path = data.thumbnail_path;
+    } catch {
+        item.status = 'error';
     }
+
+    renderPhotoPreview();
+}
+
+function retryFacilityPhotoUpload(id) {
+    const item = facilityPhotoUploads.find(p => p.id === id);
+    if (!item) { return; }
+
+    item.status = 'queued';
+    facilityPhotoQueue.push(item);
+    renderPhotoPreview();
+    runFacilityPhotoQueue();
+}
+
+async function removeFacilityPhoto(id) {
+    const index = facilityPhotoUploads.findIndex(p => p.id === id);
+    if (index === -1) { return; }
+
+    const [item] = facilityPhotoUploads.splice(index, 1);
+    const queueIndex = facilityPhotoQueue.indexOf(item);
+    if (queueIndex !== -1) { facilityPhotoQueue.splice(queueIndex, 1); }
+
+    renderPhotoPreview();
+
+    if (item.path) {
+        try {
+            await fetch('{{ route("admin.facilities.photos.upload.delete") }}', {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                },
+                body: JSON.stringify({ path: item.path, thumbnail_path: item.thumbnail_path }),
+            });
+        } catch { /* best-effort cleanup; hourly job sweeps orphaned temp photos anyway */ }
+    }
+}
+
+function renderPhotoPreview() {
+    const previewContainer = document.getElementById('photo-preview');
+    if (!previewContainer) { return; }
+
+    previewContainer.innerHTML = facilityPhotoUploads.map(item => `
+        <div class="relative aspect-square rounded-lg overflow-hidden border border-gray-200 bg-gray-100">
+            <img src="${item.previewUrl}" class="w-full h-full object-cover">
+            ${item.status === 'uploading' ? `
+                <div class="absolute inset-0 bg-black/50 flex flex-col items-center justify-center gap-1.5 text-white">
+                    <svg class="animate-spin w-5 h-5" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <span class="text-[10px] font-medium">Uploading…</span>
+                </div>
+            ` : ''}
+            ${item.status === 'queued' ? `
+                <div class="absolute inset-0 bg-black/40 flex items-center justify-center text-white">
+                    <span class="text-[10px] font-medium">Queued…</span>
+                </div>
+            ` : ''}
+            ${item.status === 'error' ? `
+                <div class="absolute inset-0 bg-red-900/70 flex flex-col items-center justify-center gap-1 text-white p-1 text-center">
+                    <span class="text-[10px] font-medium">Upload failed</span>
+                    <button type="button" class="text-[10px] underline" data-retry="${item.id}">Retry</button>
+                    <button type="button" class="text-[10px] underline" data-remove="${item.id}">Remove</button>
+                </div>
+            ` : ''}
+            ${item.status === 'done' ? `
+                <button type="button" class="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/60 text-white text-xs flex items-center justify-center hover:bg-red-600 transition-colors" data-remove="${item.id}" title="Remove">✕</button>
+                <span class="absolute bottom-1 left-1 bg-green-600/90 text-white text-[9px] font-medium px-1.5 py-0.5 rounded">Uploaded</span>
+            ` : ''}
+        </div>
+    `).join('');
+
+    previewContainer.querySelectorAll('[data-remove]').forEach(btn => {
+        btn.addEventListener('click', () => removeFacilityPhoto(btn.dataset.remove));
+    });
+    previewContainer.querySelectorAll('[data-retry]').forEach(btn => {
+        btn.addEventListener('click', () => retryFacilityPhotoUpload(btn.dataset.retry));
+    });
+
+    updateUploadedPhotosField();
+}
+
+function updateUploadedPhotosField() {
+    const field = document.getElementById('uploaded_photos');
+    if (!field) { return; }
+
+    field.value = JSON.stringify(
+        facilityPhotoUploads
+            .filter(p => p.status === 'done')
+            .map(p => ({ path: p.path, thumbnail_path: p.thumbnail_path }))
+    );
+}
+
+function updatePhotoSubmitState() {
+    const submitBtn = document.querySelector('button[type="submit"]');
+    if (!submitBtn) { return; }
+
+    if (!submitBtn.dataset.originalText) { submitBtn.dataset.originalText = submitBtn.textContent; }
+
+    const uploading = facilityPhotoUploads.some(p => p.status === 'uploading' || p.status === 'queued');
+    submitBtn.disabled = uploading;
+    submitBtn.textContent = uploading ? 'Uploading photos…' : submitBtn.dataset.originalText;
+}
+
+// Drag-and-drop support for a file input's dropzone label
+function enableDropzone(dropzoneEl, inputEl, onDrop) {
+    if (!dropzoneEl || !inputEl) { return; }
+
+    ['dragenter', 'dragover'].forEach(eventName => {
+        dropzoneEl.addEventListener(eventName, (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            dropzoneEl.classList.add('border-green-500', 'bg-green-50');
+        });
+    });
+
+    ['dragleave', 'dragend', 'drop'].forEach(eventName => {
+        dropzoneEl.addEventListener(eventName, (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            dropzoneEl.classList.remove('border-green-500', 'bg-green-50');
+        });
+    });
+
+    dropzoneEl.addEventListener('drop', (e) => {
+        const files = e.dataTransfer && e.dataTransfer.files;
+        if (!files || files.length === 0) { return; }
+        onDrop(files);
+    });
 }
 
 // Add video URL field
@@ -797,42 +963,61 @@ async function deleteFacilityIcon(path, wrapperEl) {
     }
 }
 
+['dragover', 'drop'].forEach(eventName => {
+    window.addEventListener(eventName, (e) => {
+        if (!e.target.closest('#photos-dropzone, #facility-icon-dropzone')) {
+            e.preventDefault();
+        }
+    });
+});
+
 document.addEventListener('DOMContentLoaded', function () {
     initFacilityIconGallery();
 
     const iconUploadInput = document.getElementById('facility-icon-image-input');
     if (iconUploadInput) {
-        iconUploadInput.addEventListener('change', async (e) => {
-            const file = e.target.files[0];
-            if (!file) { return; }
-            const statusEl = document.getElementById('facility-icon-upload-status');
-            if (statusEl) { statusEl.textContent = 'Uploading…'; }
-
-            const fd = new FormData();
-            fd.append('icon', file);
-            fd.append('_token', document.querySelector('meta[name="csrf-token"]').content);
-
-            try {
-                const res = await fetch('{{ route("admin.facilities.icons.upload") }}', { method: 'POST', body: fd });
-                const data = await res.json();
-                if (data.path && data.url) {
-                    selectFacilityIcon(data.path, data.url);
-                    addToFacilityIconGallery(data.path, data.url);
-                    if (statusEl) { statusEl.textContent = 'Uploaded!'; }
-                    setTimeout(() => { if (statusEl) { statusEl.textContent = ''; } }, 2000);
-                }
-            } catch {
-                if (statusEl) { statusEl.textContent = 'Upload failed.'; }
-            }
-            iconUploadInput.value = '';
-        });
+        iconUploadInput.addEventListener('change', (e) => uploadFacilityIcon(e.target.files[0]));
     }
+
+    enableDropzone(document.getElementById('facility-icon-dropzone'), iconUploadInput, (files) => {
+        uploadFacilityIcon(files[0]);
+    });
 
     const iconClearBtn = document.getElementById('facility-icon-image-clear');
     if (iconClearBtn) {
         iconClearBtn.addEventListener('click', clearFacilityIcon);
     }
+
+    enableDropzone(document.getElementById('photos-dropzone'), document.getElementById('photos'), (files) => {
+        enqueueFacilityPhotos(files);
+    });
 });
+
+async function uploadFacilityIcon(file) {
+    if (!file) { return; }
+    const statusEl = document.getElementById('facility-icon-upload-status');
+    if (statusEl) { statusEl.textContent = 'Uploading…'; }
+
+    const fd = new FormData();
+    fd.append('icon', file);
+    fd.append('_token', document.querySelector('meta[name="csrf-token"]').content);
+
+    try {
+        const res = await fetch('{{ route("admin.facilities.icons.upload") }}', { method: 'POST', body: fd });
+        const data = await res.json();
+        if (data.path && data.url) {
+            selectFacilityIcon(data.path, data.url);
+            addToFacilityIconGallery(data.path, data.url);
+            if (statusEl) { statusEl.textContent = 'Uploaded!'; }
+            setTimeout(() => { if (statusEl) { statusEl.textContent = ''; } }, 2000);
+        }
+    } catch {
+        if (statusEl) { statusEl.textContent = 'Upload failed.'; }
+    }
+
+    const iconUploadInput = document.getElementById('facility-icon-image-input');
+    if (iconUploadInput) { iconUploadInput.value = ''; }
+}
 </script>
 
 <style>

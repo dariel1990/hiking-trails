@@ -41,6 +41,7 @@ class UpdateBusinessRequest extends FormRequest
             'photos' => ['nullable', 'array'],
             'photos.*' => ['image', 'max:51200'],
             'photo_captions' => ['nullable', 'array'],
+            'uploaded_photos' => ['nullable', 'string'],
             'video_urls' => ['nullable', 'array'],
             'video_urls.*' => ['nullable', 'url'],
         ];

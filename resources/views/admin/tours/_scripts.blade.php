@@ -86,6 +86,33 @@ function tourForm(availableTrails, availableFeatures, existingStops) {
     };
 }
 
+async function deleteTourCoverImage(url, button) {
+    if (!confirm('Delete the cover image for this tour?')) { return; }
+    button.disabled = true;
+
+    try {
+        const res = await fetch(url, {
+            method: 'DELETE',
+            headers: {
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                'Accept': 'application/json',
+            },
+        });
+        const data = await res.json();
+
+        if (!data.success) {
+            alert('Failed to delete cover image.');
+            button.disabled = false;
+            return;
+        }
+
+        document.getElementById('current-cover-image')?.remove();
+    } catch {
+        alert('Failed to delete cover image.');
+        button.disabled = false;
+    }
+}
+
 function previewCoverImage(input) {
     if (!input.files || !input.files[0]) { return; }
     const reader = new FileReader();
@@ -95,6 +122,51 @@ function previewCoverImage(input) {
     };
     reader.readAsDataURL(input.files[0]);
 }
+
+// Drag-and-drop support for a file input's dropzone label/container
+function enableDropzone(dropzoneEl, inputEl, onDrop) {
+    if (!dropzoneEl || !inputEl) { return; }
+
+    ['dragenter', 'dragover'].forEach(eventName => {
+        dropzoneEl.addEventListener(eventName, (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            dropzoneEl.classList.add('border-green-500', 'bg-green-50');
+        });
+    });
+
+    ['dragleave', 'dragend', 'drop'].forEach(eventName => {
+        dropzoneEl.addEventListener(eventName, (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            dropzoneEl.classList.remove('border-green-500', 'bg-green-50');
+        });
+    });
+
+    dropzoneEl.addEventListener('drop', (e) => {
+        const files = e.dataTransfer && e.dataTransfer.files;
+        if (!files || files.length === 0) { return; }
+        onDrop(files);
+    });
+}
+
+['dragover', 'drop'].forEach(eventName => {
+    window.addEventListener(eventName, (e) => {
+        if (!e.target.closest('#cover-image-dropzone, #tour-icon-dropzone')) {
+            e.preventDefault();
+        }
+    });
+});
+
+document.addEventListener('DOMContentLoaded', function () {
+    const coverInput = document.getElementById('cover_image');
+    enableDropzone(document.getElementById('cover-image-dropzone'), coverInput, (files) => {
+        const dataTransfer = new DataTransfer();
+        dataTransfer.items.add(files[0]);
+        coverInput.files = dataTransfer.files;
+        previewCoverImage(coverInput);
+    });
+});
 
 // Compute multi-stop driving route via /api/tour-route
 async function computeTourRoute() {
@@ -328,34 +400,41 @@ async function deleteTourIcon(path, wrapperEl) {
     }
 }
 
+async function uploadTourIcon(file) {
+    if (!file) { return; }
+    const statusEl = document.getElementById('tour-icon-upload-status');
+    if (statusEl) { statusEl.textContent = 'Uploading…'; }
+
+    const fd = new FormData();
+    fd.append('icon', file);
+    fd.append('_token', document.querySelector('meta[name="csrf-token"]').content);
+
+    try {
+        const res = await fetch('{{ route("admin.trails.feature-icons.upload") }}', { method: 'POST', body: fd });
+        const data = await res.json();
+        if (data.path && data.url) {
+            selectTourIcon(data.path, data.url);
+            addToTourIconGallery(data.path, data.url);
+            if (statusEl) { statusEl.textContent = 'Uploaded!'; }
+            setTimeout(() => { if (statusEl) { statusEl.textContent = ''; } }, 2000);
+        }
+    } catch {
+        if (statusEl) { statusEl.textContent = 'Upload failed.'; }
+    }
+
+    const uploadInput = document.getElementById('tour-icon-image-input');
+    if (uploadInput) { uploadInput.value = ''; }
+}
+
 document.addEventListener('DOMContentLoaded', function () {
     initTourIconGallery();
 
     const uploadInput = document.getElementById('tour-icon-image-input');
     if (uploadInput) {
-        uploadInput.addEventListener('change', async (e) => {
-            const file = e.target.files[0];
-            if (!file) { return; }
-            const statusEl = document.getElementById('tour-icon-upload-status');
-            if (statusEl) { statusEl.textContent = 'Uploading…'; }
+        uploadInput.addEventListener('change', (e) => uploadTourIcon(e.target.files[0]));
 
-            const fd = new FormData();
-            fd.append('icon', file);
-            fd.append('_token', document.querySelector('meta[name="csrf-token"]').content);
-
-            try {
-                const res = await fetch('{{ route("admin.trails.feature-icons.upload") }}', { method: 'POST', body: fd });
-                const data = await res.json();
-                if (data.path && data.url) {
-                    selectTourIcon(data.path, data.url);
-                    addToTourIconGallery(data.path, data.url);
-                    if (statusEl) { statusEl.textContent = 'Uploaded!'; }
-                    setTimeout(() => { if (statusEl) { statusEl.textContent = ''; } }, 2000);
-                }
-            } catch {
-                if (statusEl) { statusEl.textContent = 'Upload failed.'; }
-            }
-            uploadInput.value = '';
+        enableDropzone(document.getElementById('tour-icon-dropzone'), uploadInput, (files) => {
+            uploadTourIcon(files[0]);
         });
     }
 

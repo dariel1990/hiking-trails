@@ -573,9 +573,23 @@
                                             </p>
                                         @endif
                                         
-                                        <!-- Media Grid -->
+                                        <!-- Media -->
                                         @if($highlight->media && $highlight->media->count() > 0)
                                             <div class="border-t border-gray-100 pt-3">
+                                                @if($highlight->media->count() === 1 && $highlight->media->first()->media_type === 'photo')
+                                                    @php $soloMedia = $highlight->media->first(); @endphp
+                                                    <div class="relative rounded-lg overflow-hidden cursor-pointer hover:opacity-90 transition group"
+                                                        onclick="event.stopPropagation(); openMediaCarousel('highlight-{{ $highlight->id }}', 0)">
+                                                        <img src="{{ $soloMedia->url }}"
+                                                            alt="{{ $soloMedia->caption ?? $highlight->name }}"
+                                                            class="w-full h-auto max-h-72 object-cover rounded-lg">
+                                                        <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-all flex items-center justify-center">
+                                                            <svg class="w-6 h-6 text-white opacity-0 group-hover:opacity-100 transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7"/>
+                                                            </svg>
+                                                        </div>
+                                                    </div>
+                                                @else
                                                 <div class="grid grid-cols-3 gap-1.5">
                                                     @foreach($highlight->media->take(3) as $media)
                                                         @if($media->media_type === 'photo')
@@ -662,6 +676,7 @@
                                                             +{{ $highlight->media->count() - 3 }} more
                                                         </button>
                                                     </div>
+                                                @endif
                                                 @endif
                                             </div>
                                         @endif
@@ -1850,6 +1865,7 @@ function initTrailMap() {
     let _flyTrailId = null;
     let _highlightMarkers = [];
     let _elevDisplayCoords = null;  // set by displayElevationProfile for scrubbing
+    let _startEndMarkers = [];
 
     // ── Mapbox init ──────────────────────────────────────────────────────────
     mapboxgl.accessToken = '{{ $mapboxToken }}';
@@ -1865,6 +1881,7 @@ function initTrailMap() {
         zoom: isFishingLake ? 11 : 13,
         pitch: 0,
         bearing: 0,
+        maxPitch: 80,
         attributionControl: false,
     });
 
@@ -1947,9 +1964,10 @@ function initTrailMap() {
                 (trail.fishing_location ? `<div class="text-xs text-gray-500 mt-1">${trail.fishing_location}</div>` : '') +
                 `<div class="text-xs text-blue-600 mt-2 font-medium">${fishSpecies}</div>`
             );
-            new mapboxgl.Marker({ element: el, anchor: 'center' })
+            const fishMarker = new mapboxgl.Marker({ element: el, anchor: 'center' })
                 .setLngLat([trail.start_coordinates[1], trail.start_coordinates[0]])
                 .setPopup(popup).addTo(map);
+            _startEndMarkers.push(fishMarker);
         }
 
         if (!isFishingLake && trail.start_coordinates) {
@@ -1957,18 +1975,20 @@ function initTrailMap() {
             const popup = new mapboxgl.Popup({ offset: 20 }).setHTML(
                 `<div class="font-semibold">${trail.name}</div><div class="text-sm text-gray-600">Trail Start</div>`
             );
-            new mapboxgl.Marker({ element: el, anchor: 'center' })
+            const startMarker = new mapboxgl.Marker({ element: el, anchor: 'center' })
                 .setLngLat([trail.start_coordinates[1], trail.start_coordinates[0]])
                 .setPopup(popup).addTo(map);
+            _startEndMarkers.push(startMarker);
         }
 
         if (!isFishingLake && trail.end_coordinates &&
             JSON.stringify(trail.start_coordinates) !== JSON.stringify(trail.end_coordinates)) {
             const el = makeMarkerEl('#EF4444', 'E');
             const popup = new mapboxgl.Popup({ offset: 20 }).setHTML('<div class="font-semibold">Trail End</div>');
-            new mapboxgl.Marker({ element: el, anchor: 'center' })
+            const endMarker = new mapboxgl.Marker({ element: el, anchor: 'center' })
                 .setLngLat([trail.end_coordinates[1], trail.end_coordinates[0]])
                 .setPopup(popup).addTo(map);
+            _startEndMarkers.push(endMarker);
         }
 
         // Dedicated source for fly-along — lineMetrics:true enables line-gradient
@@ -2148,6 +2168,16 @@ function initTrailMap() {
         return (Math.atan2(x, y) * 180 / Math.PI + 360) % 360;
     }
 
+    function hideMapMarkersForFly() {
+        _startEndMarkers.forEach(m => m.remove());
+        _highlightMarkers.forEach(({ marker }) => marker.remove());
+    }
+
+    function restoreMapMarkersForFly() {
+        _startEndMarkers.forEach(m => m.addTo(map));
+        _highlightMarkers.forEach(({ marker }) => marker.addTo(map));
+    }
+
     function updateFlyBtn(isFlying) {
         const btn = document.getElementById('fly-along-btn');
         if (!btn) return;
@@ -2220,6 +2250,7 @@ function initTrailMap() {
         if (_flyTimeout) { clearTimeout(_flyTimeout); _flyTimeout = null; }
         if (_flyAnimation) { cancelAnimationFrame(_flyAnimation); _flyAnimation = null; }
         if (_hikerMarker) { _hikerMarker.remove(); _hikerMarker = null; }
+        restoreMapMarkersForFly();
 
         deactivateFlyTrailLayers();
         _flyTrailId = null;
@@ -2270,7 +2301,7 @@ function initTrailMap() {
 
         const SPEED_MS    = 300;
         const DURATION_MS = (totalDist / SPEED_MS) * 1000;
-        const flyZoom     = 15.5;
+        const flyZoom     = 14.5;
         const startTime   = performance.now();
 
         const findSeg = (d) => {
@@ -2314,8 +2345,8 @@ function initTrailMap() {
         let smoothBear = getBearing(coords[0], coords[Math.min(30, last)]);
         let smoothZoom = flyZoom;
         let prevTime   = null;
-        const POS_HL     = 700;
-        const BEARING_HL = 6000;
+        const POS_HL     = 500;
+        const BEARING_HL = 900;
         const ZOOM_HL    = 2500;
 
         const distEl = document.getElementById('fly-stat-dist');
@@ -2335,8 +2366,8 @@ function initTrailMap() {
             smoothLat += (lat - smoothLat) * posAlpha;
             smoothLng += (lng - smoothLng) * posAlpha;
 
-            const [behindLat, behindLng] = posAtDist(Math.max(0, distTravelled - 500));
-            const [aheadLat,  aheadLng]  = posAtDist(distTravelled + 1000);
+            const [behindLat, behindLng] = posAtDist(Math.max(0, distTravelled - 100));
+            const [aheadLat,  aheadLng]  = posAtDist(distTravelled + 250);
             const targetBear = getBearing([behindLat, behindLng], [aheadLat, aheadLng]);
 
             const bearAlpha = 1 - Math.pow(0.5, dt / BEARING_HL);
@@ -2349,11 +2380,11 @@ function initTrailMap() {
                 ? Math.max(0, coords[hi][2] - coords[lo][2]) : 0;
             const run      = cumDist[hi] - cumDist[lo];
             const grade    = run > 0 ? (rise / run) * 100 : 0;
-            const targetZoom = grade > 8 ? 16.5 : grade < 3 ? 14.5 : flyZoom;
+            const targetZoom = grade > 8 ? 15.5 : grade < 3 ? 13.5 : flyZoom;
             const zoomAlpha  = 1 - Math.pow(0.5, dt / ZOOM_HL);
             smoothZoom      += (targetZoom - smoothZoom) * zoomAlpha;
 
-            map.jumpTo({ center: [smoothLng, smoothLat], bearing: smoothBear, pitch: 55, zoom: smoothZoom });
+            map.jumpTo({ center: [smoothLng, smoothLat], bearing: smoothBear, pitch: 78, zoom: smoothZoom });
 
             if (map.getLayer('fly-draw-progress')) {
                 map.setPaintProperty('fly-draw-base',     'line-trim-offset', [0, progress]);
@@ -2391,6 +2422,7 @@ function initTrailMap() {
 
         _isFlying = true;
         updateFlyBtn(true);
+        hideMapMarkersForFly();
 
         const stopBtn = document.getElementById('fly-stop-btn');
         if (stopBtn) stopBtn.classList.remove('hidden');
@@ -2413,8 +2445,8 @@ function initTrailMap() {
             const initialBearing = getBearing(coords[0], coords[Math.min(30, coords.length - 1)]);
             map.flyTo({
                 center:   [coords[0][1], coords[0][0]],
-                zoom:     15.5,
-                pitch:    60,
+                zoom:     14.5,
+                pitch:    80,
                 bearing:  initialBearing,
                 duration: 1600,
                 easing:   t => t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t,

@@ -269,15 +269,15 @@
                         @if(!$highlight->hasReachedPhotoLimit())
                         <div class="@if($highlight->media->count() > 0) pt-5 border-t border-gray-100 @endif">
                             <p class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-3">Add Photos</p>
-                            <input type="file" id="highlight-photos" name="photos[]" multiple accept="image/*"
+                            <input type="file" id="highlight-photos" multiple accept="image/*"
                                    class="hidden" onchange="handleHighlightPhotoSelection(this)">
-                            <label for="highlight-photos"
+                            <label for="highlight-photos" id="highlight-photos-dropzone"
                                    class="flex flex-col items-center justify-center gap-2 w-full h-44 rounded-lg border-2 border-dashed border-gray-400 bg-gray-50 hover:bg-gray-100 hover:border-gray-400 cursor-pointer transition-colors">
                                 <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
                                 </svg>
                                 <div class="text-center">
-                                    <p class="text-sm font-medium text-gray-700">Click to upload photos</p>
+                                    <p class="text-sm font-medium text-gray-700">Click or drag photos here to upload</p>
                                     <p class="text-xs text-gray-500 mt-0.5">Multiple images supported · JPG, PNG, WebP</p>
                                 </div>
                             </label>
@@ -598,44 +598,195 @@ async function deleteHighlightMedia(highlightId, mediaId, button) {
     }
 }
 
-async function handleHighlightPhotoSelection(input) {
-    const previewContainer = document.getElementById('highlight-photo-preview');
-    if (!input.files || input.files.length === 0) {
-        previewContainer.innerHTML = '';
-        return;
+// ── Highlight photo upload queue ─────────────────────────────────────────────
+// Each photo uploads straight to this highlight (it already exists — no need to
+// stage temp files) one-by-one as it's picked/dropped, with its own
+// uploading/error/uploaded thumbnail state. The page reloads once the queue
+// drains so the new photos show up in the real gallery with working
+// featured/delete controls.
+
+const highlightPhotoUploads = [];
+const highlightPhotoQueue = [];
+let highlightPhotoQueueRunning = false;
+let highlightPhotoAnyUploaded = false;
+
+function handleHighlightPhotoSelection(input) {
+    if (!input.files || input.files.length === 0) { return; }
+    enqueueHighlightPhotos(input.files);
+    input.value = ''; // files are uploaded via AJAX, not the form submit
+}
+
+function enqueueHighlightPhotos(files) {
+    Array.from(files).forEach(file => {
+        if (!file.type || !file.type.startsWith('image/')) { return; }
+
+        const item = {
+            id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+            status: 'queued',
+            file,
+            previewUrl: URL.createObjectURL(file),
+        };
+        highlightPhotoUploads.push(item);
+        highlightPhotoQueue.push(item);
+    });
+
+    renderHighlightPhotoPreview();
+    runHighlightPhotoQueue();
+}
+
+async function runHighlightPhotoQueue() {
+    if (highlightPhotoQueueRunning) { return; }
+    highlightPhotoQueueRunning = true;
+
+    while (highlightPhotoQueue.length > 0) {
+        const item = highlightPhotoQueue.shift();
+        if (!highlightPhotoUploads.includes(item)) { continue; } // removed before its turn
+
+        item.status = 'uploading';
+        renderHighlightPhotoPreview();
+
+        item.file = await compressImageForUpload(item.file);
+        URL.revokeObjectURL(item.previewUrl);
+        item.previewUrl = URL.createObjectURL(item.file);
+
+        await uploadSingleHighlightPhoto(item);
     }
 
-    const submitBtn = document.querySelector('button[type="submit"][form="highlight-form"]');
-    const originalSubmitText = submitBtn ? submitBtn.textContent : null;
-    if (submitBtn) {
-        submitBtn.disabled = true;
-        submitBtn.textContent = 'Compressing images…';
-    }
-    previewContainer.innerHTML = '<div class="col-span-full text-sm text-gray-500 py-2">Compressing images…</div>';
+    highlightPhotoQueueRunning = false;
 
-    try {
-        const files = Array.from(input.files);
-        const compressed = await Promise.all(files.map(file => compressImageForUpload(file)));
-
-        const dataTransfer = new DataTransfer();
-        compressed.forEach(file => dataTransfer.items.add(file));
-        input.files = dataTransfer.files;
-
-        previewContainer.innerHTML = '';
-        compressed.forEach(file => {
-            const url = URL.createObjectURL(file);
-            const div = document.createElement('div');
-            div.className = 'relative aspect-square rounded-lg overflow-hidden border border-gray-200 bg-gray-100';
-            div.innerHTML = `<img src="${url}" class="w-full h-full object-cover">`;
-            previewContainer.appendChild(div);
-        });
-    } finally {
-        if (submitBtn) {
-            submitBtn.disabled = false;
-            submitBtn.textContent = originalSubmitText;
-        }
+    if (highlightPhotoAnyUploaded && highlightPhotoQueue.length === 0) {
+        location.reload();
     }
 }
+
+async function uploadSingleHighlightPhoto(item) {
+    try {
+        const fd = new FormData();
+        fd.append('photo', item.file);
+        fd.append('_token', document.querySelector('meta[name="csrf-token"]').content);
+
+        const res = await fetch('{{ route("admin.highlights.media.upload", $highlight) }}', { method: 'POST', body: fd });
+        const data = await res.json();
+
+        if (!res.ok || !data.success) { throw new Error(data.message || 'Upload failed'); }
+
+        item.status = 'done';
+        highlightPhotoAnyUploaded = true;
+    } catch (error) {
+        item.status = 'error';
+        item.errorMessage = error.message;
+    }
+
+    renderHighlightPhotoPreview();
+}
+
+function retryHighlightPhotoUpload(id) {
+    const item = highlightPhotoUploads.find(p => p.id === id);
+    if (!item) { return; }
+
+    item.status = 'queued';
+    highlightPhotoQueue.push(item);
+    renderHighlightPhotoPreview();
+    runHighlightPhotoQueue();
+}
+
+function removeHighlightPhoto(id) {
+    const index = highlightPhotoUploads.findIndex(p => p.id === id);
+    if (index === -1) { return; }
+
+    const [item] = highlightPhotoUploads.splice(index, 1);
+    const queueIndex = highlightPhotoQueue.indexOf(item);
+    if (queueIndex !== -1) { highlightPhotoQueue.splice(queueIndex, 1); }
+
+    renderHighlightPhotoPreview();
+}
+
+function renderHighlightPhotoPreview() {
+    const previewContainer = document.getElementById('highlight-photo-preview');
+    if (!previewContainer) { return; }
+
+    previewContainer.innerHTML = highlightPhotoUploads.map(item => `
+        <div class="relative aspect-square rounded-lg overflow-hidden border border-gray-200 bg-gray-100">
+            <img src="${item.previewUrl}" class="w-full h-full object-cover">
+            ${item.status === 'uploading' ? `
+                <div class="absolute inset-0 bg-black/50 flex flex-col items-center justify-center gap-1.5 text-white">
+                    <svg class="animate-spin w-5 h-5" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <span class="text-[10px] font-medium">Uploading…</span>
+                </div>
+            ` : ''}
+            ${item.status === 'queued' ? `
+                <div class="absolute inset-0 bg-black/40 flex items-center justify-center text-white">
+                    <span class="text-[10px] font-medium">Queued…</span>
+                </div>
+            ` : ''}
+            ${item.status === 'error' ? `
+                <div class="absolute inset-0 bg-red-900/70 flex flex-col items-center justify-center gap-1 text-white p-1 text-center">
+                    <span class="text-[10px] font-medium">${escapeHighlightHtml(item.errorMessage || 'Upload failed')}</span>
+                    <button type="button" class="text-[10px] underline" data-retry="${item.id}">Retry</button>
+                    <button type="button" class="text-[10px] underline" data-remove="${item.id}">Remove</button>
+                </div>
+            ` : ''}
+            ${item.status === 'done' ? `
+                <span class="absolute bottom-1 left-1 bg-green-600/90 text-white text-[9px] font-medium px-1.5 py-0.5 rounded">Uploaded</span>
+            ` : ''}
+        </div>
+    `).join('');
+
+    previewContainer.querySelectorAll('[data-remove]').forEach(btn => {
+        btn.addEventListener('click', () => removeHighlightPhoto(btn.dataset.remove));
+    });
+    previewContainer.querySelectorAll('[data-retry]').forEach(btn => {
+        btn.addEventListener('click', () => retryHighlightPhotoUpload(btn.dataset.retry));
+    });
+}
+
+function escapeHighlightHtml(str) {
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+}
+
+// Drag-and-drop support for a file input's dropzone label
+function enableHighlightDropzone(dropzoneEl, onDrop) {
+    if (!dropzoneEl) { return; }
+
+    ['dragenter', 'dragover'].forEach(eventName => {
+        dropzoneEl.addEventListener(eventName, (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            dropzoneEl.classList.add('border-green-500', 'bg-green-50');
+        });
+    });
+
+    ['dragleave', 'dragend', 'drop'].forEach(eventName => {
+        dropzoneEl.addEventListener(eventName, (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            dropzoneEl.classList.remove('border-green-500', 'bg-green-50');
+        });
+    });
+
+    dropzoneEl.addEventListener('drop', (e) => {
+        const files = e.dataTransfer && e.dataTransfer.files;
+        if (!files || files.length === 0) { return; }
+        enqueueHighlightPhotos(files);
+    });
+}
+
+['dragover', 'drop'].forEach(eventName => {
+    window.addEventListener(eventName, (e) => {
+        if (!e.target.closest('#highlight-photos-dropzone')) {
+            e.preventDefault();
+        }
+    });
+});
+
+document.addEventListener('DOMContentLoaded', function () {
+    enableHighlightDropzone(document.getElementById('highlight-photos-dropzone'));
+});
 
 function compressImageForUpload(file, maxDimension = 1920, quality = 0.85) {
     return new Promise((resolve) => {

@@ -181,6 +181,8 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::resource('highlights', TrailHighlightController::class)
             ->only(['index', 'edit', 'update', 'destroy'])
             ->parameters(['highlights' => 'highlight']);
+        Route::post('/highlights/{highlight}/media/upload', [TrailHighlightController::class, 'uploadPhoto'])
+            ->name('highlights.media.upload');
         Route::delete('/highlights/{highlight}/media/{media}', [TrailHighlightController::class, 'deleteMedia'])
             ->name('highlights.media.delete');
         Route::patch('/highlights/{highlight}/media/{media}/featured', [TrailHighlightController::class, 'setFeaturedMedia'])
@@ -218,6 +220,8 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::get('/facilities/icons', [FacilityController::class, 'listIcons'])->name('facilities.icons');
         Route::post('/facilities/icons/upload', [FacilityController::class, 'uploadIcon'])->name('facilities.icons.upload');
         Route::delete('/facilities/icons', [FacilityController::class, 'deleteIcon'])->name('facilities.icons.delete');
+        Route::post('/facilities/photos/upload', [FacilityController::class, 'uploadPhoto'])->name('facilities.photos.upload');
+        Route::delete('/facilities/photos/upload', [FacilityController::class, 'deleteUploadedPhoto'])->name('facilities.photos.upload.delete');
         Route::resource('facilities', FacilityController::class)
             ->names([
                 'index' => 'facilities.index',
@@ -241,6 +245,8 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::get('/businesses/icons', [BusinessController::class, 'listIcons'])->name('businesses.icons');
         Route::post('/businesses/icons/upload', [BusinessController::class, 'uploadIcon'])->name('businesses.icons.upload');
         Route::delete('/businesses/icons', [BusinessController::class, 'deleteIcon'])->name('businesses.icons.delete');
+        Route::post('/businesses/photos/upload', [BusinessController::class, 'uploadPhoto'])->name('businesses.photos.upload');
+        Route::delete('/businesses/photos/upload', [BusinessController::class, 'deleteUploadedPhoto'])->name('businesses.photos.upload.delete');
         Route::post('/businesses/bulk-action', [BusinessController::class, 'bulkAction'])
             ->name('businesses.bulk-action');
         Route::patch('/businesses/{business}/toggle-active', [BusinessController::class, 'toggleActive'])
@@ -269,6 +275,8 @@ Route::prefix('admin')->name('admin.')->group(function () {
             ->name('tours.bulk-action');
         Route::patch('/tours/{tour}/toggle-active', [AdminTourController::class, 'toggleActive'])
             ->name('tours.toggle-active');
+        Route::delete('/tours/{tour}/cover-image', [AdminTourController::class, 'deleteCoverImage'])
+            ->name('tours.cover-image.delete');
         Route::resource('tours', AdminTourController::class)
             ->names([
                 'index' => 'tours.index',

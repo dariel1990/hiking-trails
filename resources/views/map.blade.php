@@ -1875,6 +1875,20 @@
             .replace(/'/g, '&#039;');
     }
 
+    // Picks the hero photo for a facility/business media list: whichever photo
+    // is flagged as primary in admin wins, falling back to the first photo.
+    // Returns { hero, gallery } where gallery is every other media item, in order.
+    function pickFacilityHeroMedia(mediaList) {
+        if (!mediaList || mediaList.length === 0) { return { hero: null, gallery: [] }; }
+
+        const isPhoto = m => m.media_type !== 'video_url' && m.media_type !== 'video';
+        const hero = mediaList.find(m => isPhoto(m) && m.is_primary)
+            || mediaList.find(isPhoto)
+            || mediaList[0];
+
+        return { hero, gallery: mediaList.filter(m => m !== hero) };
+    }
+
     // Swaps a broken/missing photo (e.g. deleted from storage but still referenced
     // in the database) for the Xplore Smithers logo instead of a broken-image icon.
     window.xsImgFallback = function(el) {
@@ -2341,6 +2355,7 @@
                 zoom: hasInitialFocus ? 12 : {{ (int) setting('map_default_zoom') }},
                 pitch: hasInitialFocus ? 0 : 60,
                 bearing: hasInitialFocus ? 0 : -10,
+                maxPitch: 80,
                 attributionControl: false,
             });
 
@@ -3504,6 +3519,10 @@
                 statsText: highlight.description || '',
                 actionsHtml: `<button type="button" onclick="window.trailMap.viewHighlight(${trail.id},${coordsJson})" class="${btnClass}"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>Center</button><a href="/trails/${trail.id}" class="${btnClass}"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-1.447-.894L15 9m0 8V9m0 0V7"/></svg>Full Trail</a>`,
             });
+
+            // Gallery (below the info row) — includes the photo shown as the square
+            // icon above too, so every item stays reachable from the list.
+            this._setMobileHero(highlight.media || [], highlight.name, `highlight-${highlight.id}`);
         }
 
         showMobileNetworkCard(network) {
@@ -3547,7 +3566,7 @@
                 ? `<img src="${highlight.icon_image_url}" style="width:56px;height:56px;object-fit:contain;" alt="">`
                 : (highlight.icon || '📍');
             const hero = firstPhoto
-                ? `<div class="biz-panel-hero"><img src="${firstPhoto.url}" alt="${escapeHtml(highlight.name)}" onerror="window.xsImgFallback(this)"></div>`
+                ? `<div class="biz-panel-hero" style="cursor:pointer;" onclick="openHighlightMediaModal('${firstPhoto.url}', 'photo', '${firstPhoto.caption || highlight.name}')"><img src="${firstPhoto.url}" alt="${escapeHtml(highlight.name)}" onerror="window.xsImgFallback(this)"></div>`
                 : `<div class="biz-panel-hero" style="background:${heroGradient};"><div class="biz-panel-hero-placeholder">${heroIconHtml}</div></div>`;
 
             // Action buttons
@@ -3568,12 +3587,11 @@
                     </a>
                 </div>`;
 
-            // Media grid (remaining photos/videos after hero)
+            // Media grid — every photo/video, including the one used as the hero,
+            // so the same list placement shows up whether there's 1 item or many.
             let mediaHTML = '';
             if (highlight.media && highlight.media.length > 0) {
-                const mediaItems = firstPhoto
-                    ? highlight.media.filter(m => m !== firstPhoto)
-                    : highlight.media;
+                const mediaItems = highlight.media;
                 if (mediaItems.length > 0) {
                     const cols = Math.min(mediaItems.length, 3);
                     mediaHTML = `
@@ -4447,10 +4465,7 @@
                     : (business.icon || '🏪');
                 placeholder.style.background = 'linear-gradient(135deg,#1e40af,#3b82f6)';
             }
-            const businessGalleryItems = (business.media && business.media.length > 0)
-                ? (business.photo_url ? business.media.filter(m => m.url !== business.photo_url) : business.media)
-                : [];
-            this._setMobileHero(businessGalleryItems, business.name, `business-${business.id}`);
+            this._setMobileHero(business.media || [], business.name, `business-${business.id}`);
             document.getElementById('mobile-trail-name').textContent = business.name;
             const diffRow = document.getElementById('mobile-trail-diff-row');
             let typeHtml = `<span style="font-size:12px;font-weight:600;color:#2563eb;">${escapeHtml(business.business_type_label || '')}</span>`;
@@ -4472,11 +4487,8 @@
             const btnClass = 'flex-1 flex items-center justify-center gap-1.5 py-2 px-2 rounded-lg text-xs font-semibold border border-gray-200 bg-gray-50 hover:bg-gray-100 text-gray-700 transition-colors';
             const img = document.getElementById('mobile-trail-img');
             const placeholder = document.getElementById('mobile-trail-placeholder');
-            let heroUrl = null;
-            if (facility.media && facility.media.length > 0) {
-                const first = facility.media.find(m => m.media_type !== 'video_url' && m.media_type !== 'video') || facility.media[0];
-                heroUrl = first.url || first.thumbnail_url || null;
-            }
+            const { hero } = pickFacilityHeroMedia(facility.media);
+            let heroUrl = hero ? (hero.url || hero.thumbnail_url || null) : null;
             if (heroUrl) {
                 img.onerror = () => {
                     img.classList.add('hidden');
@@ -4493,10 +4505,7 @@
                 placeholder.textContent = facility.icon || '📍';
                 placeholder.style.background = 'linear-gradient(135deg,#166534,#22c55e)';
             }
-            const galleryItems = (facility.media && facility.media.length > 0)
-                ? (heroUrl ? facility.media.slice(1) : facility.media)
-                : [];
-            this._setMobileHero(galleryItems, facility.name, facility.id);
+            this._setMobileHero(facility.media || [], facility.name, facility.id);
             document.getElementById('mobile-trail-name').textContent = facility.name;
             document.getElementById('mobile-trail-diff-row').innerHTML = `<span style="font-size:12px;font-weight:600;color:#166534;">${escapeHtml(facility.facility_type_label || 'Facility')}</span>`;
             document.getElementById('mobile-trail-stats').textContent = facility.description || '';
@@ -4523,18 +4532,17 @@
                 ? `<div class="biz-panel-hero"><img src="${business.photo_url}" alt="${business.name}" onerror="window.xsImgFallback(this)"></div>`
                 : `<div class="biz-panel-hero"><div class="biz-panel-hero-placeholder">${businessHeroIconHtml}</div></div>`;
 
-            // Media gallery (skip the item already shown as the hero)
+            // Media gallery (includes every photo, even the one shown as the hero)
             const businessMediaCacheKey = `business-${business.id}`;
             window._facilityMediaCache = window._facilityMediaCache || {};
             window._facilityMediaCache[businessMediaCacheKey] = { name: business.name, media: business.media || [] };
             let mediaHTML = '';
             if (business.media && business.media.length > 0) {
-                const skipFirst = !!business.photo_url;
-                const galleryItems = skipFirst ? business.media.filter(m => m.url !== business.photo_url) : business.media;
+                const galleryItems = business.media;
                 if (galleryItems.length > 0) {
                     mediaHTML = `<hr class="biz-panel-divider">
                         <div class="facility-media-gallery" style="border-top:none;margin-top:0;padding-top:0;">
-                            <p class="facility-media-count">${galleryItems.length} more ${galleryItems.length === 1 ? 'photo/video' : 'photos/videos'}</p>
+                            <p class="facility-media-count">${galleryItems.length} ${galleryItems.length === 1 ? 'photo/video' : 'photos/videos'}</p>
                             <div class="facility-media-grid">`;
                     galleryItems.slice(0, 4).forEach((media, idx) => {
                         const realIndex = business.media.indexOf(media);
@@ -4686,12 +4694,9 @@
             const content = document.getElementById('business-panel-content');
             if (!panel || !content) { return; }
 
-            // Hero: first photo if available, otherwise Xplore Smithers logo on a green gradient
-            let heroUrl = null;
-            if (facility.media && facility.media.length > 0) {
-                const firstPhoto = facility.media.find(m => m.media_type !== 'video_url' && m.media_type !== 'video') || facility.media[0];
-                heroUrl = firstPhoto.url || firstPhoto.thumbnail_url || null;
-            }
+            // Hero: primary photo if set, otherwise first photo, otherwise Xplore Smithers logo
+            const { hero: heroMedia, gallery: facilityGalleryItems } = pickFacilityHeroMedia(facility.media);
+            const heroUrl = heroMedia ? (heroMedia.url || heroMedia.thumbnail_url || null) : null;
             const hero = heroUrl
                 ? `<div class="biz-panel-hero"><img src="${heroUrl}" alt="${escapeHtml(facility.name)}" onerror="window.xsImgFallback(this)"></div>`
                 : `<div class="biz-panel-hero" style="background:linear-gradient(135deg,#166534,#22c55e);"><div class="biz-panel-hero-placeholder"><img src="/images/xplore-smithers-logo.png" alt="Xplore Smithers"></div></div>`;
@@ -4707,27 +4712,24 @@
                 </a>
             </div>`;
 
-            // Media gallery (skip the first item if it's already the hero)
+            // Media gallery (excludes whichever item is being used as the hero)
             let mediaHTML = '';
-            if (facility.media && facility.media.length > 0) {
-                const skipFirst = !!heroUrl;
-                const galleryItems = skipFirst ? facility.media.slice(1) : facility.media;
-                if (galleryItems.length > 0) {
-                    mediaHTML = `<hr class="biz-panel-divider">
+            if (facilityGalleryItems.length > 0) {
+                const galleryItems = facilityGalleryItems;
+                mediaHTML = `<hr class="biz-panel-divider">
                         <div class="facility-media-gallery" style="border-top:none;margin-top:0;padding-top:0;">
                             <p class="facility-media-count">${galleryItems.length} more ${galleryItems.length === 1 ? 'photo/video' : 'photos/videos'}</p>
                             <div class="facility-media-grid">`;
-                    galleryItems.slice(0, 4).forEach((media, idx) => {
-                        const realIndex = skipFirst ? idx + 1 : idx;
-                        const isVideo = media.media_type === 'video_url' || media.media_type === 'video';
-                        const thumbnailUrl = media.thumbnail_url || media.url;
-                        const remaining = galleryItems.length - 4;
-                        const overlay = (idx === 3 && remaining > 0) ? `<div class="facility-media-overlay">+${remaining} more</div>` : '';
-                        const videoBadge = isVideo ? '<div class="facility-video-badge">▶</div>' : '';
-                        mediaHTML += `<div class="facility-media-item" onclick="openFacilityMediaModal(${facility.id}, ${realIndex})"><img src="${thumbnailUrl}" class="facility-media-thumbnail" loading="lazy" onerror="window.xsImgFallback(this)">${overlay}${videoBadge}</div>`;
-                    });
-                    mediaHTML += `</div></div>`;
-                }
+                galleryItems.slice(0, 4).forEach((media, idx) => {
+                    const realIndex = facility.media.indexOf(media);
+                    const isVideo = media.media_type === 'video_url' || media.media_type === 'video';
+                    const thumbnailUrl = media.thumbnail_url || media.url;
+                    const remaining = galleryItems.length - 4;
+                    const overlay = (idx === 3 && remaining > 0) ? `<div class="facility-media-overlay">+${remaining} more</div>` : '';
+                    const videoBadge = isVideo ? '<div class="facility-video-badge">▶</div>' : '';
+                    mediaHTML += `<div class="facility-media-item" onclick="openFacilityMediaModal(${facility.id}, ${realIndex})"><img src="${thumbnailUrl}" class="facility-media-thumbnail" loading="lazy" onerror="window.xsImgFallback(this)">${overlay}${videoBadge}</div>`;
+                });
+                mediaHTML += `</div></div>`;
             }
 
             content.innerHTML = `
@@ -5292,6 +5294,25 @@
 
         // ── Fly Along Trail ─────────────────────────────────────────────────
 
+        // Detach every marker DOM element from the map during fly-along — with
+        // dozens of markers on screen, Mapbox recomputing each one's projected
+        // position every animation frame is what makes the flyover feel laggy.
+        _hideMarkersForFly() {
+            Object.values(this.overlayMarkers).forEach(markers => markers.forEach(m => m.remove()));
+            Object.values(this.businessMarkers).forEach(m => m.remove());
+            Object.values(this.networkMarkers).forEach(m => m.remove());
+            (this.facilityMarkers || []).forEach(m => m.remove());
+        }
+
+        _restoreMarkersAfterFly() {
+            this.activeFilters.forEach(activityType => {
+                (this.overlayMarkers[activityType] || []).forEach(m => m.addTo(this.map));
+            });
+            this.renderBusinessMarkers();
+            this.renderNetworkMarkers();
+            this.renderFacilityMarkers();
+        }
+
         flyAlongTrail(trailId) {
             // If already flying (including the pending timeout phase), stop cleanly first
             if (this._isFlying || this._flyTimeout) {
@@ -5344,6 +5365,7 @@
 
             this._isFlying = true;
             this._updateFlyButton(true);
+            this._hideMarkersForFly();
 
             // Switch to satellite for the flyover; remember previous style to restore on stop
             this._preFlyMapType = this.currentMapType;
@@ -5380,8 +5402,8 @@
                     );
                     this.map.flyTo({
                         center:   [smoothed[0][1], smoothed[0][0]],
-                        zoom:     15.5,
-                        pitch:    60,
+                        zoom:     14.5,
+                        pitch:    80,
                         bearing:  initialBearing,
                         duration: 1600,
                         easing:   t => t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t,
@@ -5450,7 +5472,7 @@
 
             const SPEED_MS    = 300;
             const DURATION_MS = (totalDist / SPEED_MS) * 1000;
-            const flyZoom     = 15.5;
+            const flyZoom     = 14.5;
             const startTime   = performance.now();
 
             // Binary-search helper — returns index lo such that cumDist[lo] <= d
@@ -5503,8 +5525,8 @@
             let smoothBear = this._getBearing(coords[0], coords[Math.min(30, last)]);
             let smoothZoom = flyZoom;
             let prevTime   = null;
-            const POS_HL     = 700;  // ms — heavy position smoothing, ultra-fluid camera glide
-            const BEARING_HL = 6000; // ms — barely turns, only major bends register
+            const POS_HL     = 500;  // ms — position smoothing, fluid camera glide
+            const BEARING_HL = 900;  // ms — turns quickly enough to keep the trail in frame
             const ZOOM_HL    = 2500; // ms — imperceptibly slow zoom drift
 
             const distEl = document.getElementById('fly-stat-dist');
@@ -5526,10 +5548,10 @@
                 smoothLat += (lat - smoothLat) * posAlpha;
                 smoothLng += (lng - smoothLng) * posAlpha;
 
-                // Bearing from 500 m behind → 1000 m ahead (1500 m window).
-                // Zigzag legs are tiny vs this span so they don't affect the angle.
-                const [behindLat, behindLng] = posAtDist(Math.max(0, distTravelled - 500));
-                const [aheadLat,  aheadLng]  = posAtDist(distTravelled + 1000);
+                // Bearing from 100 m behind → 250 m ahead — tight enough that the
+                // camera actually turns with switchbacks instead of looking past them.
+                const [behindLat, behindLng] = posAtDist(Math.max(0, distTravelled - 100));
+                const [aheadLat,  aheadLng]  = posAtDist(distTravelled + 250);
                 const targetBear = this._getBearing([behindLat, behindLng], [aheadLat, aheadLng]);
 
                 // Extremely slow bearing lerp — only genuine long bends register
@@ -5544,14 +5566,14 @@
                     ? Math.max(0, coords[hi][2] - coords[lo][2]) : 0;
                 const run      = cumDist[hi] - cumDist[lo];
                 const grade    = run > 0 ? (rise / run) * 100 : 0;
-                const targetZoom = grade > 8 ? 16.5 : grade < 3 ? 14.5 : flyZoom;
+                const targetZoom = grade > 8 ? 15.5 : grade < 3 ? 13.5 : flyZoom;
                 const zoomAlpha  = 1 - Math.pow(0.5, dt / ZOOM_HL);
                 smoothZoom      += (targetZoom - smoothZoom) * zoomAlpha;
 
                 this.map.jumpTo({
                     center:  [smoothLng, smoothLat],
                     bearing: smoothBear,
-                    pitch:   55,
+                    pitch:   78,
                     zoom:    smoothZoom,
                 });
 
@@ -5604,6 +5626,7 @@
                 this._hikerMarker.remove();
                 this._hikerMarker = null;
             }
+            this._restoreMarkersAfterFly();
 
             // Reset the fly button before the panel rebuild below — showTrailInfo()
             // renders its own fresh "Fly Along" button, and resetting first keeps it

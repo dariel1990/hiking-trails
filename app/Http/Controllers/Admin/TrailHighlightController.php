@@ -79,8 +79,6 @@ class TrailHighlightController extends Controller
             'color' => ['nullable', 'string', 'regex:/^#[0-9A-Fa-f]{6}$/'],
             'latitude' => ['required', 'numeric', 'between:-90,90'],
             'longitude' => ['required', 'numeric', 'between:-180,180'],
-            'photos' => ['nullable', 'array'],
-            'photos.*' => ['image', 'mimes:jpg,jpeg,png,webp', 'max:51200'],
         ], [
             'color.regex' => 'The color must be a valid hex value (e.g. #3B82F6).',
         ]);
@@ -95,42 +93,52 @@ class TrailHighlightController extends Controller
             'coordinates' => [(float) $validated['latitude'], (float) $validated['longitude']],
         ]);
 
-        if ($request->hasFile('photos')) {
-            $hasPrimary = $highlight->primaryMedia() !== null;
-
-            foreach ($request->file('photos') as $photo) {
-                if ($highlight->hasReachedPhotoLimit()) {
-                    break;
-                }
-
-                $compressed = $this->compressAndStorePhoto($photo, 'trail-photos');
-
-                $media = TrailMedia::create([
-                    'trail_id' => $highlight->trail_id,
-                    'media_type' => 'photo',
-                    'filename' => $compressed['filename'],
-                    'original_name' => $photo->getClientOriginalName(),
-                    'storage_path' => $compressed['path'],
-                    'file_size' => $compressed['file_size'],
-                    'mime_type' => 'image/webp',
-                    'uploaded_by' => auth()->id(),
-                ]);
-
-                $highlight->media()->attach($media->id, [
-                    'is_primary' => ! $hasPrimary,
-                    'sort_order' => $highlight->media()->count(),
-                ]);
-
-                $hasPrimary = true;
-            }
-
-            $highlight->updateMediaCount();
-        }
-
-        $this->ensureHighlightHasFeaturedPhoto($highlight);
-
         return redirect()->route('admin.highlights.index')
             ->with('success', 'Highlight updated successfully.');
+    }
+
+    /**
+     * Upload a single photo directly to this highlight (used for the one-by-one
+     * drag-and-drop upload flow, instead of buffering files until the form saves).
+     */
+    public function uploadPhoto(Request $request, TrailFeature $highlight): JsonResponse
+    {
+        if ($highlight->hasReachedPhotoLimit()) {
+            return response()->json(['success' => false, 'message' => 'This highlight already has the maximum of 10 photos.'], 422);
+        }
+
+        $request->validate([
+            'photo' => ['required', 'image', 'mimes:jpg,jpeg,png,webp', 'max:51200'],
+        ]);
+
+        $hasPrimary = $highlight->primaryMedia() !== null;
+        $compressed = $this->compressAndStorePhoto($request->file('photo'), 'trail-photos');
+
+        $media = TrailMedia::create([
+            'trail_id' => $highlight->trail_id,
+            'media_type' => 'photo',
+            'filename' => $compressed['filename'],
+            'original_name' => $request->file('photo')->getClientOriginalName(),
+            'storage_path' => $compressed['path'],
+            'file_size' => $compressed['file_size'],
+            'mime_type' => 'image/webp',
+            'uploaded_by' => auth()->id(),
+        ]);
+
+        $highlight->media()->attach($media->id, [
+            'is_primary' => ! $hasPrimary,
+            'sort_order' => $highlight->media()->count(),
+        ]);
+
+        $highlight->updateMediaCount();
+
+        return response()->json([
+            'success' => true,
+            'media_id' => $media->id,
+            'url' => $media->url,
+            'is_primary' => ! $hasPrimary,
+            'reached_limit' => $highlight->hasReachedPhotoLimit(),
+        ]);
     }
 
     /**

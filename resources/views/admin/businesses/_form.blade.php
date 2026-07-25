@@ -229,15 +229,16 @@
             <div class="p-6 space-y-6">
                 <div class="space-y-2">
                     <label class="text-sm font-medium leading-none">Photos</label>
-                    <div class="border-2 border-dashed border-input rounded-lg p-8 text-center hover:bg-muted/50 transition-colors cursor-pointer" onclick="document.getElementById('photos').click()">
+                    <div id="photos-dropzone" class="border-2 border-dashed border-input rounded-lg p-8 text-center hover:bg-muted/50 transition-colors cursor-pointer" onclick="document.getElementById('photos').click()">
                         <input type="file" id="photos" name="photos[]" multiple accept="image/*" class="hidden" onchange="handlePhotoSelection(this)">
                         <svg class="mx-auto h-12 w-12 text-muted-foreground mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
                         </svg>
-                        <p class="text-sm font-medium text-muted-foreground">Click to upload photos</p>
-                        <p class="text-xs text-muted-foreground mt-1">or drag and drop</p>
+                        <p class="text-sm font-medium text-muted-foreground">Click or drag photos here to upload</p>
+                        <p class="text-xs text-muted-foreground mt-1">Multiple images supported · JPG, PNG, WebP</p>
                     </div>
                     <div id="photo-preview" class="grid grid-cols-4 gap-2 mt-4"></div>
+                    <input type="hidden" name="uploaded_photos" id="uploaded_photos" value="[]">
                 </div>
 
                 <div class="space-y-2">
@@ -320,11 +321,11 @@
 
                         {{-- Upload new icon --}}
                         <div class="flex items-center gap-2">
-                            <label for="business-icon-image-input" class="cursor-pointer inline-flex items-center gap-1.5 rounded-md border border-dashed border-input px-3 py-1.5 text-xs text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors">
+                            <label for="business-icon-image-input" id="business-icon-dropzone" class="cursor-pointer inline-flex items-center gap-1.5 rounded-md border border-dashed border-input px-3 py-1.5 text-xs text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors">
                                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
                                 </svg>
-                                Upload new icon
+                                Upload or drag new icon
                             </label>
                             <input type="file" id="business-icon-image-input" accept="image/*" class="hidden">
                             <span id="business-icon-upload-status" class="text-xs text-muted-foreground"></span>
