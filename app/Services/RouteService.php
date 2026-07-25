@@ -114,9 +114,13 @@ class RouteService
                 for ($i = 0; $i < count($coordinates); $i += $step) {
                     $sampledCoordinates[] = $coordinates[$i];
                 }
-                // Always include the last point
+                // Always include the last point without exceeding the API's 100-location cap
                 if (end($sampledCoordinates) !== end($coordinates)) {
-                    $sampledCoordinates[] = end($coordinates);
+                    if (count($sampledCoordinates) >= 100) {
+                        $sampledCoordinates[count($sampledCoordinates) - 1] = end($coordinates);
+                    } else {
+                        $sampledCoordinates[] = end($coordinates);
+                    }
                 }
                 $coordinates = $sampledCoordinates;
             }
@@ -126,8 +130,6 @@ class RouteService
                 return $coord[0].','.$coord[1];
             }, $coordinates));
 
-            Log::info('Fetching elevation data for '.count($coordinates).' points');
-
             // Call OpenTopoData API (free, no API key required)
             $response = Http::timeout(30)->get('https://api.opentopodata.org/v1/aster30m', [
                 'locations' => $locations,
@@ -135,8 +137,6 @@ class RouteService
 
             if ($response->successful() && isset($response->json()['results'])) {
                 $results = $response->json()['results'];
-
-                Log::info('Elevation data received: '.count($results).' results');
 
                 // Add elevation to coordinates
                 $coordinatesWithElevation = array_map(function ($coord, $result) {

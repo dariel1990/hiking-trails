@@ -120,12 +120,12 @@ class EventsController extends Controller
     {
         $startDateTime = $event->event_date;
         if ($event->event_time) {
-            $startDateTime = Carbon::parse($event->event_date->format('Y-m-d').' '.$event->event_time);
+            $startDateTime = Carbon::parse($event->event_date->format('Y-m-d').' '.$event->event_time->format('H:i:s'));
         }
 
         $endDateTime = $event->end_date ?? $event->event_date;
         if ($event->end_time) {
-            $endDateTime = Carbon::parse($endDateTime->format('Y-m-d').' '.$event->end_time);
+            $endDateTime = Carbon::parse($endDateTime->format('Y-m-d').' '.$event->end_time->format('H:i:s'));
         } elseif ($event->event_time) {
             // Default to 1 hour after start if no end time
             $endDateTime = $startDateTime->copy()->addHour();
