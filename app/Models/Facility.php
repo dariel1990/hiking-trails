@@ -150,6 +150,7 @@ class Facility extends Model
             'bridge' => '🌉 Bridge',
             'trail_sign' => '🚶 Trail Sign',
             'ttf' => '⚠️ TTF (Technical Trail Feature)',
+            'first_nation' => 'First Nation',
         ];
     }
 

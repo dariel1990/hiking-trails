@@ -131,7 +131,26 @@ class TrailMedia extends Model
             return $this->url;
         }
 
-        // Default placeholder for videos without thumbnails
+        // External videos (YouTube/Vimeo) can derive a real thumbnail from their provider.
+        if ($this->isExternal() && $this->video_url) {
+            switch ($this->video_provider) {
+                case 'youtube':
+                    $videoId = $this->extractYouTubeId($this->video_url);
+                    if ($videoId) {
+                        return "https://img.youtube.com/vi/{$videoId}/hqdefault.jpg";
+                    }
+                    break;
+
+                case 'vimeo':
+                    $videoId = $this->extractVimeoId($this->video_url);
+                    if ($videoId) {
+                        return "https://vumbnail.com/{$videoId}.jpg";
+                    }
+                    break;
+            }
+        }
+
+        // Default placeholder for videos without a derivable thumbnail
         return asset('images/video-placeholder.png');
     }
 

@@ -1,15 +1,18 @@
 <script src="https://api.mapbox.com/mapbox-gl-js/v3.10.0/mapbox-gl.js"></script>
 
 <script>
-function tourForm(availableTrails, availableFeatures, existingStops) {
+function tourForm(availableTrails, availableFeatures, availableFacilities, existingStops) {
     return {
         availableTrails: availableTrails,
         availableFeatures: availableFeatures,
+        availableFacilities: availableFacilities,
         stops: existingStops.map(s => ({
             trail_id: s.trail_id,
             feature_id: s.feature_id || null,
+            facility_id: s.facility_id || null,
             item_type: s.item_type || 'trail',
             feature_type: s.feature_type || null,
+            facility_type_label: s.facility_type_label || null,
             name: s.name,
             start_coordinates: s.start_coordinates,
             stop_label: s.stop_label || '',
@@ -21,8 +24,9 @@ function tourForm(availableTrails, availableFeatures, existingStops) {
         get filteredItems() {
             if (this.search.length < 2) { return []; }
             const q = this.search.toLowerCase();
-            const existingTrailIds = this.stops.filter(s => !s.feature_id).map(s => s.trail_id);
+            const existingTrailIds = this.stops.filter(s => !s.feature_id && !s.facility_id).map(s => s.trail_id);
             const existingFeatureIds = this.stops.filter(s => s.feature_id).map(s => s.feature_id);
+            const existingFacilityIds = this.stops.filter(s => s.facility_id).map(s => s.facility_id);
 
             const trails = this.availableTrails
                 .filter(t => t.name.toLowerCase().includes(q) && !existingTrailIds.includes(t.id))
@@ -32,7 +36,11 @@ function tourForm(availableTrails, availableFeatures, existingStops) {
                 .filter(f => (f.name.toLowerCase().includes(q) || (f.trail_name || '').toLowerCase().includes(q)) && !existingFeatureIds.includes(f.id))
                 .slice(0, 5);
 
-            return [...trails, ...features].slice(0, 8);
+            const facilities = this.availableFacilities
+                .filter(f => (f.name.toLowerCase().includes(q) || (f.facility_type_label || '').toLowerCase().includes(q)) && !existingFacilityIds.includes(f.id))
+                .slice(0, 5);
+
+            return [...trails, ...features, ...facilities].slice(0, 8);
         },
 
         addStop(item) {
@@ -40,10 +48,26 @@ function tourForm(availableTrails, availableFeatures, existingStops) {
                 this.stops.push({
                     trail_id: item.trail_id,
                     feature_id: item.id,
+                    facility_id: null,
                     item_type: 'feature',
                     feature_type: item.feature_type,
+                    facility_type_label: null,
                     name: item.name,
                     start_coordinates: item.coordinates,
+                    stop_label: '',
+                    estimated_visit_time: '',
+                    driving_notes: '',
+                });
+            } else if (item.item_type === 'facility') {
+                this.stops.push({
+                    trail_id: null,
+                    feature_id: null,
+                    facility_id: item.id,
+                    item_type: 'facility',
+                    feature_type: null,
+                    facility_type_label: item.facility_type_label,
+                    name: item.name,
+                    start_coordinates: item.start_coordinates,
                     stop_label: '',
                     estimated_visit_time: '',
                     driving_notes: '',
@@ -52,8 +76,10 @@ function tourForm(availableTrails, availableFeatures, existingStops) {
                 this.stops.push({
                     trail_id: item.id,
                     feature_id: null,
+                    facility_id: null,
                     item_type: 'trail',
                     feature_type: null,
+                    facility_type_label: null,
                     name: item.name,
                     start_coordinates: item.start_coordinates,
                     stop_label: '',

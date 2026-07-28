@@ -152,6 +152,10 @@
                             <input type="checkbox" value="camping" class="feature-checkbox w-5 h-5">
                             <span class="ml-3 text-sm">⛺ Camping</span>
                         </label>
+                        <label class="flex items-center cursor-pointer hover:bg-gray-50 p-3 rounded-lg">
+                            <input type="checkbox" id="show-first-nation-checkbox" class="layer-checkbox w-5 h-5" value="first_nation">
+                            <span class="ml-3 text-sm">📍 First Nation</span>
+                        </label>
                     </div>
                 </div>
 
@@ -242,6 +246,13 @@
                     class="location-filter-btn sidebar-nav-btn flex flex-col items-center gap-1 w-full py-3 px-1 text-center transition-colors">
                 <span class="text-xl">🗺️</span>
                 <span class="text-[10px] font-medium leading-tight">Tours</span>
+            </button>
+
+            <!-- First Nation -->
+            <button data-location-filter="first_nation"
+                    class="location-filter-btn sidebar-nav-btn flex flex-col items-center gap-1 w-full py-3 px-1 text-center transition-colors">
+                <span class="text-xl">📍</span>
+                <span class="text-[10px] font-medium leading-tight">First Nation</span>
             </button>
         </div>
 
@@ -546,6 +557,9 @@
         </button>
         <button data-mobile-location-filter="tour" class="mobile-location-tab flex-1 flex flex-col items-center gap-1 py-2 text-xs font-medium text-gray-500 border-b-2 border-transparent">
             <span class="text-lg">🗺️</span><span>Tours</span>
+        </button>
+        <button data-mobile-location-filter="first_nation" class="mobile-location-tab flex-1 flex flex-col items-center gap-1 py-2 text-xs font-medium text-gray-500 border-b-2 border-transparent">
+            <span class="text-lg">📍</span><span>Nations</span>
         </button>
     </div>
     <!-- Results -->
@@ -2375,8 +2389,10 @@
             this.networkMarkers = {};
             this.networkData = [];
             this.facilityMarkers = [];
+            this.facilityData = [];
             this.showBusinesses = true;
             this.showFacilities = true;
+            this.showFirstNationFacilities = true;
             this.currentTrails = [];
             this.businessData = [];
             this.activeLocationFilter = 'trail';
@@ -2938,6 +2954,7 @@
                                  (filters.features && filters.features.length > 0);
             this.showBusinesses = !hasAnyFilter || checkedLayers.includes('businesses');
             this.showFacilities = !hasAnyFilter || checkedLayers.includes('facilities');
+            this.showFirstNationFacilities = !hasAnyFilter || checkedLayers.includes('first_nation');
 
             this.applyFilters();
             this.renderNetworkMarkers();
@@ -4443,6 +4460,17 @@
             }
         }
 
+        focusOnFacility(facilityId) {
+            const facility = (this.facilityData || []).find(f => f.id == facilityId);
+            if (facility) {
+                const markerEl = document.querySelector(`.selectable-marker-el[data-facility-id="${facility.id}"]`);
+                if (markerEl) {
+                    this._selectMarker(markerEl, facility.latitude, facility.longitude);
+                }
+                this.openFacilityPanel(facility);
+            }
+        }
+
         showMobileBusinessCard(business) {
             const btnClass = 'flex-1 flex items-center justify-center gap-1.5 py-2 px-2 rounded-lg text-xs font-semibold border border-gray-200 bg-gray-50 hover:bg-gray-100 text-gray-700 transition-colors';
             const img = document.getElementById('mobile-trail-img');
@@ -4857,9 +4885,12 @@
             try {
                 const response = await fetch('/api/facilities');
                 const facilities = await response.json();
+                this.facilityData = facilities;
 
                 facilities.forEach(facility => {
                     const el = this._createMarkerEl(facility.icon || '📍', facility.icon_image_url || null);
+                    el.dataset.facilityId = facility.id;
+                    el.dataset.facilityType = facility.facility_type;
 
                     // Cache the full media list so the modal carousel can navigate it
                     if (facility.media && facility.media.length) {
@@ -4878,7 +4909,8 @@
                     const marker = new mapboxgl.Marker({ element: el, anchor: 'center' })
                         .setLngLat([facility.longitude, facility.latitude]);
 
-                    if (this.showFacilities) { marker.addTo(this.map); }
+                    const shouldShow = facility.facility_type === 'first_nation' ? this.showFirstNationFacilities : this.showFacilities;
+                    if (shouldShow) { marker.addTo(this.map); }
                     this.facilityMarkers.push(marker);
                 });
             } catch (error) {
@@ -4888,7 +4920,9 @@
 
         renderFacilityMarkers() {
             (this.facilityMarkers || []).forEach(m => {
-                if (this.showFacilities) {
+                const type = m.getElement()?.dataset.facilityType;
+                const shouldShow = type === 'first_nation' ? this.showFirstNationFacilities : this.showFacilities;
+                if (shouldShow) {
                     m.addTo(this.map);
                 } else {
                     m.remove();
@@ -5955,6 +5989,38 @@
             );
         }
 
+        function filterFacilities(facilities, searchTerm) {
+            if (!searchTerm) return facilities;
+            return facilities.filter(f =>
+                f.name.toLowerCase().includes(searchTerm) ||
+                (f.description && f.description.toLowerCase().includes(searchTerm))
+            );
+        }
+
+        function renderFirstNationCards(facilities, targetContainerId = 'trail-cards') {
+            const container = document.getElementById(targetContainerId);
+            if (targetContainerId === 'trail-cards') {
+                const countEl = document.getElementById('trail-count');
+                if (countEl) { countEl.textContent = facilities.length; }
+            }
+            if (!container) { return; }
+
+            if (facilities.length === 0) {
+                container.innerHTML = `<div class="text-center py-8 text-gray-500"><p class="font-medium">No First Nation sites found</p></div>`;
+                return;
+            }
+
+            container.innerHTML = facilities.map(f => `
+                <div class="business-list-card trail-list-card" data-location-type="first_nation" onclick="window.trailMap.focusOnFacility(${f.id})">
+                    <div class="flex-shrink-0 text-xl w-8 text-center">${f.icon_image_url ? `<img src="${escapeHtml(f.icon_image_url)}" style="width:24px;height:24px;object-fit:contain;display:inline-block;border-radius:4px;" alt="">` : (f.icon || '📍')}</div>
+                    <div class="flex-1 min-w-0">
+                        <div class="font-medium text-sm text-gray-900 truncate">${escapeHtml(f.name)}</div>
+                        ${f.description ? `<div class="text-xs text-gray-500 truncate">${escapeHtml(f.description)}</div>` : ''}
+                    </div>
+                </div>
+            `).join('');
+        }
+
         // Tour data cache
         let toursCache = null;
 
@@ -6012,6 +6078,9 @@
                 });
             } else if (activeLocationFilter === 'business') {
                 window.trailMap.renderTrailList([], filterBusinesses(allBusinesses, searchTerm));
+            } else if (activeLocationFilter === 'first_nation') {
+                const allFacilities = (window.trailMap.facilityData || []).filter(f => f.facility_type === 'first_nation');
+                renderFirstNationCards(filterFacilities(allFacilities, searchTerm));
             } else if (activeLocationFilter === 'fishing_lake') {
                 const fishing = filterTrails(allTrails.filter(t => t.location_type === 'fishing_lake'), searchTerm);
                 window.trailMap.renderTrailList(fishing, []);
@@ -6131,6 +6200,10 @@
                             </a>
                         `).join('');
                     });
+                    return;
+                } else if (filter === 'first_nation') {
+                    const allFacilities = (window.trailMap.facilityData || []).filter(f => f.facility_type === 'first_nation');
+                    renderFirstNationCards(filterFacilities(allFacilities, q), 'mobile-search-results-inner');
                     return;
                 } else if (filter === 'business') {
                     trails = [];

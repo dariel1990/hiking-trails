@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\StoreTourRequest;
 use App\Http\Requests\Admin\UpdateTourRequest;
+use App\Models\Facility;
 use App\Models\Tour;
 use App\Models\TourStop;
 use App\Models\Trail;
@@ -42,7 +43,11 @@ class AdminTourController extends Controller
             ->orderBy('name')
             ->get(['id', 'trail_id', 'feature_type', 'name', 'coordinates']);
 
-        return view('admin.tours.create', compact('availableTrails', 'availableFeatures'));
+        $availableFacilities = Facility::active()
+            ->orderBy('name')
+            ->get(['id', 'name', 'facility_type', 'latitude', 'longitude']);
+
+        return view('admin.tours.create', compact('availableTrails', 'availableFeatures', 'availableFacilities'));
     }
 
     public function store(StoreTourRequest $request): RedirectResponse
@@ -76,7 +81,7 @@ class AdminTourController extends Controller
 
     public function edit(Tour $tour): View
     {
-        $tour->load('stops.trail', 'stops.feature');
+        $tour->load('stops.trail', 'stops.feature', 'stops.facility');
 
         $availableTrails = Trail::where('status', 'active')
             ->orderBy('name')
@@ -87,7 +92,11 @@ class AdminTourController extends Controller
             ->orderBy('name')
             ->get(['id', 'trail_id', 'feature_type', 'name', 'coordinates']);
 
-        return view('admin.tours.edit', compact('tour', 'availableTrails', 'availableFeatures'));
+        $availableFacilities = Facility::active()
+            ->orderBy('name')
+            ->get(['id', 'name', 'facility_type', 'latitude', 'longitude']);
+
+        return view('admin.tours.edit', compact('tour', 'availableTrails', 'availableFeatures', 'availableFacilities'));
     }
 
     public function update(UpdateTourRequest $request, Tour $tour): RedirectResponse
@@ -204,14 +213,15 @@ class AdminTourController extends Controller
 
         $stops = $request->input('stops', []);
         foreach ($stops as $index => $stop) {
-            if (empty($stop['trail_id'])) {
+            if (empty($stop['trail_id']) && empty($stop['facility_id'])) {
                 continue;
             }
 
             TourStop::create([
                 'tour_id' => $tour->id,
-                'trail_id' => $stop['trail_id'],
+                'trail_id' => ! empty($stop['trail_id']) ? $stop['trail_id'] : null,
                 'trail_feature_id' => ! empty($stop['feature_id']) ? $stop['feature_id'] : null,
+                'facility_id' => ! empty($stop['facility_id']) ? $stop['facility_id'] : null,
                 'stop_order' => $index,
                 'stop_label' => $stop['stop_label'] ?? null,
                 'driving_notes' => $stop['driving_notes'] ?? null,

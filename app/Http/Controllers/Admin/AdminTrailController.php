@@ -112,6 +112,7 @@ class AdminTrailController extends Controller
             'is_featured' => 'boolean',
             'photos' => 'nullable|array',
             'photos.*' => 'image|mimes:jpeg,png,jpg,gif|max:51200',
+            'uploaded_photos' => 'nullable|string',
             'trail_video_urls' => 'nullable|array',
             'trail_video_urls.*' => 'nullable|url|max:500',
             'highlight_media_*' => 'nullable|file|mimes:jpeg,png,jpg,gif|max:10240',
@@ -306,6 +307,8 @@ class AdminTrailController extends Controller
         }
 
         // Handle photos (Trail-level media)
+        $photoCount = 0;
+
         if ($request->hasFile('photos')) {
             $featuredPhotoIndex = (int) $request->input('featured_photo_index', 0);
 
@@ -325,8 +328,13 @@ class AdminTrailController extends Controller
                     'is_featured' => $index === $featuredPhotoIndex,
                     'uploaded_by' => auth()->id(),
                 ]);
+
+                $photoCount++;
             }
         }
+
+        // Attach photos that were uploaded ahead of time via the AJAX temp-upload flow
+        $photoCount = $this->attachUploadedPhotos($request, $trail, $photoCount);
 
         // Handle new video URLs - support both JSON and array format
         $videoUrls = null;
@@ -345,7 +353,6 @@ class AdminTrailController extends Controller
 
         // Save video URLs to TrailMedia table
         if (! empty($videoUrls) && is_array($videoUrls)) {
-            $photoCount = $request->hasFile('photos') ? count($request->file('photos')) : 0;
             $featuredPhotoIndex = (int) $request->input('featured_photo_index', 0);
 
             foreach ($videoUrls as $index => $videoUrl) {
@@ -552,6 +559,7 @@ class AdminTrailController extends Controller
             'is_featured' => 'boolean',
             'photos' => 'nullable|array',
             'photos.*' => 'image|mimes:jpeg,png,jpg,gif|max:51200',
+            'uploaded_photos' => 'nullable|string',
             'trail_video_urls' => 'nullable|array',
             'trail_video_urls.*' => 'nullable|url|max:500',
             'highlight_media_*' => 'nullable|file|mimes:jpeg,png,jpg,gif|max:10240',
@@ -1010,6 +1018,8 @@ class AdminTrailController extends Controller
         }
 
         // Handle new photos
+        $newPhotoCount = 0;
+
         if ($request->hasFile('photos')) {
             // Get the current max sort order
             $maxSortOrder = $trail->media()->max('sort_order') ?? -1;
@@ -1030,8 +1040,18 @@ class AdminTrailController extends Controller
                     'is_featured' => false,
                     'uploaded_by' => auth()->id(),
                 ]);
+
+                $newPhotoCount++;
             }
         }
+
+        // Attach photos that were uploaded ahead of time via the AJAX temp-upload flow.
+        // New photos added during an update are never auto-featured (mirrors the
+        // direct-upload 'photos' behavior above) — featuring an existing trail's photo
+        // goes through the separate featured_photo_id / media gallery flow.
+        $sortOrderBeforeUploaded = $trail->media()->max('sort_order') ?? -1;
+        $sortOrderAfterUploaded = $this->attachUploadedPhotos($request, $trail, $sortOrderBeforeUploaded + 1, featuredPhotoIndex: -1);
+        $newPhotoCount += $sortOrderAfterUploaded - ($sortOrderBeforeUploaded + 1);
 
         // Handle new video URLs - support both JSON and array format
         $videoUrls = null;
@@ -1051,7 +1071,7 @@ class AdminTrailController extends Controller
         // Save new video URLs to TrailMedia table
         if (! empty($videoUrls) && is_array($videoUrls)) {
             $maxSortOrder = $trail->media()->max('sort_order') ?? -1;
-            $photoCount = $request->hasFile('photos') ? count($request->file('photos')) : 0;
+            $photoCount = $newPhotoCount;
 
             foreach ($videoUrls as $index => $videoUrl) {
                 if (! empty($videoUrl)) {
@@ -1373,6 +1393,118 @@ class AdminTrailController extends Controller
     private function compressAndStorePhoto(UploadedFile $photo, string $directory): array
     {
         return app(ImageThumbnailService::class)->process($photo, $directory);
+    }
+
+    /**
+     * Upload a single trail photo to temporary storage ahead of the trail
+     * being saved, so the UI can upload photos one-by-one as they're picked
+     * instead of waiting for the form submit.
+     */
+    public function uploadPhoto(Request $request): JsonResponse
+    {
+        $request->validate([
+            'photo' => 'required|image|mimes:jpeg,png,jpg,gif|max:51200',
+        ]);
+
+        try {
+            $processed = $this->compressAndStorePhoto($request->file('photo'), 'trails/tmp/photos');
+        } catch (\Throwable $e) {
+            Log::error('Trail photo upload failed to process.', ['message' => $e->getMessage()]);
+
+            return response()->json([
+                'error' => 'The server could not process that image. It may be too large or an unsupported format.',
+            ], 422);
+        }
+
+        return response()->json([
+            'path' => $processed['path'],
+            'thumbnail_path' => $processed['thumbnail_path'],
+            'url' => asset('storage/'.$processed['path']),
+            'thumbnail_url' => asset('storage/'.$processed['thumbnail_path']),
+        ]);
+    }
+
+    /**
+     * Delete a temporarily uploaded trail photo that hasn't been attached
+     * to a trail yet (e.g. the user removed it before saving).
+     */
+    public function deleteUploadedPhoto(Request $request): JsonResponse
+    {
+        $request->validate([
+            'path' => 'required|string',
+            'thumbnail_path' => 'nullable|string',
+        ]);
+
+        $path = $request->string('path')->toString();
+        $thumbnailPath = $request->string('thumbnail_path')->toString();
+
+        if (! str_starts_with($path, 'trails/tmp/photos/') || str_contains($path, '..')) {
+            abort(422, 'Invalid photo path.');
+        }
+
+        Storage::disk('public')->delete($path);
+
+        if ($thumbnailPath !== '' && str_starts_with($thumbnailPath, 'trails/tmp/photos/') && ! str_contains($thumbnailPath, '..')) {
+            Storage::disk('public')->delete($thumbnailPath);
+        }
+
+        return response()->json(['deleted' => true]);
+    }
+
+    /**
+     * Move temporarily uploaded trail photos into permanent storage and attach
+     * them to the trail as TrailMedia records.
+     */
+    private function attachUploadedPhotos(Request $request, Trail $trail, int $startingSortOrder = 0, ?int $featuredPhotoIndex = null): int
+    {
+        $uploadedPhotos = json_decode($request->input('uploaded_photos', '[]'), true);
+        $featuredPhotoIndex ??= (int) $request->input('featured_photo_index', -1);
+
+        if (! is_array($uploadedPhotos)) {
+            return $startingSortOrder;
+        }
+
+        foreach ($uploadedPhotos as $offset => $photo) {
+            $tempPath = $photo['path'] ?? null;
+            $tempThumbnailPath = $photo['thumbnail_path'] ?? null;
+
+            if (! is_string($tempPath) || ! str_starts_with($tempPath, 'trails/tmp/photos/') || str_contains($tempPath, '..')) {
+                continue;
+            }
+
+            if (! Storage::disk('public')->exists($tempPath)) {
+                continue;
+            }
+
+            $filename = basename($tempPath);
+            $finalPath = 'trail-photos/'.$filename;
+            Storage::disk('public')->move($tempPath, $finalPath);
+
+            $finalThumbnailPath = null;
+            if (is_string($tempThumbnailPath) && str_starts_with($tempThumbnailPath, 'trails/tmp/photos/') && ! str_contains($tempThumbnailPath, '..') && Storage::disk('public')->exists($tempThumbnailPath)) {
+                $finalThumbnailPath = 'trail-photos/thumbs/'.basename($tempThumbnailPath);
+                Storage::disk('public')->move($tempThumbnailPath, $finalThumbnailPath);
+            }
+
+            $sortOrder = $startingSortOrder + $offset;
+
+            TrailMedia::create([
+                'trail_id' => $trail->id,
+                'media_type' => 'photo',
+                'filename' => $filename,
+                'original_name' => $filename,
+                'storage_path' => $finalPath,
+                'thumbnail_path' => $finalThumbnailPath,
+                'mime_type' => 'image/webp',
+                'sort_order' => $sortOrder,
+                'is_featured' => $sortOrder === $featuredPhotoIndex,
+                'uploaded_by' => auth()->id(),
+            ]);
+
+            $startingSortOrder = $sortOrder + 1;
+        }
+
+        return $startingSortOrder;
     }
 
     /**

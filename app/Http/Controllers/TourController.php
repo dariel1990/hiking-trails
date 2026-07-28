@@ -24,7 +24,7 @@ class TourController extends Controller
             abort(404);
         }
 
-        $tour->load('stops.trail.features', 'stops.feature');
+        $tour->load('stops.trail.features', 'stops.feature', 'stops.facility');
 
         $mapboxToken = config('services.mapbox.access_token');
 

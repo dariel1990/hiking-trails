@@ -1282,6 +1282,7 @@
                     <!-- Hidden inputs for photo data -->
                     <input type="hidden" name="featured_photo_index" id="featured-photo-index" value="-1">
                     <input type="hidden" name="featured_photo_id" id="featured-photo-id" value="">
+                    <input type="hidden" name="uploaded_photos" id="uploaded-photos-json" value="[]">
                 </div>
             </div>
         </div>
@@ -4161,6 +4162,12 @@
         }
     }
 
+    function escapeHtml(str) {
+        const div = document.createElement('div');
+        div.textContent = str ?? '';
+        return div.innerHTML;
+    }
+
     // Shrinks large photos client-side before they're staged for upload, so
     // multi-photo saves aren't stuck transferring/processing huge originals.
     function compressImageForUpload(file, maxDimension = 1920, quality = 0.85) {
@@ -4224,7 +4231,9 @@
             this.photoCount = document.getElementById('photo-count');
             this.photos = [];
             this.videos = [];
-            
+            this.photoQueue = [];
+            this.queueRunning = false;
+
             // Initialize missing properties
             this.existingPhotos = @json($trailOnlyMedia ?? []); // Load existing photos from backend
             this.deletedPhotos = [];
@@ -4267,7 +4276,10 @@
             
             // File input change
             if (this.fileInput) {
-                this.fileInput.addEventListener('change', (e) => this.handleFiles(e.target.files));
+                this.fileInput.addEventListener('change', (e) => {
+                    this.handleFiles(e.target.files);
+                    this.fileInput.value = ''; // photos are uploaded via AJAX, not the form submit
+                });
             }
             
             // Drag and drop
@@ -4405,7 +4417,7 @@
             document.body.appendChild(modal);
         }
 
-        async handleFiles(files) {
+        handleFiles(files) {
             const validFiles = Array.from(files).filter(file => {
                 if (!file.type.startsWith('image/')) {
                     alert(`${file.name} is not an image file`);
@@ -4420,27 +4432,111 @@
                 return true;
             });
 
-            if (validFiles.length === 0) { return; }
+            validFiles.forEach(file => this.enqueuePhoto(file));
+        }
 
-            // Large phone photos make the upload and server-side processing slow.
-            // Shrinking them in the browser before they're added fixes both.
-            const submitBtn = document.querySelector('button[type="submit"]');
-            const originalSubmitText = submitBtn ? submitBtn.textContent : null;
-            if (submitBtn) {
-                submitBtn.disabled = true;
-                submitBtn.textContent = 'Compressing images…';
+        // Photos upload one-by-one as soon as they're picked/dropped, instead of
+        // waiting for the form to be submitted. Each thumbnail shows its own
+        // uploading/error/uploaded state.
+        enqueuePhoto(file) {
+            const photo = {
+                id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+                status: 'queued',
+                file,
+                previewUrl: URL.createObjectURL(file),
+                path: null,
+                thumbnail_path: null,
+            };
+
+            this.photos.push(photo);
+
+            // Auto-feature the first newly added photo only if there is no featured photo already
+            if (this.featuredIndex === -1 && !this.hasFeaturedPhoto()) {
+                this.featuredIndex = this.photos.length - 1;
             }
 
+            this.photoQueue.push(photo);
+            this.render();
+            this.runQueue();
+        }
+
+        async runQueue() {
+            if (this.queueRunning) { return; }
+            this.queueRunning = true;
+            this.updateSubmitState();
+
+            while (this.photoQueue.length > 0) {
+                const item = this.photoQueue.shift();
+                if (!this.photos.includes(item)) { continue; } // removed before its turn
+
+                item.status = 'uploading';
+                this.render();
+
+                // Large phone photos make the upload and server-side processing slow.
+                // Shrinking them in the browser before they're uploaded fixes both.
+                item.file = await compressImageForUpload(item.file);
+                URL.revokeObjectURL(item.previewUrl);
+                item.previewUrl = URL.createObjectURL(item.file);
+
+                await this.uploadPhoto(item);
+            }
+
+            this.queueRunning = false;
+            this.updateSubmitState();
+        }
+
+        async uploadPhoto(item) {
             try {
-                for (const file of validFiles) {
-                    await this.addPhoto(file);
+                const fd = new FormData();
+                fd.append('photo', item.file);
+                fd.append('_token', document.querySelector('meta[name="csrf-token"]').content);
+
+                const res = await fetch('{{ route("admin.trails.photos.upload") }}', {
+                    method: 'POST',
+                    headers: { 'Accept': 'application/json' },
+                    body: fd,
+                });
+
+                // The server may respond with a JSON error body (validation, or a caught
+                // processing failure) even on a non-2xx status — surface that message
+                // instead of a generic "upload failed" when possible.
+                let data = null;
+                try { data = await res.json(); } catch { /* non-JSON response, e.g. a raw HTML error page */ }
+
+                if (!res.ok) {
+                    throw new Error(data?.error || data?.message || `Upload failed (HTTP ${res.status})`);
                 }
-            } finally {
-                if (submitBtn) {
-                    submitBtn.disabled = false;
-                    submitBtn.textContent = originalSubmitText;
-                }
+
+                item.status = 'done';
+                item.path = data.path;
+                item.thumbnail_path = data.thumbnail_path;
+            } catch (err) {
+                item.status = 'error';
+                item.error = err.message || 'Upload failed';
             }
+
+            this.render();
+        }
+
+        retryPhotoUpload(id) {
+            const item = this.photos.find(p => p.id === id);
+            if (!item) { return; }
+
+            item.status = 'queued';
+            this.photoQueue.push(item);
+            this.render();
+            this.runQueue();
+        }
+
+        updateSubmitState() {
+            const submitBtn = document.querySelector('button[type="submit"]');
+            if (!submitBtn) { return; }
+
+            if (!submitBtn.dataset.originalText) { submitBtn.dataset.originalText = submitBtn.textContent; }
+
+            const uploading = this.photos.some(p => p.status === 'uploading' || p.status === 'queued');
+            submitBtn.disabled = uploading;
+            submitBtn.textContent = uploading ? 'Uploading photos…' : submitBtn.dataset.originalText;
         }
 
        renderExistingPhotos() {
@@ -4520,40 +4616,14 @@
             this.render();
         }
 
-        async addPhoto(file) {
-            const compressedFile = await compressImageForUpload(file);
+        async removePhoto(id) {
+            const index = this.photos.findIndex(p => p.id === id);
+            if (index === -1) { return; }
 
-            return new Promise((resolve) => {
-                const reader = new FileReader();
+            const [item] = this.photos.splice(index, 1);
+            const queueIndex = this.photoQueue.indexOf(item);
+            if (queueIndex !== -1) { this.photoQueue.splice(queueIndex, 1); }
 
-                reader.onload = (e) => {
-                    const photo = {
-                        file: compressedFile,
-                        dataUrl: e.target.result,
-                        id: Date.now() + Math.random()
-                    };
-
-                    this.photos.push(photo);
-
-                    // Auto-feature the first newly added photo only if there is no featured photo already
-                    if (this.featuredIndex === -1 && !this.hasFeaturedPhoto()) {
-                        // featuredIndex is the index within this.photos
-                        this.featuredIndex = this.photos.length - 1;
-                    }
-
-                    this.render();
-                    resolve();
-                };
-
-                reader.readAsDataURL(compressedFile);
-            });
-        }
-
-        removePhoto(index) {
-            if (index < 0 || index >= this.photos.length) return;
-
-            this.photos.splice(index, 1);
-            
             // Adjust featured index if needed
             if (this.featuredIndex === index) {
                 // If we're deleting the featured photo, reset to -1 (no featured)
@@ -4564,6 +4634,20 @@
             }
 
             this.render();
+
+            if (item.path) {
+                try {
+                    await fetch('{{ route("admin.trails.photos.upload.delete") }}', {
+                        method: 'DELETE',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                        },
+                        body: JSON.stringify({ path: item.path, thumbnail_path: item.thumbnail_path }),
+                    });
+                } catch { /* best-effort cleanup; hourly job sweeps orphaned temp photos anyway */ }
+            }
         }
 
         setFeatured(index) {
@@ -4571,6 +4655,11 @@
             if (index < 0 || index >= this.photos.length) {
                 // Trying to feature a non-photo (video) - prevent this
                 alert('Videos cannot be set as featured. Please choose a photo.');
+                return;
+            }
+
+            if (this.photos[index].status !== 'done') {
+                alert('Please wait for the photo to finish uploading before featuring it.');
                 return;
             }
 
@@ -4595,9 +4684,24 @@
                 buttons: [
                     { label: 'Cancel', variant: 'secondary', action: 'cancel', handler: () => {} },
                     { label: 'Remove All', variant: 'danger', action: 'confirm', handler: () => {
+                        const toDelete = this.photos.filter(p => p.path);
+
                         this.photos = [];
+                        this.photoQueue = [];
                         this.featuredIndex = 0;
                         this.render();
+
+                        toDelete.forEach(item => {
+                            fetch('{{ route("admin.trails.photos.upload.delete") }}', {
+                                method: 'DELETE',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'Accept': 'application/json',
+                                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                                },
+                                body: JSON.stringify({ path: item.path, thumbnail_path: item.thumbnail_path }),
+                            }).catch(() => { /* best-effort cleanup; hourly job sweeps orphaned temp photos anyway */ });
+                        });
                     }},
                 ],
             });
@@ -4667,28 +4771,52 @@
                     const photo = item.data;
                     const index = item.index;
                     const globalIndex = item.globalIndex;
-                    
+                    const isFeatured = globalIndex === this.featuredIndex;
+                    const isDone = photo.status === 'done';
+
                     return `
                         <div class="relative group photo-preview-item" data-photo-id="${photo.id}">
-                            <img src="${photo.dataUrl}" alt="Preview ${index + 1}" 
-                                class="w-full h-32 object-cover rounded-lg border-2 ${globalIndex === this.featuredIndex ? 'border-yellow-400' : 'border-gray-200'}">
-                            
-                            ${globalIndex === this.featuredIndex ? `
+                            <img src="${photo.previewUrl}" alt="Preview ${index + 1}"
+                                class="w-full h-32 object-cover rounded-lg border-2 ${isFeatured ? 'border-yellow-400' : 'border-gray-200'}">
+
+                            ${isFeatured ? `
                                 <div class="absolute top-2 left-2">
                                     <span class="inline-flex items-center rounded-full bg-yellow-400 px-2 py-1 text-xs font-medium text-yellow-900">
                                         ⭐ Featured
                                     </span>
                                 </div>
                             ` : ''}
-                            
+
+                            ${photo.status === 'uploading' ? `
+                                <div class="absolute inset-0 bg-black/50 rounded-lg flex flex-col items-center justify-center gap-1.5 text-white">
+                                    <svg class="animate-spin w-6 h-6" fill="none" viewBox="0 0 24 24">
+                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                    </svg>
+                                    <span class="text-[10px] font-medium">Uploading…</span>
+                                </div>
+                            ` : ''}
+                            ${photo.status === 'queued' ? `
+                                <div class="absolute inset-0 bg-black/40 rounded-lg flex items-center justify-center text-white">
+                                    <span class="text-[10px] font-medium">Queued…</span>
+                                </div>
+                            ` : ''}
+                            ${photo.status === 'error' ? `
+                                <div class="absolute inset-0 bg-red-900/70 rounded-lg flex flex-col items-center justify-center gap-1 text-white p-1 text-center">
+                                    <span class="text-[10px] font-medium">${escapeHtml(photo.error || 'Upload failed')}</span>
+                                    <button type="button" class="text-[10px] underline" data-retry="${photo.id}">Retry</button>
+                                </div>
+                            ` : ''}
+
                             <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-50 transition-all duration-200 rounded-lg flex items-center justify-center gap-2">
-                                <button type="button" onclick="window.photoManager.setFeatured(${globalIndex})" 
-                                    class="opacity-0 group-hover:opacity-100 bg-yellow-400 hover:bg-yellow-500 text-yellow-900 p-2 rounded-full transition-all">
+                                <button type="button" onclick="window.photoManager.setFeatured(${globalIndex})"
+                                    ${isDone ? '' : 'disabled'}
+                                    class="opacity-0 group-hover:opacity-100 bg-yellow-400 hover:bg-yellow-500 text-yellow-900 p-2 rounded-full transition-all disabled:opacity-0">
                                     <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
                                         <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
                                     </svg>
                                 </button>
-                                <button type="button" onclick="window.photoManager.removePhoto(${index})" 
+                                <button type="button" onclick="window.photoManager.removePhoto('${photo.id}')"
                                     class="opacity-0 group-hover:opacity-100 bg-red-500 hover:bg-red-600 text-white p-2 rounded-full transition-all">
                                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
@@ -4754,23 +4882,60 @@
                 }
             }).join('');
 
-            // Update DataTransfer for photos
-            const dataTransfer = new DataTransfer();
-            this.photos.forEach(photo => {
-                dataTransfer.items.add(photo.file);
+            previewsContainer.querySelectorAll('[data-retry]').forEach(btn => {
+                btn.addEventListener('click', () => this.retryPhotoUpload(btn.dataset.retry));
             });
 
-            const photoInput = document.getElementById('photo-input');
-            if (photoInput) {
-                photoInput.files = dataTransfer.files;
+            this.syncHiddenFields();
+            this.updateSubmitState();
+        }
+
+        // Maps the display-only featuredIndex (position across photos-then-videos,
+        // including ones still uploading) to the index the server would use, which
+        // only counts photos that have finished uploading. Note: as of now the
+        // server never actually reads featured_photo_index for edited trails (new
+        // photos are featured afterwards via the featured_photo_id gallery flow) —
+        // this is kept for consistency with the create page and in case that changes.
+        getFeaturedSubmitIndex() {
+            if (this.featuredIndex === -1) {
+                return -1;
             }
 
-            // Update featured index
+            if (this.featuredIndex < this.photos.length) {
+                const photo = this.photos[this.featuredIndex];
+                if (!photo || photo.status !== 'done') {
+                    return -1;
+                }
+
+                let doneBefore = 0;
+                for (let i = 0; i < this.featuredIndex; i++) {
+                    if (this.photos[i].status === 'done') { doneBefore++; }
+                }
+
+                return doneBefore;
+            }
+
+            const videoIndex = this.featuredIndex - this.photos.length;
+            const doneCount = this.photos.filter(p => p.status === 'done').length;
+
+            return doneCount + videoIndex;
+        }
+
+        syncHiddenFields() {
             const featuredInput = document.getElementById('featured-photo-index');
             if (featuredInput) {
-                featuredInput.value = this.featuredIndex;
+                featuredInput.value = this.getFeaturedSubmitIndex();
             }
-            
+
+            const uploadedInput = document.getElementById('uploaded-photos-json');
+            if (uploadedInput) {
+                uploadedInput.value = JSON.stringify(
+                    this.photos
+                        .filter(p => p.status === 'done')
+                        .map(p => ({ path: p.path, thumbnail_path: p.thumbnail_path }))
+                );
+            }
+
             // Create hidden inputs for video URLs
             this.updateVideoUrlInputs();
         }
@@ -4863,30 +5028,15 @@
         reorderPhotos() {
             const items = document.querySelectorAll('.photo-preview-item');
             const newOrder = [];
-            
+
             items.forEach(item => {
-                const id = parseFloat(item.dataset.photoId);
+                const id = item.dataset.photoId;
                 const photo = this.photos.find(p => p.id === id);
                 if (photo) newOrder.push(photo);
             });
 
             this.photos = newOrder;
             this.render();
-        }
-
-        updateFormData() {
-            // Create a new FileList-like object
-            const dataTransfer = new DataTransfer();
-            
-            this.photos.forEach(photo => {
-                dataTransfer.items.add(photo.file);
-            });
-
-            const photoInput = document.getElementById('photo-input');
-            photoInput.files = dataTransfer.files;
-
-            // Update featured index
-            document.getElementById('featured-photo-index').value = this.featuredIndex;
         }
     }
 
@@ -5278,6 +5428,15 @@
 
     // Sync Quill editors before submit
     document.querySelector('form').addEventListener('submit', syncQuillToInputs, true);
+
+    // Block submit while trail photos are still uploading
+    document.querySelector('form').addEventListener('submit', function(e) {
+        if (window.photoManager && window.photoManager.photos.some(p => p.status === 'uploading' || p.status === 'queued')) {
+            e.preventDefault();
+            e.stopImmediatePropagation();
+            alert('Please wait for all photos to finish uploading before submitting.');
+        }
+    }, true);
 
     // Enhanced form validation before submit
     document.querySelector('form').addEventListener('submit', function(e) {

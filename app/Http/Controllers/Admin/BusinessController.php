@@ -12,6 +12,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\View\View;
@@ -182,7 +183,15 @@ class BusinessController extends Controller
             'photo' => 'required|image|mimes:jpg,jpeg,png,webp|max:51200',
         ]);
 
-        $processed = $this->compressAndStorePhoto($request->file('photo'), 'businesses/tmp/photos');
+        try {
+            $processed = $this->compressAndStorePhoto($request->file('photo'), 'businesses/tmp/photos');
+        } catch (\Throwable $e) {
+            Log::error('Business photo upload failed to process.', ['message' => $e->getMessage()]);
+
+            return response()->json([
+                'error' => 'The server could not process that image. It may be too large or an unsupported format.',
+            ], 422);
+        }
 
         return response()->json([
             'path' => $processed['path'],

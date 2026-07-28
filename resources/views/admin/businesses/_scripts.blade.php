@@ -137,6 +137,12 @@ function refreshBusinessIconPreview() {
 // waiting for the form to be submitted. Each thumbnail shows its own
 // uploading/error/uploaded state.
 
+function escapeHtml(str) {
+    const div = document.createElement('div');
+    div.textContent = str ?? '';
+    return div.innerHTML;
+}
+
 const businessPhotoUploads = [];
 const businessPhotoQueue = [];
 let businessPhotoQueueRunning = false;
@@ -194,15 +200,28 @@ async function uploadSingleBusinessPhoto(item) {
         fd.append('photo', item.file);
         fd.append('_token', document.querySelector('meta[name="csrf-token"]').content);
 
-        const res = await fetch('{{ route("admin.businesses.photos.upload") }}', { method: 'POST', body: fd });
-        if (!res.ok) { throw new Error('Upload failed'); }
+        const res = await fetch('{{ route("admin.businesses.photos.upload") }}', {
+            method: 'POST',
+            headers: { 'Accept': 'application/json' },
+            body: fd,
+        });
 
-        const data = await res.json();
+        // The server may respond with a JSON error body (validation, or a caught
+        // processing failure) even on a non-2xx status — surface that message
+        // instead of a generic "upload failed" when possible.
+        let data = null;
+        try { data = await res.json(); } catch { /* non-JSON response, e.g. a raw HTML error page */ }
+
+        if (!res.ok) {
+            throw new Error(data?.error || data?.message || `Upload failed (HTTP ${res.status})`);
+        }
+
         item.status = 'done';
         item.path = data.path;
         item.thumbnail_path = data.thumbnail_path;
-    } catch {
+    } catch (err) {
         item.status = 'error';
+        item.error = err.message || 'Upload failed';
     }
 
     renderBusinessPhotoPreview();
@@ -266,7 +285,7 @@ function renderBusinessPhotoPreview() {
             ` : ''}
             ${item.status === 'error' ? `
                 <div class="absolute inset-0 bg-red-900/70 flex flex-col items-center justify-center gap-1 text-white p-1 text-center">
-                    <span class="text-[10px] font-medium">Upload failed</span>
+                    <span class="text-[10px] font-medium">${escapeHtml(item.error || 'Upload failed')}</span>
                     <button type="button" class="text-[10px] underline" data-retry="${item.id}">Retry</button>
                     <button type="button" class="text-[10px] underline" data-remove="${item.id}">Remove</button>
                 </div>

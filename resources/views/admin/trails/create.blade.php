@@ -1213,6 +1213,7 @@
 
                 <!-- Hidden inputs for photo data -->
                 <input type="hidden" name="featured_photo_index" id="featured-photo-index" value="-1">
+                <input type="hidden" name="uploaded_photos" id="uploaded-photos-json" value="[]">
             </div>
         </div>
 
@@ -2321,7 +2322,7 @@
             this.prepareMediaFilesForSubmission();
 
             if (window.photoManager) {
-                window.photoManager.updateVideoUrlInputs();
+                window.photoManager.syncHiddenFields();
             }
 
             return true;
@@ -3555,6 +3556,12 @@
         }
     }
 
+    function escapeHtml(str) {
+        const div = document.createElement('div');
+        div.textContent = str ?? '';
+        return div.innerHTML;
+    }
+
     // Shrinks large photos client-side before they're staged for upload, so
     // multi-photo saves aren't stuck transferring/processing huge originals.
     function compressImageForUpload(file, maxDimension = 1920, quality = 0.85) {
@@ -3616,6 +3623,8 @@
                 this.maxTotal = 10;
                 // -1 means no featured photo selected yet
                 this.featuredIndex = -1;
+                this.photoQueue = [];
+                this.queueRunning = false;
             this.init();
         }
 
@@ -3631,6 +3640,7 @@
             // File input change
             photoInput.addEventListener('change', (e) => {
                 this.handleFiles(e.target.files);
+                photoInput.value = ''; // photos are uploaded via AJAX, not the form submit
             });
 
             // Drag and drop
@@ -3781,7 +3791,7 @@
             document.body.appendChild(modal);
         }
 
-        async handleFiles(files) {
+        handleFiles(files) {
             const remainingSlots = this.maxPhotos - this.photos.length;
 
             if (files.length > remainingSlots) {
@@ -3803,67 +3813,113 @@
                 return true;
             });
 
-            if (validFiles.length === 0) { return; }
+            validFiles.forEach(file => this.enqueuePhoto(file));
+        }
 
-            // Large phone photos make the upload and server-side processing slow.
-            // Shrinking them in the browser before they're added fixes both.
-            const submitBtn = document.querySelector('button[type="submit"]');
-            const originalSubmitText = submitBtn ? submitBtn.textContent : null;
-            if (submitBtn) {
-                submitBtn.disabled = true;
-                submitBtn.textContent = 'Compressing images…';
+        // Photos upload one-by-one as soon as they're picked/dropped, instead of
+        // waiting for the form to be submitted. Each thumbnail shows its own
+        // uploading/error/uploaded state.
+        enqueuePhoto(file) {
+            const photo = {
+                id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+                status: 'queued',
+                file,
+                previewUrl: URL.createObjectURL(file),
+                path: null,
+                thumbnail_path: null,
+            };
+
+            this.photos.push(photo);
+
+            // If this is the first photo and no featured selected, make it featured
+            if (this.photos.length === 1 && this.featuredIndex === -1) {
+                this.featuredIndex = 0;
             }
 
+            this.photoQueue.push(photo);
+            this.render();
+            this.runQueue();
+        }
+
+        async runQueue() {
+            if (this.queueRunning) { return; }
+            this.queueRunning = true;
+            this.updateSubmitState();
+
+            while (this.photoQueue.length > 0) {
+                const item = this.photoQueue.shift();
+                if (!this.photos.includes(item)) { continue; } // removed before its turn
+
+                item.status = 'uploading';
+                this.render();
+
+                // Large phone photos make the upload and server-side processing slow.
+                // Shrinking them in the browser before they're uploaded fixes both.
+                item.file = await compressImageForUpload(item.file);
+                URL.revokeObjectURL(item.previewUrl);
+                item.previewUrl = URL.createObjectURL(item.file);
+
+                await this.uploadPhoto(item);
+            }
+
+            this.queueRunning = false;
+            this.updateSubmitState();
+        }
+
+        async uploadPhoto(item) {
             try {
-                for (const file of validFiles) {
-                    await this.addPhoto(file);
+                const fd = new FormData();
+                fd.append('photo', item.file);
+                fd.append('_token', document.querySelector('meta[name="csrf-token"]').content);
+
+                const res = await fetch('{{ route("admin.trails.photos.upload") }}', {
+                    method: 'POST',
+                    headers: { 'Accept': 'application/json' },
+                    body: fd,
+                });
+
+                // The server may respond with a JSON error body (validation, or a caught
+                // processing failure) even on a non-2xx status — surface that message
+                // instead of a generic "upload failed" when possible.
+                let data = null;
+                try { data = await res.json(); } catch { /* non-JSON response, e.g. a raw HTML error page */ }
+
+                if (!res.ok) {
+                    throw new Error(data?.error || data?.message || `Upload failed (HTTP ${res.status})`);
                 }
-            } finally {
-                if (submitBtn) {
-                    submitBtn.disabled = false;
-                    submitBtn.textContent = originalSubmitText;
-                }
+
+                item.status = 'done';
+                item.path = data.path;
+                item.thumbnail_path = data.thumbnail_path;
+            } catch (err) {
+                item.status = 'error';
+                item.error = err.message || 'Upload failed';
             }
+
+            this.render();
         }
 
-        async addPhoto(file) {
-            const compressedFile = await compressImageForUpload(file);
+        retryPhotoUpload(id) {
+            const item = this.photos.find(p => p.id === id);
+            if (!item) { return; }
 
-            return new Promise((resolve) => {
-                const reader = new FileReader();
-
-                reader.onload = (e) => {
-                    const photo = {
-                        file: compressedFile,
-                        dataUrl: e.target.result,
-                        id: Date.now() + Math.random()
-                    };
-
-                    this.photos.push(photo);
-                    // If this is the first photo and no featured selected, make it featured
-                    if (this.photos.length === 1 && this.featuredIndex === -1) {
-                        this.featuredIndex = 0;
-                    }
-                    this.render();
-                    resolve();
-                };
-
-                reader.readAsDataURL(compressedFile);
-            });
+            item.status = 'queued';
+            this.photoQueue.push(item);
+            this.render();
+            this.runQueue();
         }
 
-        removePhoto(index) {
-            if (index < 0 || index >= this.photos.length) {
+        async removePhoto(id) {
+            const index = this.photos.findIndex(p => p.id === id);
+            if (index === -1) {
                 return;
             }
 
-            this.photos.splice(index, 1);
-            
+            const [item] = this.photos.splice(index, 1);
+            const queueIndex = this.photoQueue.indexOf(item);
+            if (queueIndex !== -1) { this.photoQueue.splice(queueIndex, 1); }
+
             // Adjust featured index if needed
-            const totalPhotos = this.photos.length;
-            const totalVideos = this.videos.length;
-            const totalMedia = totalPhotos + totalVideos;
-            
             if (this.featuredIndex === index) {
                 // If we're deleting the featured photo, set to first remaining photo or -1
                 this.featuredIndex = this.photos.length > 0 ? 0 : -1;
@@ -3873,6 +3929,20 @@
             }
 
             this.render();
+
+            if (item.path) {
+                try {
+                    await fetch('{{ route("admin.trails.photos.upload.delete") }}', {
+                        method: 'DELETE',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                        },
+                        body: JSON.stringify({ path: item.path, thumbnail_path: item.thumbnail_path }),
+                    });
+                } catch { /* best-effort cleanup; hourly job sweeps orphaned temp photos anyway */ }
+            }
         }
 
         setFeatured(index) {
@@ -3883,6 +3953,10 @@
                 alert('Only photos can be featured. Please select a photo.');
                 return;
             }
+            if (this.photos[index].status !== 'done') {
+                alert('Please wait for the photo to finish uploading before featuring it.');
+                return;
+            }
 
             this.featuredIndex = index;
             this.render();
@@ -3890,14 +3964,29 @@
 
         clearAll() {
             const totalMedia = this.photos.length + this.videos.length;
-            
+
             if (totalMedia === 0) return;
-            
+
             if (confirm('Remove all media (photos and videos)?')) {
+                const toDelete = this.photos.filter(p => p.path);
+
                 this.photos = [];
+                this.photoQueue = [];
                 this.videos = [];
                 this.featuredIndex = -1;
                 this.render();
+
+                toDelete.forEach(item => {
+                    fetch('{{ route("admin.trails.photos.upload.delete") }}', {
+                        method: 'DELETE',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                        },
+                        body: JSON.stringify({ path: item.path, thumbnail_path: item.thumbnail_path }),
+                    }).catch(() => { /* best-effort cleanup; hourly job sweeps orphaned temp photos anyway */ });
+                });
             }
         }
 
@@ -3965,31 +4054,55 @@
                     const photo = item.data;
                     const index = item.index;
                     const globalIndex = item.globalIndex;
-                    
+                    const isFeatured = globalIndex === this.featuredIndex;
+                    const isDone = photo.status === 'done';
+
                     return `
                         <div class="space-y-2">
                             <div class="relative group photo-preview-item" data-photo-id="${photo.id}">
-                                <img src="${photo.dataUrl}" alt="Preview ${index + 1}" 
-                                    class="w-full h-32 object-cover rounded-lg border-2 ${globalIndex === this.featuredIndex ? 'border-yellow-400' : 'border-gray-200'}">
-                                
-                                ${globalIndex === this.featuredIndex ? `
+                                <img src="${photo.previewUrl}" alt="Preview ${index + 1}"
+                                    class="w-full h-32 object-cover rounded-lg border-2 ${isFeatured ? 'border-yellow-400' : 'border-gray-200'}">
+
+                                ${isFeatured ? `
                                     <div class="absolute top-2 left-2">
                                         <span class="inline-flex items-center rounded-full bg-yellow-400 px-2 py-1 text-xs font-medium text-yellow-900">
                                             ⭐ Featured
                                         </span>
                                     </div>
                                 ` : ''}
+
+                                ${photo.status === 'uploading' ? `
+                                    <div class="absolute inset-0 bg-black/50 rounded-lg flex flex-col items-center justify-center gap-1.5 text-white">
+                                        <svg class="animate-spin w-6 h-6" fill="none" viewBox="0 0 24 24">
+                                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                        </svg>
+                                        <span class="text-[10px] font-medium">Uploading…</span>
+                                    </div>
+                                ` : ''}
+                                ${photo.status === 'queued' ? `
+                                    <div class="absolute inset-0 bg-black/40 rounded-lg flex items-center justify-center text-white">
+                                        <span class="text-[10px] font-medium">Queued…</span>
+                                    </div>
+                                ` : ''}
+                                ${photo.status === 'error' ? `
+                                    <div class="absolute inset-0 bg-red-900/70 rounded-lg flex flex-col items-center justify-center gap-1 text-white p-1 text-center">
+                                        <span class="text-[10px] font-medium">${escapeHtml(photo.error || 'Upload failed')}</span>
+                                        <button type="button" class="text-[10px] underline" data-retry="${photo.id}">Retry</button>
+                                    </div>
+                                ` : ''}
                             </div>
-                            
+
                             <!-- Buttons Below -->
                             <div class="flex gap-2">
-                                <button type="button" 
-                                        onclick="window.photoManager.setFeatured(${globalIndex})" 
-                                        class="flex-1 px-3 py-1.5 text-xs font-medium rounded ${globalIndex === this.featuredIndex ? 'bg-yellow-400 text-yellow-900' : 'bg-gray-100 hover:bg-gray-200 text-gray-700'}">
-                                    ${globalIndex === this.featuredIndex ? '⭐ Featured' : 'Set Featured'}
+                                <button type="button"
+                                        onclick="window.photoManager.setFeatured(${globalIndex})"
+                                        ${isDone ? '' : 'disabled'}
+                                        class="flex-1 px-3 py-1.5 text-xs font-medium rounded ${isFeatured ? 'bg-yellow-400 text-yellow-900' : (isDone ? 'bg-gray-100 hover:bg-gray-200 text-gray-700' : 'bg-gray-50 text-gray-400 cursor-not-allowed')}">
+                                    ${isFeatured ? '⭐ Featured' : 'Set Featured'}
                                 </button>
-                                <button type="button" 
-                                        onclick="window.photoManager.removePhoto(${index})" 
+                                <button type="button"
+                                        onclick="window.photoManager.removePhoto('${photo.id}')"
                                         class="px-3 py-1.5 text-xs font-medium rounded bg-red-100 hover:bg-red-200 text-red-700">
                                     Delete
                                 </button>
@@ -4054,25 +4167,70 @@
                 }
             }).join('');
 
-            // Update DataTransfer for photos
-            const dataTransfer = new DataTransfer();
-            this.photos.forEach(photo => {
-                dataTransfer.items.add(photo.file);
+            previewsContainer.querySelectorAll('[data-retry]').forEach(btn => {
+                btn.addEventListener('click', () => this.retryPhotoUpload(btn.dataset.retry));
             });
 
-            const photoInput = document.getElementById('photo-input');
-            if (photoInput) {
-                photoInput.files = dataTransfer.files;
+            this.syncHiddenFields();
+            this.updateSubmitState();
+        }
+
+        // Maps the display-only featuredIndex (position across photos-then-videos,
+        // including ones still uploading) to the index the server should use, which
+        // only counts photos that have finished uploading.
+        getFeaturedSubmitIndex() {
+            if (this.featuredIndex === -1) {
+                return -1;
             }
 
-            // Update featured index
+            if (this.featuredIndex < this.photos.length) {
+                const photo = this.photos[this.featuredIndex];
+                if (!photo || photo.status !== 'done') {
+                    return -1;
+                }
+
+                let doneBefore = 0;
+                for (let i = 0; i < this.featuredIndex; i++) {
+                    if (this.photos[i].status === 'done') { doneBefore++; }
+                }
+
+                return doneBefore;
+            }
+
+            const videoIndex = this.featuredIndex - this.photos.length;
+            const doneCount = this.photos.filter(p => p.status === 'done').length;
+
+            return doneCount + videoIndex;
+        }
+
+        syncHiddenFields() {
             const featuredInput = document.getElementById('featured-photo-index');
             if (featuredInput) {
-                featuredInput.value = this.featuredIndex;
+                featuredInput.value = this.getFeaturedSubmitIndex();
             }
-            
+
+            const uploadedInput = document.getElementById('uploaded-photos-json');
+            if (uploadedInput) {
+                uploadedInput.value = JSON.stringify(
+                    this.photos
+                        .filter(p => p.status === 'done')
+                        .map(p => ({ path: p.path, thumbnail_path: p.thumbnail_path }))
+                );
+            }
+
             // Create hidden inputs for video URLs
             this.updateVideoUrlInputs();
+        }
+
+        updateSubmitState() {
+            const submitBtn = document.querySelector('button[type="submit"]');
+            if (!submitBtn) { return; }
+
+            if (!submitBtn.dataset.originalText) { submitBtn.dataset.originalText = submitBtn.textContent; }
+
+            const uploading = this.photos.some(p => p.status === 'uploading' || p.status === 'queued');
+            submitBtn.disabled = uploading;
+            submitBtn.textContent = uploading ? 'Uploading photos…' : submitBtn.dataset.originalText;
         }
 
         updateVideoUrlInputs() {
@@ -4159,30 +4317,15 @@
         reorderPhotos() {
             const items = document.querySelectorAll('.photo-preview-item');
             const newOrder = [];
-            
+
             items.forEach(item => {
-                const id = parseFloat(item.dataset.photoId);
+                const id = item.dataset.photoId;
                 const photo = this.photos.find(p => p.id === id);
                 if (photo) newOrder.push(photo);
             });
 
             this.photos = newOrder;
             this.render();
-        }
-
-        updateFormData() {
-            // Create a new FileList-like object
-            const dataTransfer = new DataTransfer();
-            
-            this.photos.forEach(photo => {
-                dataTransfer.items.add(photo.file);
-            });
-
-            const photoInput = document.getElementById('photo-input');
-            photoInput.files = dataTransfer.files;
-
-            // Update featured index
-            document.getElementById('featured-photo-index').value = this.featuredIndex;
         }
     }
 
@@ -4577,10 +4720,17 @@
         const form = document.querySelector('form[action*="trails"]');
         if (form) {
             // Capture phase: sync Quill + update video URLs before any validation
-            form.addEventListener('submit', function() {
+            form.addEventListener('submit', function(e) {
                 syncQuillToInputs();
                 if (window.photoManager) {
-                    window.photoManager.updateVideoUrlInputs();
+                    window.photoManager.syncHiddenFields();
+
+                    if (window.photoManager.photos.some(p => p.status === 'uploading' || p.status === 'queued')) {
+                        e.preventDefault();
+                        e.stopImmediatePropagation();
+                        alert('Please wait for all photos to finish uploading before submitting.');
+                        return;
+                    }
                 }
                 if (window.trailBuilder) {
                     window.trailBuilder.prepareMediaFilesForSubmission();

@@ -11,6 +11,7 @@ class TourStop extends Model
         'tour_id',
         'trail_id',
         'trail_feature_id',
+        'facility_id',
         'stop_order',
         'stop_label',
         'driving_notes',
@@ -30,5 +31,10 @@ class TourStop extends Model
     public function feature(): BelongsTo
     {
         return $this->belongsTo(TrailFeature::class, 'trail_feature_id');
+    }
+
+    public function facility(): BelongsTo
+    {
+        return $this->belongsTo(Facility::class);
     }
 }

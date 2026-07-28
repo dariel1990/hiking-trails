@@ -86,7 +86,10 @@
     }
     .tour-marker:hover .tour-marker-label { box-shadow: 0 4px 10px rgba(0,0,0,0.25); }
     .tour-marker-icon { width: 1.05rem; height: 1.05rem; border-radius: 9999px; object-fit: cover; flex-shrink: 0; }
-    .tour-marker-icon-emoji { display: flex; align-items: center; justify-content: center; font-size: 0.85rem; line-height: 1; }
+    .tour-marker-icon-emoji {
+        display: flex; align-items: center; justify-content: center; font-size: 0.85rem; line-height: 1;
+        width: 1.05rem; height: 1.05rem; flex-shrink: 0; overflow: hidden; white-space: nowrap;
+    }
 </style>
 @endpush
 
@@ -273,6 +276,9 @@
                     if ($stop->trail_feature_id && $stop->feature?->coordinates) {
                         return $stop->feature->coordinates;
                     }
+                    if ($stop->facility_id && $stop->facility) {
+                        return [(float) $stop->facility->latitude, (float) $stop->facility->longitude];
+                    }
                     $trail = $stop->trail;
                     if (!$trail) { return null; }
                     if (!empty($trail->route_coordinates) && count($trail->route_coordinates) > 0) {
@@ -289,7 +295,7 @@
                     @foreach($tour->stops as $stop)
                         @php
                             $trail = $stop->trail;
-                            $displayName = $stop->stop_label ?: ($stop->feature?->name ?? $trail?->name ?? 'Stop ' . $loop->iteration);
+                            $displayName = $stop->stop_label ?: ($stop->feature?->name ?? $stop->facility?->name ?? $trail?->name ?? 'Stop ' . $loop->iteration);
                             $coords = $bestCoords($stop);
                             $coordsJs = $coords ? '[' . implode(',', $coords) . ']' : 'null';
                         @endphp
@@ -345,10 +351,18 @@
                                                 </span>
                                             @endif
                                         </div>
+                                    @elseif($stop->facility)
+                                        <div class="flex flex-wrap gap-1.5 mt-2">
+                                            <span class="text-xs bg-amber-50 text-amber-700 rounded px-1.5 py-0.5 font-medium">
+                                                {{ $stop->facility->facility_type_label }}
+                                            </span>
+                                        </div>
                                     @endif
 
                                     @if($trail && $trail->description)
                                         <p class="text-xs text-gray-500 mt-2 leading-relaxed line-clamp-2">{{ Str::limit(strip_tags($trail->description), 110) }}</p>
+                                    @elseif($stop->facility && $stop->facility->description)
+                                        <p class="text-xs text-gray-500 mt-2 leading-relaxed line-clamp-2">{{ Str::limit(strip_tags($stop->facility->description), 110) }}</p>
                                     @endif
 
                                     @if($stop->driving_notes)
@@ -368,6 +382,10 @@
                                             </a>
                                             <span class="text-xs text-gray-400">Stop {{ $loop->iteration }} of {{ $tour->stops->count() }}</span>
                                         </div>
+                                    @elseif($stop->facility)
+                                        <div class="mt-3 pt-3 border-t border-gray-100 flex items-center justify-end">
+                                            <span class="text-xs text-gray-400">Stop {{ $loop->iteration }} of {{ $tour->stops->count() }}</span>
+                                        </div>
                                     @endif
                                 </div>
                             </div>
@@ -384,7 +402,7 @@
 @php
 $tourStopsData = $tour->stops->values()->map(fn ($s, $i) => [
     'index' => $i,
-    'label' => $s->stop_label ?: ($s->feature?->name ?? $s->trail?->name ?? 'Stop'),
+    'label' => $s->stop_label ?: ($s->feature?->name ?? $s->facility?->name ?? $s->trail?->name ?? 'Stop'),
     'coords' => $bestCoords($s),
 ])->values();
 @endphp
@@ -396,7 +414,9 @@ mapboxgl.accessToken = @json($mapboxToken);
 const tourStops = @json($tourStopsData);
 const drivingRoute = @json($tour->driving_route_coordinates);
 const tourIconImage = @json($tour->icon_image_url);
-const tourIconEmoji = @json($tour->tour_icon);
+// Guard against bad data (e.g. a stray non-emoji string saved to the tour's icon field)
+// blowing out the small icon slot in map marker labels — cap to a few characters.
+const tourIconEmoji = (@json($tour->tour_icon) || '📍').slice(0, 4);
 
 const map = new mapboxgl.Map({
     container: 'tour-map',

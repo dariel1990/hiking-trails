@@ -20,14 +20,27 @@ $availableFeaturesJson = $availableFeatures->map(fn ($f) => [
     'coordinates' => $f->coordinates,
 ])->values()->toJson();
 
+$availableFacilitiesJson = $availableFacilities->map(fn ($f) => [
+    'item_type' => 'facility',
+    'id' => $f->id,
+    'facility_type' => $f->facility_type,
+    'facility_type_label' => \App\Models\Facility::getFacilityTypes()[$f->facility_type] ?? $f->facility_type,
+    'name' => $f->name,
+    'start_coordinates' => [(float) $f->latitude, (float) $f->longitude],
+])->values()->toJson();
+
 $existingStopsJson = $isEdit
     ? $tour->stops->map(fn ($s) => [
         'trail_id' => $s->trail_id,
         'feature_id' => $s->trail_feature_id,
-        'item_type' => $s->trail_feature_id ? 'feature' : 'trail',
+        'facility_id' => $s->facility_id,
+        'item_type' => $s->facility_id ? 'facility' : ($s->trail_feature_id ? 'feature' : 'trail'),
         'feature_type' => $s->feature?->feature_type ?? null,
-        'name' => $s->feature?->name ?? ($s->trail?->name ?? 'Unknown'),
-        'start_coordinates' => $s->feature?->coordinates ?? ($s->trail?->start_coordinates ?? null),
+        'facility_type_label' => $s->facility ? (\App\Models\Facility::getFacilityTypes()[$s->facility->facility_type] ?? $s->facility->facility_type) : null,
+        'name' => $s->feature?->name ?? ($s->facility?->name ?? ($s->trail?->name ?? 'Unknown')),
+        'start_coordinates' => $s->feature?->coordinates
+            ?? ($s->facility ? [(float) $s->facility->latitude, (float) $s->facility->longitude] : null)
+            ?? ($s->trail?->start_coordinates ?? null),
         'stop_label' => $s->stop_label ?? '',
         'estimated_visit_time' => $s->estimated_visit_time ?? '',
         'driving_notes' => $s->driving_notes ?? '',
@@ -36,7 +49,7 @@ $existingStopsJson = $isEdit
 @endphp
 
 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6"
-     x-data="tourForm({{ $availableTrailsJson }}, {{ $availableFeaturesJson }}, {{ $existingStopsJson }})">
+     x-data="tourForm({{ $availableTrailsJson }}, {{ $availableFeaturesJson }}, {{ $availableFacilitiesJson }}, {{ $existingStopsJson }})">
 
     <!-- Left: Main fields -->
     <div class="lg:col-span-2 space-y-6">
@@ -207,16 +220,16 @@ $existingStopsJson = $isEdit
         <div class="rounded-lg border bg-card text-card-foreground shadow-sm">
             <div class="flex flex-col space-y-1.5 p-6 border-b">
                 <h3 class="text-lg font-semibold leading-none tracking-tight">Tour Stops</h3>
-                <p class="text-sm text-muted-foreground">Add trails or trail features as stops in the order visitors should visit them</p>
+                <p class="text-sm text-muted-foreground">Add trails, trail features, or facilities as stops in the order visitors should visit them</p>
             </div>
             <div class="p-6 space-y-4">
 
-                {{-- Trail/Feature search --}}
+                {{-- Trail/Feature/Facility search --}}
                 <div class="space-y-2">
                     <label class="text-sm font-medium leading-none">Add a Stop</label>
                     <div class="flex gap-2">
                         <input type="text" x-model="search"
-                            placeholder="Search trails or trail features..."
+                            placeholder="Search trails, features, or facilities..."
                             class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
                     </div>
                     <div x-show="search.length > 0 && filteredItems.length > 0"
@@ -228,13 +241,14 @@ $existingStopsJson = $isEdit
                                 <span class="flex flex-col min-w-0">
                                     <span x-text="item.name" class="font-medium truncate"></span>
                                     <span x-show="item.item_type === 'feature'" class="text-xs text-muted-foreground" x-text="'📍 Feature on: ' + (item.trail_name || '')"></span>
+                                    <span x-show="item.item_type === 'facility'" class="text-xs text-muted-foreground" x-text="'🏷️ Facility: ' + (item.facility_type_label || '')"></span>
                                 </span>
                                 <span class="text-xs text-muted-foreground flex-shrink-0"
-                                    x-text="item.item_type === 'feature' ? '🏔️' : (item.location_type === 'fishing_lake' ? '🎣' : '🥾')"></span>
+                                    x-text="item.item_type === 'feature' ? '🏔️' : (item.item_type === 'facility' ? '🏷️' : (item.location_type === 'fishing_lake' ? '🎣' : '🥾'))"></span>
                             </button>
                         </template>
                     </div>
-                    <p x-show="search.length > 1 && filteredItems.length === 0" class="text-sm text-muted-foreground">No matching trails or features found.</p>
+                    <p x-show="search.length > 1 && filteredItems.length === 0" class="text-sm text-muted-foreground">No matching trails, features, or facilities found.</p>
                 </div>
 
                 {{-- Stops list --}}
@@ -252,6 +266,9 @@ $existingStopsJson = $isEdit
                                     <span x-show="stop.item_type === 'feature'"
                                         class="inline-flex items-center rounded-full bg-blue-50 border border-blue-200 px-1.5 py-0.5 text-xs font-medium text-blue-700"
                                         x-text="stop.feature_type || 'Feature'"></span>
+                                    <span x-show="stop.item_type === 'facility'"
+                                        class="inline-flex items-center rounded-full bg-amber-50 border border-amber-200 px-1.5 py-0.5 text-xs font-medium text-amber-700"
+                                        x-text="stop.facility_type_label || 'Facility'"></span>
                                 </div>
                                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
                                     <input type="text"
@@ -270,8 +287,9 @@ $existingStopsJson = $isEdit
                                         placeholder="Driving notes (optional)"
                                         class="flex h-8 w-full rounded-md border border-input bg-background px-2 py-1 text-xs ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:col-span-2">
                                     {{-- Hidden inputs --}}
-                                    <input type="hidden" :name="`stops[${index}][trail_id]`" :value="stop.trail_id">
+                                    <input type="hidden" :name="`stops[${index}][trail_id]`" :value="stop.trail_id || ''">
                                     <input type="hidden" :name="`stops[${index}][feature_id]`" :value="stop.feature_id || ''">
+                                    <input type="hidden" :name="`stops[${index}][facility_id]`" :value="stop.facility_id || ''">
                                 </div>
                             </div>
 

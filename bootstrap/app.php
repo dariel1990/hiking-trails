@@ -38,6 +38,8 @@ return Application::configure(basePath: dirname(__DIR__))
             ->onFailure(fn () => DeveloperAlert::send('facilities:clean-temp-photos', 'Command exited with a non-zero status.'));
         $schedule->command('businesses:clean-temp-photos')->hourly()
             ->onFailure(fn () => DeveloperAlert::send('businesses:clean-temp-photos', 'Command exited with a non-zero status.'));
+        $schedule->command('trails:clean-temp-photos')->hourly()
+            ->onFailure(fn () => DeveloperAlert::send('trails:clean-temp-photos', 'Command exited with a non-zero status.'));
         $schedule->command('subscriptions:expire-lapsed')->hourly()
             ->onFailure(fn () => DeveloperAlert::send('subscriptions:expire-lapsed', 'Command exited with a non-zero status.'));
         $schedule->command('subscriptions:send-expiry-reminders')->dailyAt('09:00')

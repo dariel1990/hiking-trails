@@ -175,6 +175,8 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::delete('/trails/feature-icons', [AdminTrailController::class, 'deleteFeatureIcon'])->name('trails.feature-icons.delete');
         Route::patch('/trails/{trail}/media/{media}/featured', [AdminTrailController::class, 'setFeaturedMedia'])
             ->name('trails.media.featured');
+        Route::post('/trails/photos/upload', [AdminTrailController::class, 'uploadPhoto'])->name('trails.photos.upload');
+        Route::delete('/trails/photos/upload', [AdminTrailController::class, 'deleteUploadedPhoto'])->name('trails.photos.upload.delete');
         Route::resource('trails', AdminTrailController::class);
 
         // Trail Highlights Management (read/update/delete only — created via the trail builder)
