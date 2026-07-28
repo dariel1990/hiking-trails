@@ -139,7 +139,7 @@ class TrailController extends Controller
         }
 
         if ($request->difficulty) {
-            $query->where('difficulty_level', $request->difficulty);
+            $query->whereRaw('ROUND(difficulty_level) = ?', [(int) $request->difficulty]);
         }
 
         if ($request->distance) {
@@ -328,7 +328,7 @@ class TrailController extends Controller
 
         // Apply difficulty filter
         if ($request->difficulty) {
-            $query->where('difficulty_level', $request->difficulty);
+            $query->whereRaw('ROUND(difficulty_level) = ?', [(int) $request->difficulty]);
         }
 
         // Apply distance filter

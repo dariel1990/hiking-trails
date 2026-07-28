@@ -105,7 +105,7 @@
                         </label>
                         <label class="flex items-center cursor-pointer hover:bg-gray-50 p-3 rounded-lg">
                             <input type="checkbox" id="show-facilities-checkbox" class="layer-checkbox w-5 h-5" value="facilities">
-                            <span class="ml-3 text-sm">📍 Facilities</span>
+                            <span class="ml-3 text-sm">📍 Point of Interest</span>
                         </label>
                     </div>
                 </div>
@@ -2871,7 +2871,7 @@
         filterTrails(trails) {
             return trails.filter(trail => {
                 // Apply difficulty filter
-                if (this.currentDifficulty && trail.difficulty != this.currentDifficulty) {
+                if (this.currentDifficulty && Math.round(parseFloat(trail.difficulty)) !== parseInt(this.currentDifficulty, 10)) {
                     return false;
                 }
 
