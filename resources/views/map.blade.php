@@ -487,35 +487,42 @@
     </div>
 
     <!-- Mobile Trail Bottom Card (mobile only) -->
-    <div id="mobile-trail-card" class="md:hidden hidden fixed bottom-0 inset-x-0 z-50 bg-white" style="border-radius:16px 16px 0 0;box-shadow:0 -4px 24px rgba(0,0,0,0.18);"
+    <div id="mobile-trail-card" class="md:hidden hidden fixed bottom-0 inset-x-0 z-50 bg-white flex flex-col max-h-[70dvh] overflow-hidden" style="border-radius:16px 16px 0 0;box-shadow:0 -4px 24px rgba(0,0,0,0.18);"
          ontouchstart="event.stopPropagation()" onclick="event.stopPropagation()">
-        <div class="relative flex items-center justify-center pt-3 pb-0 px-4">
-            <div class="w-10 h-1 bg-gray-300 rounded-full"></div>
-            <button onclick="closeMobileTrailCard()" class="absolute right-3 top-2 p-1 text-gray-400 hover:text-gray-600" aria-label="Close">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                </svg>
-            </button>
-        </div>
-        <!-- Main row -->
-        <div class="flex items-center px-4 pt-2 pb-2 gap-3">
-            <div class="w-[68px] h-[68px] rounded-xl overflow-hidden flex-shrink-0 bg-gray-100">
+        <!-- Drag handle + close button float on top of the image, but sit
+             outside the scrollable area below so they stay reachable even
+             after the user scrolls the image out of view. -->
+        <div class="absolute top-2 left-1/2 -translate-x-1/2 w-10 h-1 bg-white/80 rounded-full z-20 pointer-events-none"></div>
+        <button onclick="closeMobileTrailCard()" class="absolute right-3 top-2 w-8 h-8 flex items-center justify-center rounded-full text-gray-700 z-20" style="background:rgba(255,255,255,0.92);box-shadow:0 2px 6px rgba(0,0,0,0.18);" aria-label="Close">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+            </svg>
+        </button>
+        <!-- Scrollable content: card height is capped, so on tall content (long
+             description, many photos) this scrolls internally instead of growing
+             past the viewport. The primary image scrolls out of view naturally
+             as the user scrolls down to reach the rest. -->
+        <div class="overflow-y-auto flex-1 min-h-0">
+            <!-- Primary image, edge-to-edge -->
+            <div class="w-full h-44 overflow-hidden bg-gray-100 flex-shrink-0">
                 <img id="mobile-trail-img" src="" alt="" class="hidden w-full h-full object-cover">
-                <div id="mobile-trail-placeholder" class="w-full h-full flex items-center justify-center text-2xl"></div>
+                <div id="mobile-trail-placeholder" class="w-full h-full flex items-center justify-center text-5xl"></div>
             </div>
-            <div class="flex-1 min-w-0">
-                <h3 id="mobile-trail-name" class="font-bold text-gray-900 text-[15px] leading-tight truncate"></h3>
+            <!-- Title / stats -->
+            <div class="px-4 pt-3 pb-2">
+                <h3 id="mobile-trail-name" class="font-bold text-gray-900 text-[15px] leading-tight"></h3>
                 <div id="mobile-trail-diff-row" class="flex items-center gap-1.5 mt-1"></div>
-                <p id="mobile-trail-stats" class="text-xs text-gray-500 mt-0.5"></p>
+                <p id="mobile-trail-stats" class="text-xs text-gray-500 mt-0.5 whitespace-pre-line text-justify"></p>
+                <p id="mobile-trail-description" class="hidden text-xs text-gray-500 mt-1.5 whitespace-pre-line text-justify"></p>
             </div>
+            <!-- Hero image / gallery (shown below the info row when available) -->
+            <div id="mobile-trail-hero" class="hidden px-4 pb-3">
+                <img id="mobile-trail-hero-img" src="" alt="" class="hidden rounded-xl object-cover">
+                <div id="mobile-trail-hero-grid" class="hidden facility-media-grid"></div>
+            </div>
+            <!-- Action buttons -->
+            <div id="mobile-trail-actions" class="flex gap-2 px-4 pb-5 pt-1"></div>
         </div>
-        <!-- Hero image / gallery (shown below the info row when available) -->
-        <div id="mobile-trail-hero" class="hidden px-4 pb-3">
-            <img id="mobile-trail-hero-img" src="" alt="" class="hidden rounded-xl object-cover">
-            <div id="mobile-trail-hero-grid" class="hidden facility-media-grid"></div>
-        </div>
-        <!-- Action buttons -->
-        <div id="mobile-trail-actions" class="flex gap-2 px-4 pb-5 pt-1"></div>
     </div>
 
     </div>{{-- /map-area --}}
@@ -1464,6 +1471,8 @@
     color: #6b7280;
     line-height: 1.6;
     margin: 0 0 18px;
+    white-space: pre-line;
+    text-align: justify;
 }
 
 .biz-panel-actions {
@@ -3509,6 +3518,7 @@
             document.getElementById('mobile-trail-name').textContent = name;
             document.getElementById('mobile-trail-diff-row').innerHTML = metaHtml || '';
             document.getElementById('mobile-trail-stats').textContent = statsText || '';
+            document.getElementById('mobile-trail-description').classList.add('hidden');
             document.getElementById('mobile-trail-actions').innerHTML = actionsHtml || '';
             document.getElementById('trail-info-panel')?.classList.add('hidden');
             document.getElementById('business-panel')?.classList.add('hidden');
@@ -3662,7 +3672,7 @@
                     ${actions}
                     ${highlight.description ? `
                         <hr class="biz-panel-divider">
-                        <p style="font-size:13px;color:#4b5563;line-height:1.6;margin:0;">${escapeHtml(highlight.description)}</p>
+                        <p style="font-size:13px;color:#4b5563;line-height:1.6;margin:0;white-space:pre-line;text-align:justify;">${escapeHtml(highlight.description)}</p>
                     ` : ''}
                     ${mediaHTML}
                 </div>
@@ -3898,6 +3908,16 @@
                     parts.push(`Est. ${Number.isInteger(h) ? h : h.toFixed(1)} hr`);
                 }
                 statsEl.textContent = parts.join(' · ');
+            }
+
+            // Description
+            const descEl = document.getElementById('mobile-trail-description');
+            if (trail.description) {
+                descEl.textContent = trail.description;
+                descEl.classList.remove('hidden');
+            } else {
+                descEl.textContent = '';
+                descEl.classList.add('hidden');
             }
 
             // Action buttons
@@ -4139,7 +4159,7 @@
                     ${actions.length ? `<div class="biz-panel-actions">${actions.join('')}</div>` : ''}
                     <hr class="biz-panel-divider">
                     ${statsHTML}
-                    ${trail.description ? `<p class="trail-desc-text" style="font-size:13px;color:#4b5563;line-height:1.6;margin:0 0 4px;">${escapeHtml(trail.description)}</p>` : ''}
+                    ${trail.description ? `<p class="trail-desc-text" style="font-size:13px;color:#4b5563;line-height:1.6;margin:0 0 4px;white-space:pre-line;text-align:justify;">${escapeHtml(trail.description)}</p>` : ''}
                     ${trail.route_coordinates && trail.route_coordinates.length > 1 ? `
                     <hr class="biz-panel-divider">
                     <div style="margin-bottom:4px;">
@@ -4501,6 +4521,7 @@
             if (business.is_seasonal && business.season_open) typeHtml += `<span style="color:#d1d5db;font-size:11px;">·</span><span style="font-size:12px;color:#92400e;">🗓 ${escapeHtml(business.season_open)}</span>`;
             diffRow.innerHTML = typeHtml;
             document.getElementById('mobile-trail-stats').textContent = business.tagline || '';
+            document.getElementById('mobile-trail-description').classList.add('hidden');
             const actions = [];
             actions.push(`<button type="button" onclick="window.trailMap.map.flyTo({center:[${business.longitude},${business.latitude}],zoom:17,duration:800})" class="${btnClass}"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>Location</button>`);
             if (business.phone) actions.push(`<a href="tel:${business.phone}" class="${btnClass}"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/></svg>Call</a>`);
@@ -4537,6 +4558,7 @@
             document.getElementById('mobile-trail-name').textContent = facility.name;
             document.getElementById('mobile-trail-diff-row').innerHTML = `<span style="font-size:12px;font-weight:600;color:#166534;">${escapeHtml(facility.facility_type_label || 'Facility')}</span>`;
             document.getElementById('mobile-trail-stats').textContent = facility.description || '';
+            document.getElementById('mobile-trail-description').classList.add('hidden');
             const actions = [`<a href="https://www.google.com/maps/search/?api=1&query=${facility.latitude},${facility.longitude}" target="_blank" rel="noopener" class="${btnClass}"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>Directions</a>`];
             document.getElementById('mobile-trail-actions').innerHTML = actions.join('');
             document.getElementById('trail-info-panel')?.classList.add('hidden');
@@ -4774,7 +4796,7 @@
                 <div class="biz-panel-body">
                     <h2 class="biz-panel-name">${escapeHtml(facility.name)}</h2>
                     <div class="biz-panel-meta">${meta}</div>
-                    ${facility.description ? `<p class="mobile-hide-desc" style="font-size:13px;color:#4b5563;line-height:1.6;margin:0 0 16px;">${escapeHtml(facility.description)}</p>` : ''}
+                    ${facility.description ? `<p class="mobile-hide-desc" style="font-size:13px;color:#4b5563;line-height:1.6;margin:0 0 16px;white-space:pre-line;text-align:justify;">${escapeHtml(facility.description)}</p>` : ''}
                     ${actions}
                     ${mediaHTML}
                 </div>
@@ -5166,7 +5188,7 @@
                     </div>
                     <div class="biz-panel-actions">${actions.join('')}</div>
                     <hr class="biz-panel-divider">
-                    ${network.description ? `<p style="font-size:13px;color:#4b5563;line-height:1.6;margin:0 0 16px;">${escapeHtml(network.description)}</p>` : ''}
+                    ${network.description ? `<p style="font-size:13px;color:#4b5563;line-height:1.6;margin:0 0 16px;white-space:pre-line;text-align:justify;">${escapeHtml(network.description)}</p>` : ''}
                     ${trailRows ? `
                         <div style="font-size:12px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:8px;">Trails in this Network</div>
                         <div>${trailRows}</div>` : ''}
