@@ -205,47 +205,45 @@
 <!-- Main content -->
 <div class="bg-gray-50 min-h-screen">
     <div class="max-w-7xl mx-auto px-4 py-8">
-        <div class="grid grid-cols-1 lg:grid-cols-5 gap-8">
+        <div class="lg:grid lg:grid-cols-5 lg:gap-8">
 
             <!-- Map (left 3/5) -->
-            <div class="lg:col-span-3">
-                <div class="w-full h-[460px] md:h-[560px] sticky top-24">
-                    <div id="tour-map" class="w-full h-full rounded-2xl overflow-hidden shadow-lg border border-gray-200 bg-gray-200"></div>
+            <div class="lg:col-span-3 w-full h-[220px] md:h-[400px] lg:h-[560px] sticky top-24 z-20 mb-6 lg:mb-0">
+                <div id="tour-map" class="w-full h-full rounded-2xl overflow-hidden shadow-lg border border-gray-200 bg-gray-200"></div>
 
-                    <!-- Map Style Switcher -->
-                    <div class="absolute top-3 right-14 z-10">
-                        <div class="relative">
-                            <button id="tour-layers-toggle" title="Change Map Style"
-                                class="bg-white rounded-xl shadow-md p-2 hover:bg-gray-50 transition-colors border border-gray-200">
-                                <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 0v10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2z"/>
-                                </svg>
-                            </button>
-                            <div id="tour-layers-dropdown" class="hidden absolute top-full right-0 mt-2 bg-white rounded-xl shadow-2xl border border-gray-200 overflow-hidden" style="min-width:196px;">
-                                <div class="p-2.5">
-                                    <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider px-2 pb-2">Map Style</p>
-                                    <div class="grid grid-cols-2 gap-1.5">
-                                        <button class="tour-layer-card" data-style="mapbox://styles/mapbox/standard">
-                                            <div class="layer-preview"><img src="{{ asset('images/map-layers/standard.png') }}" alt="Standard" class="w-full h-full object-cover"></div>
-                                            <span class="layer-label">Standard</span>
-                                            <svg class="layer-checkmark" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
-                                        </button>
-                                        <button class="tour-layer-card" data-style="mapbox://styles/mapbox/satellite-streets-v12">
-                                            <div class="layer-preview"><img src="{{ asset('images/map-layers/satellite.png') }}" alt="Satellite" class="w-full h-full object-cover"></div>
-                                            <span class="layer-label">Satellite</span>
-                                            <svg class="layer-checkmark" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
-                                        </button>
-                                        <button class="tour-layer-card active" data-style="mapbox://styles/mapbox/outdoors-v12">
-                                            <div class="layer-preview"><img src="{{ asset('images/map-layers/terrain.png') }}" alt="Terrain" class="w-full h-full object-cover"></div>
-                                            <span class="layer-label">Terrain</span>
-                                            <svg class="layer-checkmark" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
-                                        </button>
-                                        <button class="tour-layer-card" data-style="mapbox://styles/mapbox/navigation-day-v1">
-                                            <div class="layer-preview"><img src="{{ asset('images/map-layers/outdoor.png') }}" alt="Outdoors" class="w-full h-full object-cover"></div>
-                                            <span class="layer-label">Outdoors</span>
-                                            <svg class="layer-checkmark" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
-                                        </button>
-                                    </div>
+                <!-- Map Style Switcher -->
+                <div class="absolute top-3 right-14 z-10">
+                    <div class="relative">
+                        <button id="tour-layers-toggle" title="Change Map Style"
+                            class="bg-white rounded-xl shadow-md p-2 hover:bg-gray-50 transition-colors border border-gray-200">
+                            <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 0v10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2z"/>
+                            </svg>
+                        </button>
+                        <div id="tour-layers-dropdown" class="hidden absolute top-full right-0 mt-2 bg-white rounded-xl shadow-2xl border border-gray-200 overflow-hidden" style="min-width:196px;">
+                            <div class="p-2.5">
+                                <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider px-2 pb-2">Map Style</p>
+                                <div class="grid grid-cols-2 gap-1.5">
+                                    <button class="tour-layer-card" data-style="mapbox://styles/mapbox/standard">
+                                        <div class="layer-preview"><img src="{{ asset('images/map-layers/standard.png') }}" alt="Standard" class="w-full h-full object-cover"></div>
+                                        <span class="layer-label">Standard</span>
+                                        <svg class="layer-checkmark" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+                                    </button>
+                                    <button class="tour-layer-card" data-style="mapbox://styles/mapbox/satellite-streets-v12">
+                                        <div class="layer-preview"><img src="{{ asset('images/map-layers/satellite.png') }}" alt="Satellite" class="w-full h-full object-cover"></div>
+                                        <span class="layer-label">Satellite</span>
+                                        <svg class="layer-checkmark" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+                                    </button>
+                                    <button class="tour-layer-card active" data-style="mapbox://styles/mapbox/outdoors-v12">
+                                        <div class="layer-preview"><img src="{{ asset('images/map-layers/terrain.png') }}" alt="Terrain" class="w-full h-full object-cover"></div>
+                                        <span class="layer-label">Terrain</span>
+                                        <svg class="layer-checkmark" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+                                    </button>
+                                    <button class="tour-layer-card" data-style="mapbox://styles/mapbox/navigation-day-v1">
+                                        <div class="layer-preview"><img src="{{ asset('images/map-layers/outdoor.png') }}" alt="Outdoors" class="w-full h-full object-cover"></div>
+                                        <span class="layer-label">Outdoors</span>
+                                        <svg class="layer-checkmark" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+                                    </button>
                                 </div>
                             </div>
                         </div>
@@ -378,7 +376,7 @@
                                     @if($trail && $trail->description)
                                         <p class="text-xs text-gray-500 mt-2 leading-relaxed line-clamp-2 whitespace-pre-line text-justify">{{ Str::limit(strip_tags($trail->description), 110) }}</p>
                                     @elseif($stop->facility && $stop->facility->description)
-                                        <p class="text-xs text-gray-500 mt-2 leading-relaxed line-clamp-2 whitespace-pre-line text-justify">{{ Str::limit(strip_tags($stop->facility->description), 110) }}</p>
+                                        <p class="text-xs text-gray-500 mt-2 leading-relaxed whitespace-pre-line text-justify">{{ strip_tags($stop->facility->description) }}</p>
                                     @endif
 
                                     @if($stop->driving_notes)
@@ -399,7 +397,13 @@
                                             <span class="text-xs text-gray-400">Stop {{ $loop->iteration }} of {{ $tour->stops->count() }}</span>
                                         </div>
                                     @elseif($stop->facility)
-                                        <div class="mt-3 pt-3 border-t border-gray-100 flex items-center justify-end">
+                                        <div class="mt-3 pt-3 border-t border-gray-100 flex items-center justify-between">
+                                            <a href="{{ route('map') }}?facility={{ $stop->facility->id }}"
+                                                onclick="event.stopPropagation()"
+                                                class="text-xs font-semibold text-forest-700 hover:text-accent-600 flex items-center gap-1 transition-colors">
+                                                View on Map
+                                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                                            </a>
                                             <span class="text-xs text-gray-400">Stop {{ $loop->iteration }} of {{ $tour->stops->count() }}</span>
                                         </div>
                                     @endif

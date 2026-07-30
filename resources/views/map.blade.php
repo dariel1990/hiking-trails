@@ -3573,6 +3573,8 @@
         }
 
         showHighlightInfo(trail, highlight) {
+            // Trail highlights (points of interest along a trail) are a Pro feature.
+            if (!window.xsIsPro()) { window.xsRequirePro('highlight'); return; }
             if (this._isMobileViewport()) {
                 this.showMobileHighlightCard(trail, highlight);
                 return;
@@ -4734,8 +4736,8 @@
         }
 
         openFacilityPanel(facility) {
-            // Points of interest (facilities) are a Pro feature.
-            if (!window.xsIsPro()) { window.xsRequirePro('poi'); return; }
+            // Points of interest (facilities) are a Pro feature; First Nation sites are free.
+            if (facility.facility_type !== 'first_nation' && !window.xsIsPro()) { window.xsRequirePro('poi'); return; }
             if (this._isMobileViewport()) {
                 this.showMobileFacilityCard(facility);
                 return;
@@ -4935,6 +4937,17 @@
                     if (shouldShow) { marker.addTo(this.map); }
                     this.facilityMarkers.push(marker);
                 });
+
+                // Check if there's a facility parameter in the URL (e.g. linked from a tour stop) and focus on it
+                const urlParams = new URLSearchParams(window.location.search);
+                const focusFacilityId = urlParams.get('facility');
+                if (focusFacilityId) {
+                    const facility = this.facilityData.find(f => f.id == focusFacilityId);
+                    if (facility) {
+                        this.map.flyTo({ center: [facility.longitude, facility.latitude], zoom: 15 });
+                        this.focusOnFacility(facility.id);
+                    }
+                }
             } catch (error) {
                 console.error('Error loading facilities:', error);
             }
@@ -6324,6 +6337,7 @@
                 }
             }, 1500);
         }
+
     }
 </script>
 @endpush

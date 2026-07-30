@@ -273,6 +273,7 @@
             gpx:   { title: '<span style="color:#ffffff">Download the GPX file with</span> <span style="color:#E87B35">Pro</span>', sub: 'Export this route and navigate offline' },
             video: { title: '<span style="color:#ffffff">Watch Pro</span> <span style="color:#E87B35">video content</span>', sub: 'Unlock in-depth guides for trails and points of interest' },
             poi:   { title: '<span style="color:#ffffff">See points of interest with</span> <span style="color:#E87B35">Pro</span>', sub: 'Unlock curated spots and hidden gems across the map' },
+            highlight: { title: '<span style="color:#ffffff">See trail highlights with</span> <span style="color:#E87B35">Pro</span>', sub: 'Unlock notable spots and viewpoints along the trail' },
             'default': { title: '<span style="color:#ffffff">Free or</span> <span style="color:#E87B35">Pro?</span>', sub: 'More trails. More adventures. More you.' }
         };
 
