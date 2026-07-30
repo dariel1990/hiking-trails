@@ -10,7 +10,7 @@
         ? json_encode($value, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)
         : $value);
 
-    $isWide = in_array($definition['input'], ['textarea', 'json'], true);
+    $isWide = in_array($definition['input'], ['textarea', 'json', 'social_links'], true);
 @endphp
 
 <div class="{{ $isWide ? 'md:col-span-2' : '' }}">
@@ -47,6 +47,124 @@
                 rows="3"
                 class="{{ $inputClasses }} leading-relaxed"
             >{{ $displayValue }}</textarea>
+            @break
+
+        @case('social_links')
+            @php
+                $iconLibrary = config('social-icons');
+                $rawRows = old($key) !== null
+                    ? json_decode(old($key), true)
+                    : (is_string($value) ? json_decode($value, true) : $value);
+                $rows = array_values(array_filter((array) $rawRows, 'is_array'));
+            @endphp
+
+            <div
+                x-data="{
+                    library: @js($iconLibrary),
+                    rows: @js($rows),
+                    max: {{ \App\Http\Requests\Admin\UpdateSettingsRequest::MAX_SOCIAL_LINKS }},
+                    add() {
+                        this.rows.push({ icon: 'link', label: '', url: '' });
+                    },
+                    remove(index) {
+                        this.rows.splice(index, 1);
+                    },
+                    move(index, offset) {
+                        const target = index + offset;
+                        if (target < 0 || target >= this.rows.length) {
+                            return;
+                        }
+                        const [row] = this.rows.splice(index, 1);
+                        this.rows.splice(target, 0, row);
+                    },
+                    useIconLabel(index) {
+                        const preset = this.library[this.rows[index].icon];
+                        if (preset && ! this.rows[index].label.trim()) {
+                            this.rows[index].label = preset.label;
+                        }
+                    },
+                }"
+                class="rounded-xl border-2 {{ $hasError ? 'border-red-300' : 'border-gray-200' }} bg-gray-50 p-3"
+            >
+                <input type="hidden" name="{{ $key }}" :value="JSON.stringify(rows)">
+
+                <template x-if="rows.length === 0">
+                    <p class="px-1 py-4 text-center text-sm text-gray-400">
+                        No social links yet — the footer social section will be hidden.
+                    </p>
+                </template>
+
+                <ul class="flex flex-col gap-2">
+                    <template x-for="(row, index) in rows" :key="index">
+                        <li class="flex flex-col gap-2 rounded-lg border border-gray-200 bg-white p-3 sm:flex-row sm:items-center">
+                            {{-- Live icon preview --}}
+                            <span class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg bg-green-700 text-gray-100">
+                                <svg class="h-5 w-5" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                    <path
+                                        :d="(library[row.icon] || library.link).path"
+                                        :fill-rule="(library[row.icon] || library.link).fill_rule || 'nonzero'"
+                                        :clip-rule="(library[row.icon] || library.link).fill_rule || 'nonzero'"
+                                    />
+                                </svg>
+                            </span>
+
+                            <select
+                                x-model="row.icon"
+                                @change="useIconLabel(index)"
+                                aria-label="Icon"
+                                class="w-full rounded-lg border-2 border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-100 sm:w-40"
+                            >
+                                @foreach ($iconLibrary as $iconKey => $icon)
+                                    <option value="{{ $iconKey }}">{{ $icon['label'] }}</option>
+                                @endforeach
+                            </select>
+
+                            <input
+                                type="text"
+                                x-model="row.label"
+                                placeholder="Label"
+                                aria-label="Label"
+                                maxlength="40"
+                                class="w-full rounded-lg border-2 border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-100 sm:w-36"
+                            >
+
+                            <input
+                                type="url"
+                                x-model="row.url"
+                                placeholder="https://"
+                                aria-label="URL"
+                                maxlength="500"
+                                class="w-full min-w-0 flex-1 rounded-lg border-2 border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-100"
+                            >
+
+                            <div class="flex flex-shrink-0 items-center gap-1">
+                                <button type="button" @click="move(index, -1)" :disabled="index === 0" aria-label="Move up"
+                                    class="rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600 disabled:cursor-not-allowed disabled:opacity-30">
+                                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"/></svg>
+                                </button>
+                                <button type="button" @click="move(index, 1)" :disabled="index === rows.length - 1" aria-label="Move down"
+                                    class="rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600 disabled:cursor-not-allowed disabled:opacity-30">
+                                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                                </button>
+                                <button type="button" @click="remove(index)" aria-label="Remove"
+                                    class="rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-600">
+                                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                                </button>
+                            </div>
+                        </li>
+                    </template>
+                </ul>
+
+                <button
+                    type="button"
+                    @click="add()"
+                    x-show="rows.length < max"
+                    class="mt-2 inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold text-emerald-700 transition-colors hover:bg-emerald-50"
+                >
+                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                    Add social link
+                </button>
+            </div>
             @break
 
         @case('json')

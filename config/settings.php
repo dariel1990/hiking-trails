@@ -162,41 +162,19 @@ return [
         ],
 
         // Contact & Social
-        'social_youtube_url' => [
+        'social_links' => [
             'group' => 'contact',
-            'label' => 'YouTube URL',
-            'type' => 'string',
-            'input' => 'url',
-            'default' => 'https://youtube.com/@xploresmithers?si=Q9jtjqElsvfcigNH',
-            'rules' => ['nullable', 'url', 'max:500'],
-            'hint' => 'Leave blank to hide the icon in the footer.',
-        ],
-        'social_instagram_url' => [
-            'group' => 'contact',
-            'label' => 'Instagram URL',
-            'type' => 'string',
-            'input' => 'url',
-            'default' => 'https://www.instagram.com/xploresmithers?igsh=Y3huYTRtM243cTdi',
-            'rules' => ['nullable', 'url', 'max:500'],
-            'hint' => 'Leave blank to hide the icon in the footer.',
-        ],
-        'social_tiktok_url' => [
-            'group' => 'contact',
-            'label' => 'TikTok URL',
-            'type' => 'string',
-            'input' => 'url',
-            'default' => 'https://www.tiktok.com/@xploresmithers?_t=ZS-90lIATag1Ld&_r=1',
-            'rules' => ['nullable', 'url', 'max:500'],
-            'hint' => 'Leave blank to hide the icon in the footer.',
-        ],
-        'social_facebook_url' => [
-            'group' => 'contact',
-            'label' => 'Facebook URL',
-            'type' => 'string',
-            'input' => 'url',
-            'default' => 'https://www.facebook.com/share/1C9Q3PAT7i/',
-            'rules' => ['nullable', 'url', 'max:500'],
-            'hint' => 'Leave blank to hide the icon in the footer.',
+            'label' => 'Social links',
+            'type' => 'json',
+            'input' => 'social_links',
+            'default' => [
+                ['icon' => 'youtube', 'label' => 'YouTube', 'url' => 'https://youtube.com/@xploresmithers?si=Q9jtjqElsvfcigNH'],
+                ['icon' => 'instagram', 'label' => 'Instagram', 'url' => 'https://www.instagram.com/xploresmithers?igsh=Y3huYTRtM243cTdi'],
+                ['icon' => 'tiktok', 'label' => 'TikTok', 'url' => 'https://www.tiktok.com/@xploresmithers?_t=ZS-90lIATag1Ld&_r=1'],
+                ['icon' => 'facebook', 'label' => 'Facebook', 'url' => 'https://www.facebook.com/share/1C9Q3PAT7i/'],
+            ],
+            'rules' => ['required', 'json'],
+            'hint' => 'Icons shown in the footer, in this order. Add a platform to config/social-icons.php to offer a new icon here.',
         ],
         'support_donation_url' => [
             'group' => 'contact',
