@@ -74,6 +74,12 @@
         z-index: 2;
     }
     .tour-marker:hover .tour-marker-badge { box-shadow: 0 4px 14px rgba(0,0,0,0.45); filter: brightness(1.15); transform: scale(1.06); }
+    .tour-marker.active .tour-marker-badge {
+        background: linear-gradient(145deg, #e8a33d, #c9821f);
+        box-shadow: 0 0 0 4px rgba(232,163,61,0.35), 0 4px 14px rgba(0,0,0,0.45);
+        transform: scale(1.15);
+        animation: tour-marker-pulse 1.4s ease-out infinite;
+    }
     .tour-marker-label {
         margin-left: -0.5rem; padding: 0.3rem 0.7rem 0.3rem 1rem;
         background: rgba(255,255,255,0.95); color: #1f2937;
@@ -85,6 +91,16 @@
         display: flex; align-items: center; gap: 0.35rem;
     }
     .tour-marker:hover .tour-marker-label { box-shadow: 0 4px 10px rgba(0,0,0,0.25); }
+    .tour-marker.active .tour-marker-label {
+        font-size: 0.85rem;
+        box-shadow: 0 4px 10px rgba(232,163,61,0.4);
+        border: 2px solid #e8a33d;
+    }
+    @keyframes tour-marker-pulse {
+        0% { box-shadow: 0 0 0 4px rgba(232,163,61,0.35), 0 4px 14px rgba(0,0,0,0.45); }
+        70% { box-shadow: 0 0 0 10px rgba(232,163,61,0), 0 4px 14px rgba(0,0,0,0.45); }
+        100% { box-shadow: 0 0 0 4px rgba(232,163,61,0), 0 4px 14px rgba(0,0,0,0.45); }
+    }
     .tour-marker-icon { width: 1.05rem; height: 1.05rem; border-radius: 9999px; object-fit: cover; flex-shrink: 0; }
     .tour-marker-icon-emoji {
         display: flex; align-items: center; justify-content: center; font-size: 0.85rem; line-height: 1;
@@ -243,7 +259,7 @@
                 @if($tour->description)
                     <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 mb-6">
                         <h2 class="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-2">About This Tour</h2>
-                        <p class="text-gray-700 text-sm leading-relaxed">{{ $tour->description }}</p>
+                        <p class="text-gray-700 text-sm leading-relaxed whitespace-pre-line text-justify">{{ $tour->description }}</p>
                     </div>
                 @endif
 
@@ -360,9 +376,9 @@
                                     @endif
 
                                     @if($trail && $trail->description)
-                                        <p class="text-xs text-gray-500 mt-2 leading-relaxed line-clamp-2">{{ Str::limit(strip_tags($trail->description), 110) }}</p>
+                                        <p class="text-xs text-gray-500 mt-2 leading-relaxed line-clamp-2 whitespace-pre-line text-justify">{{ Str::limit(strip_tags($trail->description), 110) }}</p>
                                     @elseif($stop->facility && $stop->facility->description)
-                                        <p class="text-xs text-gray-500 mt-2 leading-relaxed line-clamp-2">{{ Str::limit(strip_tags($stop->facility->description), 110) }}</p>
+                                        <p class="text-xs text-gray-500 mt-2 leading-relaxed line-clamp-2 whitespace-pre-line text-justify">{{ Str::limit(strip_tags($stop->facility->description), 110) }}</p>
                                     @endif
 
                                     @if($stop->driving_notes)
@@ -461,6 +477,7 @@ function addRouteAndMarkers() {
 
         const el = document.createElement('div');
         el.className = 'tour-marker';
+        el.id = 'tour-marker-' + i;
         el.title = stop.label;
         const iconHtml = tourIconImage
             ? `<img src="${tourIconImage}" alt="" class="tour-marker-icon">`
@@ -518,6 +535,12 @@ document.querySelectorAll('.tour-layer-card').forEach(btn => {
 function focusStop(index, coords) {
     document.querySelectorAll('.stop-card').forEach((c, i) => {
         c.classList.toggle('active', i === index);
+    });
+    document.querySelectorAll('.tour-marker').forEach((m, i) => {
+        m.classList.toggle('active', i === index);
+        // Mapbox positions this element directly (no per-marker wrapper), so
+        // z-index must be set on it, not a parent, to beat sibling markers.
+        m.style.zIndex = i === index ? '10' : '';
     });
     // Scroll the active stop card into view
     const card = document.getElementById('stop-card-' + index);
