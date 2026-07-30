@@ -208,11 +208,11 @@
         <div class="lg:grid lg:grid-cols-5 lg:gap-8">
 
             <!-- Map (left 3/5) -->
-            <div class="lg:col-span-3 w-full h-[220px] md:h-[400px] lg:h-[560px] sticky top-24 z-20 mb-6 lg:mb-0">
-                <div id="tour-map" class="w-full h-full rounded-2xl overflow-hidden shadow-lg border border-gray-200 bg-gray-200"></div>
+            <div class="lg:col-span-3 w-auto md:w-full h-[300px] md:h-[400px] lg:h-[560px] sticky top-20 lg:top-24 z-20 pt-4 pb-6 px-[5px] md:p-0 bg-white rounded-none md:rounded-2xl -mx-4 md:mx-0">
+                <div id="tour-map" class="w-full h-full rounded-none md:rounded-2xl overflow-hidden shadow-lg border border-gray-200 bg-gray-200"></div>
 
                 <!-- Map Style Switcher -->
-                <div class="absolute top-3 right-14 z-10">
+                <div class="absolute top-7 right-14 md:top-3 z-10">
                     <div class="relative">
                         <button id="tour-layers-toggle" title="Change Map Style"
                             class="bg-white rounded-xl shadow-md p-2 hover:bg-gray-50 transition-colors border border-gray-200">
@@ -252,7 +252,7 @@
             </div>
 
             <!-- Stop list (right 2/5) -->
-            <div class="lg:col-span-2">
+            <div class="lg:col-span-2 mt-6 lg:mt-0">
 
                 @if($tour->description)
                     <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 mb-6">
