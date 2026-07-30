@@ -616,7 +616,7 @@
     }
 </style>
 
-<div class="relative flex h-[calc(100vh-80px)] max-md:h-[calc(100dvh-80px)] overflow-hidden">
+<div id="network-map-wrap" class="relative flex h-[calc(100vh-80px)] max-md:h-[calc(100dvh-80px)] overflow-hidden">
     <!-- Mobile Sidebar Toggle -->
     <button class="sidebar-toggle" id="sidebar-toggle">
         <svg class="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
