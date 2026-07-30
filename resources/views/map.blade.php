@@ -89,31 +89,10 @@
                     </div>
                 </div>
 
-                <!-- Map Layers -->
+                <!-- Trail Features -->
                 <div class="mb-6 border-t pt-6">
                     <div class="flex items-center justify-between mb-3">
-                        <h4 class="font-semibold text-base">Map Layers</h4>
-                        <label class="flex items-center gap-2 cursor-pointer text-sm text-gray-500">
-                            <input type="checkbox" class="section-toggle w-4 h-4" data-target="layer-checkbox">
-                            <span class="select-none">All</span>
-                        </label>
-                    </div>
-                    <div class="grid grid-cols-2 gap-2">
-                        <label class="flex items-center cursor-pointer hover:bg-gray-50 p-3 rounded-lg">
-                            <input type="checkbox" id="show-businesses-checkbox" class="layer-checkbox w-5 h-5" value="businesses">
-                            <span class="ml-3 text-sm">🏪 Businesses</span>
-                        </label>
-                        <label class="flex items-center cursor-pointer hover:bg-gray-50 p-3 rounded-lg">
-                            <input type="checkbox" id="show-facilities-checkbox" class="layer-checkbox w-5 h-5" value="facilities">
-                            <span class="ml-3 text-sm">📍 Point of Interest</span>
-                        </label>
-                    </div>
-                </div>
-
-                <!-- Features -->
-                <div class="mb-6 border-t pt-6">
-                    <div class="flex items-center justify-between mb-3">
-                        <h4 class="font-semibold text-base">Features</h4>
+                        <h4 class="font-semibold text-base">Trail Features</h4>
                         <label class="flex items-center gap-2 cursor-pointer text-sm text-gray-500">
                             <input type="checkbox" class="section-toggle w-4 h-4" data-target="feature-checkbox">
                             <span class="select-none">All</span>
@@ -152,10 +131,6 @@
                             <input type="checkbox" value="camping" class="feature-checkbox w-5 h-5">
                             <span class="ml-3 text-sm">⛺ Camping</span>
                         </label>
-                        <label class="flex items-center cursor-pointer hover:bg-gray-50 p-3 rounded-lg">
-                            <input type="checkbox" id="show-first-nation-checkbox" class="layer-checkbox w-5 h-5" value="first_nation">
-                            <span class="ml-3 text-sm">📍 First Nation</span>
-                        </label>
                     </div>
                 </div>
 
@@ -187,6 +162,31 @@
                             </span>
                         </label>
                         @endforeach
+                    </div>
+                </div>
+
+                <!-- Show on map — visibility toggles, not trail filters -->
+                <div class="mb-6 border-t pt-6">
+                    <div class="flex items-center justify-between mb-3">
+                        <h4 class="font-semibold text-base">Show on map</h4>
+                        <label class="flex items-center gap-2 cursor-pointer text-sm text-gray-500">
+                            <input type="checkbox" class="section-toggle w-4 h-4" data-target="layer-checkbox" checked>
+                            <span class="select-none">All</span>
+                        </label>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2">
+                        <label class="flex items-center cursor-pointer hover:bg-gray-50 p-3 rounded-lg">
+                            <input type="checkbox" id="show-businesses-checkbox" class="layer-checkbox w-5 h-5" value="businesses" checked>
+                            <span class="ml-3 text-sm">🏪 Businesses</span>
+                        </label>
+                        <label class="flex items-center cursor-pointer hover:bg-gray-50 p-3 rounded-lg">
+                            <input type="checkbox" id="show-facilities-checkbox" class="layer-checkbox w-5 h-5" value="facilities" checked>
+                            <span class="ml-3 text-sm">📍 Point of Interest</span>
+                        </label>
+                        <label class="flex items-center cursor-pointer hover:bg-gray-50 p-3 rounded-lg">
+                            <input type="checkbox" id="show-first-nation-checkbox" class="layer-checkbox w-5 h-5" value="first_nation" checked>
+                            <span class="ml-3 text-sm">🪶 First Nation</span>
+                        </label>
                     </div>
                 </div>
             </div>
@@ -2198,7 +2198,7 @@
         trailType: '',
         duration: '',
         elevation: '',
-        layers: [],
+        layers: ['businesses', 'facilities', 'first_nation'],
         features: [],
         activities: [],
     };
@@ -2236,7 +2236,7 @@
         // Get elevation
         advancedFilters.elevation = document.querySelector('.elevation-chip.active-chip')?.dataset.value ?? '';
 
-        // Get layers (businesses / facilities)
+        // Get "Show on map" visibility toggles (businesses / facilities / first nation)
         advancedFilters.layers = Array.from(document.querySelectorAll('.layer-checkbox:checked')).map(cb => cb.value);
 
         // Get features (multi-select)
@@ -2283,16 +2283,20 @@
             if (def) def.classList.add('active-chip');
         });
 
-        // Restore default: all unchecked (empty = no filter = show all)
-        document.querySelectorAll('.layer-checkbox, .feature-checkbox, .activity-checkbox').forEach(cb => { cb.checked = false; });
-        document.querySelectorAll('.section-toggle').forEach(cb => { cb.checked = false; cb.indeterminate = false; });
+        // Restore defaults: filters unchecked, "Show on map" toggles checked (visible)
+        document.querySelectorAll('.feature-checkbox, .activity-checkbox').forEach(cb => { cb.checked = false; });
+        document.querySelectorAll('.layer-checkbox').forEach(cb => { cb.checked = true; });
+        document.querySelectorAll('.section-toggle').forEach(cb => {
+            cb.checked = cb.dataset.target === 'layer-checkbox';
+            cb.indeterminate = false;
+        });
 
-        // Reset filters state — all empty = no filter = show all
+        // Reset filters state — no trail filters, all map layers visible
         advancedFilters = {
             trailType: '',
             duration: '',
             elevation: '',
-            layers: [],
+            layers: ['businesses', 'facilities', 'first_nation'],
             features: [],
             activities: [],
         };
@@ -2328,9 +2332,6 @@
 
         // Checked feature checkboxes
         document.querySelectorAll('.feature-checkbox:checked').forEach(() => count++);
-
-        // Checked layer checkboxes
-        document.querySelectorAll('.layer-checkbox:checked').forEach(() => count++);
 
         const badge = document.getElementById('filter-count-badge');
 
@@ -2899,17 +2900,6 @@
         }
 
         matchesAdvancedFilters(trail) {
-            // When only Map Layer filters are active (no trail-specific filters),
-            // trails are not businesses or facilities so they should not appear.
-            const hasTrailFilters = advancedFilters.activities.length > 0 ||
-                                    advancedFilters.features.length > 0 ||
-                                    advancedFilters.trailType ||
-                                    advancedFilters.duration ||
-                                    advancedFilters.elevation;
-            if (advancedFilters.layers.length > 0 && !hasTrailFilters) {
-                return false;
-            }
-
             // Trail Type filter
             if (advancedFilters.trailType && trail.trail_type !== advancedFilters.trailType) {
                 return false;
@@ -2955,15 +2945,12 @@
         }
 
         applyAdvancedFilters(filters) {
-            // Unified filter logic: nothing checked = show all.
-            // Once ANY filter is active, only explicitly selected types appear.
+            // "Show on map" toggles are literal visibility switches:
+            // checked = shown, unchecked = hidden, independent of trail filters.
             const checkedLayers = filters.layers || [];
-            const hasAnyFilter = checkedLayers.length > 0 ||
-                                 (filters.activities && filters.activities.length > 0) ||
-                                 (filters.features && filters.features.length > 0);
-            this.showBusinesses = !hasAnyFilter || checkedLayers.includes('businesses');
-            this.showFacilities = !hasAnyFilter || checkedLayers.includes('facilities');
-            this.showFirstNationFacilities = !hasAnyFilter || checkedLayers.includes('first_nation');
+            this.showBusinesses = checkedLayers.includes('businesses');
+            this.showFacilities = checkedLayers.includes('facilities');
+            this.showFirstNationFacilities = checkedLayers.includes('first_nation');
 
             this.applyFilters();
             this.renderNetworkMarkers();
@@ -5037,16 +5024,6 @@
 
             const season = this.currentSeason;
 
-            // When only Map Layer filters are active (businesses/facilities), hide all network markers
-            const hasTrailFilters = advancedFilters.activities.length > 0 ||
-                                    advancedFilters.features.length > 0 ||
-                                    advancedFilters.trailType ||
-                                    advancedFilters.duration ||
-                                    advancedFilters.elevation;
-            if (advancedFilters.layers.length > 0 && !hasTrailFilters) {
-                return;
-            }
-
             (this.networkData || []).forEach(network => {
                 // Determine effective season — explicit season field wins,
                 // otherwise infer from network type so nordic/downhill = winter,
@@ -5471,8 +5448,8 @@
                     );
                     this.map.flyTo({
                         center:   [smoothed[0][1], smoothed[0][0]],
-                        zoom:     14.5,
-                        pitch:    80,
+                        zoom:     16,
+                        pitch:    65,
                         bearing:  initialBearing,
                         duration: 1600,
                         easing:   t => t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t,
@@ -5541,7 +5518,7 @@
 
             const SPEED_MS    = 300;
             const DURATION_MS = (totalDist / SPEED_MS) * 1000;
-            const flyZoom     = 14.5;
+            const flyZoom     = 16;
             const startTime   = performance.now();
 
             // Binary-search helper — returns index lo such that cumDist[lo] <= d
@@ -5635,14 +5612,14 @@
                     ? Math.max(0, coords[hi][2] - coords[lo][2]) : 0;
                 const run      = cumDist[hi] - cumDist[lo];
                 const grade    = run > 0 ? (rise / run) * 100 : 0;
-                const targetZoom = grade > 8 ? 15.5 : grade < 3 ? 13.5 : flyZoom;
+                const targetZoom = grade > 8 ? 16.8 : grade < 3 ? 15.2 : flyZoom;
                 const zoomAlpha  = 1 - Math.pow(0.5, dt / ZOOM_HL);
                 smoothZoom      += (targetZoom - smoothZoom) * zoomAlpha;
 
                 this.map.jumpTo({
                     center:  [smoothLng, smoothLat],
                     bearing: smoothBear,
-                    pitch:   78,
+                    pitch:   65,
                     zoom:    smoothZoom,
                 });
 
@@ -5732,8 +5709,11 @@
             // Stay on satellite after the flyover — do not restore the previous map type
             this._preFlyMapType = null;
 
-            // Settle the camera back onto the trail (top-down, fitted to its bounds)
-            // rather than leaving it wherever the flyover ended.
+            // Settle the camera back onto the trail (fitted to its bounds) rather
+            // than leaving it wherever the flyover ended. Preserve the user's view
+            // mode: tilted when 3D is active, top-down when in 2D.
+            const endPitch   = this._is3D ? 60 : 0;
+            const endBearing = this._is3D ? -10 : 0;
             const sanitized = (flownTrail?.route_coordinates || [])
                 .map(c => this.sanitizeCoordinates(c)).filter(c => c !== null);
             if (sanitized.length > 0) {
@@ -5742,9 +5722,9 @@
                 this.map.fitBounds([
                     [Math.min(...lngs), Math.min(...lats)],
                     [Math.max(...lngs), Math.max(...lats)]
-                ], { padding: 60, maxZoom: 13, pitch: 0, bearing: 0, duration: 1000 });
+                ], { padding: 60, maxZoom: 13, pitch: endPitch, bearing: endBearing, duration: 1000 });
             } else {
-                this.map.easeTo({ pitch: 0, bearing: 0, duration: 1000 });
+                this.map.easeTo({ pitch: endPitch, bearing: endBearing, duration: 1000 });
             }
         }
 

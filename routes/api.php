@@ -10,6 +10,7 @@ use App\Http\Controllers\Api\TrailPhotoController;
 use App\Http\Controllers\TrailController;
 use App\Http\Controllers\TrailNetworkController;
 use App\Http\Middleware\VerifyAppKey;
+use App\Models\ActivityType;
 use App\Models\Business;
 use App\Models\Facility;
 use App\Models\Tour;
@@ -285,6 +286,22 @@ Route::withoutMiddleware(VerifyAppKey::class)->group(function () {
                 'difficulty_summary' => $tour->difficulty_summary,
                 'stop_count' => $tour->stops_count,
                 'cover_image_url' => $tour->cover_image_url,
+            ]);
+    });
+
+    // Activity types — drives the map filter's Activities section
+    Route::get('/activity-types', function () {
+        return ActivityType::where('is_active', true)
+            ->orderBy('name')
+            ->get()
+            ->map(fn ($activity) => [
+                'id' => $activity->id,
+                'name' => $activity->name,
+                'slug' => $activity->slug,
+                'icon' => $activity->icon,
+                'icon_image_url' => $activity->icon_image ? asset('storage/'.$activity->icon_image) : null,
+                'color' => $activity->color,
+                'season_applicable' => $activity->season_applicable,
             ]);
     });
 
