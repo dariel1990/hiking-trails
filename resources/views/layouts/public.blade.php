@@ -22,15 +22,18 @@
     <title>@yield('title', setting('default_page_title'))</title>
     <!-- Meta Tags Stack -->
     @stack('meta')
-    <!-- Google tag (gtag.js) -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id=G-E170L5ZVE8"></script>
-    <script>
-    window.dataLayer = window.dataLayer || [];
-    function gtag(){dataLayer.push(arguments);}
-    gtag('js', new Date());
+    @if (app()->isProduction() && config('services.google_analytics.measurement_id'))
+        @php($gaMeasurementId = config('services.google_analytics.measurement_id'))
+        <!-- Google tag (gtag.js) -->
+        <script async src="https://www.googletagmanager.com/gtag/js?id={{ $gaMeasurementId }}"></script>
+        <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
 
-    gtag('config', 'G-E170L5ZVE8');
-    </script>
+        gtag('config', @json($gaMeasurementId));
+        </script>
+    @endif
     <link rel="icon" type="image/png" href="{{ asset(setting('footer_logo_path')) }}">
 
     <!-- SEO Meta Tags -->
