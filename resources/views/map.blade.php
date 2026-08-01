@@ -4156,7 +4156,7 @@
                         <div id="panel-elev-wrap-${trail.id}" style="position:relative;background:#f9fafb;border-radius:10px;overflow:hidden;height:130px;border:1px solid #e5e7eb;">
                             <canvas id="panel-elev-canvas-${trail.id}" style="width:100%;height:100%;display:block;"></canvas>
                             <div id="panel-elev-loading-${trail.id}" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;">
-                                <div style="width:20px;height:20px;border:2px solid #d1d5db;border-top-color:#2C5F5D;border-radius:50%;animation:spin 0.8s linear infinite;"></div>
+                                <div style="width:20px;height:20px;border:2px solid #d1d5db;border-top-color:rgb(var(--c-forest-600, 44 95 93));border-radius:50%;animation:spin 0.8s linear infinite;"></div>
                             </div>
                         </div>
                     </div>` : ''}
@@ -4238,11 +4238,11 @@
                 ctx.clearRect(0, 0, w, h);
 
                 const grad = ctx.createLinearGradient(0, PADDING_TOP, 0, h);
-                grad.addColorStop(0, 'rgba(44,95,93,0.18)');
-                grad.addColorStop(1, 'rgba(44,95,93,0.02)');
+                grad.addColorStop(0, 'rgba({{ theme_color_rgb('forest', 600) }},0.18)');
+                grad.addColorStop(1, 'rgba({{ theme_color_rgb('forest', 600) }},0.02)');
 
                 ctx.beginPath();
-                ctx.strokeStyle = '#2C5F5D';
+                ctx.strokeStyle = '{{ theme_color('forest', 600) }}';
                 ctx.lineWidth = 2;
                 elevations.forEach((e, i) => {
                     const x = (i / (elevations.length - 1)) * w;
@@ -4261,7 +4261,7 @@
 
                     // Dashed vertical line
                     ctx.beginPath();
-                    ctx.strokeStyle = 'rgba(44,95,93,0.35)';
+                    ctx.strokeStyle = 'rgba({{ theme_color_rgb('forest', 600) }},0.35)';
                     ctx.lineWidth = 1;
                     ctx.setLineDash([3, 3]);
                     ctx.moveTo(x, 0); ctx.lineTo(x, h);
@@ -4271,7 +4271,7 @@
                     // Circle on the line
                     ctx.beginPath();
                     ctx.arc(x, y, 5, 0, Math.PI * 2);
-                    ctx.fillStyle = '#2C5F5D';
+                    ctx.fillStyle = '{{ theme_color('forest', 600) }}';
                     ctx.fill();
                     ctx.strokeStyle = '#fff';
                     ctx.lineWidth = 2;
@@ -4324,7 +4324,7 @@
                             'circle-radius': 9,
                             'circle-color': '#fff',
                             'circle-stroke-width': 3,
-                            'circle-stroke-color': '#2C5F5D',
+                            'circle-stroke-color': '{{ theme_color('forest', 600) }}',
                         },
                     });
                 }

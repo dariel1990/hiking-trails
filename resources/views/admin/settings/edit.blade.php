@@ -10,6 +10,7 @@
         'map' => 'M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7',
         'subscriptions' => 'M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.196-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z',
         'content' => 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z',
+        'theme' => 'M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z',
         'routing' => 'M13 10V3L4 14h7v7l9-11h-7z',
         'system' => 'M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z',
     ];
@@ -108,6 +109,23 @@
                                 <p class="mt-1 text-sm text-gray-500">{{ $group['description'] }}</p>
                             @endif
                         </div>
+
+                        @if ($groupKey === 'theme')
+                            {{-- Preview of currently saved theme values --}}
+                            <div class="border-b border-gray-100 px-6 py-5">
+                                <p class="mb-3 text-xs font-semibold uppercase tracking-widest text-gray-400">Preview (saved values)</p>
+                                <div class="overflow-hidden rounded-xl border border-gray-200">
+                                    <div class="flex items-center justify-between px-4 py-3" style="background: {{ setting('theme_brand_color') }}">
+                                        <span class="text-sm font-bold text-white" style="font-family: {{ config('theme-fonts')[setting('theme_heading_font')]['stack'] ?? 'serif' }}">{{ setting('site_name') }}</span>
+                                        <span class="rounded-full px-3 py-1 text-xs font-semibold text-white" style="background: {{ setting('theme_accent_color') }}">Accent</span>
+                                    </div>
+                                    <div class="bg-white px-4 py-4" style="font-family: {{ config('theme-fonts')[setting('theme_body_font')]['stack'] ?? 'sans-serif' }}">
+                                        <p class="mb-3 text-sm text-gray-600">Body text uses the body font. Buttons and highlights use the action color.</p>
+                                        <span class="inline-flex rounded-lg px-4 py-2 text-sm font-semibold text-white" style="background: {{ setting('theme_action_color') }}">Action button</span>
+                                    </div>
+                                </div>
+                            </div>
+                        @endif
 
                         {{-- Fields --}}
                         <div class="grid grid-cols-1 gap-x-6 gap-y-6 p-6 md:grid-cols-2">

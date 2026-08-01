@@ -27,12 +27,12 @@
         background: #0d1c1b; color: #fff; border-radius: 24px 24px 0 0;
         box-shadow: 0 -20px 60px rgba(0,0,0,.35);
         transform: translateY(100%); opacity: 0;
-        scrollbar-width: thin; scrollbar-color: #2C5F5D rgba(255,255,255,.04);
+        scrollbar-width: thin; scrollbar-color: rgb(var(--c-forest-600, 44 95 93)) rgba(255,255,255,.04);
     }
     .xs-pro-dialog::-webkit-scrollbar { width: 9px; }
     .xs-pro-dialog::-webkit-scrollbar-track { background: rgba(255,255,255,.04); }
-    .xs-pro-dialog::-webkit-scrollbar-thumb { background: #2C5F5D; border-radius: 999px; border: 2px solid #0d1c1b; }
-    .xs-pro-dialog::-webkit-scrollbar-thumb:hover { background: #E87B35; }
+    .xs-pro-dialog::-webkit-scrollbar-thumb { background: rgb(var(--c-forest-600, 44 95 93)); border-radius: 999px; border: 2px solid #0d1c1b; }
+    .xs-pro-dialog::-webkit-scrollbar-thumb:hover { background: rgb(var(--c-accent-500, 232 123 53)); }
     .xs-pro-dialog::-webkit-scrollbar-button { display: none; width: 0; height: 0; }
     .xs-pro-modal.is-open .xs-pro-dialog { animation: xsProSlideUp 0.5s cubic-bezier(.22,1,.36,1) forwards; }
     @media (min-width: 640px) {
@@ -82,7 +82,7 @@
             <button type="button" class="xs-pro-x" data-xs-pro-close aria-label="Close">&times;</button>
             <img src="{{ asset('images/xploresmithers_white.png') }}" alt="XploreSmithers" class="xs-pro-logo">
             <h2 id="xs-pro-title" class="xs-pro-title" data-xs-pro-title>
-                <span style="color:#ffffff">Free or </span><span style="color:#E87B35">Pro?</span>
+                <span style="color:#ffffff">Free or </span><span style="color:rgb(var(--c-accent-500, 232 123 53))">Pro?</span>
             </h2>
             <p class="xs-pro-sub" data-xs-pro-sub>More trails. More adventures. More you.</p>
         </div>
@@ -270,11 +270,11 @@
     (function () {
         var hideTimeout = null;
         var COPY = {
-            gpx:   { title: '<span style="color:#ffffff">Download the GPX file with</span> <span style="color:#E87B35">Pro</span>', sub: 'Export this route and navigate offline' },
-            video: { title: '<span style="color:#ffffff">Watch Pro</span> <span style="color:#E87B35">video content</span>', sub: 'Unlock in-depth guides for trails and points of interest' },
-            poi:   { title: '<span style="color:#ffffff">See points of interest with</span> <span style="color:#E87B35">Pro</span>', sub: 'Unlock curated spots and hidden gems across the map' },
-            highlight: { title: '<span style="color:#ffffff">See trail highlights with</span> <span style="color:#E87B35">Pro</span>', sub: 'Unlock notable spots and viewpoints along the trail' },
-            'default': { title: '<span style="color:#ffffff">Free or</span> <span style="color:#E87B35">Pro?</span>', sub: 'More trails. More adventures. More you.' }
+            gpx:   { title: '<span style="color:#ffffff">Download the GPX file with</span> <span style="color:rgb(var(--c-accent-500, 232 123 53))">Pro</span>', sub: 'Export this route and navigate offline' },
+            video: { title: '<span style="color:#ffffff">Watch Pro</span> <span style="color:rgb(var(--c-accent-500, 232 123 53))">video content</span>', sub: 'Unlock in-depth guides for trails and points of interest' },
+            poi:   { title: '<span style="color:#ffffff">See points of interest with</span> <span style="color:rgb(var(--c-accent-500, 232 123 53))">Pro</span>', sub: 'Unlock curated spots and hidden gems across the map' },
+            highlight: { title: '<span style="color:#ffffff">See trail highlights with</span> <span style="color:rgb(var(--c-accent-500, 232 123 53))">Pro</span>', sub: 'Unlock notable spots and viewpoints along the trail' },
+            'default': { title: '<span style="color:#ffffff">Free or</span> <span style="color:rgb(var(--c-accent-500, 232 123 53))">Pro?</span>', sub: 'More trails. More adventures. More you.' }
         };
 
         window.xsShowProModal = function (featureKey) {

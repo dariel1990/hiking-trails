@@ -32,11 +32,11 @@
     }
 
     .xs-app-head { position: relative; padding: 32px 28px 24px; text-align: center; color: #fff;
-        background: linear-gradient(150deg, #2C5F5D 0%, #1a2e2e 100%); border-radius: 24px 24px 0 0; overflow: hidden; }
+        background: linear-gradient(150deg, rgb(var(--c-forest-600, 44 95 93)) 0%, rgb(var(--c-forest-950, 26 46 46)) 100%); border-radius: 24px 24px 0 0; overflow: hidden; }
     .xs-app-head::after { content: ''; position: absolute; top: -40%; right: -20%; width: 220px; height: 220px;
-        background: radial-gradient(circle, rgba(232,123,53,.35), transparent 70%); }
+        background: radial-gradient(circle, rgb(var(--c-accent-500, 232 123 53) / .35), transparent 70%); }
     .xs-app-logo { height: 52px; width: auto; max-width: 220px; object-fit: contain; margin: 0 auto 14px; display: block; position: relative; }
-    .xs-app-kicker { font-size: 11px; letter-spacing: .22em; text-transform: uppercase; color: #E87B35; font-weight: 700; position: relative; }
+    .xs-app-kicker { font-size: 11px; letter-spacing: .22em; text-transform: uppercase; color: rgb(var(--c-accent-500, 232 123 53)); font-weight: 700; position: relative; }
     .xs-app-title { font-size: 22px; font-weight: 700; color: #fff; margin-top: 8px; line-height: 1.25; position: relative; }
     .xs-app-sub { margin-top: 10px; font-size: 14px; color: rgba(255,255,255,.78); line-height: 1.5; position: relative; }
 
@@ -47,7 +47,7 @@
 
     .xs-app-features { list-style: none; margin: 0; padding: 22px 28px 6px; display: grid; gap: 12px; }
     .xs-app-features li { display: flex; align-items: center; gap: 12px; font-size: 14px; font-weight: 500; color: #374151; }
-    .xs-app-features svg { flex: 0 0 auto; width: 22px; height: 22px; color: #2C5F5D; }
+    .xs-app-features svg { flex: 0 0 auto; width: 22px; height: 22px; color: rgb(var(--c-forest-600, 44 95 93)); }
 
     .xs-app-actions { padding: 16px 28px 8px; display: grid; gap: 10px; }
     .xs-app-cta { display: flex; align-items: center; justify-content: center; gap: 12px; width: 100%; text-align: center;

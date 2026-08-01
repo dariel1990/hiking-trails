@@ -38,16 +38,16 @@
         display: flex; flex-direction: column; align-items: center;
     }
     .tour-layer-card:hover { border-color: #a8c4b9; }
-    .tour-layer-card.active { border-color: #2C5F5D; box-shadow: 0 0 0 3px rgba(44,95,93,0.12); }
+    .tour-layer-card.active { border-color: rgb(var(--c-forest-600, 44 95 93)); box-shadow: 0 0 0 3px rgb(var(--c-forest-600, 44 95 93) / 0.12); }
     .tour-layer-card .layer-preview { width: 100%; height: 56px; overflow: hidden; }
     .tour-layer-card .layer-label { display: block; font-size: 0.7rem; font-weight: 600; color: #374151; text-align: center; padding: 0.25rem 0.25rem 0.35rem; }
-    .tour-layer-card .layer-checkmark { position: absolute; top: 4px; right: 4px; width: 16px; height: 16px; color: white; background-color: #2C5F5D; border-radius: 50%; padding: 2px; display: none; }
+    .tour-layer-card .layer-checkmark { position: absolute; top: 4px; right: 4px; width: 16px; height: 16px; color: white; background-color: rgb(var(--c-forest-600, 44 95 93)); border-radius: 50%; padding: 2px; display: none; }
     .tour-layer-card.active .layer-checkmark { display: block; }
 
     /* Stop cards */
     .stop-card { transition: all 0.18s ease; }
     .stop-card:hover { border-color: #a8c4b9; background-color: #f5f8f7; }
-    .stop-card.active { border-color: #2C5F5D; background-color: #f5f8f7; box-shadow: 0 0 0 3px rgba(44,95,93,0.1); }
+    .stop-card.active { border-color: rgb(var(--c-forest-600, 44 95 93)); background-color: #f5f8f7; box-shadow: 0 0 0 3px rgb(var(--c-forest-600, 44 95 93) / 0.1); }
 
     /* Timeline connector */
     .timeline-connector {
@@ -64,7 +64,7 @@
     .tour-marker { display: flex; align-items: center; gap: 0; cursor: pointer; }
     .tour-marker-badge {
         width: 2.1rem; height: 2.1rem; border-radius: 9999px;
-        background: linear-gradient(145deg, #2C5F5D, #1d4644);
+        background: linear-gradient(145deg, rgb(var(--c-forest-600, 44 95 93)), rgb(var(--c-forest-700, 35 78 76)));
         color: #fff; font-size: 0.85rem; font-weight: 700;
         display: flex; align-items: center; justify-content: center;
         box-shadow: 0 2px 8px rgba(0,0,0,0.35);
@@ -75,7 +75,7 @@
     }
     .tour-marker:hover .tour-marker-badge { box-shadow: 0 4px 14px rgba(0,0,0,0.45); filter: brightness(1.15); transform: scale(1.06); }
     .tour-marker.active .tour-marker-badge {
-        background: linear-gradient(145deg, #e8a33d, #c9821f);
+        background: linear-gradient(145deg, rgb(var(--c-accent-400, 251 146 60)), rgb(var(--c-accent-600, 234 88 12)));
         box-shadow: 0 0 0 4px rgba(232,163,61,0.35), 0 4px 14px rgba(0,0,0,0.45);
         transform: scale(1.15);
         animation: tour-marker-pulse 1.4s ease-out infinite;
@@ -94,7 +94,7 @@
     .tour-marker.active .tour-marker-label {
         font-size: 0.85rem;
         box-shadow: 0 4px 10px rgba(232,163,61,0.4);
-        border: 2px solid #e8a33d;
+        border: 2px solid rgb(var(--c-accent-400, 251 146 60));
     }
     @keyframes tour-marker-pulse {
         0% { box-shadow: 0 0 0 4px rgba(232,163,61,0.35), 0 4px 14px rgba(0,0,0,0.45); }
@@ -320,7 +320,7 @@
                             @endif
 
                             <!-- Number badge -->
-                            <div class="absolute left-0 top-0 flex h-11 w-11 items-center justify-center rounded-full text-white text-sm font-bold shadow-md border-2 border-white ring-2 ring-forest-100" style="background: linear-gradient(145deg, #2C5F5D, #1d4644);">
+                            <div class="absolute left-0 top-0 flex h-11 w-11 items-center justify-center rounded-full text-white text-sm font-bold shadow-md border-2 border-white ring-2 ring-forest-100" style="background: linear-gradient(145deg, rgb(var(--c-forest-600, 44 95 93)), rgb(var(--c-forest-700, 35 78 76)));">
                                 {{ $loop->iteration }}
                             </div>
 
@@ -462,7 +462,7 @@ function addRouteAndMarkers() {
                 id: 'tour-route-line',
                 type: 'line',
                 source: 'tour-route',
-                paint: { 'line-color': '#2C5F5D', 'line-width': 3, 'line-dasharray': [2, 1] },
+                paint: { 'line-color': '{{ theme_color('forest', 600) }}', 'line-width': 3, 'line-dasharray': [2, 1] },
             });
         }
     }

@@ -35,13 +35,13 @@
     .auth-card { animation: auth-rise .6s cubic-bezier(.16,1,.3,1) both; }
 
     .auth-head {
-        background: linear-gradient(150deg, #2C5F5D 0%, #1a2e2e 100%);
+        background: linear-gradient(150deg, rgb(var(--c-forest-600, 44 95 93)) 0%, rgb(var(--c-forest-950, 26 46 46)) 100%);
         position: relative; overflow: hidden;
     }
     .auth-head::after {
         content: ''; position: absolute; top: -55%; right: -18%;
         width: 240px; height: 240px;
-        background: radial-gradient(circle, rgba(232,123,53,0.38), transparent 70%);
+        background: radial-gradient(circle, rgb(var(--c-accent-500, 232 123 53) / 0.38), transparent 70%);
     }
 </style>
 @endpush
@@ -171,7 +171,7 @@
                 </div>
 
                 <button type="submit"
-                        class="w-full flex items-center justify-center gap-2 py-3.5 px-5 bg-accent-500 hover:bg-accent-600 active:scale-[0.99] text-white text-sm font-semibold rounded-xl shadow-[0_8px_20px_rgba(232,123,53,0.3)] transition focus:outline-none focus:ring-4 focus:ring-accent-500/30">
+                        class="w-full flex items-center justify-center gap-2 py-3.5 px-5 bg-accent-500 hover:bg-accent-600 active:scale-[0.99] text-white text-sm font-semibold rounded-xl shadow-[0_8px_20px_rgb(var(--c-accent-500,232_123_53)/0.3)] transition focus:outline-none focus:ring-4 focus:ring-accent-500/30">
                     Create account
                     <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M17 8l4 4m0 0l-4 4m4-4H3"/></svg>
                 </button>

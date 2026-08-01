@@ -61,7 +61,7 @@
         >
             {{-- Branded header with hero gradient --}}
             <div class="relative px-6 py-5 text-white overflow-hidden flex-shrink-0"
-                style="background: linear-gradient(135deg, #2C5F5D 0%, #4A9B8E 60%, #E87B35 100%);">
+                style="background: linear-gradient(135deg, rgb(var(--c-forest-600, 44 95 93)) 0%, rgb(var(--c-emerald-400, 74 155 142)) 60%, rgb(var(--c-accent-500, 232 123 53)) 100%);">
 
                 {{-- Decorative mountain pattern --}}
                 <svg class="absolute right-0 bottom-0 w-40 h-32 text-white/10 pointer-events-none" viewBox="0 0 120 80" fill="currentColor">

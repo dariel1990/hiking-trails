@@ -22,19 +22,19 @@
   
   body {
     @apply bg-gray-50 text-gray-900 antialiased;
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    font-family: var(--font-body, 'Inter'), -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
     line-height: 1.6;
   }
 
-  /* Typography */
+  /* Typography — families are admin-themeable via the --font-* variables */
   h1, h2 {
     @apply font-bold tracking-tight text-gray-900;
-    font-family: 'Playfair Display', Georgia, serif;
+    font-family: var(--font-heading, 'Playfair Display'), Georgia, serif;
   }
 
   h3, h4, h5, h6 {
     @apply font-bold tracking-tight text-gray-900;
-    font-family: 'Oswald', Georgia, serif;
+    font-family: var(--font-subheading, 'Oswald'), Georgia, serif;
   }
 
   h1 {
@@ -247,7 +247,7 @@
 
   /* Hero Section Styles */
   .hero-gradient {
-    background: linear-gradient(135deg, #2C5F5D 0%, #4A9B8E 50%, #E87B35 100%);
+    background: linear-gradient(135deg, rgb(var(--c-forest-600, 44 95 93)) 0%, rgb(var(--c-emerald-400, 74 155 142)) 50%, rgb(var(--c-accent-500, 232 123 53)) 100%);
   }
 
   .hero-overlay {

@@ -14,6 +14,7 @@
 
     <!-- Scripts -->
     @vite(['resources/css/app.css', 'resources/js/app.js'])
+    @include('partials.theme-styles')
 </head>
 <body class="font-sans antialiased bg-gray-50">
     <div id="app">

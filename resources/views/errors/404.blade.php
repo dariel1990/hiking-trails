@@ -9,6 +9,7 @@
     <link href="https://fonts.bunny.net/css?family=Inter:400,500,600,700,800" rel="stylesheet">
     <link href="https://fonts.bunny.net/css?family=Playfair+Display:600,700" rel="stylesheet">
     @vite(['resources/css/app.css'])
+    @include('partials.theme-styles')
 </head>
 <body class="font-sans antialiased">
     <div class="min-h-screen bg-hero-gradient flex items-center justify-center px-4 py-16 relative overflow-hidden">

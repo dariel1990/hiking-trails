@@ -48,7 +48,8 @@
 
     <!-- Scripts -->
     @vite(['resources/css/app.css', 'resources/js/app.js'])
-    
+    @include('partials.theme-styles')
+
     @stack('styles')
 </head>
 <body class="font-sans antialiased bg-gray-50">
@@ -322,7 +323,7 @@
 
     @unless(request()->routeIs('map') || request()->routeIs('trail-networks.show') || request()->routeIs('admin.login') || request()->routeIs('login', 'register'))
     <!-- Enhanced Footer inspired by XploreSmithers -->
-    <footer class="bg-gray-900 text-white relative overflow-hidden" style="background: linear-gradient(135deg, #2C5F5D 0%, #1a2e2e 100%);">
+    <footer class="bg-gray-900 text-white relative overflow-hidden" style="background: linear-gradient(135deg, rgb(var(--c-forest-600, 44 95 93)) 0%, rgb(var(--c-forest-950, 26 46 46)) 100%);">
         <!-- Subtle background pattern -->
         <div class="absolute inset-0 opacity-5">
             <svg class="w-full h-full" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">

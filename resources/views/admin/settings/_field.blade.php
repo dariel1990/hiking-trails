@@ -177,6 +177,58 @@
             >{{ $displayValue }}</textarea>
             @break
 
+        @case('color')
+            @php($defaultHex = strtolower($definition['default']))
+            <div
+                x-data="{ val: @js((string) ($displayValue ?? $definition['default'])) }"
+                class="flex items-center gap-3"
+            >
+                <input
+                    type="color"
+                    :value="/^#[0-9a-f]{6}$/i.test(val) ? val : '#000000'"
+                    @input="val = $event.target.value"
+                    aria-label="{{ $definition['label'] }} picker"
+                    class="h-12 w-14 flex-shrink-0 cursor-pointer rounded-xl border-2 border-gray-200 bg-gray-50 p-1"
+                >
+                <input
+                    type="text"
+                    id="{{ $key }}"
+                    name="{{ $key }}"
+                    x-model="val"
+                    maxlength="7"
+                    placeholder="#2C5F5D"
+                    spellcheck="false"
+                    class="{{ $inputClasses }} font-mono uppercase sm:max-w-[10rem]"
+                >
+                <button
+                    type="button"
+                    x-show="val.toLowerCase() !== @js($defaultHex)"
+                    x-cloak
+                    @click="val = @js($definition['default'])"
+                    class="inline-flex flex-shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-xs font-semibold text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700"
+                >
+                    <span class="h-4 w-4 rounded-full border border-gray-300" style="background: {{ $definition['default'] }}"></span>
+                    Reset
+                </button>
+            </div>
+            @break
+
+        @case('select')
+            <select
+                id="{{ $key }}"
+                name="{{ $key }}"
+                class="{{ $inputClasses }}"
+            >
+                @foreach (config($definition['options_config']) as $optionValue => $option)
+                    <option
+                        value="{{ $optionValue }}"
+                        style="font-family: {{ $option['stack'] }}"
+                        @selected($displayValue === $optionValue)
+                    >{{ $option['label'] }}</option>
+                @endforeach
+            </select>
+            @break
+
         @case('number')
             <input
                 type="number"

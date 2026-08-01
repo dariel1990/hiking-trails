@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\Setting;
+use App\Services\ThemeService;
 
 if (! function_exists('setting')) {
     /**
@@ -15,6 +16,27 @@ if (! function_exists('setting')) {
         } catch (Throwable) {
             return $default ?? config("settings.definitions.{$key}.default");
         }
+    }
+}
+
+if (! function_exists('theme_color')) {
+    /**
+     * Resolved theme hex for a palette shade (e.g. theme_color('forest', 600)).
+     * For JS contexts (Mapbox paint, canvas) where CSS var() can't be used.
+     */
+    function theme_color(string $family, int $shade): string
+    {
+        return app(ThemeService::class)->colorHex($family, $shade);
+    }
+}
+
+if (! function_exists('theme_color_rgb')) {
+    /**
+     * Resolved theme shade as "R, G, B" for legacy rgba(...) syntax in JS.
+     */
+    function theme_color_rgb(string $family, int $shade): string
+    {
+        return app(ThemeService::class)->colorRgb($family, $shade);
     }
 }
 

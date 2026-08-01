@@ -69,12 +69,12 @@
     }
     
     .tab-button:hover {
-        color: #2C5F5D;
+        color: rgb(var(--c-forest-600, 44 95 93));
     }
 
     .tab-button.active {
-        color: #2C5F5D;
-        border-bottom-color: #2C5F5D;
+        color: rgb(var(--c-forest-600, 44 95 93));
+        border-bottom-color: rgb(var(--c-forest-600, 44 95 93));
     }
     
     .tab-content {
@@ -175,13 +175,13 @@
         padding: 1.5rem;
         border-radius: 1rem;
         box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-        border-top: 3px solid #2C5F5D;
+        border-top: 3px solid rgb(var(--c-forest-600, 44 95 93));
         transition: all 0.3s ease;
     }
 
     .stat-card:hover {
         transform: translateY(-4px);
-        box-shadow: 0 10px 15px -3px rgba(44, 95, 93, 0.15);
+        box-shadow: 0 10px 15px -3px rgb(var(--c-forest-600, 44 95 93) / 0.15);
     }
     
     /* Map Container */
@@ -790,7 +790,7 @@
                                     </div>
                                     <div style="width:1px;height:32px;background:rgba(255,255,255,0.1);flex-shrink:0;"></div>
                                     <div>
-                                        <div style="font-size:24px;font-weight:800;color:#4A9B8E;line-height:1;font-variant-numeric:tabular-nums;" id="fly-stat-elev">0</div>
+                                        <div style="font-size:24px;font-weight:800;color:rgb(var(--c-emerald-400, 74 155 142));line-height:1;font-variant-numeric:tabular-nums;" id="fly-stat-elev">0</div>
                                         <div style="font-size:10px;color:rgba(255,255,255,0.45);margin-top:3px;">m gain</div>
                                     </div>
                                 </div>
@@ -1359,10 +1359,10 @@
     }
 
     .xs-share-head { position: relative; padding: 28px 28px 22px; text-align: center; color: #fff;
-        background: linear-gradient(150deg, #2C5F5D 0%, #1a2e2e 100%); border-radius: 24px 24px 0 0; overflow: hidden; }
+        background: linear-gradient(150deg, rgb(var(--c-forest-600, 44 95 93)) 0%, rgb(var(--c-forest-950, 26 46 46)) 100%); border-radius: 24px 24px 0 0; overflow: hidden; }
     .xs-share-head::after { content: ''; position: absolute; top: -40%; right: -20%; width: 220px; height: 220px;
-        background: radial-gradient(circle, rgba(232,123,53,.35), transparent 70%); }
-    .xs-share-kicker { font-size: 11px; letter-spacing: .22em; text-transform: uppercase; color: #E87B35; font-weight: 700; position: relative; }
+        background: radial-gradient(circle, rgb(var(--c-accent-500, 232 123 53) / .35), transparent 70%); }
+    .xs-share-kicker { font-size: 11px; letter-spacing: .22em; text-transform: uppercase; color: rgb(var(--c-accent-500, 232 123 53)); font-weight: 700; position: relative; }
     .xs-share-title { font-size: 20px; font-weight: 700; color: #fff; margin-top: 8px; line-height: 1.25; position: relative; }
     .xs-share-sub { margin-top: 8px; font-size: 13px; color: rgba(255,255,255,.78); line-height: 1.5; position: relative; }
 
@@ -1375,9 +1375,9 @@
     .xs-share-link-row { display: flex; gap: 8px; }
     .xs-share-link-input { flex: 1 1 auto; min-width: 0; padding: 10px 14px; border: 1px solid #e5e7eb; border-radius: 12px;
         background: #f9fafb; color: #374151; font-size: 13px; }
-    .xs-share-link-input:focus { outline: none; box-shadow: 0 0 0 2px rgba(44,95,93,.25); }
+    .xs-share-link-input:focus { outline: none; box-shadow: 0 0 0 2px rgb(var(--c-forest-600, 44 95 93) / .25); }
     .xs-share-copy-btn { flex: 0 0 auto; display: flex; align-items: center; gap: 8px; padding: 10px 16px;
-        background: #2C5F5D; color: #fff; border-radius: 12px; border: 0; cursor: pointer; font-weight: 600; font-size: 13px;
+        background: rgb(var(--c-forest-600, 44 95 93)); color: #fff; border-radius: 12px; border: 0; cursor: pointer; font-weight: 600; font-size: 13px;
         transition: background .2s; white-space: nowrap; }
     .xs-share-copy-btn:hover { background: #234a48; }
     .xs-share-copy-btn.is-copied { background: #2f9e63; }
@@ -2015,7 +2015,7 @@ function initTrailMap() {
                 source: 'fly-draw',
                 layout: { 'line-cap': 'round', 'line-join': 'round' },
                 paint: {
-                    'line-gradient': ['interpolate', ['linear'], ['line-progress'], 0, '#4A9B8E', 1, '#4A9B8E'],
+                    'line-gradient': ['interpolate', ['linear'], ['line-progress'], 0, '{{ theme_color('emerald', 400) }}', 1, '{{ theme_color('emerald', 400) }}'],
                     'line-width': 16, 'line-blur': 8, 'line-opacity': 0, 'line-trim-offset': [0, 1],
                 },
             });
@@ -2203,8 +2203,8 @@ function initTrailMap() {
             features: [{ type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: mapboxCoords } }],
         });
 
-        const blueGradient = ['interpolate', ['linear'], ['line-progress'], 0, '#2C5F5D', 1, '#4A9B8E'];
-        const blueGlow     = ['interpolate', ['linear'], ['line-progress'], 0, '#4A9B8E', 1, '#4A9B8E'];
+        const blueGradient = ['interpolate', ['linear'], ['line-progress'], 0, '{{ theme_color('forest', 600) }}', 1, '{{ theme_color('emerald', 400) }}'];
+        const blueGlow     = ['interpolate', ['linear'], ['line-progress'], 0, '{{ theme_color('emerald', 400) }}', 1, '{{ theme_color('emerald', 400) }}'];
         if (map.getLayer('fly-draw-progress')) {
             map.setPaintProperty('fly-draw-progress', 'line-gradient', blueGradient);
             map.setPaintProperty('fly-draw-glow',     'line-gradient', blueGlow);
@@ -2598,7 +2598,7 @@ function initTrailMap() {
         }
 
         ctx.beginPath();
-        ctx.strokeStyle = '#2C5F5D';
+        ctx.strokeStyle = '{{ theme_color('forest', 600) }}';
         ctx.lineWidth = 2;
 
         elevations.forEach((elevation, index) => {
@@ -2610,8 +2610,8 @@ function initTrailMap() {
         ctx.stroke();
 
         const grad = ctx.createLinearGradient(0, paddingTop, 0, height);
-        grad.addColorStop(0, 'rgba(44,95,93,0.18)');
-        grad.addColorStop(1, 'rgba(44,95,93,0.02)');
+        grad.addColorStop(0, 'rgba({{ theme_color_rgb('forest', 600) }},0.18)');
+        grad.addColorStop(1, 'rgba({{ theme_color_rgb('forest', 600) }},0.02)');
         ctx.lineTo(width, height);
         ctx.lineTo(0, height);
         ctx.closePath();
@@ -2624,7 +2624,7 @@ function initTrailMap() {
             const y = paddingTop + drawHeight - ((e - minElev) / elevRange) * drawHeight;
 
             ctx.beginPath();
-            ctx.strokeStyle = 'rgba(44,95,93,0.35)';
+            ctx.strokeStyle = 'rgba({{ theme_color_rgb('forest', 600) }},0.35)';
             ctx.lineWidth = 1;
             ctx.setLineDash([4, 4]);
             ctx.moveTo(x, 0); ctx.lineTo(x, height);
@@ -2633,7 +2633,7 @@ function initTrailMap() {
 
             ctx.beginPath();
             ctx.arc(x, y, 6, 0, Math.PI * 2);
-            ctx.fillStyle = '#2C5F5D';
+            ctx.fillStyle = '{{ theme_color('forest', 600) }}';
             ctx.fill();
             ctx.strokeStyle = '#fff';
             ctx.lineWidth = 2.5;
@@ -2676,7 +2676,7 @@ function initTrailMap() {
                 id: SHOW_HOVER_LAYER,
                 type: 'circle',
                 source: SHOW_HOVER_SOURCE,
-                paint: { 'circle-radius': 10, 'circle-color': '#fff', 'circle-stroke-width': 3, 'circle-stroke-color': '#2C5F5D' },
+                paint: { 'circle-radius': 10, 'circle-color': '#fff', 'circle-stroke-width': 3, 'circle-stroke-color': '{{ theme_color('forest', 600) }}' },
             });
         }
     }

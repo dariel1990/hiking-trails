@@ -3,8 +3,8 @@
     Required: $network (TrailNetwork). Renders nothing when no active sponsors.
 
     Branding:
-      - Forest gradient background (#2C5F5D → #1a2e2e), matching the site footer
-      - Warm orange accent stripe (#E87B35), pulling from the brand accent palette
+      - Forest gradient background (rgb(var(--c-forest-600, 44 95 93)) → rgb(var(--c-forest-950, 26 46 46))), matching the site footer
+      - Warm orange accent stripe (rgb(var(--c-accent-500, 232 123 53))), pulling from the brand accent palette
       - Sand/cream tile under the logo (#F5F1E8) so partner marks pop on the dark surface
       - Playfair Display serif for the sponsor name to match site display typography
       - Inter sans-serif for supporting text
@@ -80,7 +80,7 @@
         }
         .sponsor-bnr {
             position: relative;
-            background: linear-gradient(135deg, #2C5F5D 0%, #1a2e2e 100%);
+            background: linear-gradient(135deg, rgb(var(--c-forest-600, 44 95 93)) 0%, rgb(var(--c-forest-950, 26 46 46)) 100%);
             color: #F5F1E8;
             box-shadow: 0 -12px 32px -12px rgba(0, 0, 0, 0.4);
             pointer-events: auto;
@@ -93,7 +93,7 @@
             left: 0;
             right: 0;
             height: 3px;
-            background: linear-gradient(to right, #E87B35 0%, #fb923c 50%, #E87B35 100%);
+            background: linear-gradient(to right, rgb(var(--c-accent-500, 232 123 53)) 0%, #fb923c 50%, rgb(var(--c-accent-500, 232 123 53)) 100%);
             display: block;
             z-index: 2;
         }
@@ -126,7 +126,7 @@
             height: 44px;
             border-radius: 10px;
             background: #F5F1E8;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2), inset 0 0 0 1px rgba(232, 123, 53, 0.25);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2), inset 0 0 0 1px rgb(var(--c-accent-500, 232 123 53) / 0.25);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -204,13 +204,13 @@
             letter-spacing: 0.02em;
             color: #ffffff;
             text-decoration: none;
-            background: linear-gradient(135deg, #E87B35 0%, #c2410c 100%);
-            box-shadow: 0 4px 12px -2px rgba(232, 123, 53, 0.5);
+            background: linear-gradient(135deg, rgb(var(--c-accent-500, 232 123 53)) 0%, #c2410c 100%);
+            box-shadow: 0 4px 12px -2px rgb(var(--c-accent-500, 232 123 53) / 0.5);
             transition: transform 0.2s ease, box-shadow 0.2s ease;
         }
         .sponsor-bnr__cta:hover {
             transform: translateY(-1px);
-            box-shadow: 0 6px 16px -2px rgba(232, 123, 53, 0.6);
+            box-shadow: 0 6px 16px -2px rgb(var(--c-accent-500, 232 123 53) / 0.6);
         }
         .sponsor-bnr__cta-icon { width: 13px; height: 13px; }
         .sponsor-bnr__cta-text { display: none; }
