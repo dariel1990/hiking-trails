@@ -173,6 +173,9 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::get('/trails/feature-icons', [AdminTrailController::class, 'listFeatureIcons'])->name('trails.feature-icons');
         Route::post('/trails/feature-icons/upload', [AdminTrailController::class, 'uploadFeatureIcon'])->name('trails.feature-icons.upload');
         Route::delete('/trails/feature-icons', [AdminTrailController::class, 'deleteFeatureIcon'])->name('trails.feature-icons.delete');
+        Route::get('/trails/trail-icons', [AdminTrailController::class, 'listTrailIcons'])->name('trails.trail-icons');
+        Route::post('/trails/trail-icons/upload', [AdminTrailController::class, 'uploadTrailIcon'])->name('trails.trail-icons.upload');
+        Route::delete('/trails/trail-icons', [AdminTrailController::class, 'deleteTrailIcon'])->name('trails.trail-icons.delete');
         Route::patch('/trails/{trail}/media/{media}/featured', [AdminTrailController::class, 'setFeaturedMedia'])
             ->name('trails.media.featured');
         Route::post('/trails/photos/upload', [AdminTrailController::class, 'uploadPhoto'])->name('trails.photos.upload');

@@ -3586,8 +3586,12 @@
             }
 
             const isFishingLake = trail.location_type === 'fishing_lake';
-            const emoji = isFishingLake ? '🐟' : (activity.icon || '📍');
-            const iconImageUrl = isFishingLake ? null : (activity.icon_image_url || null);
+            // A trail's custom map icon (admin-set image or text/emoji) beats the
+            // activity icon, in both seasons and for fishing lakes too; the image
+            // wins over the text icon when both are set
+            const emoji = trail.icon || (isFishingLake ? '🐟' : (activity.icon || '📍'));
+            const iconImageUrl = trail.icon_image_url
+                || (isFishingLake ? null : (activity.icon_image_url || null));
 
             const el = this._createMarkerEl(emoji, iconImageUrl);
             el.dataset.trailId = trail.id;

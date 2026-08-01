@@ -12,6 +12,8 @@ class Trail extends Model
 
     protected $fillable = [
         'name',
+        'icon',
+        'icon_image',
         'description',
         'location',
         'difficulty_level',
@@ -56,6 +58,11 @@ class Trail extends Model
         'gpx_uploaded_at' => 'datetime',            // NEW
         'fish_species' => 'array',
     ];
+
+    public function getIconImageUrlAttribute(): ?string
+    {
+        return $this->icon_image ? asset('storage/'.$this->icon_image) : null;
+    }
 
     /**
      * Get all trail media (photos and videos) - NEW

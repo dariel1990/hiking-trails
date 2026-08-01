@@ -100,6 +100,8 @@ class AdminTrailController extends Controller
         // Base validation rules
         $rules = [
             'name' => 'required|string|max:255',
+            'icon' => 'nullable|string|max:16',
+            'icon_image' => 'nullable|string|max:255',
             'description' => 'nullable|string',
             'location' => 'nullable|string|max:255',
             'location_type' => 'required|in:trail,fishing_lake',
@@ -194,9 +196,16 @@ class AdminTrailController extends Controller
 
         $request->validate($rules, [], $attributes);
 
+        $iconImage = $request->input('icon_image') ?: null;
+        if ($iconImage !== null && (! str_starts_with($iconImage, 'trail-icons/') || str_contains($iconImage, '..'))) {
+            abort(422, 'Invalid trail icon path.');
+        }
+
         // Prepare base data common to both types
         $data = [
             'name' => $request->name,
+            'icon' => $request->input('icon') ?: null,
+            'icon_image' => $iconImage,
             'description' => $request->description,
             'location' => $request->location,
             'location_type' => $request->location_type,
@@ -547,6 +556,8 @@ class AdminTrailController extends Controller
         // Base validation rules
         $rules = [
             'name' => 'required|string|max:255',
+            'icon' => 'nullable|string|max:16',
+            'icon_image' => 'nullable|string|max:255',
             'description' => 'nullable|string',
             'location' => 'nullable|string|max:255',
             'location_type' => 'required|in:trail,fishing_lake',
@@ -643,9 +654,16 @@ class AdminTrailController extends Controller
 
         $request->validate($rules, [], $attributes);
 
+        $iconImage = $request->input('icon_image') ?: null;
+        if ($iconImage !== null && (! str_starts_with($iconImage, 'trail-icons/') || str_contains($iconImage, '..'))) {
+            abort(422, 'Invalid trail icon path.');
+        }
+
         // Prepare base data
         $data = [
             'name' => $request->name,
+            'icon' => $request->input('icon') ?: null,
+            'icon_image' => $iconImage,
             'description' => $request->description,
             'location' => $request->location,
             'location_type' => $request->location_type,
@@ -1231,6 +1249,73 @@ class AdminTrailController extends Controller
             // instead of pointing at a now-deleted image.
             TrailFeature::where('icon_image', $path)->update(['icon_image' => null]);
             Tour::where('icon_image', $path)->update(['icon_image' => null]);
+        }
+
+        Storage::disk('public')->delete($path);
+
+        return response()->json(['deleted' => true]);
+    }
+
+    /**
+     * List all previously uploaded custom trail map icons.
+     */
+    public function listTrailIcons(): JsonResponse
+    {
+        $files = Storage::disk('public')->files('trail-icons');
+
+        $icons = collect($files)
+            ->filter(fn ($f) => preg_match('/\.(png|jpg|jpeg|webp|gif)$/i', $f))
+            ->map(fn ($f) => [
+                'path' => $f,
+                'url' => asset('storage/'.$f),
+            ])
+            ->values();
+
+        return response()->json($icons);
+    }
+
+    /**
+     * Upload a new custom trail map icon and return its path + URL.
+     */
+    public function uploadTrailIcon(Request $request): JsonResponse
+    {
+        $request->validate([
+            'icon' => 'required|image|mimes:jpg,jpeg,png,webp,gif|max:2048',
+        ]);
+
+        $path = $request->file('icon')->store('trail-icons', 'public');
+
+        return response()->json([
+            'path' => $path,
+            'url' => asset('storage/'.$path),
+        ]);
+    }
+
+    /**
+     * Delete a custom trail map icon.
+     */
+    public function deleteTrailIcon(Request $request): JsonResponse
+    {
+        $request->validate([
+            'path' => 'required|string',
+            'force' => 'nullable|boolean',
+        ]);
+
+        $path = $request->string('path')->toString();
+
+        if (! str_starts_with($path, 'trail-icons/') || str_contains($path, '..')) {
+            abort(422, 'Invalid icon path.');
+        }
+
+        $inUse = Trail::where('icon_image', $path)->count();
+
+        if ($inUse > 0 && ! $request->boolean('force')) {
+            return response()->json(['deleted' => false, 'in_use' => $inUse]);
+        }
+
+        if ($inUse > 0) {
+            // Clear the reference so these trails fall back to their activity icon
+            Trail::where('icon_image', $path)->update(['icon_image' => null]);
         }
 
         Storage::disk('public')->delete($path);

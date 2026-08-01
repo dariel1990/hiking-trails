@@ -503,6 +503,8 @@ class TrailController extends Controller
                 'trail_network_id' => $trail->trail_network_id,
                 'status' => $trail->status,
                 'route_coordinates' => $routeCoords,
+                'icon' => $trail->icon,
+                'icon_image_url' => $trail->icon_image ? asset('storage/'.$trail->icon_image) : null,
                 'preview_photo' => $featuredMedia ? Storage::url($featuredMedia->storage_path) : null,
                 'photos' => $photos,
                 'videos' => $videos,
@@ -598,6 +600,8 @@ class TrailController extends Controller
         return response()->json([
             'id' => $trail->id,
             'name' => $trail->name,
+            'icon' => $trail->icon,
+            'icon_image_url' => $trail->icon_image_url,
             'description' => $trail->description,
             'location' => $trail->location,
             'start_coordinates' => $trail->start_coordinates,

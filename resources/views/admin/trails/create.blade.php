@@ -137,6 +137,8 @@
                             <p class="text-sm text-red-500">{{ $message }}</p>
                         @enderror
                     </div>
+
+                    @include('admin.trails.partials.map-icon-picker')
                 </div>
             </div>
         </div>
@@ -593,7 +595,7 @@
                                 <div class="space-y-4">
                                     <div class="space-y-2">
                                         <label class="text-xs font-medium">Difficulty (1-5) *</label>
-                                        <select name="difficulty_level" :required="locationType === 'trail'"
+                                        <select name="difficulty_level"
                                                 class="flex h-9 w-full text-sm rounded-md border border-input bg-background px-3 py-2 ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
                                             <option value="">Auto-detect</option>
                                             <option value="1">1 - Very Easy</option>
@@ -606,7 +608,7 @@
                                     
                                     <div class="space-y-2">
                                         <label class="text-xs font-medium">Trail Type *</label>
-                                        <select name="trail_type" :required="locationType === 'trail'"
+                                        <select name="trail_type"
                                                 class="flex h-9 w-full text-sm rounded-md border border-input bg-background px-3 py-2 ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
                                             <option value="">Select type</option>
                                             <option value="loop" selected>Loop</option>
