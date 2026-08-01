@@ -273,20 +273,58 @@ Route::withoutMiddleware(VerifyAppKey::class)->group(function () {
     Route::get('/tours', function () {
         return Tour::active()
             ->withCount('stops')
+            ->with(['stops.trail', 'stops.feature', 'stops.facility'])
             ->orderBy('sort_order')
             ->orderBy('title')
             ->get()
-            ->map(fn ($tour) => [
-                'id' => $tour->id,
-                'title' => $tour->title,
-                'slug' => $tour->slug,
-                'tagline' => $tour->tagline,
-                'tour_type' => $tour->tour_type,
-                'duration_estimate' => $tour->duration_estimate,
-                'difficulty_summary' => $tour->difficulty_summary,
-                'stop_count' => $tour->stops_count,
-                'cover_image_url' => $tour->cover_image_url,
-            ]);
+            ->map(function (Tour $tour) {
+                $stops = $tour->stops->map(function ($stop) {
+                    $lat = null;
+                    $lng = null;
+                    $name = null;
+
+                    if ($stop->facility) {
+                        $lat = $stop->facility->latitude;
+                        $lng = $stop->facility->longitude;
+                        $name = $stop->facility->name;
+                    } elseif ($stop->feature && is_array($stop->feature->coordinates) && count($stop->feature->coordinates) >= 2) {
+                        [$lat, $lng] = $stop->feature->coordinates;
+                        $name = $stop->feature->name ?? $stop->trail?->name;
+                    } elseif ($stop->trail && is_array($stop->trail->start_coordinates) && count($stop->trail->start_coordinates) >= 2) {
+                        [$lat, $lng] = $stop->trail->start_coordinates;
+                        $name = $stop->trail->name;
+                    }
+
+                    if ($lat === null || $lng === null) {
+                        return null;
+                    }
+
+                    return [
+                        'id' => $stop->id,
+                        'name' => $stop->stop_label ?: $name,
+                        'stop_order' => $stop->stop_order,
+                        'lat' => (float) $lat,
+                        'lng' => (float) $lng,
+                        'trail_id' => $stop->trail_id,
+                        'facility_id' => $stop->facility_id,
+                    ];
+                })->filter()->values();
+
+                return [
+                    'id' => $tour->id,
+                    'title' => $tour->title,
+                    'slug' => $tour->slug,
+                    'tagline' => $tour->tagline,
+                    'tour_type' => $tour->tour_type,
+                    'duration_estimate' => $tour->duration_estimate,
+                    'difficulty_summary' => $tour->difficulty_summary,
+                    'stop_count' => $tour->stops_count,
+                    'cover_image_url' => $tour->cover_image_url,
+                    'icon' => $tour->tour_icon,
+                    'icon_image_url' => $tour->icon_image_url,
+                    'stops' => $stops,
+                ];
+            });
     });
 
     // Activity types — drives the map filter's Activities section

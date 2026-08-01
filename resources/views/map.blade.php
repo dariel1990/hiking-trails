@@ -28,7 +28,7 @@
             <div class="overflow-y-auto flex-1 px-6 py-4">
 
                 <!-- Distance -->
-                <div class="mb-6">
+                <div class="mb-6 trail-only-filter">
                     <h4 class="font-semibold text-base mb-3">Distance</h4>
                     <div class="flex flex-wrap gap-2">
                         <button data-dist="" class="dist-chip active-dist px-4 py-2 rounded-full text-sm font-medium border-2 border-transparent transition-all bg-gray-100 hover:bg-gray-200">Any</button>
@@ -40,7 +40,7 @@
                 </div>
 
                 <!-- Difficulty -->
-                <div class="mb-6 border-t pt-6">
+                <div class="mb-6 border-t pt-6 trail-only-filter">
                     <h4 class="font-semibold text-base mb-3">Difficulty</h4>
                     <div class="flex flex-wrap gap-2">
                         <button data-diff="" class="diff-chip active-diff px-4 py-2 rounded-full text-sm font-medium border-2 border-transparent transition-all bg-gray-100 hover:bg-gray-200">All levels</button>
@@ -53,7 +53,7 @@
                 </div>
 
                 <!-- Trail Type -->
-                <div class="mb-6 border-t pt-6">
+                <div class="mb-6 border-t pt-6 trail-only-filter">
                     <h4 class="font-semibold text-base mb-3">Trail Type</h4>
                     <div class="flex flex-wrap gap-2">
                         <button data-value="" class="trail-type-chip active-chip px-4 py-2 rounded-full text-sm font-medium border-2 border-transparent transition-all bg-gray-100 hover:bg-gray-200" onclick="setChip(this,'trail-type-chip')">All types</button>
@@ -64,7 +64,7 @@
                 </div>
 
                 <!-- Duration -->
-                <div class="mb-6 border-t pt-6">
+                <div class="mb-6 border-t pt-6 trail-only-filter">
                     <h4 class="font-semibold text-base mb-3">Duration</h4>
                     <div class="flex flex-wrap gap-2">
                         <button data-value="" class="duration-chip active-chip px-4 py-2 rounded-full text-sm font-medium border-2 border-transparent transition-all bg-gray-100 hover:bg-gray-200" onclick="setChip(this,'duration-chip')">Any</button>
@@ -77,7 +77,7 @@
                 </div>
 
                 <!-- Elevation Gain -->
-                <div class="mb-6 border-t pt-6">
+                <div class="mb-6 border-t pt-6 trail-only-filter">
                     <h4 class="font-semibold text-base mb-3">Elevation Gain</h4>
                     <div class="flex flex-wrap gap-2">
                         <button data-value="" class="elevation-chip active-chip px-4 py-2 rounded-full text-sm font-medium border-2 border-transparent transition-all bg-gray-100 hover:bg-gray-200" onclick="setChip(this,'elevation-chip')">Any</button>
@@ -90,7 +90,7 @@
                 </div>
 
                 <!-- Trail Features -->
-                <div class="mb-6 border-t pt-6">
+                <div class="mb-6 border-t pt-6 trail-only-filter">
                     <div class="flex items-center justify-between mb-3">
                         <h4 class="font-semibold text-base">Trail Features</h4>
                         <label class="flex items-center gap-2 cursor-pointer text-sm text-gray-500">
@@ -134,8 +134,29 @@
                     </div>
                 </div>
 
-                <!-- Activities -->
+                <!-- Facilities — hidden on the map by default; check to show.
+                     Viewpoints, Points of Interest and First Nation sites are always visible, so they're not listed. -->
                 <div class="mb-6 border-t pt-6">
+                    <div class="flex items-center justify-between mb-3">
+                        <h4 class="font-semibold text-base">Facilities</h4>
+                        <label class="flex items-center gap-2 cursor-pointer text-sm text-gray-500">
+                            <input type="checkbox" class="section-toggle w-4 h-4" data-target="facility-type-checkbox">
+                            <span class="select-none">All</span>
+                        </label>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2">
+                        @foreach(\App\Models\Facility::getFacilityTypes() as $facilityType => $facilityLabel)
+                            @continue(in_array($facilityType, ['viewpoint', 'point_of_interest', 'first_nation']))
+                            <label class="flex items-center cursor-pointer hover:bg-gray-50 p-3 rounded-lg">
+                                <input type="checkbox" value="{{ $facilityType }}" class="facility-type-checkbox w-5 h-5">
+                                <span class="ml-3 text-sm">{{ $facilityLabel }}</span>
+                            </label>
+                        @endforeach
+                    </div>
+                </div>
+
+                <!-- Activities -->
+                <div class="mb-6 border-t pt-6 trail-only-filter">
                     <div class="flex items-center justify-between mb-3">
                         <h4 class="font-semibold text-base">Activities</h4>
                         <label class="flex items-center gap-2 cursor-pointer text-sm text-gray-500">
@@ -165,8 +186,9 @@
                     </div>
                 </div>
 
-                <!-- Show on map — visibility toggles, not trail filters -->
-                <div class="mb-6 border-t pt-6">
+                <!-- Show on map — hidden for now: the sidebar tabs drive map visibility.
+                     Inputs stay in the DOM (checked) so applyAllFilters() keeps the layer flags true. -->
+                <div class="mb-6 border-t pt-6 hidden">
                     <div class="flex items-center justify-between mb-3">
                         <h4 class="font-semibold text-base">Show on map</h4>
                         <label class="flex items-center gap-2 cursor-pointer text-sm text-gray-500">
@@ -341,8 +363,71 @@
         </div>
     </div>
 
-    <!-- Bottom-right custom controls (sit above Mapbox zoom) — on mobile move to top-right below layers -->
-    <div class="absolute bottom-24 right-2.5 max-md:bottom-auto max-md:top-[182px] max-md:right-4 z-30 flex flex-col gap-1.5">
+    <!-- Right-side custom controls: layers / 3D / my-location (bottom-right on desktop, top-right on mobile) -->
+    <div class="absolute bottom-24 right-2.5 max-md:bottom-auto max-md:top-[164px] max-md:right-4 z-30 flex flex-col gap-1.5">
+        <!-- Map layers -->
+        <div class="relative" style="width:29px;height:29px;">
+            <button id="layers-toggle"
+                type="button"
+                title="Map style"
+                class="bg-white text-gray-700 shadow-md hover:bg-gray-50 transition-colors border border-gray-300"
+                style="width:29px;height:29px;display:flex;align-items:center;justify-content:center;border-radius:4px;">
+                <svg class="w-4 h-4 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 0v10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2z"/>
+                </svg>
+            </button>
+    <!-- Dropdown Menu — opens to the left of the button column -->
+    <div id="layers-dropdown" class="hidden absolute right-full mr-2 bottom-0 max-md:bottom-auto max-md:top-0 bg-white rounded-lg shadow-xl border border-gray-200 overflow-hidden" style="min-width: 200px;">
+        <div class="p-2">
+            <div class="text-xs font-semibold text-gray-500 uppercase tracking-wider px-3 py-2">Map Style</div>
+            <div class="grid grid-cols-2 gap-2 mb-2">
+                <button class="layer-option-card" data-map-type="standard">
+                    <div class="layer-preview">
+                        <img src="{{ asset('images/map-layers/standard.png') }}"
+                            alt="Standard" class="w-full h-full object-cover">
+                    </div>
+                    <span class="layer-label">Standard</span>
+                    <svg class="layer-checkmark" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                    </svg>
+                </button>
+
+                <button class="layer-option-card active" data-map-type="satellite">
+                    <div class="layer-preview">
+                        <img src="{{ asset('images/map-layers/satellite.png') }}"
+                            alt="Satellite" class="w-full h-full object-cover">
+                    </div>
+                    <span class="layer-label">Satellite</span>
+                    <svg class="layer-checkmark" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                    </svg>
+                </button>
+
+                <button class="layer-option-card" data-map-type="terrain">
+                    <div class="layer-preview">
+                        <img src="{{ asset('images/map-layers/terrain.png') }}"
+                            alt="Terrain" class="w-full h-full object-cover">
+                    </div>
+                    <span class="layer-label">Terrain</span>
+                    <svg class="layer-checkmark" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                    </svg>
+                </button>
+
+                <button class="layer-option-card" data-map-type="outdoors">
+                    <div class="layer-preview">
+                        <img src="{{ asset('images/map-layers/outdoor.png') }}"
+                            alt="Outdoors" class="w-full h-full object-cover">
+                    </div>
+                    <span class="layer-label">Outdoors</span>
+                    <svg class="layer-checkmark" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        </div>
+        </div>
         <!-- 3D Toggle -->
         <div id="view-mode-control" class="relative" style="width:29px;height:29px;">
             <!-- Sliding options pill (appears to the left of the button) -->
@@ -378,70 +463,6 @@
         </button>
     </div>
 
-    <!-- Map Type Selector - Top Right (desktop) / Below filter bar (mobile) -->
-    <div class="absolute top-4 right-4 max-md:top-28 z-30">
-        <div class="relative">
-            <!-- Toggle Button -->
-            <button id="layers-toggle" class="bg-white rounded-lg shadow-lg p-3 hover:bg-gray-50 transition-colors">
-                <svg class="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 0v10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2z"/>
-                </svg>
-            </button>
-
-            <!-- Dropdown Menu - Opens to the right on mobile, down on desktop -->
-            <div id="layers-dropdown" class="hidden absolute top-full right-0 mt-2 bg-white rounded-lg shadow-xl border border-gray-200 overflow-hidden" style="min-width: 200px;">
-                <div class="p-2">
-                    <div class="text-xs font-semibold text-gray-500 uppercase tracking-wider px-3 py-2">Map Style</div>
-                    <div class="grid grid-cols-2 gap-2 mb-2">
-                        <button class="layer-option-card" data-map-type="standard">
-                            <div class="layer-preview">
-                                <img src="{{ asset('images/map-layers/standard.png') }}"
-                                    alt="Standard" class="w-full h-full object-cover">
-                            </div>
-                            <span class="layer-label">Standard</span>
-                            <svg class="layer-checkmark" fill="currentColor" viewBox="0 0 20 20">
-                                <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
-                            </svg>
-                        </button>
-
-                        <button class="layer-option-card active" data-map-type="satellite">
-                            <div class="layer-preview">
-                                <img src="{{ asset('images/map-layers/satellite.png') }}"
-                                    alt="Satellite" class="w-full h-full object-cover">
-                            </div>
-                            <span class="layer-label">Satellite</span>
-                            <svg class="layer-checkmark" fill="currentColor" viewBox="0 0 20 20">
-                                <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
-                            </svg>
-                        </button>
-
-                        <button class="layer-option-card" data-map-type="terrain">
-                            <div class="layer-preview">
-                                <img src="{{ asset('images/map-layers/terrain.png') }}"
-                                    alt="Terrain" class="w-full h-full object-cover">
-                            </div>
-                            <span class="layer-label">Terrain</span>
-                            <svg class="layer-checkmark" fill="currentColor" viewBox="0 0 20 20">
-                                <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
-                            </svg>
-                        </button>
-
-                        <button class="layer-option-card" data-map-type="outdoors">
-                            <div class="layer-preview">
-                                <img src="{{ asset('images/map-layers/outdoor.png') }}"
-                                    alt="Outdoors" class="w-full h-full object-cover">
-                            </div>
-                            <span class="layer-label">Outdoors</span>
-                            <svg class="layer-checkmark" fill="currentColor" viewBox="0 0 20 20">
-                                <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
-                            </svg>
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
     <!-- Mobile Floating Search Bar -->
     <div id="mobile-search-bar" class="md:hidden absolute top-2 left-4 right-4 z-30">
         <button id="mobile-search-trigger" class="w-full flex items-center gap-3 bg-white rounded-full px-4 py-3 shadow-lg border border-gray-200 text-left">
@@ -452,12 +473,23 @@
         </button>
     </div>
 
+    <!-- Mobile Location Tabs — pill chips driving the map filter, matching the search bar width -->
+    <div id="mobile-map-tabs" class="md:hidden absolute top-[60px] left-4 right-4 z-30">
+        <div class="flex gap-1.5 py-1">
+            <button data-location-filter="trail" class="mobile-map-tab active">🥾 Hiking</button>
+            <button data-location-filter="fishing_lake" class="mobile-map-tab">🎣 Fishing</button>
+            <button data-location-filter="business" class="mobile-map-tab">🏪 Business</button>
+            <button data-location-filter="tour" class="mobile-map-tab">🗺️ Tours</button>
+            <button data-location-filter="first_nation" class="mobile-map-tab">📍 Nations</button>
+        </div>
+    </div>
+
     <!-- Filter Bar — Season toggle + single Filters button -->
-    <div id="filter-bar" class="absolute top-16 md:top-3 left-0 right-0 z-30 md:right-16 pointer-events-none">
+    <div id="filter-bar" class="absolute max-md:top-[108px] md:top-3 left-0 right-0 z-30 md:right-16 pointer-events-none">
         <div class="px-3 pointer-events-auto">
             <div class="flex items-center gap-2 max-md:w-full max-md:items-stretch">
                 <!-- Season -->
-                <div class="flex gap-0.5 bg-white rounded-2xl p-1 max-md:p-0.5 shadow-md border border-gray-200 flex-shrink-0 max-md:[flex:6] max-md:items-stretch">
+                <div class="season-toggle-group flex gap-0.5 bg-white rounded-2xl p-1 max-md:p-0.5 shadow-md border border-gray-200 flex-shrink-0 max-md:[flex:6] max-md:items-stretch">
                     <button data-season="summer" class="season-btn active flex items-center justify-center max-md:flex-1 px-3 py-1.5 max-md:py-0 rounded-xl text-xs font-semibold transition-all">☀️ Summer</button>
                     <button data-season="winter" class="season-btn flex items-center justify-center max-md:flex-1 px-3 py-1.5 max-md:py-0 rounded-xl text-xs font-semibold transition-all">❄️ Winter</button>
                 </div>
@@ -779,6 +811,62 @@
 /* Location filter active state */
 .location-filter-btn.active-filter {
     border-color: #2563EB;
+}
+
+/* Mobile map tab pills (below the mobile search bar) — share the search bar width equally */
+.mobile-map-tab {
+    flex: 1 1 0;
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    text-align: center;
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 9999px;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+    padding: 6px 2px;
+    font-size: 11px;
+    font-weight: 600;
+    color: #374151;
+    transition: background-color 0.15s, color 0.15s;
+}
+
+.mobile-map-tab.active {
+    background: linear-gradient(135deg, #10B981 0%, #059669 100%);
+    border-color: #059669;
+    color: #ffffff;
+}
+
+/* Fishing tab hides the Filters button — let the season toggle span the full
+   row as a clean two-half segmented control (buttons normally rely on the
+   Filters button for their height via items-stretch, so restore padding) */
+@media (max-width: 767px) {
+    #filter-bar.season-solo .season-toggle-group {
+        flex: 1 1 100% !important;
+    }
+
+    #filter-bar.season-solo .season-btn {
+        padding-top: 7px;
+        padding-bottom: 7px;
+    }
+}
+
+/* Numbered tour stop markers (Tours tab) */
+.tour-stop-marker-el {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: #6366f1;
+    color: #fff;
+    border: 2px solid #fff;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 1;
 }
 
 /* Sidebar nav buttons (icon nav column) */
@@ -1616,6 +1704,8 @@
     display: flex;
     align-items: center;
     justify-content: center;
+    text-align: center;
+    line-height: 1.2;
     color: white;
     font-size: 14px;
     font-weight: 600;
@@ -1699,6 +1789,10 @@
 #mobile-trail-hero-grid .facility-media-lock svg {
     width: 16px;
     height: 16px;
+}
+
+#mobile-trail-hero-grid .facility-media-overlay {
+    font-size: 11px;
 }
 
 #mobile-trail-hero:not(.hidden) {
@@ -2186,7 +2280,7 @@
     }
 
     // Patch individual checkbox change to update their section toggle
-    document.querySelectorAll('.layer-checkbox, .feature-checkbox, .activity-checkbox').forEach(cb => {
+    document.querySelectorAll('.layer-checkbox, .feature-checkbox, .activity-checkbox, .facility-type-checkbox').forEach(cb => {
         cb.addEventListener('change', function () {
             const cls = Array.from(this.classList).find(c => c.endsWith('-checkbox') && c !== 'w-5' && c !== 'h-5');
             if (cls) updateSectionToggleState(cls);
@@ -2201,6 +2295,7 @@
         layers: ['businesses', 'facilities', 'first_nation'],
         features: [],
         activities: [],
+        facilityTypes: [],
     };
 
     // Open All Filters Modal
@@ -2245,6 +2340,9 @@
         // Get activities (multi-select)
         advancedFilters.activities = Array.from(document.querySelectorAll('.activity-checkbox:checked')).map(cb => cb.value);
 
+        // Get facility types to show (hidden on the map unless checked)
+        advancedFilters.facilityTypes = Array.from(document.querySelectorAll('.facility-type-checkbox:checked')).map(cb => cb.value);
+
         // Close modal
         document.getElementById('all-filters-modal').classList.add('hidden');
 
@@ -2284,7 +2382,7 @@
         });
 
         // Restore defaults: filters unchecked, "Show on map" toggles checked (visible)
-        document.querySelectorAll('.feature-checkbox, .activity-checkbox').forEach(cb => { cb.checked = false; });
+        document.querySelectorAll('.feature-checkbox, .activity-checkbox, .facility-type-checkbox').forEach(cb => { cb.checked = false; });
         document.querySelectorAll('.layer-checkbox').forEach(cb => { cb.checked = true; });
         document.querySelectorAll('.section-toggle').forEach(cb => {
             cb.checked = cb.dataset.target === 'layer-checkbox';
@@ -2299,6 +2397,7 @@
             layers: ['businesses', 'facilities', 'first_nation'],
             features: [],
             activities: [],
+            facilityTypes: [],
         };
 
         // Update badge
@@ -2332,6 +2431,9 @@
 
         // Checked feature checkboxes
         document.querySelectorAll('.feature-checkbox:checked').forEach(() => count++);
+
+        // Checked facility-type checkboxes
+        document.querySelectorAll('.facility-type-checkbox:checked').forEach(() => count++);
 
         const badge = document.getElementById('filter-count-badge');
 
@@ -2400,6 +2502,10 @@
             this.networkData = [];
             this.facilityMarkers = [];
             this.facilityData = [];
+            this.tourMarkers = [];
+            this.tourStopMarkers = [];
+            this.tourData = null;
+            this._expandedTourId = null;
             this.showBusinesses = true;
             this.showFacilities = true;
             this.showFirstNationFacilities = true;
@@ -2441,6 +2547,7 @@
                     this.applyFilters();
                     this.renderBusinessMarkers();
                     this.renderNetworkMarkers();
+                    this.renderTourMarkers();
                 }
             });
         }
@@ -2598,6 +2705,28 @@
                         'line-width': 5,
                         'line-opacity': 0,
                         'line-trim-offset': [0, 1],
+                    },
+                });
+            }
+
+            // Dashed connector lines from a tour's center marker to each of its stops
+            if (!this.map.getSource('tour-connectors')) {
+                this.map.addSource('tour-connectors', {
+                    type: 'geojson',
+                    data: { type: 'FeatureCollection', features: [] },
+                });
+            }
+            if (!this.map.getLayer('tour-connectors-line')) {
+                this.map.addLayer({
+                    id: 'tour-connectors-line',
+                    type: 'line',
+                    source: 'tour-connectors',
+                    layout: { 'line-cap': 'round' },
+                    paint: {
+                        'line-color': '#6366f1',
+                        'line-width': 2,
+                        'line-dasharray': [2, 2],
+                        'line-opacity': 0.8,
                     },
                 });
             }
@@ -2878,16 +3007,33 @@
             return this.filterTrails(this.allTrails);
         }
 
+        // The API returns fishing lakes for both seasons — match them to the
+        // current season client-side via their activities (fishing = summer,
+        // ice-fishing = winter). Lakes with no activities always show.
+        lakeMatchesSeason(trail) {
+            const activities = trail.activities || [];
+            if (activities.length === 0) { return true; }
+            return activities.some(a => this.activeFilters.includes(a.type));
+        }
+
         filterTrails(trails) {
             return trails.filter(trail => {
-                // Apply difficulty filter
-                if (this.currentDifficulty && Math.round(parseFloat(trail.difficulty)) !== parseInt(this.currentDifficulty, 10)) {
+                const isFishingLake = trail.location_type === 'fishing_lake';
+
+                // Season check for fishing lakes (trails are season-filtered server-side)
+                if (isFishingLake && !this.lakeMatchesSeason(trail)) {
                     return false;
                 }
 
-                // Apply distance filter
-                if (this.currentDistance && !this.matchesDistanceFilter(trail.distance, this.currentDistance)) {
-                    return false;
+                // Difficulty + distance are trail-only filters (hidden on the fishing tab)
+                if (!isFishingLake) {
+                    if (this.currentDifficulty && Math.round(parseFloat(trail.difficulty)) !== parseInt(this.currentDifficulty, 10)) {
+                        return false;
+                    }
+
+                    if (this.currentDistance && !this.matchesDistanceFilter(trail.distance, this.currentDistance)) {
+                        return false;
+                    }
                 }
 
                 // Apply advanced filters
@@ -2900,6 +3046,12 @@
         }
 
         matchesAdvancedFilters(trail) {
+            // The advanced filters are all trail-only (hidden on the fishing tab) —
+            // they'd wrongly exclude fishing lakes, which lack that data
+            if (trail.location_type === 'fishing_lake') {
+                return true;
+            }
+
             // Trail Type filter
             if (advancedFilters.trailType && trail.trail_type !== advancedFilters.trailType) {
                 return false;
@@ -2965,10 +3117,10 @@
                 listTrails = [];
                 listBusinesses = this.businessData || [];
             } else if (this.activeLocationFilter === 'fishing_lake') {
-                listTrails = allFilteredTrails.filter(t => t.location_type === 'fishing_lake');
+                listTrails = allFilteredTrails.filter(t => t.location_type === 'fishing_lake' && !t.trail_network_id);
                 listBusinesses = [];
             } else {
-                listTrails = allFilteredTrails.filter(t => t.location_type === 'trail');
+                listTrails = allFilteredTrails.filter(t => t.location_type === 'trail' && !t.trail_network_id);
                 listBusinesses = [];
             }
             this.renderTrailList(listTrails, listBusinesses);
@@ -3207,22 +3359,30 @@
 
             const allFilteredTrails = this.filterTrails(this.allTrails);
 
-            // For the sidebar list, respect the active location filter tab.
-            // The map always shows all filtered trails regardless of which tab is active.
+            // Sidebar list + map both respect the active location filter tab —
+            // only the active tab's markers and routes are shown. Network trails
+            // are hidden from the list (represented by a single network marker).
             let listTrails, listBusinesses;
             if (this.activeLocationFilter === 'business') {
                 listTrails = [];
                 listBusinesses = this.businessData || [];
             } else if (this.activeLocationFilter === 'fishing_lake') {
-                listTrails = allFilteredTrails.filter(t => t.location_type === 'fishing_lake');
+                listTrails = allFilteredTrails.filter(t => t.location_type === 'fishing_lake' && !t.trail_network_id);
                 listBusinesses = [];
             } else {
-                listTrails = allFilteredTrails.filter(t => t.location_type === 'trail');
+                listTrails = allFilteredTrails.filter(t => t.location_type === 'trail' && !t.trail_network_id);
                 listBusinesses = [];
             }
             this.renderTrailList(listTrails, listBusinesses);
 
-            const mapTrails = allFilteredTrails;
+            let mapTrails;
+            if (this.activeLocationFilter === 'trail') {
+                mapTrails = allFilteredTrails.filter(t => t.location_type === 'trail');
+            } else if (this.activeLocationFilter === 'fishing_lake') {
+                mapTrails = allFilteredTrails.filter(t => t.location_type === 'fishing_lake');
+            } else {
+                mapTrails = [];
+            }
 
             // Update route GeoJSON source
             const source = this.map.getSource('trail-routes');
@@ -3246,25 +3406,24 @@
                 if (trail.trail_network_id) { return; }
 
                 const isFishingLake = trail.location_type === 'fishing_lake';
-
-                // Highlight markers
-                if (this.activeFilters.includes('highlights')) {
-                    this.createHighlightMarkers(trail);
-                }
+                let trailMarkerCreated = false;
 
                 if (isFishingLake) {
                     if (this.currentSeason === 'summer') {
-                        // Default fishing-lake marker in summer
-                        if (!this.overlayMarkers['fishing']) this.overlayMarkers['fishing'] = [];
-                        const marker = this.createTrailMarker(trail, { type: 'fishing', icon: '🐟', color: '#3B82F6' });
-                        if (marker) this.overlayMarkers['fishing'].push(marker);
+                        // Default fishing-lake marker in summer — skip winter-only
+                        // lakes (e.g. ice-fishing) so seasons stay exclusive
+                        if (this.lakeMatchesSeason(trail)) {
+                            if (!this.overlayMarkers['fishing']) this.overlayMarkers['fishing'] = [];
+                            const marker = this.createTrailMarker(trail, { type: 'fishing', icon: '🐟', color: '#3B82F6' });
+                            if (marker) { this.overlayMarkers['fishing'].push(marker); trailMarkerCreated = true; }
+                        }
                     } else {
                         // Winter: render the lake under any winter activity it offers (e.g. ice-fishing)
                         (trail.activities || []).forEach(activity => {
                             if (this.activeFilters.includes(activity.type)) {
                                 if (!this.overlayMarkers[activity.type]) this.overlayMarkers[activity.type] = [];
                                 const marker = this.createTrailMarker(trail, activity);
-                                if (marker) this.overlayMarkers[activity.type].push(marker);
+                                if (marker) { this.overlayMarkers[activity.type].push(marker); trailMarkerCreated = true; }
                             }
                         });
                     }
@@ -3279,16 +3438,22 @@
                             color: (displayActivity && displayActivity.color) || '#10B981',
                         };
                         const marker = this.createTrailMarker(trail, markerConfig);
-                        if (marker) this.overlayMarkers['hiking'].push(marker);
+                        if (marker) { this.overlayMarkers['hiking'].push(marker); trailMarkerCreated = true; }
                     }
                 } else {
                     trail.activities.forEach(activity => {
                         if (this.activeFilters.includes(activity.type)) {
                             if (!this.overlayMarkers[activity.type]) this.overlayMarkers[activity.type] = [];
                             const marker = this.createTrailMarker(trail, activity);
-                            if (marker) this.overlayMarkers[activity.type].push(marker);
+                            if (marker) { this.overlayMarkers[activity.type].push(marker); trailMarkerCreated = true; }
                         }
                     });
+                }
+
+                // Highlight markers — only for trails whose own marker is visible,
+                // so highlights disappear together with a filtered-out trail/lake
+                if (trailMarkerCreated && this.activeFilters.includes('highlights')) {
+                    this.createHighlightMarkers(trail);
                 }
             });
 
@@ -4455,7 +4620,7 @@
         focusOnTrailById(trailId) {
             const trail = this.allTrails.find(t => t.id == trailId);
             if (!trail) { return; }
-            this.focusOnTrail(trail, { activateLine: true });
+            this.focusOnTrail(trail, { flyToTrail: true, activateLine: true });
         }
 
         focusOnBusiness(businessId) {
@@ -4464,6 +4629,9 @@
                 const markerEl = document.querySelector(`.selectable-marker-el[data-business-id="${business.id}"]`);
                 if (markerEl) {
                     this._selectMarker(markerEl, business.latitude, business.longitude);
+                }
+                if (business.latitude && business.longitude) {
+                    this.map.flyTo({ center: [business.longitude, business.latitude], zoom: 16, duration: 800 });
                 }
                 this.openBusinessPanel(business);
             }
@@ -4476,8 +4644,123 @@
                 if (markerEl) {
                     this._selectMarker(markerEl, facility.latitude, facility.longitude);
                 }
+                if (facility.latitude && facility.longitude) {
+                    this.map.flyTo({ center: [facility.longitude, facility.latitude], zoom: 15, duration: 800 });
+                }
                 this.openFacilityPanel(facility);
             }
+        }
+
+        focusOnTour(tourId) {
+            this.ensureToursLoaded().then(tours => {
+                const tour = tours.find(t => t.id == tourId);
+                if (!tour) { return; }
+
+                const stops = (tour.stops || []).filter(s => s.lat != null && s.lng != null);
+                if (stops.length > 0) {
+                    const centerLat = stops.reduce((sum, s) => sum + s.lat, 0) / stops.length;
+                    const centerLng = stops.reduce((sum, s) => sum + s.lng, 0) / stops.length;
+
+                    const markerEl = document.querySelector(`.selectable-marker-el[data-tour-id="${tour.id}"]`);
+                    if (markerEl) { this._selectMarker(markerEl, centerLat, centerLng); }
+
+                    if (this._expandedTourId !== tour.id) {
+                        this.toggleTourStops(tour, [centerLng, centerLat]);
+                    } else {
+                        this.map.fitBounds(this._tourBounds(stops, [centerLng, centerLat]), { padding: 80, maxZoom: 13 });
+                    }
+                }
+
+                this.openTourPanel(tour);
+            });
+        }
+
+        _tourBounds(stops, center) {
+            const bounds = new mapboxgl.LngLatBounds();
+            bounds.extend(center);
+            stops.forEach(s => bounds.extend([s.lng, s.lat]));
+            return bounds;
+        }
+
+        openTourPanel(tour) {
+            if (this._isMobileViewport()) {
+                this.showMobileTourCard(tour);
+                return;
+            }
+            const panel = document.getElementById('business-panel');
+            const content = document.getElementById('business-panel-content');
+            if (!panel || !content) { return; }
+
+            const hero = tour.cover_image_url
+                ? `<div class="biz-panel-hero"><img src="${tour.cover_image_url}" alt="${escapeHtml(tour.title)}" onerror="window.xsImgFallback(this)"></div>`
+                : `<div class="biz-panel-hero" style="background:linear-gradient(135deg,#3b82f6,#22c55e);"><div class="biz-panel-hero-placeholder">🗺️</div></div>`;
+
+            const stops = tour.stops || [];
+            const metaParts = [
+                `<span class="biz-panel-type" style="text-transform:capitalize;">🗺️ ${escapeHtml((tour.tour_type || 'tour').replace(/_/g, ' '))}</span>`,
+                `<span class="biz-panel-dot">·</span><span>${stops.length} stop${stops.length !== 1 ? 's' : ''}</span>`,
+            ];
+
+            const tagline = tour.tagline ? `<p class="biz-panel-tagline">${escapeHtml(tour.tagline)}</p>` : '';
+
+            const infoRows = [];
+            if (tour.duration_estimate) {
+                infoRows.push(`
+                    <div class="biz-panel-info-row">
+                        <svg class="biz-panel-info-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                        <span>${escapeHtml(tour.duration_estimate)}</span>
+                    </div>`);
+            }
+            if (tour.difficulty_summary) {
+                infoRows.push(`
+                    <div class="biz-panel-info-row">
+                        <svg class="biz-panel-info-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                        <span>${escapeHtml(tour.difficulty_summary)}</span>
+                    </div>`);
+            }
+
+            const stopsList = stops.length
+                ? `<hr class="biz-panel-divider">
+                   <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Stops</p>
+                   ${stops.map((s, i) => `
+                       <div class="biz-panel-info-row">
+                           <span class="tour-stop-marker-el" style="width:20px;height:20px;font-size:10px;flex-shrink:0;">${i + 1}</span>
+                           <span>${escapeHtml(s.name || 'Stop ' + (i + 1))}</span>
+                       </div>`).join('')}`
+                : '';
+
+            const actions = `<div class="biz-panel-actions">
+                <a href="/tours/${tour.slug}" class="biz-panel-action-btn">
+                    <div class="biz-panel-action-icon">
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/></svg>
+                    </div>
+                    <span class="biz-panel-action-label">View Full Tour</span>
+                </a>
+            </div>`;
+
+            content.innerHTML = `
+                <div style="position:relative;flex-shrink:0;">
+                    ${hero}
+                    <button onclick="document.getElementById('business-panel').classList.add('hidden');window.trailMap?._clearSelection();"
+                            style="position:absolute;top:10px;right:10px;background:rgba(255,255,255,0.92);border:none;cursor:pointer;border-radius:50%;width:34px;height:34px;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(0,0,0,0.18);"
+                            aria-label="Close">
+                        <svg width="16" height="16" fill="none" stroke="#374151" stroke-width="2.5" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                    </button>
+                </div>
+                <div class="biz-panel-body">
+                    <h2 class="biz-panel-name">${escapeHtml(tour.title)}</h2>
+                    <div class="biz-panel-meta">${metaParts.join('')}</div>
+                    ${tagline}
+                    ${actions}
+                    ${infoRows.length ? `<hr class="biz-panel-divider">${infoRows.join('')}` : ''}
+                    ${stopsList}
+                </div>
+            `;
+
+            document.getElementById('trail-info-panel')?.classList.add('hidden');
+            panel.classList.remove('hidden');
         }
 
         showMobileBusinessCard(business) {
@@ -4550,6 +4833,44 @@
             document.getElementById('mobile-trail-description').classList.add('hidden');
             const actions = [`<a href="https://www.google.com/maps/search/?api=1&query=${facility.latitude},${facility.longitude}" target="_blank" rel="noopener" class="${btnClass}"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>Directions</a>`];
             document.getElementById('mobile-trail-actions').innerHTML = actions.join('');
+            document.getElementById('trail-info-panel')?.classList.add('hidden');
+            document.getElementById('business-panel')?.classList.add('hidden');
+            document.getElementById('mobile-trail-card').classList.remove('hidden');
+        }
+
+        showMobileTourCard(tour) {
+            const btnClass = 'flex-1 flex items-center justify-center gap-1.5 py-2 px-2 rounded-lg text-xs font-semibold border border-gray-200 bg-gray-50 hover:bg-gray-100 text-gray-700 transition-colors';
+            const img = document.getElementById('mobile-trail-img');
+            const placeholder = document.getElementById('mobile-trail-placeholder');
+            if (tour.cover_image_url) {
+                img.onerror = () => {
+                    img.classList.add('hidden');
+                    placeholder.classList.remove('hidden');
+                    placeholder.style.background = 'linear-gradient(135deg,#3b82f6,#22c55e)';
+                    placeholder.textContent = '🗺️';
+                };
+                img.src = tour.cover_image_url;
+                img.classList.remove('hidden');
+                placeholder.classList.add('hidden');
+            } else {
+                img.classList.add('hidden');
+                placeholder.classList.remove('hidden');
+                placeholder.textContent = '🗺️';
+                placeholder.style.background = 'linear-gradient(135deg,#3b82f6,#22c55e)';
+            }
+            this._setMobileHero([], tour.title, `tour-${tour.id}`);
+            document.getElementById('mobile-trail-name').textContent = tour.title;
+            const stops = tour.stops || [];
+            const metaParts = [`<span style="font-size:12px;font-weight:600;color:#2563eb;text-transform:capitalize;">🗺️ ${escapeHtml((tour.tour_type || 'tour').replace(/_/g, ' '))}</span>`];
+            metaParts.push(`<span style="color:#d1d5db;font-size:11px;">·</span><span style="font-size:12px;color:#6b7280;">${stops.length} stop${stops.length !== 1 ? 's' : ''}</span>`);
+            if (tour.duration_estimate) {
+                metaParts.push(`<span style="color:#d1d5db;font-size:11px;">·</span><span style="font-size:12px;color:#6b7280;">${escapeHtml(tour.duration_estimate)}</span>`);
+            }
+            document.getElementById('mobile-trail-diff-row').innerHTML = metaParts.join('');
+            document.getElementById('mobile-trail-stats').textContent = tour.tagline || '';
+            document.getElementById('mobile-trail-description').classList.add('hidden');
+            document.getElementById('mobile-trail-actions').innerHTML =
+                `<a href="/tours/${tour.slug}" class="${btnClass}"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/></svg>View Full Tour</a>`;
             document.getElementById('trail-info-panel')?.classList.add('hidden');
             document.getElementById('business-panel')?.classList.add('hidden');
             document.getElementById('mobile-trail-card').classList.remove('hidden');
@@ -4723,8 +5044,8 @@
         }
 
         openFacilityPanel(facility) {
-            // Points of interest (facilities) are a Pro feature; First Nation sites are free.
-            if (facility.facility_type !== 'first_nation' && !window.xsIsPro()) { window.xsRequirePro('poi'); return; }
+            // Only "Point of Interest" facilities are Pro; every other facility type is free.
+            if (facility.facility_type === 'point_of_interest' && !window.xsIsPro()) { window.xsRequirePro('poi'); return; }
             if (this._isMobileViewport()) {
                 this.showMobileFacilityCard(facility);
                 return;
@@ -4920,8 +5241,7 @@
                     const marker = new mapboxgl.Marker({ element: el, anchor: 'center' })
                         .setLngLat([facility.longitude, facility.latitude]);
 
-                    const shouldShow = facility.facility_type === 'first_nation' ? this.showFirstNationFacilities : this.showFacilities;
-                    if (shouldShow) { marker.addTo(this.map); }
+                    if (this.shouldShowFacility(facility.facility_type)) { marker.addTo(this.map); }
                     this.facilityMarkers.push(marker);
                 });
 
@@ -4931,7 +5251,10 @@
                 if (focusFacilityId) {
                     const facility = this.facilityData.find(f => f.id == focusFacilityId);
                     if (facility) {
-                        this.map.flyTo({ center: [facility.longitude, facility.latitude], zoom: 15 });
+                        // First Nation facilities only render on their own tab
+                        if (facility.facility_type === 'first_nation') {
+                            this.activateLocationTab('first_nation');
+                        }
                         this.focusOnFacility(facility.id);
                     }
                 }
@@ -4940,11 +5263,52 @@
             }
         }
 
+        // First Nation facilities only show on their tab. On the trail tabs
+        // (hiking + fishing), viewpoints and Points of Interest are always
+        // visible; every other facility type is hidden unless enabled in the
+        // Facilities section of the All Filters modal.
+        shouldShowFacility(facilityType) {
+            if (facilityType === 'first_nation') {
+                return this.showFirstNationFacilities && this.activeLocationFilter === 'first_nation';
+            }
+            if (!this.showFacilities || !['trail', 'fishing_lake'].includes(this.activeLocationFilter)) {
+                return false;
+            }
+            if (['viewpoint', 'point_of_interest'].includes(facilityType)) {
+                return true;
+            }
+            return advancedFilters.facilityTypes.includes(facilityType);
+        }
+
+        // Programmatically switch the sidebar location tab (deep links from
+        // detail pages) — clicking the button runs the full tab-switch logic.
+        activateLocationTab(filter) {
+            if (this.activeLocationFilter === filter) { return; }
+            const btn = document.querySelector(`.location-filter-btn[data-location-filter="${filter}"]`);
+            if (btn) {
+                btn.click();
+                return;
+            }
+            this.activeLocationFilter = filter;
+            document.getElementById('filter-bar')?.classList.toggle(
+                'hidden',
+                !['trail', 'fishing_lake'].includes(filter)
+            );
+            document.getElementById('all-filters-btn')?.classList.toggle('hidden', filter === 'fishing_lake');
+            document.getElementById('filter-bar')?.classList.toggle('season-solo', filter === 'fishing_lake');
+            document.querySelectorAll('.trail-only-filter').forEach(el => {
+                el.classList.toggle('hidden', filter === 'fishing_lake');
+            });
+            this.applyFilters();
+            this.renderNetworkMarkers();
+            this.renderBusinessMarkers();
+            this.renderFacilityMarkers();
+            this.renderTourMarkers();
+        }
+
         renderFacilityMarkers() {
             (this.facilityMarkers || []).forEach(m => {
-                const type = m.getElement()?.dataset.facilityType;
-                const shouldShow = type === 'first_nation' ? this.showFirstNationFacilities : this.showFacilities;
-                if (shouldShow) {
+                if (this.shouldShowFacility(m.getElement()?.dataset.facilityType)) {
                     m.addTo(this.map);
                 } else {
                     m.remove();
@@ -4963,6 +5327,9 @@
                 if (businessId) {
                     const business = this.businessData.find(b => b.id == businessId);
                     if (business && business.latitude && business.longitude) {
+                        // Deep link from a business page: activate the Business tab
+                        // so its marker is actually rendered under tab filtering
+                        this.activateLocationTab('business');
                         this.map.flyTo({ center: [business.longitude, business.latitude], zoom: 17 });
                         setTimeout(() => {
                             const marker = this.businessMarkers[business.id];
@@ -4980,7 +5347,7 @@
             Object.values(this.businessMarkers).forEach(m => m.remove());
             this.businessMarkers = {};
 
-            if (!this.showBusinesses) return;
+            if (!this.showBusinesses || this.activeLocationFilter !== 'business') return;
 
             (this.businessData || []).forEach(business => {
                 const el = this._createMarkerEl(business.icon || '🏪', business.icon_image_url || null);
@@ -4997,6 +5364,161 @@
 
                 this.businessMarkers[business.id] = marker;
             });
+        }
+
+        async ensureToursLoaded() {
+            if (this.tourData) { return this.tourData; }
+            try {
+                const res = await fetch('/api/tours');
+                this.tourData = await res.json();
+            } catch (e) {
+                this.tourData = [];
+            }
+            return this.tourData;
+        }
+
+        // Tours tab: show only the tour icon at the center of each tour's stops.
+        // Clicking the icon expands that tour — numbered stop markers + dashed
+        // connector lines — and clicking it again collapses them.
+        renderTourMarkers() {
+            (this.tourMarkers || []).forEach(m => m.remove());
+            this.tourMarkers = [];
+            this._collapseTourStops();
+
+            if (this.activeLocationFilter !== 'tour') { return; }
+
+            this.ensureToursLoaded().then(tours => {
+                if (this.activeLocationFilter !== 'tour') { return; }
+
+                tours.forEach(tour => {
+                    const stops = (tour.stops || []).filter(s => s.lat != null && s.lng != null);
+                    if (stops.length === 0) { return; }
+
+                    const centerLat = stops.reduce((sum, s) => sum + s.lat, 0) / stops.length;
+                    const centerLng = stops.reduce((sum, s) => sum + s.lng, 0) / stops.length;
+
+                    // Same visual as the search-result card: cover image, fallback 🗺️
+                    const el = this._createMarkerEl('🗺️', tour.cover_image_url || null);
+                    el.dataset.tourId = tour.id;
+                    el.title = tour.title;
+                    el.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        const expanding = this._expandedTourId !== tour.id;
+                        this.toggleTourStops(tour, [centerLng, centerLat]);
+                        if (expanding) {
+                            this._selectMarker(el, centerLat, centerLng);
+                            this.openTourPanel(tour);
+                        } else {
+                            this.closeBusinessPanel();
+                        }
+                    });
+                    const marker = new mapboxgl.Marker({ element: el, anchor: 'center' })
+                        .setLngLat([centerLng, centerLat])
+                        .addTo(this.map);
+                    this.tourMarkers.push(marker);
+                });
+            });
+        }
+
+        _collapseTourStops() {
+            (this.tourStopMarkers || []).forEach(m => m.remove());
+            this.tourStopMarkers = [];
+            this._expandedTourId = null;
+            const connectorSource = this.map.getSource('tour-connectors');
+            if (connectorSource) {
+                connectorSource.setData({ type: 'FeatureCollection', features: [] });
+            }
+            // Only clear routes on the tours tab — on other tabs applyFilters()
+            // owns the trail-routes source and must not be clobbered here.
+            if (this.activeLocationFilter === 'tour') {
+                const routeSource = this.map.getSource('trail-routes');
+                if (routeSource) {
+                    routeSource.setData({ type: 'FeatureCollection', features: [] });
+                }
+            }
+        }
+
+        toggleTourStops(tour, center) {
+            const wasExpanded = this._expandedTourId === tour.id;
+            this._collapseTourStops();
+            if (wasExpanded) { return; }
+
+            this._expandedTourId = tour.id;
+            const stops = (tour.stops || []).filter(s => s.lat != null && s.lng != null);
+            const connectorFeatures = [];
+            const stopTrails = [];
+            const bounds = new mapboxgl.LngLatBounds();
+            bounds.extend(center);
+
+            stops.forEach(stop => {
+                // Render the stop as its real trail/facility marker so its
+                // normal detail panel opens on click.
+                let stopMarker = null;
+
+                if (stop.facility_id) {
+                    const facility = (this.facilityData || []).find(f => f.id == stop.facility_id);
+                    if (facility) {
+                        const el = this._createMarkerEl(facility.icon || '📍', facility.icon_image_url || null);
+                        el.dataset.facilityId = facility.id;
+                        el.dataset.facilityType = facility.facility_type;
+                        el.addEventListener('click', (e) => {
+                            e.stopPropagation();
+                            this._selectMarker(el, facility.latitude, facility.longitude);
+                            this.openFacilityPanel(facility);
+                        });
+                        stopMarker = new mapboxgl.Marker({ element: el, anchor: 'center' })
+                            .setLngLat([facility.longitude, facility.latitude]);
+                    }
+                } else if (stop.trail_id) {
+                    const trail = (this.allTrails || []).find(t => t.id == stop.trail_id);
+                    if (trail) {
+                        stopTrails.push(trail);
+                        const displayActivity = this.getTrailDisplayActivity(trail);
+                        stopMarker = this.createTrailMarker(trail, {
+                            type: 'hiking',
+                            icon: (displayActivity && displayActivity.icon) || '🥾',
+                            icon_image_url: (displayActivity && displayActivity.icon_image_url) || null,
+                            color: (displayActivity && displayActivity.color) || '#10B981',
+                        });
+                    }
+                }
+
+                // Fallback if the trail/facility isn't loaded: plain dot with the stop name
+                if (!stopMarker) {
+                    const stopEl = document.createElement('div');
+                    stopEl.className = 'tour-stop-marker-el';
+                    stopEl.title = stop.name || tour.title;
+                    stopMarker = new mapboxgl.Marker({ element: stopEl, anchor: 'center' })
+                        .setLngLat([stop.lng, stop.lat]);
+                }
+
+                stopMarker.addTo(this.map);
+                this.tourStopMarkers.push(stopMarker);
+
+                const target = stopMarker.getLngLat();
+                connectorFeatures.push({
+                    type: 'Feature',
+                    properties: { tourId: tour.id },
+                    geometry: {
+                        type: 'LineString',
+                        coordinates: [center, [target.lng, target.lat]],
+                    },
+                });
+                bounds.extend([target.lng, target.lat]);
+            });
+
+            const connectorSource = this.map.getSource('tour-connectors');
+            if (connectorSource) {
+                connectorSource.setData({ type: 'FeatureCollection', features: connectorFeatures });
+            }
+            // Load the expanded stops' routes so trail selection/highlight works normally
+            const routeSource = this.map.getSource('trail-routes');
+            if (routeSource) {
+                routeSource.setData(this.buildRouteGeoJSON(stopTrails));
+            }
+            if (stops.length > 0) {
+                this.map.fitBounds(bounds, { padding: 80, maxZoom: 13 });
+            }
         }
 
         async loadTrailNetworks() {
@@ -5021,6 +5543,8 @@
         renderNetworkMarkers() {
             Object.values(this.networkMarkers).forEach(m => m.remove());
             this.networkMarkers = {};
+
+            if (this.activeLocationFilter !== 'trail') return;
 
             const season = this.currentSeason;
 
@@ -5219,6 +5743,24 @@
                 </div>
             `).join('');
 
+            // Business tab: group cards under their business-type label
+            // (label already includes the emoji, e.g. "☕ Cafe")
+            const renderGroupedBusinessCards = (items) => {
+                const groups = new Map();
+                items.forEach(b => {
+                    const label = b.business_type_label || '📍 Other';
+                    if (!groups.has(label)) { groups.set(label, []); }
+                    groups.get(label).push(b);
+                });
+                const textOf = (label) => label.replace(/^[^\p{L}]+/u, '');
+                return [...groups.keys()]
+                    .sort((a, b) => textOf(a).localeCompare(textOf(b)))
+                    .map(label =>
+                        `<div class="px-1 pt-3 pb-1"><p class="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1">${escapeHtml(label)} (${groups.get(label).length})</p></div>`
+                        + renderBusinessCards(groups.get(label))
+                    ).join('');
+            };
+
             const renderTrailCards = (items) => items.map(trail => {
                 // Use preview_photo or first photo from photos array
                 const imageUrl = trail.preview_photo || (trail.photos && trail.photos.length > 0 ? trail.photos[0].url : null);
@@ -5311,7 +5853,7 @@
                 }
                 container.innerHTML = html;
             } else if (activeFilter === 'business') {
-                container.innerHTML = sectionHeader('🏪', 'Businesses', businesses.length) + renderBusinessCards(businesses);
+                container.innerHTML = renderGroupedBusinessCards(businesses);
             } else if (activeFilter === 'trail') {
                 container.innerHTML = sectionHeader('🥾', 'Hiking Trails', trails.length) + renderTrailCards(trails);
             } else if (activeFilter === 'fishing_lake') {
@@ -5405,8 +5947,9 @@
             const stopBtn = document.getElementById('fly-stop-overlay-btn');
             if (stopBtn) { stopBtn.classList.remove('hidden'); }
 
-            // Hide the floating search bar and filter bar on mobile so the animation has a clear stage
+            // Hide the floating search bar, tab row and filter bar on mobile so the animation has a clear stage
             document.getElementById('mobile-search-bar')?.classList.add('hidden');
+            document.getElementById('mobile-map-tabs')?.classList.add('hidden');
             document.getElementById('filter-bar')?.classList.add('max-md:hidden');
 
             this._isFlying = true;
@@ -5696,8 +6239,9 @@
             const stopBtn = document.getElementById('fly-stop-overlay-btn');
             if (stopBtn) { stopBtn.classList.add('hidden'); }
 
-            // Restore the floating search bar and filter bar on mobile
+            // Restore the floating search bar, tab row and filter bar on mobile
             document.getElementById('mobile-search-bar')?.classList.remove('hidden');
+            document.getElementById('mobile-map-tabs')?.classList.remove('hidden');
             document.getElementById('filter-bar')?.classList.remove('max-md:hidden');
 
             // Restore the trail list if we were the ones that collapsed it
@@ -6062,7 +6606,7 @@
             }
 
             container.innerHTML = tours.map(tour => `
-                <a href="/tours/${tour.slug}" class="trail-list-card flex gap-3 items-center no-underline">
+                <div class="trail-list-card flex gap-3 items-center cursor-pointer" onclick="window.trailMap.focusOnTour(${tour.id})">
                     <div class="flex-shrink-0 w-12 h-12 rounded-lg overflow-hidden bg-gradient-to-br from-blue-400 to-green-500">
                         ${tour.cover_image_url
                             ? `<img src="${escapeHtml(tour.cover_image_url)}" alt="${escapeHtml(tour.title)}" class="w-full h-full object-cover">`
@@ -6073,7 +6617,7 @@
                         <div class="text-xs text-gray-500">${tour.stop_count} stop${tour.stop_count !== 1 ? 's' : ''}${tour.tagline ? ' · ' + escapeHtml(tour.tagline) : ''}</div>
                     </div>
                     <svg class="h-4 w-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
-                </a>
+                </div>
             `).join('');
         }
 
@@ -6081,7 +6625,11 @@
             const searchTerm = searchInput ? searchInput.value.toLowerCase().trim() : '';
             if (!window.trailMap) { return; }
 
-            const allTrails = window.trailMap.allTrails || window.trailMap.currentTrails || [];
+            // Respect the map's active filters (season, distance, difficulty,
+            // activities, features) so the list matches what the map shows.
+            // Network trails are hidden on the map (single network marker) — hide them here too.
+            const allTrails = window.trailMap.filterTrails(window.trailMap.allTrails || window.trailMap.currentTrails || [])
+                .filter(t => !t.trail_network_id);
             const allBusinesses = window.trailMap.businessData || [];
 
             if (activeLocationFilter === 'tour') {
@@ -6125,21 +6673,73 @@
             }
         }
 
-        // Location type filter buttons — only narrow the search results panel.
-        // Map markers are always shown regardless of which tab is active.
+        // Repaint every tab UI (desktop sidebar, mobile pills, drawer tabs)
+        // from a single filter value so they can never drift apart.
+        function syncLocationTabs(filter) {
+            document.querySelectorAll('.location-filter-btn').forEach(b => {
+                b.classList.toggle('active-filter', b.dataset.locationFilter === filter);
+            });
+            document.querySelectorAll('.mobile-map-tab').forEach(b => {
+                b.classList.toggle('active', b.dataset.locationFilter === filter);
+            });
+            document.querySelectorAll('.mobile-location-tab').forEach(b => {
+                const isActive = b.dataset.mobileLocationFilter === filter;
+                b.classList.toggle('text-primary-600', isActive);
+                b.classList.toggle('border-primary-600', isActive);
+                b.classList.toggle('text-gray-500', !isActive);
+                b.classList.toggle('border-transparent', !isActive);
+            });
+            if (typeof mobileLocationFilter !== 'undefined') { mobileLocationFilter = filter; }
+        }
+
+        // Location type filter buttons — exclusive filter for both the search
+        // results panel and the map (only the active tab's markers are shown).
         document.querySelectorAll('.location-filter-btn').forEach(btn => {
             btn.addEventListener('click', function() {
                 activeLocationFilter = this.dataset.locationFilter;
+
+                syncLocationTabs(activeLocationFilter);
+
+                // Season + Filters controls only apply to trails and fishing lakes
+                document.getElementById('filter-bar')?.classList.toggle(
+                    'hidden',
+                    !['trail', 'fishing_lake'].includes(activeLocationFilter)
+                );
+                // The All Filters modal is entirely trail-only — hide its button
+                // (and sections, for safety) on the fishing tab
+                document.getElementById('all-filters-btn')?.classList.toggle('hidden', activeLocationFilter === 'fishing_lake');
+                document.getElementById('filter-bar')?.classList.toggle('season-solo', activeLocationFilter === 'fishing_lake');
+                document.querySelectorAll('.trail-only-filter').forEach(el => {
+                    el.classList.toggle('hidden', activeLocationFilter === 'fishing_lake');
+                });
+
                 if (window.trailMap) {
                     window.trailMap.activeLocationFilter = activeLocationFilter;
+
+                    // Close any open detail panels + drop stale route highlight
+                    document.getElementById('trail-info-panel')?.classList.add('hidden');
+                    document.getElementById('business-panel')?.classList.add('hidden');
+                    window.trailMap.clearRoute?.();
+                    window.trailMap._clearSelection?.();
+                    window.trailMap._selectedTrailId = null;
+
+                    // Re-render every marker group for the new tab
+                    window.trailMap.applyFilters();
+                    window.trailMap.renderNetworkMarkers();
+                    window.trailMap.renderBusinessMarkers();
+                    window.trailMap.renderFacilityMarkers();
+                    window.trailMap.renderTourMarkers?.();
                 }
 
-                document.querySelectorAll('.location-filter-btn').forEach(b => {
-                    b.classList.remove('active-filter');
-                });
-                this.classList.add('active-filter');
-
                 refreshList();
+            });
+        });
+
+        // Mobile map tab pills — delegate to the matching desktop tab button so
+        // the full tab-switch flow (markers, panels, filter bar) runs unchanged
+        document.querySelectorAll('.mobile-map-tab').forEach(btn => {
+            btn.addEventListener('click', function() {
+                document.querySelector(`.location-filter-btn[data-location-filter="${this.dataset.locationFilter}"]`)?.click();
             });
         });
 
@@ -6181,6 +6781,8 @@
                     const input = document.getElementById('mobile-search-input');
                     if (input) { input.focus(); }
                 }, 50);
+                // Open on the map's active tab so drawer + map stay in sync
+                syncLocationTabs(window.trailMap?.activeLocationFilter || 'trail');
                 // Show all results immediately (same as desktop)
                 window.mobileSearchDrawer.refreshResults();
             },
@@ -6188,7 +6790,10 @@
                 if (!window.trailMap) { return; }
                 const input = document.getElementById('mobile-search-input');
                 const q = input ? input.value.trim().toLowerCase() : '';
-                const allTrails     = window.trailMap.allTrails || [];
+                // Respect the map's active filters (season, distance, difficulty, …)
+                // and hide network trails (shown as a single network marker on the map)
+                const allTrails     = window.trailMap.filterTrails(window.trailMap.allTrails || [])
+                    .filter(t => !t.trail_network_id);
                 const allBusinesses = window.trailMap.businessData || [];
                 const filter = typeof mobileLocationFilter !== 'undefined' ? mobileLocationFilter : 'trail';
                 let trails, businesses;
@@ -6202,7 +6807,7 @@
                             return;
                         }
                         inner.innerHTML = filtered.map(tour => `
-                            <a href="/tours/${escapeHtml(tour.slug)}" class="trail-list-card flex gap-3 items-center no-underline">
+                            <div class="trail-list-card flex gap-3 items-center cursor-pointer" onclick="window.trailMap.focusOnTour(${tour.id})">
                                 <div class="flex-shrink-0 w-10 h-10 rounded-lg overflow-hidden bg-gradient-to-br from-blue-400 to-green-500">
                                     ${tour.cover_image_url
                                         ? `<img src="${escapeHtml(tour.cover_image_url)}" class="w-full h-full object-cover">`
@@ -6212,7 +6817,7 @@
                                     <div class="font-medium text-sm text-gray-900 truncate">${escapeHtml(tour.title)}</div>
                                     <div class="text-xs text-gray-500">${tour.stop_count} stop${tour.stop_count !== 1 ? 's' : ''}</div>
                                 </div>
-                            </a>
+                            </div>
                         `).join('');
                     });
                     return;
@@ -6234,10 +6839,9 @@
                         (!q || t.name.toLowerCase().includes(q) || (t.location && t.location.toLowerCase().includes(q))));
                     businesses = [];
                 }
-                const saved = window.trailMap.activeLocationFilter;
-                window.trailMap.activeLocationFilter = filter;
+                // The drawer tabs are synced with activeLocationFilter, so the
+                // list renders under the same filter the map is showing
                 window.trailMap.renderTrailList(trails, businesses, 'mobile-search-results-inner');
-                window.trailMap.activeLocationFilter = saved;
             },
             close() {
                 const drawer = document.getElementById('mobile-search-drawer');
@@ -6251,17 +6855,7 @@
                 if (clearBtn) { clearBtn.classList.add('hidden'); }
                 const inner = document.getElementById('mobile-search-results-inner');
                 if (inner) { inner.innerHTML = '<p class="text-sm text-gray-400 text-center py-8">Start typing to search...</p>'; }
-                // Reset tabs to "Hiking"
-                if (typeof mobileLocationFilter !== 'undefined') { mobileLocationFilter = 'trail'; }
-                document.querySelectorAll('.mobile-location-tab').forEach(b => {
-                    b.classList.remove('text-primary-600', 'border-primary-600');
-                    b.classList.add('text-gray-500', 'border-transparent');
-                });
-                const trailTab = document.querySelector('[data-mobile-location-filter="trail"]');
-                if (trailTab) {
-                    trailTab.classList.remove('text-gray-500', 'border-transparent');
-                    trailTab.classList.add('text-primary-600', 'border-primary-600');
-                }
+                // Keep the active tab — the drawer stays in sync with the map
             },
         };
 
@@ -6290,17 +6884,12 @@
             if (card) { window.mobileSearchDrawer.close(); }
         });
 
-        // Mobile search drawer location filter tabs
+        // Mobile search drawer location filter tabs — switch the map filter too
+        // (via the desktop button, which runs the full flow + syncLocationTabs)
         let mobileLocationFilter = 'trail';
         document.querySelectorAll('.mobile-location-tab').forEach(btn => {
             btn.addEventListener('click', function () {
-                mobileLocationFilter = this.dataset.mobileLocationFilter;
-                document.querySelectorAll('.mobile-location-tab').forEach(b => {
-                    b.classList.remove('text-primary-600', 'border-primary-600');
-                    b.classList.add('text-gray-500', 'border-transparent');
-                });
-                this.classList.remove('text-gray-500', 'border-transparent');
-                this.classList.add('text-primary-600', 'border-primary-600');
+                document.querySelector(`.location-filter-btn[data-location-filter="${this.dataset.mobileLocationFilter}"]`)?.click();
                 window.mobileSearchDrawer.refreshResults();
             });
         });
@@ -6313,6 +6902,10 @@
             setTimeout(() => {
                 const trail = trailMap.allTrails.find(t => t.id == trailId);
                 if (trail) {
+                    // Fishing lakes only render on their own tab — switch first
+                    if (trail.location_type === 'fishing_lake') {
+                        trailMap.activateLocationTab('fishing_lake');
+                    }
                     trailMap.focusOnTrail(trail, { flyToTrail: true, activateLine: true });
                 }
             }, 1500);

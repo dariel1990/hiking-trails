@@ -208,7 +208,7 @@
         <div class="lg:grid lg:grid-cols-5 lg:gap-8">
 
             <!-- Map (left 3/5) -->
-            <div id="tour-map-sticky" class="lg:col-span-3 w-auto md:w-full h-[300px] md:h-[400px] lg:h-[560px] sticky top-20 lg:top-24 z-20 pt-4 pb-6 px-[5px] md:p-0 bg-white rounded-none md:rounded-2xl -mx-4 md:mx-0">
+            <div id="tour-map-sticky" class="lg:col-span-3 w-auto md:w-full h-[300px] md:h-[400px] lg:h-[560px] md:sticky md:top-20 lg:top-24 z-20 pt-4 pb-6 px-[5px] md:p-0 bg-white rounded-none md:rounded-2xl -mx-4 md:mx-0">
                 <div id="tour-map" class="w-full h-full rounded-none md:rounded-2xl overflow-hidden shadow-lg border border-gray-200 bg-gray-200"></div>
 
                 <!-- Map Style Switcher -->
