@@ -123,7 +123,9 @@ Route::post('/billing/apple/notifications', [AppleNotificationController::class,
 
 // Public routes — called by both the website JS map and the Android app.
 // VerifyAppKey is excluded: the website map JS never sends X-App-Key.
-Route::withoutMiddleware(VerifyAppKey::class)->group(function () {
+// Per-IP throttle: generous enough for the web map's burst of fetches on load,
+// low enough to stop scripted scraping of the whole content surface.
+Route::withoutMiddleware(VerifyAppKey::class)->middleware('throttle:public-api')->group(function () {
     // Community trail photo submission — rate-limited, gated by reCAPTCHA + admin moderation.
     Route::post('/trail-photos', [TrailPhotoController::class, 'store'])
         ->middleware('throttle:5,60');
@@ -182,9 +184,6 @@ Route::withoutMiddleware(VerifyAppKey::class)->group(function () {
             'end_lng' => 'required|numeric',
         ]);
 
-        // Add debugging
-        Log::info('Route calculation request:', $request->all());
-
         $routeService = new RouteService;
         $route = $routeService->calculateRoute(
             $request->start_lat,
@@ -194,21 +193,15 @@ Route::withoutMiddleware(VerifyAppKey::class)->group(function () {
         );
 
         if (! $route) {
-            Log::error('Route calculation failed for coordinates', $request->all());
+            Log::error('Route calculation failed for coordinates', $request->only([
+                'start_lat', 'start_lng', 'end_lat', 'end_lng',
+            ]));
 
-            return response()->json([
-                'error' => 'Unable to calculate route',
-                'debug' => [
-                    'api_key_set' => ! empty(config('services.openrouteservice.api_key')),
-                    'coordinates' => $request->all(),
-                ],
-            ], 400);
+            return response()->json(['error' => 'Unable to calculate route'], 400);
         }
 
-        Log::info('Route calculation successful');
-
         return response()->json($route);
-    });
+    })->middleware('throttle:ors');
 
     Route::post('/elevation-profile', function (Request $request) {
         $request->validate([
@@ -224,7 +217,7 @@ Route::withoutMiddleware(VerifyAppKey::class)->group(function () {
         }
 
         return response()->json($elevation);
-    });
+    })->middleware('throttle:ors');
 
     // Facilities
     Route::get('/facilities', function () {
@@ -391,7 +384,7 @@ Route::withoutMiddleware(VerifyAppKey::class)->group(function () {
         } catch (Exception $e) {
             return response()->json(['error' => 'Route calculation failed: '.$e->getMessage()], 500);
         }
-    });
+    })->middleware('throttle:ors');
 
     // Businesses
     Route::get('/businesses', function () {
