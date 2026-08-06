@@ -28,3 +28,54 @@ if (! function_exists('subscriptions_enabled')) {
         return (bool) setting('subscriptions_enabled', config('subscriptions.enabled'));
     }
 }
+
+if (! function_exists('visitor_mobile_platform')) {
+    /**
+     * The visitor's mobile platform from the User-Agent: 'ios', 'android',
+     * or null for desktop and anything unrecognised. Used to show only the
+     * relevant app-store badge on phones while desktops see both.
+     *
+     * Note: iPadOS 13+ Safari reports a Macintosh User-Agent by default, so
+     * those iPads fall through to null and are offered both stores.
+     */
+    function visitor_mobile_platform(?string $userAgent = null): ?string
+    {
+        $agent = $userAgent ?? (string) request()->userAgent();
+
+        if (preg_match('/iPhone|iPad|iPod/i', $agent)) {
+            return 'ios';
+        }
+
+        if (preg_match('/Android/i', $agent)) {
+            return 'android';
+        }
+
+        return null;
+    }
+}
+
+if (! function_exists('visitor_in_native_app')) {
+    /**
+     * Whether the page is being rendered inside the native app's WebView,
+     * where promoting the app store makes no sense.
+     *
+     * Android WebViews append "; wv)" to the User-Agent — Chrome and Firefox
+     * on Android don't. iOS WKWebViews omit the "Safari/" token that mobile
+     * Safari always sends. Either platform may also identify itself with an
+     * explicit "XploreSmithers" token if the app sets a custom User-Agent.
+     */
+    function visitor_in_native_app(?string $userAgent = null): bool
+    {
+        $agent = $userAgent ?? (string) request()->userAgent();
+
+        if (stripos($agent, 'XploreSmithers') !== false) {
+            return true;
+        }
+
+        if (str_contains($agent, '; wv)')) {
+            return true;
+        }
+
+        return visitor_mobile_platform($agent) === 'ios' && ! str_contains($agent, 'Safari/');
+    }
+}
