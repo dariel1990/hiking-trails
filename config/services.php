@@ -126,4 +126,10 @@ return [
         ))),
     ],
 
+    'ios_app' => [
+        // Public App Store listing used by the marketing badges. Distinct from
+        // the `app_store` block above, which holds In-App Purchase credentials.
+        'app_store_url' => env('IOS_APP_STORE_URL'),
+    ],
+
 ];

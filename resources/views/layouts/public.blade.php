@@ -16,6 +16,7 @@
             proUrl: @json(route('pro.show'))
         };
         window.xsAppDownloadUrl = @json(config('services.android_app.play_store_url'));
+        window.xsIosAppDownloadUrl = @json(config('services.ios_app.app_store_url'));
     </script>
     <style>[x-cloak]{display:none !important;}</style>
 
@@ -417,25 +418,50 @@
                             </form>
                         </div>
                         
-                        @if(config('services.android_app.play_store_url'))
+                        {{-- Keep the single-line directive form: a block-form raw PHP region here would swallow the markup back to the head. --}}
+                        @php($footerPlatform = visitor_mobile_platform())
+                        @php($showFooterAppStore = config('services.ios_app.app_store_url') && $footerPlatform !== 'android')
+                        @php($showFooterPlayStore = config('services.android_app.play_store_url') && $footerPlatform !== 'ios')
+                        @if(($showFooterAppStore || $showFooterPlayStore) && ! visitor_in_native_app())
                         <!-- Get the app -->
                         <div class="mb-6 hidden lg:block">
                             <p class="text-gray-300 text-sm mb-3 font-medium">Get the app</p>
-                            <a href="{{ config('services.android_app.play_store_url') }}"
-                               target="_blank"
-                               rel="noopener"
-                               class="inline-flex items-center gap-3 bg-black hover:bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 transition-colors duration-300">
-                                <svg class="w-7 h-7" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                    <path d="M3.609 1.814L13.792 12 3.61 22.186a.996.996 0 0 1-.61-.92V2.734a1 1 0 0 1 .609-.92z" fill="#34A853"/>
-                                    <path d="M16.81 15.013L6.05 21.21l8.13-8.131 2.63 1.934z" fill="#EA4335"/>
-                                    <path d="M20.16 10.81a1 1 0 0 1 0 1.74l-3.35 1.93-2.63-2.48 2.63-2.48 3.35 1.29z" fill="#FBBC04"/>
-                                    <path d="M14.18 12l-8.13-8.13L16.81 8.97l-2.63 3.03z" fill="#4285F4"/>
-                                </svg>
-                                <div class="flex flex-col leading-tight">
-                                    <span class="text-[10px] text-gray-300 uppercase tracking-wider">Get it on</span>
-                                    <span class="text-white text-base font-semibold">Google Play</span>
-                                </div>
-                            </a>
+                            <div class="flex flex-col gap-3 items-start">
+                                @if($showFooterAppStore)
+                                <a href="{{ config('services.ios_app.app_store_url') }}"
+                                   target="_blank"
+                                   rel="noopener"
+                                   aria-label="Download the app on the App Store"
+                                   class="inline-flex items-center gap-3 bg-black hover:bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 transition-colors duration-300">
+                                    <svg class="w-7 h-7" viewBox="0 0 24 24" fill="#fff" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                                        <path d="M17.564 12.75c-.024-2.51 2.05-3.717 2.143-3.775-1.166-1.706-2.98-1.94-3.624-1.966-1.544-.156-3.013.91-3.797.91-.782 0-1.99-.887-3.272-.863-1.684.025-3.235.978-4.1 2.484-1.747 3.03-.447 7.52 1.254 9.98.83 1.204 1.82 2.558 3.122 2.51 1.253-.05 1.726-.81 3.24-.81 1.514 0 1.94.81 3.266.785 1.348-.024 2.203-1.228 3.03-2.437.955-1.398 1.348-2.75 1.372-2.82-.03-.013-2.633-1.01-2.66-4.01zM15.09 5.39c.69-.836 1.157-2 1.03-3.157-.995.04-2.2.662-2.914 1.497-.64.74-1.2 1.923-1.05 3.057 1.11.086 2.243-.564 2.934-1.397z"/>
+                                    </svg>
+                                    <div class="flex flex-col leading-tight">
+                                        <span class="text-[10px] text-gray-300 uppercase tracking-wider">Download on the</span>
+                                        <span class="text-white text-base font-semibold">App Store</span>
+                                    </div>
+                                </a>
+                                @endif
+
+                                @if($showFooterPlayStore)
+                                <a href="{{ config('services.android_app.play_store_url') }}"
+                                   target="_blank"
+                                   rel="noopener"
+                                   aria-label="Get the app on Google Play"
+                                   class="inline-flex items-center gap-3 bg-black hover:bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 transition-colors duration-300">
+                                    <svg class="w-7 h-7" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                                        <path d="M3.609 1.814L13.792 12 3.61 22.186a.996.996 0 0 1-.61-.92V2.734a1 1 0 0 1 .609-.92z" fill="#34A853"/>
+                                        <path d="M16.81 15.013L6.05 21.21l8.13-8.131 2.63 1.934z" fill="#EA4335"/>
+                                        <path d="M20.16 10.81a1 1 0 0 1 0 1.74l-3.35 1.93-2.63-2.48 2.63-2.48 3.35 1.29z" fill="#FBBC04"/>
+                                        <path d="M14.18 12l-8.13-8.13L16.81 8.97l-2.63 3.03z" fill="#4285F4"/>
+                                    </svg>
+                                    <div class="flex flex-col leading-tight">
+                                        <span class="text-[10px] text-gray-300 uppercase tracking-wider">Get it on</span>
+                                        <span class="text-white text-base font-semibold">Google Play</span>
+                                    </div>
+                                </a>
+                                @endif
+                            </div>
                         </div>
                         @endif
 

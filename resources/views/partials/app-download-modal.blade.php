@@ -78,6 +78,19 @@
         </ul>
 
         <div class="xs-app-actions">
+            @if(config('services.ios_app.app_store_url') && visitor_mobile_platform() !== 'android')
+            <a id="app-download-modal-ios-link" href="#" target="_blank" rel="noopener" class="xs-app-cta">
+                <svg class="w-7 h-7 flex-shrink-0" viewBox="0 0 24 24" fill="#fff" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                    <path d="M17.564 12.75c-.024-2.51 2.05-3.717 2.143-3.775-1.166-1.706-2.98-1.94-3.624-1.966-1.544-.156-3.013.91-3.797.91-.782 0-1.99-.887-3.272-.863-1.684.025-3.235.978-4.1 2.484-1.747 3.03-.447 7.52 1.254 9.98.83 1.204 1.82 2.558 3.122 2.51 1.253-.05 1.726-.81 3.24-.81 1.514 0 1.94.81 3.266.785 1.348-.024 2.203-1.228 3.03-2.437.955-1.398 1.348-2.75 1.372-2.82-.03-.013-2.633-1.01-2.66-4.01zM15.09 5.39c.69-.836 1.157-2 1.03-3.157-.995.04-2.2.662-2.914 1.497-.64.74-1.2 1.923-1.05 3.057 1.11.086 2.243-.564 2.934-1.397z"/>
+                </svg>
+                <span style="display:flex;flex-direction:column;align-items:flex-start;line-height:1.2;">
+                    <span style="font-size:10px;color:#d1d5db;text-transform:uppercase;letter-spacing:.05em;">Download on the</span>
+                    <span style="font-size:15px;font-weight:600;">App Store</span>
+                </span>
+            </a>
+            @endif
+
+            @if(config('services.android_app.play_store_url') && visitor_mobile_platform() !== 'ios')
             <a id="app-download-modal-link" href="#" target="_blank" rel="noopener" class="xs-app-cta">
                 <svg class="w-7 h-7 flex-shrink-0" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                     <path d="M3.609 1.814L13.792 12 3.61 22.186a.996.996 0 0 1-.61-.92V2.734a1 1 0 0 1 .609-.92z" fill="#34A853"/>
@@ -90,10 +103,12 @@
                     <span style="font-size:15px;font-weight:600;">Google Play</span>
                 </span>
             </a>
+            @endif
+
             <button type="button" class="xs-app-later" data-xs-app-close>Maybe later</button>
         </div>
 
-        <p class="xs-app-foot">Free to download · Available on Android</p>
+        <p class="xs-app-foot">Free to download · Available on iOS &amp; Android</p>
     </div>
 </div>
 
@@ -109,6 +124,10 @@
             var modalLink = document.getElementById('app-download-modal-link');
             if (modalLink && window.xsAppDownloadUrl) {
                 modalLink.href = window.xsAppDownloadUrl;
+            }
+            var iosLink = document.getElementById('app-download-modal-ios-link');
+            if (iosLink && window.xsIosAppDownloadUrl) {
+                iosLink.href = window.xsIosAppDownloadUrl;
             }
 
             // Cancel any pending hide from a previous close so it doesn't strip
