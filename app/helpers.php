@@ -54,6 +54,23 @@ if (! function_exists('visitor_mobile_platform')) {
     }
 }
 
+if (! function_exists('visitor_in_third_party_browser')) {
+    /**
+     * Whether the visitor is inside someone else's in-app browser — the
+     * Instagram/Facebook bio-link browser, TikTok, Snapchat and friends.
+     * These are WebViews, but their users have not installed our app.
+     */
+    function visitor_in_third_party_browser(?string $userAgent = null): bool
+    {
+        $agent = $userAgent ?? (string) request()->userAgent();
+
+        return (bool) preg_match(
+            '/Instagram|FBAN|FBAV|FB_IAB|FBIOS|Messenger|TikTok|musical_ly|BytedanceWebview|Snapchat|LinkedInApp|Pinterest|WhatsApp|Twitter|Line\/|MicroMessenger|GSA\//i',
+            $agent
+        );
+    }
+}
+
 if (! function_exists('visitor_in_native_app')) {
     /**
      * Whether the page is being rendered inside the native app's WebView,
@@ -63,6 +80,11 @@ if (! function_exists('visitor_in_native_app')) {
      * on Android don't. iOS WKWebViews omit the "Safari/" token that mobile
      * Safari always sends. Either platform may also identify itself with an
      * explicit "XploreSmithers" token if the app sets a custom User-Agent.
+     *
+     * Third-party in-app browsers (Instagram, Facebook, TikTok, …) are also
+     * WebViews and would otherwise match both heuristics, hiding the store
+     * badges from exactly the visitors arriving from a social bio link — so
+     * they are excluded unless the app's own token is present.
      */
     function visitor_in_native_app(?string $userAgent = null): bool
     {
@@ -70,6 +92,10 @@ if (! function_exists('visitor_in_native_app')) {
 
         if (stripos($agent, 'XploreSmithers') !== false) {
             return true;
+        }
+
+        if (visitor_in_third_party_browser($agent)) {
+            return false;
         }
 
         if (str_contains($agent, '; wv)')) {
