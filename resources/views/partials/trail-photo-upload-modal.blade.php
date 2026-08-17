@@ -430,6 +430,14 @@
                             this.hasFile = false;
                             this.successMessage = 'Thanks — your photo is awaiting review.';
                             setTimeout(() => this.close(), 2600);
+
+                            // Contributing a photo is a high-satisfaction moment. Ask after
+                            // this modal has closed, so the two never stack.
+                            setTimeout(() => {
+                                if (typeof window.xsMaybeShowReviewPrompt === 'function') {
+                                    window.xsMaybeShowReviewPrompt('photo-upload');
+                                }
+                            }, 3600);
                         } catch (err) {
                             this.errorMessage = err.message || 'Something went wrong. Please try again.';
                         } finally {

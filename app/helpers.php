@@ -105,3 +105,90 @@ if (! function_exists('visitor_in_native_app')) {
         return visitor_mobile_platform($agent) === 'ios' && ! str_contains($agent, 'Safari/');
     }
 }
+
+if (! function_exists('review_channel')) {
+    /**
+     * Which review destination applies to this visitor. 'ios' and 'android'
+     * mean the request came from inside our own app, where the App Store or
+     * Play Store review flow is the right target. Everything else — desktop,
+     * mobile web, and third-party in-app browsers — is a website visit and
+     * belongs on the Google Business Profile listing instead.
+     */
+    function review_channel(?string $userAgent = null): string
+    {
+        if (! visitor_in_native_app($userAgent)) {
+            return 'web';
+        }
+
+        return match (visitor_mobile_platform($userAgent)) {
+            'ios' => 'ios',
+            'android' => 'android',
+            default => 'web',
+        };
+    }
+}
+
+if (! function_exists('review_url')) {
+    /**
+     * The web URL that opens the review form for a channel, or null when that
+     * channel has not been configured yet. This is the fallback the popup uses
+     * when the native in-app review bridge is unavailable; render sites should
+     * guard on it, matching how the app-store badges hide themselves when their
+     * URL is unset.
+     *
+     * Only the numeric-id form of an App Store link supports ?action=write-review,
+     * so the id is read from services.ios_app.app_id or parsed out of the
+     * configured listing URL.
+     */
+    function review_url(?string $channel = null): ?string
+    {
+        $channel ??= review_channel();
+
+        if ($channel === 'ios') {
+            $listingUrl = (string) config('services.ios_app.app_store_url');
+
+            $appId = config('services.ios_app.app_id')
+                ?: (preg_match('/\/id(\d+)/', $listingUrl, $matches) ? $matches[1] : null);
+
+            if ($appId) {
+                return "https://apps.apple.com/app/id{$appId}?action=write-review";
+            }
+
+            return $listingUrl ?: null;
+        }
+
+        if ($channel === 'android') {
+            $package = config('services.android_app.package_name');
+
+            if ($package) {
+                return 'https://play.google.com/store/apps/details?id='.$package;
+            }
+
+            return config('services.android_app.play_store_url') ?: null;
+        }
+
+        $googleReview = trim((string) setting('google_review_link'));
+
+        if ($googleReview === '') {
+            return null;
+        }
+
+        // The Business Profile's "Get more reviews" panel hands out a short link
+        // (https://g.page/r/…/review) rather than a Place ID, so accept either.
+        if (str_starts_with($googleReview, 'http://') || str_starts_with($googleReview, 'https://')) {
+            return $googleReview;
+        }
+
+        return 'https://search.google.com/local/writereview?placeid='.urlencode($googleReview);
+    }
+}
+
+if (! function_exists('review_feedback_email')) {
+    /**
+     * Where the review popup's "Send us feedback" button opens a message to.
+     */
+    function review_feedback_email(): ?string
+    {
+        return setting('review_feedback_email') ?: setting('developer_email');
+    }
+}

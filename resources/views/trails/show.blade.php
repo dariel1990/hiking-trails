@@ -2953,6 +2953,7 @@ document.addEventListener('DOMContentLoaded', function() {
         // In the app, GPX is a Pro feature: native gates + saves to Downloads.
         if (window.xsInApp()) {
             try { window.Offline.downloadGpx({{ $trail->id }}); } catch (e) {}
+            maybeAskForReview('gpx-download');
             return;
         }
         // In the browser, non-subscribers are sent to the web paywall.
@@ -2986,7 +2987,19 @@ document.addEventListener('DOMContentLoaded', function() {
         // Cosmetic slide-up toast only — the download above already fired,
         // so this never blocks a repeat click.
         showGpxToast();
+        maybeAskForReview('gpx-download');
     });
+
+    // A completed GPX download is a high-satisfaction moment, so it's a good time
+    // to ask for a review — but only if the visitor is already eligible. Guarded
+    // because the prompt partial is skipped entirely when unconfigured.
+    function maybeAskForReview(trigger) {
+        if (typeof window.xsMaybeShowReviewPrompt !== 'function') {
+            return;
+        }
+        // Let the toast land first.
+        setTimeout(function () { window.xsMaybeShowReviewPrompt(trigger); }, 3200);
+    }
 
     // ── Download Offline Map (app only) ───────────────────────────────────────
     // Mirrors the native Map screen's offline download: window.Offline.downloadTrail

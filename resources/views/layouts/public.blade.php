@@ -17,7 +17,27 @@
         };
         window.xsAppDownloadUrl = @json(config('services.android_app.play_store_url'));
         window.xsIosAppDownloadUrl = @json(config('services.ios_app.app_store_url'));
-    </script>
+
+        {{-- Review prompt: which store/listing this visitor should be sent to, and
+             the engagement thresholds before they are asked. See
+             partials/review-prompt-modal.blade.php. --}}
+        window.xsReview = {
+            enabled: {{ setting('review_prompt_enabled') ? 'true' : 'false' }},
+            channel: @json(review_channel()),
+            url: @json(review_url()),
+            {{-- All three, so the native bridge can correct a mis-sniffed User-Agent. --}}
+            urls: {
+                ios: @json(review_url('ios')),
+                android: @json(review_url('android')),
+                web: @json(review_url('web'))
+            },
+            eventUrl: @json(url('/api/review-prompt/event')),
+            minPageViews: {{ (int) setting('review_prompt_min_page_views') }},
+            minSessions: {{ (int) setting('review_prompt_min_sessions') }},
+            minDays: {{ (int) setting('review_prompt_min_days') }},
+            snoozeDays: {{ (int) setting('review_prompt_snooze_days') }}
+        };
+</script>
     <style>[x-cloak]{display:none !important;}</style>
 
     <title>@yield('title', setting('default_page_title'))</title>
@@ -489,7 +509,7 @@
             <!-- Bottom footer with enhanced styling -->
             <div class="mt-12 pt-8 border-t border-green-800/60">
                 <div class="flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0 text-center md:text-left">
-                    <div class="flex items-center space-x-6">
+                    <div class="flex flex-col md:flex-row md:items-center gap-3 md:gap-6">
                         <p class="text-gray-400 text-sm">
                             &copy; {{ date('Y') }} {{ setting('copyright_text') }}
                             <span class="text-emerald-400 font-medium">Discover responsibly.</span>
@@ -501,6 +521,19 @@
                             <span>•</span>
                             <a href="#" class="hover:text-emerald-400 transition-colors">Accessibility</a>
                         </div>
+
+                        {{-- Outside the hidden md:flex row above: phone visitors are the
+                             ones most likely to review, so this must stay visible. --}}
+                        @if(setting('review_prompt_enabled') && review_url())
+                        <button type="button"
+                                onclick="if (typeof window.xsShowReviewPrompt === 'function') { window.xsShowReviewPrompt('manual'); }"
+                                class="inline-flex items-center justify-center gap-1.5 text-xs text-gray-400 hover:text-emerald-400 transition-colors">
+                            <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                                <path d="M12 2.5l2.9 5.88 6.49.94-4.7 4.58 1.11 6.46L12 17.3l-5.8 3.06 1.11-6.46-4.7-4.58 6.49-.94L12 2.5z"/>
+                            </svg>
+                            Leave a review
+                        </button>
+                        @endif
                     </div>
                     
                     <div class="flex items-center space-x-2 text-sm text-gray-400">
@@ -517,6 +550,9 @@
 
     {{-- XploreSmithers Pro upgrade modal (web gating) --}}
     @include('subscription._upgrade-modal')
+
+    {{-- Platform-aware "leave a review" prompt (App Store / Google Play / Google Reviews) --}}
+    @include('partials.review-prompt-modal')
 
 
     @stack('scripts')

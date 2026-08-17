@@ -130,6 +130,10 @@ return [
         // Public App Store listing used by the marketing badges. Distinct from
         // the `app_store` block above, which holds In-App Purchase credentials.
         'app_store_url' => env('IOS_APP_STORE_URL'),
+
+        // Numeric App Store id (e.g. 6501234567). Only the id form supports the
+        // `?action=write-review` deep link used by the review prompt.
+        'app_id' => env('IOS_APP_STORE_APP_ID'),
     ],
 
 ];

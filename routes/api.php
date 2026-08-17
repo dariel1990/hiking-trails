@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\BillingController;
 use App\Http\Controllers\Api\EntitlementController;
 use App\Http\Controllers\Api\EventImportController;
+use App\Http\Controllers\Api\ReviewPromptEventController;
 use App\Http\Controllers\Api\TrailPhotoController;
 use App\Http\Controllers\TrailController;
 use App\Http\Controllers\TrailNetworkController;
@@ -132,6 +133,11 @@ Route::withoutMiddleware(VerifyAppKey::class)->middleware('throttle:public-api')
 
     // Public list of approved photos for a trail (powers the carousel on the trail details page).
     Route::get('/trail-photos', [TrailPhotoController::class, 'index']);
+
+    // Review prompt telemetry — a fire-and-forget beacon from the popup, sent by
+    // both the website and the apps' WebViews, so it must not require X-App-Key.
+    Route::post('/review-prompt/event', [ReviewPromptEventController::class, 'store'])
+        ->middleware('throttle:20,1');
 
     // Map data — trails
     Route::get('/trails', [TrailController::class, 'apiIndex']);

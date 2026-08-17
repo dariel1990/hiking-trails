@@ -154,6 +154,51 @@
                 </div>
             </div>
         </section>
+
+        {{-- ══════════════════ REVIEW PROMPT ══════════════════ --}}
+        <section class="space-y-8">
+            <div class="reveal flex items-center gap-4">
+                <h2 class="display text-2xl sm:text-3xl font-normal">Review Prompt</h2>
+                <span class="h-px flex-1" style="background:var(--line-2)"></span>
+                <span class="text-xs uppercase tracking-[.18em]" style="color:var(--muted)">App Store · Google Play · Google Reviews</span>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-5 lg:gap-6">
+                <div class="reveal bezel" style="--d:.05s">
+                    <div class="core p-7 lg:p-8">
+                        <p class="text-xs uppercase tracking-[.16em]" style="color:var(--muted)">Prompts Shown</p>
+                        <div class="display num text-4xl font-light leading-none mt-3">{{ number_format($promptsShown) }}</div>
+                    </div>
+                </div>
+
+                <div class="reveal bezel" style="--d:.12s">
+                    <div class="core p-7 lg:p-8">
+                        <p class="text-xs uppercase tracking-[.16em]" style="color:var(--muted)">Went to Review</p>
+                        <div class="display num text-4xl font-light leading-none mt-3">{{ number_format($reviewClicks) }}</div>
+                        <p class="mt-3 text-sm" style="color:var(--muted)">{{ $reviewClickRate }}% of prompts</p>
+                    </div>
+                </div>
+
+                <div class="reveal bezel" style="--d:.19s">
+                    <div class="core p-7 lg:p-8">
+                        <p class="text-xs uppercase tracking-[.16em]" style="color:var(--muted)">Sent Feedback</p>
+                        <div class="display num text-4xl font-light leading-none mt-3">{{ number_format($feedbackClicks) }}</div>
+                        <p class="mt-3 text-sm" style="color:var(--muted)">private, not a public review</p>
+                    </div>
+                </div>
+
+                <div class="reveal bezel" style="--d:.26s">
+                    <div class="core p-7 lg:p-8">
+                        <p class="text-xs uppercase tracking-[.16em] mb-4" style="color:var(--muted)">Reviews by Channel</p>
+                        @if(empty($reviewsByChannel))
+                            <p class="text-sm" style="color:var(--muted)">No review clicks yet.</p>
+                        @else
+                            @include('admin.analytics._bar-list', ['data' => $reviewsByChannel, 'accent' => 'var(--amber), #F0A868'])
+                        @endif
+                    </div>
+                </div>
+            </div>
+        </section>
     </div>
 </div>
 @endsection

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\ReviewPromptEvent;
 use App\Models\Trail;
 use App\Models\TrailVisit;
 use Illuminate\Database\Eloquent\Collection;
@@ -14,12 +15,18 @@ class DeviceAnalyticsController extends Controller
     {
         $visits = TrailVisit::query()->get(['trail_id', 'device_type', 'platform', 'browser']);
 
+        // whereHas rather than having('visits_count', '>', 0): SQLite rejects a
+        // HAVING clause on a query with no GROUP BY, which MySQL tolerates.
         $topTrails = Trail::query()
             ->withCount('visits')
-            ->having('visits_count', '>', 0)
+            ->whereHas('visits')
             ->orderByDesc('visits_count')
             ->limit(10)
             ->get(['id', 'name', 'location_type']);
+
+        $reviewEvents = ReviewPromptEvent::query()->get(['channel', 'action']);
+        $promptsShown = $reviewEvents->where('action', 'shown')->count();
+        $reviewClicks = $reviewEvents->where('action', 'review_clicked')->count();
 
         return view('admin.device-analytics.index', [
             'totalVisits' => $visits->count(),
@@ -28,6 +35,11 @@ class DeviceAnalyticsController extends Controller
             'byBrowser' => $this->countBy($visits, 'browser'),
             'byPlatform' => $this->countBy($visits, 'platform'),
             'topTrails' => $topTrails,
+            'promptsShown' => $promptsShown,
+            'reviewClicks' => $reviewClicks,
+            'feedbackClicks' => $reviewEvents->where('action', 'feedback_clicked')->count(),
+            'reviewClickRate' => $promptsShown > 0 ? round($reviewClicks / $promptsShown * 100, 1) : 0.0,
+            'reviewsByChannel' => $this->countBy($reviewEvents->where('action', 'review_clicked'), 'channel'),
         ]);
     }
 
