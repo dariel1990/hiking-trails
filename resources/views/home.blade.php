@@ -63,6 +63,11 @@
                 <a href="{{ route('tours.index') }}" class="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-white/10 hover:bg-white hover:text-gray-900 border-2 border-white/70 text-white font-semibold py-4 px-8 rounded-full transition-all duration-300 text-lg shadow-lg backdrop-blur-sm">
                     🧭 Tours
                 </a>
+                @if($shopUrl = setting('shop_url'))
+                    <a href="{{ $shopUrl }}" target="_blank" rel="noopener noreferrer" class="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-white/10 hover:bg-white hover:text-gray-900 border-2 border-white/70 text-white font-semibold py-4 px-8 rounded-full transition-all duration-300 text-lg shadow-lg backdrop-blur-sm">
+                        🛍️ Shop
+                    </a>
+                @endif
             </div>
         </div>
         <!-- Enhanced Search Bar with Better Layout -->

@@ -400,6 +400,11 @@
                         <li><a href="{{ route('trails.index', ['difficulty' => 1]) }}" class="text-gray-300 hover:text-accent-400 transition-colors duration-300 flex items-center space-x-2">
                             <span>🌱</span><span>Easy Trails</span>
                         </a></li>
+                        @if($footerShopUrl = setting('shop_url'))
+                            <li><a href="{{ $footerShopUrl }}" target="_blank" rel="noopener noreferrer" class="text-gray-300 hover:text-accent-400 transition-colors duration-300 flex items-center space-x-2">
+                                <span>🛍️</span><span>Shop</span>
+                            </a></li>
+                        @endif
                     </ul>
                 </div>
                 

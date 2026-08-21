@@ -51,7 +51,7 @@
 
         @case('social_links')
             @php
-                $iconLibrary = config('social-icons');
+                $iconLibrary = config('social-icons') ?? [];
                 $rawRows = old($key) !== null
                     ? json_decode(old($key), true)
                     : (is_string($value) ? json_decode($value, true) : $value);

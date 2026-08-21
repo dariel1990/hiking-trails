@@ -188,6 +188,15 @@ return [
             'default' => 'https://xploresmithers.com/support/',
             'rules' => ['nullable', 'url', 'max:500'],
         ],
+        'shop_url' => [
+            'group' => 'contact',
+            'label' => 'Shop URL',
+            'type' => 'string',
+            'input' => 'url',
+            'default' => 'https://xploresmithers.com/shop/',
+            'rules' => ['nullable', 'url', 'max:500'],
+            'hint' => 'Leave blank to hide the Shop button on the homepage and in the footer.',
+        ],
         'main_site_url' => [
             'group' => 'contact',
             'label' => 'Main site URL',
