@@ -7,6 +7,7 @@ use App\Http\Controllers\Admin\AdminEmailLogController;
 use App\Http\Controllers\Admin\AdminSettingsController;
 use App\Http\Controllers\Admin\AdminSubscriptionController;
 use App\Http\Controllers\Admin\AdminTourController;
+use App\Http\Controllers\Admin\AdminTownController;
 use App\Http\Controllers\Admin\AdminTrailController;
 use App\Http\Controllers\Admin\AdminTrailNetworkController;
 use App\Http\Controllers\Admin\AdminTrailPhotoController;
@@ -25,9 +26,11 @@ use App\Http\Controllers\Auth\WebGoogleAuthController;
 use App\Http\Controllers\BusinessPublicController;
 use App\Http\Controllers\EventsController;
 use App\Http\Controllers\SettingsController;
+use App\Http\Controllers\SitemapController;
 use App\Http\Controllers\Subscription\StripeWebhookController;
 use App\Http\Controllers\Subscription\WebSubscriptionController;
 use App\Http\Controllers\TourController;
+use App\Http\Controllers\TownController;
 use App\Http\Controllers\TrailController;
 use App\Http\Controllers\TrailNetworkController;
 use Illuminate\Support\Facades\Artisan;
@@ -58,6 +61,12 @@ Route::get('/.well-known/assetlinks.json', function () {
 Route::get('/', [TrailController::class, 'home'])->name('home');
 Route::get('/trails', [TrailController::class, 'index'])->name('trails.index');
 Route::get('/fishing-lakes', [TrailController::class, 'fishingLakes'])->name('fishing-lakes.index');
+
+// Town landing pages - one per municipality, e.g. /hiking-trails/houston-bc
+Route::get('/hiking-trails', [TownController::class, 'index'])->name('towns.index');
+Route::get('/hiking-trails/{town}', [TownController::class, 'show'])->name('towns.show');
+
+Route::get('/sitemap.xml', SitemapController::class)->name('sitemap');
 Route::get('/trails/{trail}', [TrailController::class, 'show'])->name('trails.show');
 Route::get('/map', [TrailController::class, 'map'])->name('map');
 Route::get('/map-v2', [TrailController::class, 'mapV2'])->name('map.v2');
@@ -290,6 +299,22 @@ Route::prefix('admin')->name('admin.')->group(function () {
                 'edit' => 'tours.edit',
                 'update' => 'tours.update',
                 'destroy' => 'tours.destroy',
+            ]);
+
+        // Town landing pages
+        Route::patch('/towns/{town}/toggle-active', [AdminTownController::class, 'toggleActive'])
+            ->name('towns.toggle-active');
+        Route::delete('/towns/{town}/hero-image', [AdminTownController::class, 'destroyHeroImage'])
+            ->name('towns.hero-image.delete');
+        Route::resource('towns', AdminTownController::class)
+            ->except('show')
+            ->names([
+                'index' => 'towns.index',
+                'create' => 'towns.create',
+                'store' => 'towns.store',
+                'edit' => 'towns.edit',
+                'update' => 'towns.update',
+                'destroy' => 'towns.destroy',
             ]);
 
         // Community trail photos — moderation

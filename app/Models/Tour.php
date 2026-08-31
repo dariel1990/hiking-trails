@@ -3,15 +3,20 @@
 namespace App\Models;
 
 use App\Models\Concerns\HasVideoEmbed;
+use App\Observers\TownContentObserver;
+use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
 
+#[ObservedBy(TownContentObserver::class)]
 class Tour extends Model
 {
     use HasVideoEmbed;
 
     protected $fillable = [
+        'town_id',
         'title',
         'slug',
         'tagline',
@@ -103,5 +108,23 @@ class Tour extends Model
                 $tour->slug = $slug;
             }
         });
+    }
+
+    public function town(): BelongsTo
+    {
+        return $this->belongsTo(Town::class);
+    }
+
+    /**
+     * Limit to records belonging to the given town, accepting either a model or
+     * a slug so controllers can pass a `?town=` query parameter straight in.
+     */
+    public function scopeInTown($query, Town|string $town)
+    {
+        if ($town instanceof Town) {
+            return $query->where('town_id', $town->id);
+        }
+
+        return $query->whereHas('town', fn ($q) => $q->where('slug', $town));
     }
 }

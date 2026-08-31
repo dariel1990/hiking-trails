@@ -110,6 +110,11 @@
                         @enderror
                     </div>
 
+                    <!-- Town -->
+                    <div class="space-y-2">
+                        @include('admin._town-select', ['selected' => $trail->town_id])
+                    </div>
+
                     <!-- Location (Trail Only) -->
                     <div class="space-y-2" x-show="locationType === 'trail'" x-cloak>
                         <label class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">

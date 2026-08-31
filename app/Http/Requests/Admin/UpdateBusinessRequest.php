@@ -18,6 +18,7 @@ class UpdateBusinessRequest extends FormRequest
     public function rules(): array
     {
         return [
+            'town_id' => ['nullable', 'integer', 'exists:towns,id'],
             'name' => ['required', 'string', 'max:255'],
             'business_type' => ['required', 'string', 'in:'.implode(',', array_keys(Business::getBusinessTypes()))],
             'description' => ['nullable', 'string'],

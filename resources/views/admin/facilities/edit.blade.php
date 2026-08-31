@@ -183,6 +183,15 @@
                             </div>
                         </div>
 
+                        {{-- Town --}}
+                        <div>
+                            @include('admin._town-select', [
+                                'selected' => $facility->town_id,
+                                'selectClass' => 'block w-full rounded-lg border-gray-400 shadow-sm px-4 py-2.5 focus:border-green-500 focus:ring-green-500',
+                                'labelClass' => 'block text-sm font-medium text-gray-700 mb-1.5',
+                            ])
+                        </div>
+
                         {{-- Trail Network --}}
                         <div>
                             <label for="trail_network_id" class="block text-sm font-medium text-gray-700 mb-1.5">Trail Network</label>

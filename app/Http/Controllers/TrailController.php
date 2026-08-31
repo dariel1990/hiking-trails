@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\ActivityType;
+use App\Models\Town;
 use App\Models\Trail;
 use App\Models\TrailNetwork;
 use Illuminate\Database\Eloquent\Builder;
@@ -130,6 +131,10 @@ class TrailController extends Controller
                 $q->where('is_active', false);
             });
 
+        if ($request->town) {
+            $query->inTown($request->town);
+        }
+
         if ($request->search) {
             $query->where(function ($q) use ($request) {
                 $q->where('name', 'like', "%{$request->search}%")
@@ -237,9 +242,17 @@ class TrailController extends Controller
 
         $mapboxToken = config('services.mapbox.access_token');
 
-        // Resolve the focus trail's coordinates server-side so the map can be
-        // initialized already centered on it, avoiding a flash of the default view.
+        // Resolve the focus coordinates server-side so the map can be
+        // initialized already centered, avoiding a flash of the default view.
         $focusCoordinates = null;
+
+        // Arriving from a town landing page centres on that town.
+        if ($townSlug = $request->query('town')) {
+            if ($town = Town::active()->firstWhere('slug', $townSlug)) {
+                $focusCoordinates = [(float) $town->latitude, (float) $town->longitude];
+            }
+        }
+
         if ($trailId = $request->query('trail')) {
             $focusTrail = Trail::find($trailId);
             if ($focusTrail && is_array($focusTrail->start_coordinates) && count($focusTrail->start_coordinates) === 2) {
@@ -324,6 +337,11 @@ class TrailController extends Controller
                         })->where('is_active', true);
                     });
             });
+        }
+
+        // Restrict to a single town's landing-page catchment
+        if ($request->town) {
+            $query->inTown($request->town);
         }
 
         // Apply difficulty filter

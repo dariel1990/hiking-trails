@@ -2,15 +2,20 @@
 
 namespace App\Models;
 
+use App\Observers\TownContentObserver;
+use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
+#[ObservedBy(TownContentObserver::class)]
 class Trail extends Model
 {
     use HasFactory;
 
     protected $fillable = [
+        'town_id',
         'name',
         'icon',
         'icon_image',
@@ -22,6 +27,8 @@ class Trail extends Model
         'estimated_time_hours',
         'trail_type',
         'start_coordinates',
+        'start_latitude',
+        'start_longitude',
         'end_coordinates',
         'route_coordinates',
         'gpx_file_path',
@@ -50,6 +57,8 @@ class Trail extends Model
 
     protected $casts = [
         'start_coordinates' => 'array',
+        'start_latitude' => 'decimal:7',
+        'start_longitude' => 'decimal:7',
         'end_coordinates' => 'array',
         'route_coordinates' => 'array',
         'best_seasons' => 'array',
@@ -365,5 +374,43 @@ class Trail extends Model
     public function getFishSpeciesList(): array
     {
         return $this->fish_species ?? [];
+    }
+
+    public function town(): BelongsTo
+    {
+        return $this->belongsTo(Town::class);
+    }
+
+    /**
+     * Limit to trails belonging to the given town, accepting either a model or
+     * a slug so controllers can pass a `?town=` query parameter straight in.
+     */
+    public function scopeInTown($query, Town|string $town)
+    {
+        if ($town instanceof Town) {
+            return $query->where('town_id', $town->id);
+        }
+
+        return $query->whereHas('town', fn ($q) => $q->where('slug', $town));
+    }
+
+    /**
+     * Keep the indexed start_latitude/start_longitude columns in step with the
+     * JSON start_coordinates, which remain the source of truth. The plain
+     * columns exist so town and radius queries can use an index.
+     */
+    protected static function booted(): void
+    {
+        static::saving(function (Trail $trail) {
+            $coordinates = $trail->start_coordinates;
+
+            if (is_array($coordinates) && isset($coordinates[0], $coordinates[1])) {
+                $trail->start_latitude = (float) $coordinates[0];
+                $trail->start_longitude = (float) $coordinates[1];
+            } else {
+                $trail->start_latitude = null;
+                $trail->start_longitude = null;
+            }
+        });
     }
 }

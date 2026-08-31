@@ -57,9 +57,13 @@
     @endif
     <link rel="icon" type="image/png" href="{{ asset(setting('footer_logo_path')) }}">
 
-    <!-- SEO Meta Tags -->
-    <meta name="description" content="{{ setting('meta_description') }}">
-    <meta name="keywords" content="{{ setting('meta_keywords') }}">
+    {{-- SEO Meta Tags. Pages override these by defining the matching section. --}}
+    <meta name="description" content="@yield('meta_description', setting('meta_description'))">
+    <meta name="keywords" content="@yield('meta_keywords', setting('meta_keywords'))">
+    <link rel="canonical" href="@yield('canonical', url()->current())">
+    @hasSection('robots')
+        <meta name="robots" content="@yield('robots')">
+    @endif
 
     <!-- Fonts - Using Inter like XploreSmithers -->
     <link href="https://fonts.bunny.net/css?family=Inter:300,400,500,600,700,800" rel="stylesheet">
@@ -129,6 +133,11 @@
                        class="relative text-forest-700 hover:text-accent-600 font-medium transition-all duration-300 py-2 group {{ request()->routeIs('businesses.public.*') ? 'text-accent-700' : '' }}">
                         <span>Local Businesses</span>
                         <div class="absolute bottom-0 left-0 w-0 h-0.5 bg-accent-600 group-hover:w-full transition-all duration-300 {{ request()->routeIs('businesses.public.*') ? 'w-full' : '' }}"></div>
+                    </a>
+                    <a href="{{ route('towns.index') }}"
+                       class="relative text-forest-700 hover:text-accent-600 font-medium transition-all duration-300 py-2 group {{ request()->routeIs('towns.*') ? 'text-accent-700' : '' }}">
+                        <span>Explore by Town</span>
+                        <div class="absolute bottom-0 left-0 w-0 h-0.5 bg-accent-600 group-hover:w-full transition-all duration-300 {{ request()->routeIs('towns.*') ? 'w-full' : '' }}"></div>
                     </a>
 
                     @guest
@@ -247,6 +256,7 @@
                         <a href="{{ route('tours.index') }}" class="block px-6 py-3 text-gray-700 hover:bg-emerald-50 hover:text-emerald-600 font-medium transition-colors">Tours</a>
                         <a href="{{ route('map') }}" class="block px-6 py-3 text-gray-700 hover:bg-emerald-50 hover:text-emerald-600 font-medium transition-colors">Interactive Map</a>
                         <a href="{{ route('businesses.public.index') }}" class="block px-6 py-3 text-gray-700 hover:bg-emerald-50 hover:text-emerald-600 font-medium transition-colors">Local Businesses</a>
+                        <a href="{{ route('towns.index') }}" class="block px-6 py-3 text-gray-700 hover:bg-emerald-50 hover:text-emerald-600 font-medium transition-colors">Explore by Town</a>
 
                         @guest
                             <a href="{{ route('login') }}" class="block px-6 py-3 text-gray-700 hover:bg-emerald-50 hover:text-emerald-600 font-medium transition-colors">Sign in</a>

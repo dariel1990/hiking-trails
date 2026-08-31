@@ -15,6 +15,8 @@ class DatabaseSeeder extends Seeder
         $this->call([
             AdminUserSeeder::class,
             ActivityTypeSeeder::class,
+            TownSeeder::class,
+            TownSeoSeeder::class,
             ConsolidatedTrailSeeder::class,
             SettingsSeeder::class,
         ]);

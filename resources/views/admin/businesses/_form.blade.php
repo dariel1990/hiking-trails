@@ -125,6 +125,8 @@
             </div>
             <div class="p-6 space-y-4">
 
+                @include('admin._town-select', ['selected' => $isEdit ? $business->town_id : null])
+
                 <div class="space-y-2">
                     <label for="address" class="text-sm font-medium leading-none">Street Address</label>
                     <input type="text" name="address" id="address"

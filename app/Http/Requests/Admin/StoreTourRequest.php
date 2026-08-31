@@ -14,6 +14,7 @@ class StoreTourRequest extends FormRequest
     public function rules(): array
     {
         return [
+            'town_id' => ['nullable', 'integer', 'exists:towns,id'],
             'title' => ['required', 'string', 'max:255'],
             'tagline' => ['nullable', 'string', 'max:255'],
             'description' => ['nullable', 'string'],

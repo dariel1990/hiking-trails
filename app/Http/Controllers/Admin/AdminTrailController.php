@@ -127,6 +127,7 @@ class AdminTrailController extends Controller
             'seasonal.*.notes' => 'nullable|string|max:1000',
             'seasonal.*.features' => 'nullable|string|max:500',
             'seasonal.*.accessibility' => 'nullable|string|max:500',
+            'town_id' => 'nullable|exists:towns,id',
             'trail_network_id' => 'nullable|exists:trail_networks,id',
         ];
 
@@ -216,6 +217,7 @@ class AdminTrailController extends Controller
             'parking_info' => $request->parking_info,
             'safety_notes' => $request->safety_notes,
             'is_featured' => $request->has('is_featured'),
+            'town_id' => $request->input('town_id') ?: null,
             'trail_network_id' => $request->trail_network_id,
         ];
 
@@ -586,6 +588,7 @@ class AdminTrailController extends Controller
             'seasonal.*.notes' => 'nullable|string|max:1000',
             'seasonal.*.features' => 'nullable|string|max:500',
             'seasonal.*.accessibility' => 'nullable|string|max:500',
+            'town_id' => 'nullable|exists:towns,id',
             'trail_network_id' => 'nullable|exists:trail_networks,id',
         ];
 
@@ -674,6 +677,7 @@ class AdminTrailController extends Controller
             'parking_info' => $request->parking_info,
             'safety_notes' => $request->safety_notes,
             'is_featured' => $request->has('is_featured'),
+            'town_id' => $request->input('town_id') ?: null,
             'trail_network_id' => $request->trail_network_id,
         ];
 

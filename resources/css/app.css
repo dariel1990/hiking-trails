@@ -536,6 +536,27 @@
     background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23059669' fill-opacity='0.05'%3E%3Cpath d='M30 30l15-15v30h-30z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
   }
 
+  /* Text shadows for type sitting over hero imagery. These were referenced by
+     the hero headlines long before they existed as utilities. */
+  .text-shadow-sm {
+    text-shadow: 0 1px 2px rgba(25, 54, 52, 0.35);
+  }
+
+  .text-shadow-md {
+    text-shadow: 0 2px 8px rgba(25, 54, 52, 0.45);
+  }
+
+  .text-shadow-lg {
+    text-shadow: 0 4px 18px rgba(25, 54, 52, 0.55);
+  }
+
+  /* Topographic contour texture. Gives map-less surfaces depth and keeps them
+     on-brand instead of reading as an empty grey block. */
+  .bg-pattern-contour {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240' viewBox='0 0 240 240'%3E%3Cg fill='none' stroke='%23ffffff' stroke-opacity='0.14' stroke-width='1.25'%3E%3Cpath d='M-20 96c40-34 84-42 124-20s76 18 116-14'/%3E%3Cpath d='M-20 120c40-34 84-42 124-20s76 18 116-14'/%3E%3Cpath d='M-20 146c44-30 86-34 124-12s74 14 116-18'/%3E%3Cpath d='M-20 176c48-26 88-26 124-6s72 10 116-22'/%3E%3Cpath d='M-20 210c52-22 90-18 124 0s70 6 116-26'/%3E%3Cpath d='M-20 66c36-38 82-50 124-28s78 22 116-10'/%3E%3Cpath d='M-20 38c32-40 80-58 124-36s80 26 116-6'/%3E%3C/g%3E%3C/svg%3E");
+    background-size: 240px 240px;
+  }
+
   .bg-pattern-trees {
     background-image: url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%2310b981' fill-opacity='0.03'%3E%3Cpath d='M20 10l10 20h-20z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
   }

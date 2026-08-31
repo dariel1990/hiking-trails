@@ -408,6 +408,8 @@ $existingStopsJson = $isEdit
                 <h3 class="text-lg font-semibold leading-none tracking-tight">Settings</h3>
             </div>
             <div class="p-6 space-y-4">
+                @include('admin._town-select', ['selected' => $isEdit ? $tour->town_id : null])
+
                 <div class="space-y-2">
                     <label for="sort_order" class="text-sm font-medium leading-none">Sort Order</label>
                     <input type="number" name="sort_order" id="sort_order" min="0"

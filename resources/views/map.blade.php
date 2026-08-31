@@ -5187,6 +5187,13 @@
                     params.append('distance', this.currentDistance);
                 }
 
+                // Arriving from a town landing page (/map?town=houston-bc)
+                // restricts the map to that town's trails.
+                const town = new URLSearchParams(window.location.search).get('town');
+                if (town) {
+                    params.append('town', town);
+                }
+
                 const response = await fetch(`/api/trails?${params}`);
                 if (!response.ok) {
                     throw new Error(`API returned ${response.status}: ${response.statusText}`);

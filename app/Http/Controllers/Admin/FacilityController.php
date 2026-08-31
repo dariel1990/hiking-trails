@@ -83,6 +83,7 @@ class FacilityController extends Controller
             'icon' => 'nullable|string|max:10',
             'icon_image' => 'nullable|string|max:255',
             'is_active' => 'boolean',
+            'town_id' => 'nullable|exists:towns,id',
             'trail_network_id' => 'nullable|exists:trail_networks,id',
             'photos' => 'nullable|array',
             'photos.*' => 'image|mimes:jpg,jpeg,png,webp|max:51200',
@@ -92,6 +93,7 @@ class FacilityController extends Controller
         ]);
 
         $validated['is_active'] = $request->has('is_active');
+        $validated['town_id'] = $request->input('town_id') ?: null;
         $validated['trail_network_id'] = $request->input('trail_network_id') ?: null;
 
         if (! empty($validated['icon_image'])) {
@@ -143,6 +145,7 @@ class FacilityController extends Controller
             'icon' => 'nullable|string|max:10',
             'icon_image' => 'nullable|string|max:255',
             'is_active' => 'boolean',
+            'town_id' => 'nullable|exists:towns,id',
             'trail_network_id' => 'nullable|exists:trail_networks,id',
             'photos' => 'nullable|array',
             'photos.*' => 'image|mimes:jpg,jpeg,png,webp|max:51200',
@@ -152,6 +155,7 @@ class FacilityController extends Controller
         ]);
 
         $validated['is_active'] = $request->has('is_active');
+        $validated['town_id'] = $request->input('town_id') ?: null;
         $validated['trail_network_id'] = $request->input('trail_network_id') ?: null;
 
         if (! empty($validated['icon_image'])) {
