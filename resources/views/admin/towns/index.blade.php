@@ -97,6 +97,8 @@
             Each trail, business, facility and tour has a Town field on its own edit page. To fill in
             everything at once by proximity, run <code>php artisan towns:assign</code> &mdash; add
             <code>--dry-run</code> first to preview, or <code>--force</code> to redo existing assignments.
+            Scope it to one town with <code>--town=houston-bc</code>; matching still runs against every
+            town, so a scoped run can never take a trail that belongs to a neighbour.
         </p>
     </div>
 </div>

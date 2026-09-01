@@ -15,6 +15,7 @@ use Illuminate\Database\Eloquent\Model;
 class AssignTowns extends Command
 {
     protected $signature = 'towns:assign
+                            {--town=* : Limit writes to these towns (slug or name, repeatable)}
                             {--dry-run : Report what would change without writing anything}
                             {--force : Reassign records that already belong to a town}';
 
@@ -32,7 +33,20 @@ class AssignTowns extends Command
      */
     private array $tally = [];
 
+    /**
+     * Town ids this run is allowed to write, or null for every town.
+     *
+     * Nearest-town matching always runs against every active town even when
+     * this is set, so a scoped run can never claim a record that actually
+     * belongs to a neighbour.
+     *
+     * @var list<int>|null
+     */
+    private ?array $scope = null;
+
     private int $unassigned = 0;
+
+    private int $outOfScope = 0;
 
     public function handle(): int
     {
@@ -41,6 +55,10 @@ class AssignTowns extends Command
         if ($this->towns->isEmpty()) {
             $this->error('No active towns found. Run: php artisan db:seed --class=TownSeeder');
 
+            return self::FAILURE;
+        }
+
+        if (! $this->resolveScope()) {
             return self::FAILURE;
         }
 
@@ -58,6 +76,55 @@ class AssignTowns extends Command
         $this->renderSummary();
 
         return self::SUCCESS;
+    }
+
+    /**
+     * Turn any --town options into a list of ids to write.
+     *
+     * Accepts a slug or a name so both `--town=burns-lake-bc` and
+     * `--town="Burns Lake"` work. Returns false when a value matches nothing,
+     * so a typo stops the run instead of silently assigning nothing.
+     */
+    private function resolveScope(): bool
+    {
+        $requested = (array) $this->option('town');
+
+        if ($requested === []) {
+            return true;
+        }
+
+        $scope = [];
+
+        foreach ($requested as $value) {
+            $town = $this->towns->first(fn (Town $town) => $town->slug === $value
+                || strcasecmp($town->name, $value) === 0);
+
+            if (! $town) {
+                $this->error("No active town matches [{$value}].");
+                $this->line('Available: '.$this->towns->pluck('slug')->implode(', '));
+
+                return false;
+            }
+
+            $scope[] = $town->id;
+        }
+
+        $this->scope = array_values(array_unique($scope));
+
+        $names = $this->towns->whereIn('id', $this->scope)->pluck('name')->implode(', ');
+        $this->info("Scoped to: {$names}");
+        $this->line('Records nearer to another town are left alone.');
+        $this->newLine();
+
+        return true;
+    }
+
+    /**
+     * Whether this run is allowed to write the given town.
+     */
+    private function inScope(Town $town): bool
+    {
+        return $this->scope === null || in_array($town->id, $this->scope, true);
     }
 
     /**
@@ -80,6 +147,12 @@ class AssignTowns extends Command
 
                 if ($town === null) {
                     $this->unassigned++;
+
+                    continue;
+                }
+
+                if (! $this->inScope($town)) {
+                    $this->outOfScope++;
 
                     continue;
                 }
@@ -132,6 +205,12 @@ class AssignTowns extends Command
             arsort($votes);
             $townId = array_key_first($votes);
             $town = $this->towns->firstWhere('id', $townId);
+
+            if (! $this->inScope($town)) {
+                $this->outOfScope++;
+
+                continue;
+            }
 
             $this->tally[$town->name]['tours'] = ($this->tally[$town->name]['tours'] ?? 0) + 1;
 
@@ -190,7 +269,11 @@ class AssignTowns extends Command
     {
         $rows = [];
 
-        foreach ($this->towns as $town) {
+        $towns = $this->scope === null
+            ? $this->towns
+            : $this->towns->whereIn('id', $this->scope);
+
+        foreach ($towns as $town) {
             $counts = $this->tally[$town->name] ?? [];
 
             $rows[] = [
@@ -207,6 +290,10 @@ class AssignTowns extends Command
 
         if ($this->unassigned > 0) {
             $this->warn("{$this->unassigned} record(s) fell outside every town radius and were left unassigned.");
+        }
+
+        if ($this->outOfScope > 0) {
+            $this->line("{$this->outOfScope} record(s) belong to a town outside this run's --town scope and were skipped.");
         }
     }
 }
