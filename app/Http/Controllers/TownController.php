@@ -105,7 +105,7 @@ class TownController extends Controller
             'tours' => Tour::active()->inTown($town)->withCount('stops')->orderBy('sort_order')->orderBy('title')->get(),
             'businesses' => $town->nearbyBusinesses(6),
             'events' => $this->eventsNear($town),
-            'mapMarkers' => $this->mapMarkers($town, $hikingTrails, $fishingLakes),
+            'mapMarkers' => $this->mapMarkers($town),
             'nearbyTowns' => $this->nearbyTowns($town),
             'shouldIndex' => $town->shouldIndex(),
         ];
@@ -132,29 +132,24 @@ class TownController extends Controller
     }
 
     /**
-     * Marker payload for the mini map, injected into the page so the map does
-     * not need a second round trip. Coordinates stay [lat, lng] here; the view
-     * swaps them to Mapbox's [lng, lat] order.
+     * Bootstrap payload for the mini map.
+     *
+     * Trails are not inlined: the page fetches /api/trails?town={slug} exactly
+     * as the main interactive map does, so both maps share one source of truth
+     * for icons, route geometry and activity data. Only the small, town-scoped
+     * pieces the API cannot supply are passed here.
+     *
+     * Coordinates stay [lat, lng]; the view swaps them to Mapbox's [lng, lat].
      *
      * @return array<string, mixed>
      */
-    private function mapMarkers(Town $town, $hikingTrails, $fishingLakes): array
+    private function mapMarkers(Town $town): array
     {
-        $trailMarkers = $hikingTrails->concat($fishingLakes)
-            ->filter(fn ($trail) => $trail->start_latitude !== null)
-            ->map(fn ($trail) => [
-                'id' => $trail->id,
-                'name' => $trail->name,
-                'type' => $trail->location_type,
-                'url' => route('trails.show', $trail->id),
-                'coordinates' => [(float) $trail->start_latitude, (float) $trail->start_longitude],
-            ])->values()->all();
-
-        $facilityMarkers = Facility::query()
+        $facilities = Facility::query()
             ->where('is_active', true)
             ->inTown($town)
-            ->limit(50)
-            ->get()
+            ->orderBy('name')
+            ->get(['id', 'name', 'facility_type', 'latitude', 'longitude'])
             ->map(fn ($facility) => [
                 'id' => $facility->id,
                 'name' => $facility->name,
@@ -165,8 +160,10 @@ class TownController extends Controller
         return [
             'center' => [(float) $town->latitude, (float) $town->longitude],
             'zoom' => $town->map_zoom,
-            'trails' => $trailMarkers,
-            'facilities' => $facilityMarkers,
+            'townSlug' => $town->slug,
+            // Built once so the view does not repeat a route() call per pin.
+            'trailUrlTemplate' => route('trails.show', ['trail' => '__ID__']),
+            'facilities' => $facilities,
         ];
     }
 

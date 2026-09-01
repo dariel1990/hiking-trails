@@ -38,6 +38,71 @@
     .tour-card { transition: box-shadow 0.2s ease, transform 0.2s ease; }
     .tour-card:hover { transform: translateY(-3px); box-shadow: 0 20px 40px rgba(25, 54, 52, 0.14); }
 
+    /* Marker treatment copied from the main interactive map so a trail looks
+       the same wherever it is plotted. */
+    .selectable-marker-el.selected {
+        transform: scale(1.35);
+        box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.55), 0 4px 14px rgba(0, 0, 0, 0.55) !important;
+    }
+
+    /* Layer switcher — segmented control, top left of the map. */
+    .town-layer-switch {
+        display: flex;
+        gap: 2px;
+        padding: 3px;
+        margin: 10px;
+        border-radius: 9px;
+        background: rgba(255, 255, 255, 0.92);
+        backdrop-filter: blur(6px);
+        box-shadow: 0 2px 10px rgba(25, 54, 52, 0.28);
+    }
+
+    .town-layer-switch button {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        padding: 6px 11px;
+        border: 0;
+        border-radius: 7px;
+        background: transparent;
+        color: #4b5563;
+        font: 600 12px/1 inherit;
+        cursor: pointer;
+        transition: background 0.2s ease, color 0.2s ease;
+    }
+
+    .town-layer-switch button:hover { background: rgba(44, 95, 93, 0.09); color: #193634; }
+    .town-layer-switch button[aria-pressed="true"] { background: #2C5F5D; color: #fff; }
+    .town-layer-switch button:focus-visible { outline: 2px solid #2C5F5D; outline-offset: 2px; }
+
+    /* Mapbox pads and rounds its popup by default, which fights an
+       edge-to-edge photo. Reset the shell and let the card own its own inset. */
+    #town-map .mapboxgl-popup-content {
+        padding: 0;
+        border-radius: 0.75rem;
+        overflow: hidden;
+        box-shadow: 0 12px 32px -8px rgba(25, 54, 52, 0.35);
+    }
+
+    #town-map .mapboxgl-popup-close-button {
+        top: 4px;
+        right: 6px;
+        width: 22px;
+        height: 22px;
+        border-radius: 50%;
+        color: #fff;
+        font-size: 17px;
+        line-height: 1;
+        background: rgba(25, 54, 52, 0.55);
+        transition: background 0.2s ease;
+    }
+
+    #town-map .mapboxgl-popup-close-button:hover {
+        background: rgba(25, 54, 52, 0.85);
+    }
+
+    #town-map .town-popup { width: 236px; }
+
     .town-intro p { margin-bottom: 1rem; }
     .town-intro p:last-child { margin-bottom: 0; }
 
@@ -407,79 +472,528 @@
 @push('scripts')
 <script src="https://api.mapbox.com/mapbox-gl-js/v3.10.0/mapbox-gl.js"></script>
 <script>
+/**
+ * Town mini map.
+ *
+ * Deliberately mirrors the main interactive map: same /api/trails source, same
+ * marker element, same icon precedence, and the same three route layers that
+ * reveal a trail's line only once it is selected. Keeping the two in step means
+ * a trail looks identical wherever a visitor meets it.
+ */
 (function () {
-    const markers = @json($mapMarkers);
+    const config = @json($mapMarkers);
     const token = @json($mapboxToken);
+    const hikingBootIcon = @json(asset('images/hiking-boot.png'));
+    const xploreLogo = @json(asset('images/xplore-smithers-logo.png'));
     const skeleton = document.getElementById('town-map-skeleton');
 
     if (!token || !window.mapboxgl) {
         return;
     }
 
+    const MARKER_COLOR = '#1B3935';
+    const ROUTE_COLOR = '#22c55e';
+
     mapboxgl.accessToken = token;
 
     // Stored coordinates are [lat, lng]; Mapbox wants [lng, lat].
     const toLngLat = (coords) => [coords[1], coords[0]];
 
+    const sanitize = (coords) => {
+        if (!coords) {
+            return null;
+        }
+
+        if (Array.isArray(coords) && coords.length >= 2 && typeof coords[0] === 'number' && typeof coords[1] === 'number') {
+            return [coords[0], coords[1]];
+        }
+
+        if (Array.isArray(coords) && Array.isArray(coords[0])) {
+            return sanitize(coords[0]);
+        }
+
+        return null;
+    };
+
+    const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, (character) => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    })[character]);
+
+    const MAP_STYLES = {
+        standard: 'mapbox://styles/mapbox/standard',
+        satellite: 'mapbox://styles/mapbox/satellite-streets-v12'
+    };
+
+    let currentStyle = 'standard';
+
     const map = new mapboxgl.Map({
         container: 'town-map',
-        style: 'mapbox://styles/mapbox/outdoors-v12',
-        center: toLngLat(markers.center),
-        zoom: markers.zoom,
+        style: MAP_STYLES[currentStyle],
+        center: toLngLat(config.center),
+        zoom: config.zoom,
         cooperativeGestures: true
     });
 
     map.addControl(new mapboxgl.NavigationControl(), 'top-right');
     map.addControl(new mapboxgl.FullscreenControl(), 'top-right');
 
+    /**
+     * Two-option layer switcher. Swapping the style tears out every custom
+     * source and layer, which is why installMapLayers() below is bound to
+     * style.load rather than run once.
+     */
+    map.addControl({
+        onAdd: function () {
+            const container = document.createElement('div');
+            container.className = 'mapboxgl-ctrl town-layer-switch';
+            container.setAttribute('role', 'group');
+            container.setAttribute('aria-label', 'Map style');
+
+            Object.keys(MAP_STYLES).forEach(function (key) {
+                const button = document.createElement('button');
+                button.type = 'button';
+                button.textContent = key === 'standard' ? 'Standard' : 'Satellite';
+                button.setAttribute('aria-pressed', String(key === currentStyle));
+
+                button.addEventListener('click', function () {
+                    if (key === currentStyle) {
+                        return;
+                    }
+
+                    currentStyle = key;
+                    container.querySelectorAll('button').forEach(function (other, index) {
+                        other.setAttribute('aria-pressed', String(Object.keys(MAP_STYLES)[index] === key));
+                    });
+
+                    map.setStyle(MAP_STYLES[key]);
+                });
+
+                container.appendChild(button);
+            });
+
+            return container;
+        },
+        onRemove: function () {}
+    }, 'top-left');
+
+    let allTrails = [];
+    let selectedTrailId = null;
+    let selectedMarkerEl = null;
+
+    /** Prefer hiking when a trail has several activities, as the main map does. */
+    function displayActivity(trail) {
+        if (!trail || !Array.isArray(trail.activities) || trail.activities.length === 0) {
+            return null;
+        }
+
+        return trail.activities.find((activity) => activity.type === 'hiking') || trail.activities[0];
+    }
+
+    /** The marker element used on the main map, reproduced exactly. */
+    function createMarkerEl(emoji, iconImageUrl) {
+        const el = document.createElement('div');
+        el.className = 'selectable-marker-el';
+        el.style.cssText = 'background-color:' + MARKER_COLOR + ';width:32px;height:32px;border-radius:50%;'
+            + 'border:2px solid #ffffff;box-shadow:0 2px 8px rgba(0,0,0,0.4);display:flex;align-items:center;'
+            + 'justify-content:center;font-size:15px;cursor:pointer;line-height:1;overflow:hidden;';
+
+        if (iconImageUrl) {
+            el.innerHTML = '<img src="' + escapeHtml(iconImageUrl) + '" alt="" style="width:22px;height:22px;object-fit:cover;border-radius:50%;">';
+        } else if (emoji === '\u{1F97E}') {
+            el.innerHTML = '<img src="' + hikingBootIcon + '" alt="Hiking trail" style="width:21px;height:21px;display:block;object-fit:contain;">';
+        } else {
+            el.textContent = emoji;
+        }
+
+        return el;
+    }
+
+    /**
+     * Route lines for every trail that has geometry. Fishing lakes are points,
+     * and network trails are represented by their network on the main map, so
+     * both are skipped here too.
+     */
+    function buildRouteGeoJSON(trails) {
+        const features = [];
+
+        trails.forEach(function (trail) {
+            if (trail.location_type === 'fishing_lake' || trail.trail_network_id) {
+                return;
+            }
+
+            if (!Array.isArray(trail.route_coordinates) || trail.route_coordinates.length === 0) {
+                return;
+            }
+
+            const sanitized = trail.route_coordinates.map(sanitize).filter((c) => c !== null);
+
+            if (sanitized.length === 0) {
+                return;
+            }
+
+            const mapboxCoords = sanitized.map(toLngLat);
+
+            // Out-and-back is mirrored so the arrows read forward on the way out
+            // and back on the return, matching the main map.
+            const displayCoords = trail.trail_type === 'out-and-back'
+                ? mapboxCoords.concat(mapboxCoords.slice().reverse())
+                : mapboxCoords;
+
+            features.push({
+                type: 'Feature',
+                id: trail.id,
+                properties: { trailId: trail.id, color: ROUTE_COLOR },
+                geometry: { type: 'LineString', coordinates: displayCoords }
+            });
+        });
+
+        return { type: 'FeatureCollection', features: features };
+    }
+
+    function selectTrail(trail, markerEl) {
+        if (selectedTrailId !== null) {
+            map.setFeatureState({ source: 'trail-routes', id: selectedTrailId }, { selected: false });
+        }
+
+        if (selectedMarkerEl) {
+            selectedMarkerEl.classList.remove('selected');
+        }
+
+        selectedTrailId = trail.id;
+        selectedMarkerEl = markerEl;
+        markerEl.classList.add('selected');
+
+        map.setFeatureState({ source: 'trail-routes', id: trail.id }, { selected: true });
+
+        // Frame the whole route when there is one, otherwise just ease to the pin.
+        const coords = (trail.route_coordinates || []).map(sanitize).filter((c) => c !== null);
+
+        if (coords.length > 1) {
+            const bounds = new mapboxgl.LngLatBounds();
+            coords.forEach((c) => bounds.extend(toLngLat(c)));
+            map.fitBounds(bounds, { padding: 70, maxZoom: 14 });
+        } else {
+            const point = sanitize(trail.coordinates);
+
+            if (point) {
+                map.easeTo({ center: toLngLat(point), zoom: Math.max(map.getZoom(), 12) });
+            }
+        }
+    }
+
+    /**
+     * Difficulty colours match the main map's getDifficultyColor().
+     */
+    function difficultyColor(level) {
+        const value = parseInt(level, 10);
+
+        if (value <= 2) {
+            return '#22C55E';
+        }
+
+        if (value === 3) {
+            return '#3B82F6';
+        }
+
+        return '#EF4444';
+    }
+
+    function difficultyLabel(level) {
+        return ['', 'Very easy', 'Easy', 'Moderate', 'Hard', 'Very hard'][parseInt(level, 10)] || '';
+    }
+
+    const statRow = (icon, value) => value
+        ? '<span style="display:inline-flex;align-items:center;gap:3px;white-space:nowrap;">' + icon + value + '</span>'
+        : '';
+
+    const ICON_PIN = '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M17.657 16.657L13.414 20.9a2 2 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/></svg>';
+    const ICON_UP = '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>';
+    const ICON_CLOCK = '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>';
+
+    function popupHtml(trail) {
+        const url = config.trailUrlTemplate.replace('__ID__', trail.id);
+        const isLake = trail.location_type === 'fishing_lake';
+        const photo = trail.preview_photo
+            || (Array.isArray(trail.photos) && trail.photos.length ? trail.photos[0].url : null);
+
+        // Media band: a real photo, or the branded placeholder the trail list uses.
+        const media = photo
+            ? '<img src="' + escapeHtml(photo) + '" alt="" style="width:100%;height:104px;object-fit:cover;display:block;">'
+            : '<div style="height:104px;display:flex;align-items:center;justify-content:center;background:'
+                + (isLake ? 'linear-gradient(135deg,#0369a1,#0ea5e9)' : 'linear-gradient(135deg,#166534,#22c55e)') + ';">'
+                + '<img src="' + xploreLogo + '" alt="" style="width:56px;height:56px;object-fit:contain;opacity:.85;"></div>';
+
+        // Difficulty pill, overlaid on the media band.
+        const difficulty = (! isLake && trail.difficulty)
+            ? '<span style="position:absolute;top:8px;right:8px;background:' + difficultyColor(trail.difficulty)
+                + ';color:#fff;font-size:10px;font-weight:700;padding:3px 7px;border-radius:5px;'
+                + 'box-shadow:0 1px 4px rgba(0,0,0,.3);letter-spacing:.02em;">'
+                + escapeHtml(difficultyLabel(trail.difficulty)) + '</span>'
+            : '';
+
+        const typeBadge = (! isLake && trail.trail_type)
+            ? '<span style="position:absolute;top:8px;left:8px;background:rgba(255,255,255,.92);color:#193634;'
+                + 'font-size:10px;font-weight:600;padding:3px 7px;border-radius:5px;text-transform:capitalize;">'
+                + escapeHtml(String(trail.trail_type).replace(/-/g, ' ')) + '</span>'
+            : '';
+
+        // Stats differ for lakes, which have no distance or elevation.
+        let stats;
+
+        if (isLake) {
+            const species = Array.isArray(trail.fish_species) && trail.fish_species.length
+                ? trail.fish_species.length + ' species'
+                : null;
+            stats = [
+                statRow('\u{1F3A3} ', species),
+                trail.best_fishing_season
+                    ? statRow('\u{1F5D3}\uFE0F ', 'Best in ' + escapeHtml(trail.best_fishing_season))
+                    : ''
+            ].filter(Boolean).join('<span style="color:#d1d5db;">&middot;</span>');
+        } else {
+            stats = [
+                statRow(ICON_PIN, trail.distance ? trail.distance + ' km' : null),
+                statRow(ICON_UP, trail.elevation_gain ? trail.elevation_gain + ' m' : null),
+                statRow(ICON_CLOCK, trail.estimated_time ? trail.estimated_time + ' h' : null)
+            ].filter(Boolean).join('<span style="color:#d1d5db;">&middot;</span>');
+        }
+
+        // Up to two activity chips, coloured from the activity itself.
+        const activities = Array.isArray(trail.activities)
+            ? trail.activities.slice(0, 2).map(function (activity) {
+                const colour = activity.color || '#2C5F5D';
+
+                return '<span style="display:inline-flex;align-items:center;gap:3px;padding:2px 6px;border-radius:4px;'
+                    + 'font-size:10px;font-weight:600;background:' + colour + '1A;color:' + colour + ';">'
+                    + (activity.icon_image_url
+                        ? '<img src="' + escapeHtml(activity.icon_image_url) + '" alt="" style="width:10px;height:10px;object-fit:cover;border-radius:2px;">'
+                        : escapeHtml(activity.icon || ''))
+                    + ' ' + escapeHtml(activity.name) + '</span>';
+            }).join('')
+            : '';
+
+        return '<div class="town-popup">'
+            + '<div style="position:relative;">' + media + typeBadge + difficulty + '</div>'
+            + '<div style="padding:10px 12px 12px;">'
+            + '<div style="font-weight:700;font-size:13px;line-height:1.3;color:#111827;">' + escapeHtml(trail.name) + '</div>'
+            + (trail.location
+                ? '<div style="font-size:11px;color:#9ca3af;margin-top:2px;">' + escapeHtml(trail.location) + '</div>'
+                : '')
+            + (stats
+                ? '<div style="display:flex;gap:6px;align-items:center;font-size:11px;color:#4b5563;margin-top:7px;'
+                    + 'font-variant-numeric:tabular-nums;flex-wrap:wrap;">' + stats + '</div>'
+                : '')
+            + (activities ? '<div style="display:flex;gap:4px;margin-top:8px;flex-wrap:wrap;">' + activities + '</div>' : '')
+            + '<a href="' + url + '" style="display:flex;align-items:center;justify-content:center;gap:5px;'
+            + 'margin-top:10px;padding:7px 10px;border-radius:7px;background:#2C5F5D;color:#fff;'
+            + 'font-size:12px;font-weight:600;text-decoration:none;transition:background .2s ease;"'
+            + ' onmouseover="this.style.background=\'#193634\'" onmouseout="this.style.background=\'#2C5F5D\'">'
+            + (isLake ? 'View lake' : 'View trail')
+            + '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M9 5l7 7-7 7"/></svg>'
+            + '</a>'
+            + '</div></div>';
+    }
+
+    /**
+     * Every custom source and layer, in one place.
+     *
+     * Bound to style.load rather than load: switching between Standard and
+     * Satellite replaces the whole style object, taking custom sources and
+     * layers with it, so this has to run again each time. DOM markers are not
+     * part of the style and survive on their own.
+     */
+    function installMapLayers() {
+        // Direction arrow, tip pointing +x so Mapbox rotates it along the line.
+        if (!map.hasImage('trail-arrow')) {
+            const arrowSvg = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 14 14"><polygon points="13,7 5,3 7,7 5,11" fill="white"/></svg>';
+            const arrowImg = new Image(14, 14);
+            arrowImg.onload = function () {
+                if (!map.hasImage('trail-arrow')) {
+                    map.addImage('trail-arrow', arrowImg);
+                }
+            };
+            arrowImg.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(arrowSvg);
+        }
+
+        if (!map.getSource('trail-routes')) {
+            map.addSource('trail-routes', {
+                type: 'geojson',
+                promoteId: 'trailId',
+                data: buildRouteGeoJSON(allTrails)
+            });
+        }
+
+        // Three layers, all hidden until a trail is selected — same as /map.
+        if (!map.getLayer('trail-routes-outline')) {
+            map.addLayer({
+                id: 'trail-routes-outline',
+                type: 'line',
+                source: 'trail-routes',
+                paint: {
+                    'line-color': '#000000',
+                    'line-width': 8,
+                    'line-opacity': ['case', ['boolean', ['feature-state', 'selected'], false], 1, 0]
+                }
+            });
+        }
+
+        if (!map.getLayer('trail-routes-line')) {
+            map.addLayer({
+                id: 'trail-routes-line',
+                type: 'line',
+                source: 'trail-routes',
+                paint: {
+                    'line-color': ['get', 'color'],
+                    'line-width': 4,
+                    'line-opacity': ['case', ['boolean', ['feature-state', 'selected'], false], 1, 0]
+                }
+            });
+        }
+
+        if (!map.getLayer('trail-routes-arrows')) {
+            map.addLayer({
+                id: 'trail-routes-arrows',
+                type: 'symbol',
+                source: 'trail-routes',
+                layout: {
+                    'symbol-placement': 'line',
+                    'symbol-spacing': 120,
+                    'icon-image': 'trail-arrow',
+                    'icon-size': 0.9,
+                    'icon-allow-overlap': true,
+                    'icon-ignore-placement': true
+                },
+                paint: {
+                    'icon-opacity': ['case', ['boolean', ['feature-state', 'selected'], false], 1, 0]
+                }
+            });
+        }
+
+        if (!map.getSource('town-facilities')) {
+            map.addSource('town-facilities', {
+                type: 'geojson',
+                data: {
+                    type: 'FeatureCollection',
+                    features: config.facilities.map(function (facility) {
+                        return {
+                            type: 'Feature',
+                            geometry: { type: 'Point', coordinates: toLngLat(facility.coordinates) },
+                            properties: { name: facility.name }
+                        };
+                    })
+                }
+            });
+        }
+
+        // Facilities stay subordinate to trailheads until you zoom in.
+        if (!map.getLayer('facility-points')) {
+            map.addLayer({
+                id: 'facility-points',
+                type: 'circle',
+                source: 'town-facilities',
+                minzoom: 10,
+                paint: {
+                    'circle-color': '#E87B35',
+                    'circle-radius': 5,
+                    'circle-stroke-width': 2,
+                    'circle-stroke-color': '#ffffff'
+                }
+            });
+        }
+
+        // A trail selected before the swap keeps its route visible after it.
+        if (selectedTrailId !== null) {
+            map.setFeatureState({ source: 'trail-routes', id: selectedTrailId }, { selected: true });
+        }
+    }
+
+    map.on('style.load', installMapLayers);
+
+    map.on('click', 'facility-points', function (event) {
+        new mapboxgl.Popup({ offset: 12 })
+            .setLngLat(event.features[0].geometry.coordinates)
+            .setText(event.features[0].properties.name)
+            .addTo(map);
+    });
+
+    map.on('mouseenter', 'facility-points', function () { map.getCanvas().style.cursor = 'pointer'; });
+    map.on('mouseleave', 'facility-points', function () { map.getCanvas().style.cursor = ''; });
+
     map.on('load', function () {
-        if (skeleton) {
-            skeleton.remove();
-        }
+        // Same endpoint the main map uses, scoped to this town.
+        fetch('/api/trails?town=' + encodeURIComponent(config.townSlug))
+            .then(function (response) {
+                if (!response.ok) {
+                    throw new Error('Trail request failed: ' + response.status);
+                }
 
-        const bounds = new mapboxgl.LngLatBounds();
-        bounds.extend(toLngLat(markers.center));
+                return response.json();
+            })
+            .then(function (trails) {
+                if (skeleton) {
+                    skeleton.remove();
+                }
 
-        markers.trails.forEach(function (trail) {
-            const lngLat = toLngLat(trail.coordinates);
-            const isLake = trail.type === 'fishing_lake';
+                allTrails = trails;
 
-            const el = document.createElement('button');
-            el.type = 'button';
-            el.setAttribute('aria-label', trail.name);
-            el.style.cssText = 'width:30px;height:30px;border-radius:50%;display:flex;align-items:center;'
-                + 'justify-content:center;font-size:14px;cursor:pointer;padding:0;'
-                + 'box-shadow:0 2px 8px rgba(25,54,52,.35);transition:transform .2s ease;'
-                + 'background:' + (isLake ? '#3b82f6' : '#2C5F5D') + ';border:2px solid #fff;';
-            el.textContent = isLake ? '\u{1F41F}' : '\u{1F97E}';
-            el.addEventListener('mouseenter', () => { el.style.transform = 'scale(1.15)'; });
-            el.addEventListener('mouseleave', () => { el.style.transform = 'scale(1)'; });
+                if (map.getSource('trail-routes')) {
+                    map.getSource('trail-routes').setData(buildRouteGeoJSON(trails));
+                }
 
-            const popup = new mapboxgl.Popup({ offset: 18 }).setHTML(
-                '<div style="font-weight:700;margin-bottom:4px;">' + trail.name.replace(/</g, '&lt;') + '</div>'
-                + '<a href="' + trail.url + '" style="color:#2C5F5D;font-size:12px;font-weight:600;">View details &rarr;</a>'
-            );
+                const bounds = new mapboxgl.LngLatBounds();
+                let plotted = 0;
 
-            new mapboxgl.Marker({ element: el }).setLngLat(lngLat).setPopup(popup).addTo(map);
-            bounds.extend(lngLat);
-        });
+                trails.forEach(function (trail) {
+                    const coords = sanitize(trail.coordinates);
 
-        markers.facilities.forEach(function (facility) {
-            const lngLat = toLngLat(facility.coordinates);
-            const el = document.createElement('div');
-            el.style.cssText = 'width:14px;height:14px;border-radius:50%;background:#E87B35;'
-                + 'border:2px solid #fff;box-shadow:0 1px 5px rgba(25,54,52,.35);';
+                    if (!coords) {
+                        return;
+                    }
 
-            new mapboxgl.Marker({ element: el })
-                .setLngLat(lngLat)
-                .setPopup(new mapboxgl.Popup({ offset: 12 }).setText(facility.name))
-                .addTo(map);
-            bounds.extend(lngLat);
-        });
+                    const isLake = trail.location_type === 'fishing_lake';
+                    const activity = displayActivity(trail);
 
-        if (markers.trails.length || markers.facilities.length) {
-            map.fitBounds(bounds, { padding: 60, maxZoom: 12, duration: 0 });
-        }
+                    // Icon precedence matches the main map: the trail's own icon
+                    // wins, then the fishing default, then its activity's icon.
+                    const emoji = trail.icon || (isLake ? '\u{1F41F}' : ((activity && activity.icon) || '\u{1F4CD}'));
+                    const iconImageUrl = trail.icon_image_url
+                        || (isLake ? null : ((activity && activity.icon_image_url) || null));
+
+                    const el = createMarkerEl(emoji, iconImageUrl);
+                    el.dataset.trailId = trail.id;
+                    el.setAttribute('aria-label', trail.name);
+
+                    new mapboxgl.Marker({ element: el, anchor: 'center' })
+                        .setLngLat(toLngLat(coords))
+                        .setPopup(new mapboxgl.Popup({ offset: 20, maxWidth: '260px' }).setHTML(popupHtml(trail)))
+                        .addTo(map);
+
+                    el.addEventListener('click', function () {
+                        selectTrail(trail, el);
+                    });
+
+                    bounds.extend(toLngLat(coords));
+                    plotted++;
+                });
+
+                config.facilities.forEach(function (facility) {
+                    bounds.extend(toLngLat(facility.coordinates));
+                });
+
+                if (plotted || config.facilities.length) {
+                    map.fitBounds(bounds, { padding: 60, maxZoom: 12, duration: 0 });
+                }
+            })
+            .catch(function (error) {
+                console.error(error);
+
+                if (skeleton) {
+                    skeleton.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;'
+                        + 'height:100%;color:#4b5563;font-size:0.875rem;text-align:center;padding:1rem;">'
+                        + 'The trail map could not be loaded. The trail list below still works.</div>';
+                    skeleton.classList.remove('animate-pulse');
+                }
+            });
     });
 })();
 </script>
