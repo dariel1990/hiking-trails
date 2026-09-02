@@ -31,7 +31,52 @@
 <link href="https://api.mapbox.com/mapbox-gl-js/v3.10.0/mapbox-gl.css" rel="stylesheet">
 <style>
     .town-map { height: 30rem; }
-    @media (max-width: 1023px) { .town-map { height: 22rem; } }
+
+    /* On a phone the map IS this section, so it gets more room than on desktop,
+       not less. It fills ~90% of the viewport minus the fixed header, so the
+       header never sits over it and a sliver of the next block still shows,
+       which keeps it obvious the page continues below.
+
+       dvh rather than vh so the height does not jump when iOS Safari's toolbar
+       collapses. --nav-height tracks the h-20 nav in layouts/public.blade.php;
+       update both together. */
+    @media (max-width: 1023px) {
+        .town-map {
+            --nav-height: 5rem;
+            height: clamp(22rem, calc(90dvh - var(--nav-height)), 52rem);
+        }
+
+        /* Break the container gutter so the map reads as a map, not a widget. */
+        .town-map-frame {
+            margin-left: -1rem;
+            margin-right: -1rem;
+            border-radius: 0;
+            box-shadow: 0 8px 24px -12px rgba(25, 54, 52, 0.4);
+        }
+
+        /* The map leads this section on mobile and runs edge to edge, so the
+           section's own top padding would read as a stray white band under the
+           hero. Drop it and let the map meet the hero directly. */
+        .town-map-section { padding-top: 0; }
+    }
+
+    /* Touch devices: a 32px pin is below the 44px minimum tap target, so pins
+       and the popup close button grow where there is no cursor to aim with. */
+    @media (pointer: coarse) {
+        #town-map .selectable-marker-el {
+            width: 42px !important;
+            height: 42px !important;
+            font-size: 20px !important;
+        }
+
+        #town-map .selectable-marker-el img { width: 28px !important; height: 28px !important; }
+
+        #town-map .mapboxgl-popup-close-button { width: 30px; height: 30px; font-size: 21px; }
+
+        #town-map .mapboxgl-ctrl-group button { width: 38px; height: 38px; }
+
+        #town-map .town-layer-switch button { padding: 9px 14px; font-size: 13px; }
+    }
 
     .tour-card-img { transition: transform 0.5s ease; }
     .tour-card:hover .tour-card-img { transform: scale(1.06); }
@@ -45,8 +90,25 @@
         box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.55), 0 4px 14px rgba(0, 0, 0, 0.55) !important;
     }
 
-    /* Layer switcher — segmented control, top left of the map. */
-    .town-layer-switch {
+    /* Mapbox's two-finger hint, restyled to match the site instead of the
+       default translucent black. */
+    #town-map .mapboxgl-scroll-zoom-blocker,
+    #town-map .mapboxgl-touch-pan-blocker {
+        background: rgba(25, 54, 52, 0.72);
+        font-weight: 600;
+        letter-spacing: 0.01em;
+    }
+
+    /* Layer switcher — segmented control, top left of the map.
+
+       Every rule is scoped by #town-map on purpose. Mapbox ships
+       `.mapboxgl-ctrl button:not(:disabled):hover { background-color: rgb(0 0 0/5%) }`
+       at specificity (0,3,1), which outranks a plain
+       `.town-layer-switch button[aria-pressed="true"]` at (0,2,1). On touch that
+       hover state sticks after a tap, so it was overriding the selected
+       option's green until you tapped somewhere else. An id selector wins the
+       first specificity column outright and settles it. */
+    #town-map .town-layer-switch {
         display: flex;
         gap: 2px;
         padding: 3px;
@@ -57,23 +119,61 @@
         box-shadow: 0 2px 10px rgba(25, 54, 52, 0.28);
     }
 
-    .town-layer-switch button {
+    #town-map .town-layer-switch button {
         display: inline-flex;
         align-items: center;
         gap: 5px;
         padding: 6px 11px;
         border: 0;
         border-radius: 7px;
-        background: transparent;
+        background-color: transparent;
         color: #4b5563;
         font: 600 12px/1 inherit;
         cursor: pointer;
-        transition: background 0.2s ease, color 0.2s ease;
+        user-select: none;
+        -webkit-tap-highlight-color: transparent;
+        transition: background-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease, transform 0.12s ease;
     }
 
-    .town-layer-switch button:hover { background: rgba(44, 95, 93, 0.09); color: #193634; }
-    .town-layer-switch button[aria-pressed="true"] { background: #2C5F5D; color: #fff; }
-    .town-layer-switch button:focus-visible { outline: 2px solid #2C5F5D; outline-offset: 2px; }
+    /* The selected option. */
+    #town-map .town-layer-switch button[aria-pressed="true"] {
+        background-color: #2C5F5D;
+        color: #fff;
+        box-shadow: 0 1px 3px rgba(25, 54, 52, 0.35);
+        cursor: default;
+    }
+
+    /* Hover only where a real pointer exists. Unqualified :hover sticks after a
+       tap on touch devices, leaving a button looking permanently hovered. */
+    @media (hover: hover) {
+        #town-map .town-layer-switch button:not([aria-pressed="true"]):hover {
+            background-color: rgba(44, 95, 93, 0.1);
+            color: #193634;
+        }
+
+        /* The selected option still acknowledges the cursor rather than sitting
+           inert, but shifts rather than lighting up. */
+        #town-map .town-layer-switch button[aria-pressed="true"]:hover {
+            background-color: #234e4c;
+        }
+    }
+
+    /* Pressed feedback, only on the option that can actually change something -
+       clicking the selected one is a no-op, so it should not feel clickable. */
+    #town-map .town-layer-switch button:not([aria-pressed="true"]):active {
+        transform: scale(0.94);
+        background-color: rgba(44, 95, 93, 0.18);
+    }
+
+    #town-map .town-layer-switch button:focus-visible {
+        outline: 2px solid #2C5F5D;
+        outline-offset: 2px;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        #town-map .town-layer-switch button { transition: background-color 0.2s ease, color 0.2s ease; }
+        #town-map .town-layer-switch button:not([aria-pressed="true"]):active { transform: none; }
+    }
 
     /* Mapbox pads and rounds its popup by default, which fights an
        edge-to-edge photo. Reset the shell and let the card own its own inset. */
@@ -192,8 +292,12 @@
                     </div>
                 </dl>
 
-                <div class="flex flex-col sm:flex-row gap-3 justify-center mt-6 pt-6 border-t border-white/20">
-                    <a href="{{ route('map', ['town' => $town->slug]) }}" class="btn-primary">
+                {{-- Without a website link there is nothing left in here on
+                     mobile, so the whole row goes rather than leaving a bare
+                     rule and its padding behind. --}}
+                <div class="flex flex-col sm:flex-row gap-3 justify-center mt-6 pt-6 border-t border-white/20 {{ $town->website_url ? '' : 'max-lg:hidden' }}">
+                    {{-- Hidden on mobile: the button above the map does this job. --}}
+                    <a href="{{ route('map', ['town' => $town->slug]) }}" class="btn-primary max-lg:hidden">
                         Open the full map
                     </a>
                     @if($town->website_url)
@@ -209,11 +313,11 @@
 </section>
 
 {{-- About + map, deliberately asymmetric rather than a centred block --}}
-<section class="section bg-white">
+<section class="section town-map-section bg-white">
     <div class="max-w-7xl mx-auto px-4">
         <div class="grid lg:grid-cols-12 gap-10 lg:gap-14 items-start">
 
-            <div class="lg:col-span-5 lg:sticky lg:top-28">
+            <div class="order-2 lg:order-none lg:col-span-5 lg:sticky lg:top-28">
                 <div class="flex items-center gap-3 mb-6">
                     <span class="text-2xl" aria-hidden="true">🏔</span>
                     <h2 class="text-2xl font-bold text-gray-800">About {{ $town->name }}</h2>
@@ -235,28 +339,49 @@
                     </p>
                 @endif
 
+                {{-- Mobile gets the full-width button under the map instead. --}}
                 <a href="{{ route('map', ['town' => $town->slug]) }}"
-                   class="group inline-flex items-center gap-1.5 mt-6 text-sm font-semibold text-emerald-600 hover:text-emerald-700 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 rounded">
+                   class="group hidden lg:inline-flex items-center gap-1.5 mt-6 text-sm font-semibold text-emerald-600 hover:text-emerald-700 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 rounded">
                     Explore everything on the interactive map
                     <svg class="w-4 h-4 transition-transform duration-200 group-hover:translate-x-1" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
                     </svg>
                 </a>
             </div>
+            
 
-            <div class="lg:col-span-7">
-                <div id="town-map"
-                     class="town-map w-full rounded-2xl overflow-hidden shadow-xl ring-1 ring-forest-100 bg-forest-50"
-                     role="application"
-                     aria-label="Map of trails and facilities near {{ $town->name }}">
-                    {{-- Skeleton, replaced once Mapbox paints --}}
-                    <div id="town-map-skeleton" class="w-full h-full animate-pulse bg-gradient-to-br from-forest-50 via-sand-100 to-forest-100"></div>
+            {{-- Map leads on mobile, where it is the most useful thing in the
+                 section; on desktop it returns to the right of the copy. --}}
+            <div class="order-1 lg:order-none lg:col-span-7">
+                {{-- A thumb-sized target on mobile, where the inline text link
+                     in the copy column is hidden. --}}
+                <a href="{{ route('map', ['town' => $town->slug]) }}"
+                   class="group lg:hidden my-4 flex items-center gap-3 w-full py-2.5 pl-2.5 pr-4 rounded-xl bg-forest-600 text-white font-semibold shadow-lg shadow-forest-900/30 transition-all duration-200 hover:bg-forest-700 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-forest-600 focus-visible:ring-offset-2">
+                    {{-- The pin sits in a recessed well rather than directly on
+                         the button: accent-500 on forest-600 is only 2.52:1,
+                         while the darker inset lifts accent-400 to 4.21:1 and
+                         keeps the orange vivid instead of washing it pale. --}}
+                    <span class="flex-shrink-0 grid place-items-center w-10 h-10 rounded-lg bg-black/20 ring-1 ring-inset ring-white/10 transition-colors group-hover:bg-black/25">
+                        <svg class="w-5 h-5 text-accent-400" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
+                            <path fill-rule="evenodd" d="M9.69 18.933l.003.001C9.89 19.02 10 19 10 19s.11.02.308-.066l.002-.001.006-.003.018-.008a5.741 5.741 0 00.281-.14c.186-.096.446-.24.757-.433.62-.384 1.445-.966 2.274-1.765C15.302 14.988 17 12.493 17 9A7 7 0 103 9c0 3.492 1.698 5.988 3.355 7.584a13.731 13.731 0 002.273 1.765 11.842 11.842 0 00.976.544l.062.029.018.008.006.003zM10 11.25a2.25 2.25 0 100-4.5 2.25 2.25 0 000 4.5z" clip-rule="evenodd"/>
+                        </svg>
+                    </span>
+
+                    <span class="flex-1 text-center">Open the full screen map</span>
+
+                    <svg class="flex-shrink-0 w-4 h-4 text-white/60 transition-transform duration-200 group-active:translate-x-0.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
+                    </svg>
+                </a>
+                <div class="town-map-frame rounded-2xl overflow-hidden shadow-xl ring-1 ring-forest-100">
+                    <div id="town-map"
+                         class="town-map w-full bg-forest-50"
+                         role="application"
+                         aria-label="Map of trails and facilities near {{ $town->name }}">
+                        {{-- Skeleton, replaced once Mapbox paints --}}
+                        <div id="town-map-skeleton" class="w-full h-full animate-pulse bg-gradient-to-br from-forest-50 via-sand-100 to-forest-100"></div>
+                    </div>
                 </div>
-                <p class="mt-3 text-xs text-gray-500">
-                    <span class="inline-block w-2 h-2 rounded-full bg-forest-600 align-middle" aria-hidden="true"></span> Trailheads
-                    <span class="inline-block w-2 h-2 rounded-full bg-blue-500 align-middle ml-3" aria-hidden="true"></span> Fishing lakes
-                    <span class="inline-block w-2 h-2 rounded-full bg-accent-500 align-middle ml-3" aria-hidden="true"></span> Facilities
-                </p>
             </div>
         </div>
     </div>
