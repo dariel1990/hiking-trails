@@ -26,6 +26,7 @@ class TownRequest extends FormRequest
             'longitude' => ['required', 'numeric', 'between:-180,180'],
             'radius_km' => ['required', 'integer', 'min:1', 'max:500'],
             'map_zoom' => ['required', 'integer', 'min:1', 'max:20'],
+            'color' => ['nullable', 'string', 'regex:/^#[0-9a-fA-F]{6}$/'],
             'tagline' => ['nullable', 'string', 'max:255'],
             'intro' => ['nullable', 'string'],
             'seo_title' => ['nullable', 'string', 'max:255'],
@@ -46,6 +47,7 @@ class TownRequest extends FormRequest
         return [
             'radius_km.max' => 'A town radius above 500 km would claim trails from every other town.',
             'slug.alpha_dash' => 'The slug may only contain letters, numbers, dashes and underscores.',
+            'color.regex' => 'The map colour must be a 6-digit hex value such as #2C5F5D.',
         ];
     }
 }

@@ -33,6 +33,7 @@ class AdminTownTest extends TestCase
             'sort_order' => 3,
             'is_active' => '1',
             'is_indexable' => 'auto',
+            'color' => '#2C5F5D',
         ], $overrides);
     }
 
@@ -160,5 +161,32 @@ class AdminTownTest extends TestCase
                 ->assertSee('name="town_id"', false)
                 ->assertSee('Houston, BC');
         }
+    }
+
+    public function test_an_admin_can_set_a_town_map_colour(): void
+    {
+        $this->actingAs($this->makeAdmin())
+            ->post(route('admin.towns.store'), $this->payload(['name' => 'Coloured', 'color' => '#0E7490']))
+            ->assertRedirect(route('admin.towns.index'));
+
+        $this->assertSame('#0E7490', Town::firstWhere('name', 'Coloured')->color);
+    }
+
+    public function test_a_malformed_colour_is_rejected(): void
+    {
+        $this->actingAs($this->makeAdmin())
+            ->post(route('admin.towns.store'), $this->payload(['color' => 'teal']))
+            ->assertSessionHasErrors('color');
+    }
+
+    public function test_the_colour_picker_appears_on_the_town_form(): void
+    {
+        $town = Town::factory()->create(['color' => '#B91C1C']);
+
+        $this->actingAs($this->makeAdmin())
+            ->get(route('admin.towns.edit', $town))
+            ->assertOk()
+            ->assertSee('type="color"', false)
+            ->assertSee('#B91C1C', false);
     }
 }

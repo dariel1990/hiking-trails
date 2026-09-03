@@ -186,6 +186,36 @@
                     </div>
                 </div>
 
+                <!-- Town -->
+                <div class="mb-6 border-t pt-6">
+                    <div class="flex items-center justify-between mb-3">
+                        <h4 class="font-semibold text-base">Town</h4>
+                        <label class="flex items-center gap-2 cursor-pointer text-sm text-gray-500">
+                            <input type="checkbox" class="section-toggle w-4 h-4" data-target="town-checkbox">
+                            <span class="select-none">All</span>
+                        </label>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2">
+                        @foreach($towns as $town)
+                        <label class="flex items-center cursor-pointer hover:bg-gray-50 p-3 rounded-lg">
+                            <input type="checkbox" value="{{ $town->id }}" class="town-checkbox w-5 h-5">
+                            <span class="ml-3 text-sm flex items-center gap-2">
+                                <span class="w-3 h-3 rounded-full flex-shrink-0" style="background-color: {{ $town->colorOrDefault() }};"></span>
+                                {{ $town->name }}
+                            </span>
+                        </label>
+                        @endforeach
+                        {{-- Trails outside every town's radius still need a way to be found. --}}
+                        <label class="flex items-center cursor-pointer hover:bg-gray-50 p-3 rounded-lg">
+                            <input type="checkbox" value="none" class="town-checkbox w-5 h-5">
+                            <span class="ml-3 text-sm flex items-center gap-2">
+                                <span class="w-3 h-3 rounded-full flex-shrink-0" style="background-color: {{ \App\Models\Town::DEFAULT_COLOR }};"></span>
+                                Unassigned
+                            </span>
+                        </label>
+                    </div>
+                </div>
+
                 <!-- Show on map — hidden for now: the sidebar tabs drive map visibility.
                      Inputs stay in the DOM (checked) so applyAllFilters() keeps the layer flags true. -->
                 <div class="mb-6 border-t pt-6 hidden">
@@ -505,6 +535,41 @@
         </div>
     </div>
 
+    <!-- Municipality legend. Collapsed by default on mobile, where map space is scarce. -->
+    <div id="town-legend"
+         class="absolute z-30 bottom-8 left-3 md:bottom-8 md:left-4 bg-white/95 backdrop-blur-sm rounded-xl shadow-lg border border-gray-200 overflow-hidden max-w-[13rem]">
+        <button id="town-legend-toggle"
+                class="w-full flex items-center justify-between gap-2 px-3 py-2 text-xs font-bold text-gray-700 hover:bg-gray-50 transition-colors"
+                aria-expanded="true"
+                aria-controls="town-legend-body">
+            <span class="flex items-center gap-1.5">
+                <svg class="w-3.5 h-3.5 text-forest-600" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
+                    <path fill-rule="evenodd" d="M9.69 18.933C9.89 19.02 10 19 10 19s.11.02.308-.066C13.302 16.988 17 12.493 17 9A7 7 0 103 9c0 3.492 3.698 7.988 6.69 9.933zM10 11.25a2.25 2.25 0 100-4.5 2.25 2.25 0 000 4.5z" clip-rule="evenodd"/>
+                </svg>
+                By town
+            </span>
+            <svg id="town-legend-chevron" class="w-3.5 h-3.5 text-gray-400 transition-transform" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/>
+            </svg>
+        </button>
+
+        <div id="town-legend-body" class="border-t border-gray-100 py-1 max-h-[40vh] overflow-y-auto subtle-scrollbar">
+            @foreach($towns as $town)
+            <button type="button" class="town-legend-row" data-town-id="{{ $town->id }}">
+                <span class="town-legend-swatch" style="background-color: {{ $town->colorOrDefault() }};"></span>
+                <span class="town-legend-name">{{ $town->name }}</span>
+                <span class="town-legend-count" data-town-count="{{ $town->id }}">0</span>
+            </button>
+            @endforeach
+            {{-- Trails outside every town's radius would otherwise be an unexplained grey pin. --}}
+            <button type="button" class="town-legend-row" data-town-id="none">
+                <span class="town-legend-swatch" style="background-color: {{ \App\Models\Town::DEFAULT_COLOR }};"></span>
+                <span class="town-legend-name">Unassigned</span>
+                <span class="town-legend-count" data-town-count="none">0</span>
+            </button>
+        </div>
+    </div>
+
     <!-- Collapsed Panel Button (Hidden by default) -->
     <!-- Trail Info Panel (Hidden by default) -->
     <div id="trail-info-panel" class="hidden absolute top-16 bottom-4 left-4 md:top-16 md:bottom-4 md:left-4 max-md:inset-x-4 max-md:bottom-4 max-md:top-auto z-40 bg-white rounded-lg shadow-xl w-80 max-md:w-auto flex flex-col overflow-hidden">
@@ -783,6 +848,77 @@
         transform: translateY(0);
     }
 }
+
+/* ---- Municipality legend ---------------------------------------------- */
+.town-legend-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    padding: 5px 12px;
+    font-size: 11.5px;
+    line-height: 1.2;
+    text-align: left;
+    background: transparent;
+    border: 0;
+    cursor: pointer;
+    transition: background-color 0.15s ease;
+}
+
+.town-legend-row:hover { background-color: #F3F4F6; }
+.town-legend-row.is-active { background-color: #E8F0ED; }
+.town-legend-row.is-active .town-legend-name { font-weight: 700; color: #193634; }
+
+.town-legend-swatch {
+    width: 11px;
+    height: 11px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    border: 1.5px solid #fff;
+    box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.12);
+}
+
+.town-legend-name {
+    flex: 1;
+    min-width: 0;
+    color: #374151;
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.town-legend-count {
+    color: #9CA3AF;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    flex-shrink: 0;
+}
+
+/* A town with nothing on the map right now is dimmed rather than hidden, so
+   the legend stays a stable reference rather than reflowing on every filter. */
+.town-legend-row.is-empty { opacity: 0.4; }
+
+/* Pins outside the spotlit town. Greyscale as well as fading, so a tinted pin
+   never lingers as a washed-out colour competing with the highlight. */
+.selectable-marker-el.is-dimmed {
+    opacity: 0.18;
+    filter: grayscale(1);
+}
+
+/* Limited to the properties the spotlight touches, so this never fights the
+   transform-based selection animation. */
+.selectable-marker-el {
+    transition: opacity 0.25s ease, filter 0.25s ease, background-color 0.25s ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .selectable-marker-el { transition: none; }
+}
+
+
+#town-legend.is-collapsed #town-legend-body { display: none; }
+#town-legend.is-collapsed #town-legend-chevron { transform: rotate(-90deg); }
 
 /* Filter chips */
 .filter-chip {
@@ -2280,13 +2416,43 @@
     }
 
     // Patch individual checkbox change to update their section toggle
-    document.querySelectorAll('.layer-checkbox, .feature-checkbox, .activity-checkbox, .facility-type-checkbox').forEach(cb => {
+    document.querySelectorAll('.layer-checkbox, .feature-checkbox, .activity-checkbox, .facility-type-checkbox, .town-checkbox').forEach(cb => {
         cb.addEventListener('change', function () {
             const cls = Array.from(this.classList).find(c => c.endsWith('-checkbox') && c !== 'w-5' && c !== 'h-5');
             if (cls) updateSectionToggleState(cls);
             updateFilterCountBadge();
         });
     });
+
+    // Kept in step with App\Models\Town::DEFAULT_COLOR.
+    const UNASSIGNED_TOWN_COLOR = @json(\App\Models\Town::DEFAULT_COLOR);
+
+    // Keyed by town id, plus 'none' for trails outside every town's radius.
+    const TOWN_COLORS = Object.assign(
+        @json($towns->mapWithKeys(fn ($t) => [$t->id => $t->colorOrDefault()])),
+        { none: UNASSIGNED_TOWN_COLOR }
+    );
+
+    @php
+        // Built in a @php block rather than inline: Blade's @json directive
+        // parses one expression and cannot span a multi-line array literal.
+        $townViews = $towns->mapWithKeys(fn ($t) => [$t->id => [
+            'center' => [(float) $t->longitude, (float) $t->latitude],
+            'zoom' => (int) $t->map_zoom,
+        ]]);
+    @endphp
+
+    // Fallback camera position per town, used when a town has no trail on
+    // screen to frame - after a season or activity filter has excluded them all.
+    const TOWN_VIEWS = @json($townViews);
+
+    // Centre, catchment radius and zoom per town, straight from the same
+    // columns `towns:assign` uses to decide ownership - so the shape drawn on
+    // the map is literally the rule that assigned the trails inside it.
+
+    // Which town is currently spotlit, or null. Module-level so the legend and
+    // the map class can both reach it without threading it through calls.
+    let spotlitTownId = null;
 
     let advancedFilters = {
         trailType: '',
@@ -2296,6 +2462,7 @@
         features: [],
         activities: [],
         facilityTypes: [],
+        towns: [],
     };
 
     // Open All Filters Modal
@@ -2306,6 +2473,57 @@
     document.getElementById('all-filters-btn-mobile')?.addEventListener('click', function() {
         document.getElementById('all-filters-modal').classList.remove('hidden');
     });
+
+    /* ---- Municipality legend ------------------------------------------- */
+
+    // Collapsed by default on a phone, where the legend would otherwise eat a
+    // meaningful slice of the map.
+    (function initTownLegend() {
+        const legend = document.getElementById('town-legend');
+
+        if (!legend) {
+            return;
+        }
+
+        const toggle = document.getElementById('town-legend-toggle');
+
+        if (window.matchMedia('(max-width: 767px)').matches) {
+            legend.classList.add('is-collapsed');
+            toggle?.setAttribute('aria-expanded', 'false');
+        }
+
+        toggle?.addEventListener('click', () => {
+            const collapsed = legend.classList.toggle('is-collapsed');
+            toggle.setAttribute('aria-expanded', String(!collapsed));
+        });
+
+        /**
+         * Clicking a row spotlights that town rather than filtering to it.
+         *
+         * The two controls answer different questions and are worth keeping
+         * separate: the legend asks "where is Houston?" without losing the
+         * surrounding context, while the Town checkboxes in All Filters ask
+         * "show me only Houston" and remove everything else.
+         */
+        legend.querySelectorAll('.town-legend-row').forEach(row => {
+            row.addEventListener('click', () => {
+                const key = row.dataset.townId;
+
+                const clearing = String(spotlitTownId) === key;
+
+                window.trailMap?.spotlightTown(
+                    clearing ? null : key,
+                    { moveCamera: !clearing }
+                );
+            });
+        });
+
+        document.addEventListener('keydown', event => {
+            if (event.key === 'Escape' && spotlitTownId !== null) {
+                window.trailMap?.spotlightTown(null);
+            }
+        });
+    })();
 
     // Helper — single-select chip toggle
     function setChip(el, chipClass) {
@@ -2342,6 +2560,7 @@
 
         // Get facility types to show (hidden on the map unless checked)
         advancedFilters.facilityTypes = Array.from(document.querySelectorAll('.facility-type-checkbox:checked')).map(cb => cb.value);
+        advancedFilters.towns = Array.from(document.querySelectorAll('.town-checkbox:checked')).map(cb => cb.value);
 
         // Close modal
         document.getElementById('all-filters-modal').classList.add('hidden');
@@ -2382,7 +2601,7 @@
         });
 
         // Restore defaults: filters unchecked, "Show on map" toggles checked (visible)
-        document.querySelectorAll('.feature-checkbox, .activity-checkbox, .facility-type-checkbox').forEach(cb => { cb.checked = false; });
+        document.querySelectorAll('.feature-checkbox, .activity-checkbox, .facility-type-checkbox, .town-checkbox').forEach(cb => { cb.checked = false; });
         document.querySelectorAll('.layer-checkbox').forEach(cb => { cb.checked = true; });
         document.querySelectorAll('.section-toggle').forEach(cb => {
             cb.checked = cb.dataset.target === 'layer-checkbox';
@@ -2398,6 +2617,7 @@
             features: [],
             activities: [],
             facilityTypes: [],
+            towns: [],
         };
 
         // Update badge
@@ -2434,6 +2654,9 @@
 
         // Checked facility-type checkboxes
         document.querySelectorAll('.facility-type-checkbox:checked').forEach(() => count++);
+
+        // Checked town checkboxes
+        document.querySelectorAll('.town-checkbox:checked').forEach(() => count++);
 
         const badge = document.getElementById('filter-count-badge');
 
@@ -3046,8 +3269,17 @@
         }
 
         matchesAdvancedFilters(trail) {
-            // The advanced filters are all trail-only (hidden on the fishing tab) —
-            // they'd wrongly exclude fishing lakes, which lack that data
+            // Town is checked BEFORE the fishing-lake bail-out below: lakes
+            // belong to a municipality just as trails do, so skipping this
+            // would leave them visible while every trail was filtered away.
+            if (advancedFilters.towns.length > 0) {
+                if (!advancedFilters.towns.includes(String(trail.town_id ?? 'none'))) {
+                    return false;
+                }
+            }
+
+            // The remaining advanced filters are all trail-only (hidden on the
+            // fishing tab) — they'd wrongly exclude fishing lakes, which lack that data
             if (trail.location_type === 'fishing_lake') {
                 return true;
             }
@@ -3142,6 +3374,141 @@
                 case 4:
                 case 5: return '#EF4444';            // Advanced → red
                 default: return this.getDistanceColor();
+            }
+        }
+
+        /**
+         * Live counts per municipality for the legend.
+         *
+         * Counts come from the currently filtered set rather than the raw
+         * dataset, so the legend describes what is actually on screen. A town
+         * with nothing showing is dimmed rather than removed - the legend is a
+         * fixed reference, and reflowing it on every filter change would make
+         * it hard to use.
+         */
+        updateTownLegend(trails) {
+            // Called both after a re-render (with the visible set) and from
+            // spotlightTown() (without), so the last counts are retained rather
+            // than being zeroed when only the highlight changed.
+            if (trails) {
+                this._legendCounts = {};
+
+                trails.forEach(trail => {
+                    const key = trail.town_id ?? 'none';
+                    this._legendCounts[key] = (this._legendCounts[key] || 0) + 1;
+                });
+            }
+
+            const counts = this._legendCounts || {};
+
+            document.querySelectorAll('#town-legend .town-legend-row').forEach(row => {
+                const key = row.dataset.townId;
+                const count = counts[key] || 0;
+                const cell = row.querySelector('.town-legend-count');
+
+                if (cell) {
+                    cell.textContent = count;
+                }
+
+                row.classList.toggle('is-empty', count === 0);
+                row.classList.toggle('is-active', spotlitTownId !== null && String(spotlitTownId) === key);
+
+                // The swatch is the only place the town colour appears at rest,
+                // so it doubles as the key to what the spotlight will show.
+                row.setAttribute('aria-pressed', String(spotlitTownId !== null && String(spotlitTownId) === key));
+            });
+        }
+
+        // Municipality colour for a trail's pin. Trails outside every town's
+        // radius fall back to grey and are surfaced as "Unassigned" in the legend.
+        getTownColor(trail) {
+            return (trail && trail.town && trail.town.color) || UNASSIGNED_TOWN_COLOR;
+        }
+
+        /**
+         * Spend the town colour on demand instead of at rest.
+         *
+         * Pins carry no tint normally: the 3px of rim left between the border
+         * and the icon cannot hold a hue over satellite imagery, and seven
+         * competing hues read as noise. Spotlighting puts exactly one colour on
+         * screen at the moment it answers a question - "where is Houston?".
+         *
+         * Pass null to clear.
+         *
+         * `moveCamera` is off by default on purpose: this is re-run after every
+         * applyFilters() to reassert the highlight on rebuilt markers, and
+         * yanking the view on each filter change would be intolerable. Only a
+         * deliberate legend click asks for the camera.
+         */
+        spotlightTown(townId, { moveCamera = false } = {}) {
+            spotlitTownId = townId;
+
+            const color = townId ? (TOWN_COLORS[townId] || UNASSIGNED_TOWN_COLOR) : null;
+
+            document.querySelectorAll('.selectable-marker-el[data-trail-id]').forEach(el => {
+                if (!townId) {
+                    el.classList.remove('is-dimmed');
+                    el.style.backgroundColor = this.markerColor;
+
+                    return;
+                }
+
+                // dataset.townId is '' for trails outside every town's radius,
+                // which the legend and filters both address as 'none'.
+                const key = el.dataset.townId || 'none';
+                const matches = key === String(townId);
+
+                el.classList.toggle('is-dimmed', !matches);
+                el.style.backgroundColor = matches ? color : this.markerColor;
+            });
+
+            this.updateTownLegend();
+
+            if (townId && moveCamera) {
+                this.frameTown(townId);
+            }
+        }
+
+        /**
+         * Move the view to a town.
+         *
+         * Frames that town's currently visible trails rather than its stored
+         * catchment radius: a town whose trails sit in one valley should not be
+         * shown at a 50 km circle just because that is the radius that assigned
+         * them. Falls back to the configured centre and zoom when a filter has
+         * left the town with nothing on screen.
+         */
+        frameTown(townId) {
+            const key = String(townId);
+
+            const points = (this.allTrails || [])
+                .filter(trail => String(trail.town_id ?? 'none') === key)
+                .map(trail => this.sanitizeCoordinates(trail.coordinates))
+                .filter(coords => coords !== null);
+
+            // Padding leaves room for the filter bar above and the legend below.
+            const padding = { top: 90, bottom: 90, left: 60, right: 60 };
+
+            if (points.length > 1) {
+                const bounds = new mapboxgl.LngLatBounds();
+                points.forEach(([lat, lng]) => bounds.extend([lng, lat]));
+
+                this.map.fitBounds(bounds, { padding, maxZoom: 12, duration: 900 });
+
+                return;
+            }
+
+            if (points.length === 1) {
+                const [lat, lng] = points[0];
+                this.map.easeTo({ center: [lng, lat], zoom: 12, duration: 900 });
+
+                return;
+            }
+
+            const view = TOWN_VIEWS[key];
+
+            if (view) {
+                this.map.easeTo({ center: view.center, zoom: view.zoom, duration: 900 });
             }
         }
 
@@ -3374,6 +3741,14 @@
                 listBusinesses = [];
             }
             this.renderTrailList(listTrails, listBusinesses);
+            this.updateTownLegend(allFilteredTrails);
+
+            // applyFilters() destroys and rebuilds every marker, so an active
+            // spotlight has to be reasserted against the new elements.
+            if (spotlitTownId !== null) {
+                this.spotlightTown(spotlitTownId);
+            }
+
 
             let mapTrails;
             if (this.activeLocationFilter === 'trail') {
@@ -3476,11 +3851,13 @@
         // Unified marker color — same dark green on every map layer
         get markerColor() { return '#1B3935'; }
 
-        _createMarkerEl(emoji, iconImageUrl = null) {
+        // `color` is optional: omitted, every marker keeps the unified dark green.
+        // Only trail markers pass one, tinting them by municipality.
+        _createMarkerEl(emoji, iconImageUrl = null, color = null) {
             const el = document.createElement('div');
             el.className = 'selectable-marker-el';
             el.dataset.emoji = emoji;
-            el.style.cssText = `background-color:${this.markerColor};width:32px;height:32px;border-radius:50%;border:2px solid #ffffff;box-shadow:0 2px 8px rgba(0,0,0,0.4);display:flex;align-items:center;justify-content:center;font-size:15px;cursor:pointer;line-height:1;overflow:hidden;`;
+            el.style.cssText = `background-color:${color || this.markerColor};width:32px;height:32px;border-radius:50%;border:2px solid #ffffff;box-shadow:0 2px 8px rgba(0,0,0,0.4);display:flex;align-items:center;justify-content:center;font-size:15px;cursor:pointer;line-height:1;overflow:hidden;`;
             if (iconImageUrl) {
                 el.innerHTML = `<img src="${iconImageUrl}" alt="" style="width:22px;height:22px;object-fit:cover;border-radius:50%;">`;
             } else if (emoji === '🥾') {
@@ -3593,8 +3970,12 @@
             const iconImageUrl = trail.icon_image_url
                 || (isFishingLake ? null : (activity.icon_image_url || null));
 
+            // Deliberately untinted at rest. A 32px pin minus its 2px border
+            // and 22px icon leaves a 3px rim, which cannot carry a hue over
+            // satellite terrain. Ownership reads from the region wash instead.
             const el = this._createMarkerEl(emoji, iconImageUrl);
             el.dataset.trailId = trail.id;
+            el.dataset.townId = trail.town_id ?? '';
             el.addEventListener('click', (e) => {
                 e.stopPropagation();
                 this._selectMarker(el, coords[0], coords[1]);

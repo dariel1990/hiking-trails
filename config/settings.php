@@ -379,6 +379,15 @@ return [
             'default' => 3,
             'rules' => ['required', 'integer', 'between:1,12'],
         ],
+        'recent_trail_count' => [
+            'group' => 'content',
+            'label' => 'Recently added trails on home page',
+            'type' => 'int',
+            'input' => 'number',
+            'default' => 6,
+            'hint' => 'How many of the newest trails to show in the "Recently added" row.',
+            'rules' => ['required', 'integer', 'between:1,12'],
+        ],
         'photo_upload_max_kb' => [
             'group' => 'content',
             'label' => 'Visitor photo upload limit (KB)',

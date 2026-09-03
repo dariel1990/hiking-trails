@@ -5,7 +5,23 @@
         $firstPhoto = $trail->trailMedia->where('media_type', 'photo')->first();
         $featuredUrl = $firstPhoto ? $firstPhoto->getThumbnail() ?? $firstPhoto->getUrl() : null;
     }
-    $isLake = $type === 'lakes';
+    /**
+     * Derived per row rather than from the loop-level $type, so a mixed
+     * collection (the homepage's "recently added" row) labels each card
+     * correctly. Homogeneous callers get exactly the same result as before,
+     * and $type still decides the fallback when location_type is missing.
+     */
+    $isLake = $trail->location_type ? $trail->isFishingLake() : ($type === 'lakes');
+
+    /**
+     * `location` is free text and is blank on most recent entries; the town
+     * relation is the reliable label. Falls back so older rows that only have
+     * the text field still show something.
+     */
+    $placeLabel = $trail->location ?: $trail->town?->name;
+
+    /** Opt-in: only the callers that pass $showNew get the freshness flag. */
+    $isNew = ($showNew ?? false) && $trail->created_at?->gte(now()->subDays(30));
 @endphp
 <div class="trail-card group cursor-pointer hover-lift"
      onclick="window.location.href='{{ route('trails.show', $trail->id) }}'">
@@ -17,9 +33,14 @@
                 <img src="{{ asset('images/xplore-smithers-logo.png') }}" alt="Xplore Smithers" class="w-32 h-32 object-contain">
             </div>
         @endif
-        @if($trail->is_featured)
-            <div class="absolute top-3 left-3">
-                <span class="badge bg-amber-400 text-amber-900 font-bold shadow-lg">⭐ Featured</span>
+        @if($trail->is_featured || $isNew)
+            <div class="absolute top-3 left-3 flex flex-col items-start gap-1.5">
+                @if($trail->is_featured)
+                    <span class="badge bg-amber-400 text-amber-900 font-bold shadow-lg">⭐ Featured</span>
+                @endif
+                @if($isNew)
+                    <span class="badge-new">NEW</span>
+                @endif
             </div>
         @endif
         <div class="absolute top-3 right-3">
@@ -42,10 +63,10 @@
     <div class="trail-card-body">
         <div class="mb-4">
             <h3 class="text-xl font-bold text-gray-900 mb-2 group-hover:text-accent-600 transition-colors">{{ $trail->name }}</h3>
-            @if($trail->location)
+            @if($placeLabel)
                 <p class="text-sm text-gray-500 flex items-center">
                     <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/></svg>
-                    {{ $trail->location }}
+                    {{ $placeLabel }}
                 </p>
             @endif
         </div>

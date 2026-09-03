@@ -14,11 +14,17 @@ class TownSeeder extends Seeder
      * theirs without swallowing a neighbour's: Smithers and Telkwa sit only
      * 15 km apart, so both are kept deliberately tight.
      *
+     * Colours tint that town's pins on the interactive map. They are
+     * mid-saturation on purpose: a 32px dot has to stay distinguishable
+     * against both the Outdoors and Satellite basemaps, and dark enough to
+     * carry a white icon.
+     *
      * @var list<array<string, mixed>>
      */
     private array $towns = [
         [
             'name' => 'Smithers',
+            'color' => '#2C5F5D',
             'latitude' => 54.7824,
             'longitude' => -127.1686,
             'radius_km' => 35,
@@ -28,6 +34,7 @@ class TownSeeder extends Seeder
         ],
         [
             'name' => 'Telkwa',
+            'color' => '#0E7490',
             'latitude' => 54.6939,
             'longitude' => -127.0522,
             'radius_km' => 25,
@@ -37,6 +44,7 @@ class TownSeeder extends Seeder
         ],
         [
             'name' => 'Houston',
+            'color' => '#C2410C',
             'latitude' => 54.3986,
             'longitude' => -126.6470,
             'radius_km' => 40,
@@ -46,6 +54,7 @@ class TownSeeder extends Seeder
         ],
         [
             'name' => 'Hazelton',
+            'color' => '#7E22CE',
             'latitude' => 55.2500,
             'longitude' => -127.5878,
             'radius_km' => 45,
@@ -55,6 +64,7 @@ class TownSeeder extends Seeder
         ],
         [
             'name' => 'Burns Lake',
+            'color' => '#15803D',
             'latitude' => 54.2286,
             'longitude' => -125.7594,
             'radius_km' => 45,
@@ -64,6 +74,7 @@ class TownSeeder extends Seeder
         ],
         [
             'name' => 'Stewart',
+            'color' => '#B91C1C',
             'latitude' => 55.9386,
             'longitude' => -129.9903,
             'radius_km' => 50,

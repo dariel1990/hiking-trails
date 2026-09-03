@@ -352,6 +352,37 @@
     </div>
 </section>
 
+{{-- Recently added — the trickle of new entries is invisible otherwise, and
+     the app reads the same set via /api/trails?sort=newest. --}}
+@if($recentTrails->isNotEmpty())
+<section class="section bg-white">
+    <div class="max-w-7xl mx-auto px-4">
+        <div class="flex items-end justify-between gap-4 flex-wrap mb-8">
+            <div>
+                <div class="flex items-center gap-3">
+                    <span class="text-2xl" aria-hidden="true">✨</span>
+                    <h2 class="text-3xl lg:text-4xl font-bold text-forest-700">Recently added</h2>
+                </div>
+                <p class="text-gray-600 mt-2 text-pretty">
+                    The newest routes on the map, straight from the trail crews and locals who send them in.
+                </p>
+            </div>
+            <a href="{{ route('trails.index') }}"
+               class="group inline-flex items-center gap-1.5 text-sm font-semibold text-emerald-600 hover:text-emerald-700 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 rounded">
+                Browse all trails
+                <svg class="w-4 h-4 transition-transform duration-200 group-hover:translate-x-1" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
+                </svg>
+            </a>
+        </div>
+
+        <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+            @include('trails._cards', ['trails' => $recentTrails, 'type' => 'hiking', 'showNew' => true])
+        </div>
+    </div>
+</section>
+@endif
+
 <!-- Statistics Section - Enhanced -->
 <section class="section cta-section">
     <div class="max-w-7xl mx-auto px-4">

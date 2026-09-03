@@ -32,6 +32,7 @@ class Town extends Model
         'longitude',
         'radius_km',
         'map_zoom',
+        'color',
         'tagline',
         'intro',
         'seo_title',
@@ -140,6 +141,22 @@ class Town extends Model
             $retina ? '@2x' : '',
             $token
         );
+    }
+
+    /**
+     * Neutral grey used for towns with no colour set, and for the map's
+     * "unassigned" bucket. Kept here so the legend, the markers and the admin
+     * preview all agree on one value.
+     */
+    public const DEFAULT_COLOR = '#6B7280';
+
+    /**
+     * This town's map colour, falling back to grey so a half-configured town
+     * still renders rather than producing a marker with no background.
+     */
+    public function colorOrDefault(): string
+    {
+        return $this->color ?: self::DEFAULT_COLOR;
     }
 
     public function getFullNameAttribute(): string

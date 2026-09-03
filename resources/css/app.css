@@ -175,6 +175,12 @@
     @apply badge bg-emerald-50 text-forest-800;
   }
 
+  /* Freshness marker on recently added trails. Deliberately the brand accent
+     rather than another amber, so it never reads as a second "Featured". */
+  .badge-new {
+    @apply badge bg-accent-500 text-white font-bold tracking-wide shadow-lg;
+  }
+
   .badge-secondary {
     @apply badge bg-gray-100 text-gray-800;
   }

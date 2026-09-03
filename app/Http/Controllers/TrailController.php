@@ -6,6 +6,7 @@ use App\Models\ActivityType;
 use App\Models\Town;
 use App\Models\Trail;
 use App\Models\TrailNetwork;
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -53,6 +54,19 @@ class TrailController extends Controller
             $featuredTrails = $featuredTrails->merge($featured);
         }
 
+        /**
+         * Newest first, so visitors (and the app, via /api/trails?sort=newest)
+         * notice fresh content. Ordered by id as a tiebreak because bulk entry
+         * sessions land several rows in the same second.
+         */
+        $recentTrails = Trail::whereIn('status', ['active', 'seasonal'])
+            ->whereDoesntHave('trailNetwork', fn ($q) => $q->where('is_active', false))
+            ->with($mediaWith + ['town'])
+            ->orderByDesc('created_at')
+            ->orderByDesc('id')
+            ->take(setting('recent_trail_count'))
+            ->get();
+
         $stats = [
             'total_trails' => Trail::count(),
             'total_distance' => Trail::sum('distance_km'),
@@ -68,7 +82,7 @@ class TrailController extends Controller
 
         $towns = Town::active()->ordered()->get();
 
-        return view('home', compact('featuredTrails', 'stats', 'activities', 'mapboxToken', 'towns'));
+        return view('home', compact('featuredTrails', 'recentTrails', 'stats', 'activities', 'mapboxToken', 'towns'));
     }
 
     /**
@@ -269,7 +283,10 @@ class TrailController extends Controller
             }
         }
 
-        return view('map', compact('activities', 'mapboxToken', 'focusCoordinates'));
+        // Drives the municipality legend and the Town section of All Filters.
+        $towns = Town::active()->ordered()->get();
+
+        return view('map', compact('activities', 'mapboxToken', 'focusCoordinates', 'towns'));
     }
 
     /**
@@ -314,6 +331,7 @@ class TrailController extends Controller
             },
             'seasonalData',
             'trailNetwork',
+            'town:id,name,slug,color',
         ]);
 
         if ($locationType) {
@@ -374,6 +392,39 @@ class TrailController extends Controller
                     $query->where('distance_km', '>', 20);
                     break;
             }
+        }
+
+        /**
+         * Freshness controls for clients that want to surface new content -
+         * the homepage row and the mobile app. Both are opt-in: without them
+         * the response ordering is exactly what it has always been.
+         */
+        if ($since = $request->query('since')) {
+            /**
+             * An unencoded "+" in an ISO 8601 offset arrives as a space, so
+             * "2026-08-27T06:40:56+00:00" becomes "...06:40:56 00:00" and will
+             * not parse. Naive clients concatenate the string straight into a
+             * URL, so repair it rather than rejecting a reasonable request.
+             */
+            $normalised = preg_replace('/ (\d{2}:\d{2})$/', '+$1', $since);
+
+            try {
+                $query->where('created_at', '>=', Carbon::parse($normalised));
+            } catch (\Throwable) {
+                /**
+                 * Fail loudly. Silently dropping the filter would hand back the
+                 * entire catalogue to a client that believes it asked for a
+                 * slice - the worst possible outcome for a sync.
+                 */
+                return response()->json([
+                    'message' => 'The "since" parameter must be a valid ISO 8601 date.',
+                    'errors' => ['since' => ['Could not parse ['.$since.'].']],
+                ], 422);
+            }
+        }
+
+        if ($request->query('sort') === 'newest') {
+            $query->orderByDesc('created_at')->orderByDesc('id');
         }
 
         $trails = $query->get()->map(function ($trail) {
@@ -540,6 +591,14 @@ class TrailController extends Controller
                 'best_fishing_season' => $trail->best_fishing_season,
                 'best_fishing_time' => $trail->best_fishing_time,
                 'view_count' => $trail->view_count,
+                'town_id' => $trail->town_id,
+                'town' => $trail->town ? [
+                    'id' => $trail->town->id,
+                    'name' => $trail->town->name,
+                    'slug' => $trail->town->slug,
+                    'color' => $trail->town->colorOrDefault(),
+                ] : null,
+                'created_at' => $trail->created_at?->toIso8601String(),
             ];
         });
 

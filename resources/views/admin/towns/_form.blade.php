@@ -119,6 +119,21 @@
                            class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
                 </div>
             </div>
+
+            <div>
+                <label for="color" class="block text-sm font-medium mb-1.5">Map colour</label>
+                <div class="flex items-center gap-3">
+                    <input type="color" name="color" id="color"
+                           value="{{ old('color', $town->color ?: \App\Models\Town::DEFAULT_COLOR) }}"
+                           class="h-10 w-16 rounded-md border border-input bg-background p-1 cursor-pointer">
+                    <output for="color" id="color-value" class="text-sm font-mono text-muted-foreground">{{ old('color', $town->color ?: \App\Models\Town::DEFAULT_COLOR) }}</output>
+                </div>
+                <p class="mt-1 text-xs text-muted-foreground">
+                    Tints this town's pins on the interactive map and its swatch in the legend.
+                    Pick something mid-toned &mdash; a 32px dot has to stay readable on both the
+                    Outdoors and Satellite basemaps, and it carries a white icon.
+                </p>
+            </div>
         </div>
 
         {{-- SEO --}}
@@ -221,6 +236,12 @@
 </div>
 
 @push('scripts')
+<script>
+    document.getElementById('color')?.addEventListener('input', function () {
+        const out = document.getElementById('color-value');
+        if (out) { out.textContent = this.value.toUpperCase(); }
+    });
+</script>
 <link href="https://api.mapbox.com/mapbox-gl-js/v3.10.0/mapbox-gl.css" rel="stylesheet">
 <script src="https://api.mapbox.com/mapbox-gl-js/v3.10.0/mapbox-gl.js"></script>
 <script>
