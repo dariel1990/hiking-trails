@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Business;
+use App\Models\Town;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -27,6 +28,10 @@ class BusinessPublicController extends Controller
 
         if ($type = $request->input('type')) {
             $query->where('business_type', $type);
+        }
+
+        if ($town = $request->input('town')) {
+            $query->inTown($town);
         }
 
         $query->orderByDesc('is_featured')->orderBy('name');
@@ -61,7 +66,9 @@ class BusinessPublicController extends Controller
         $businesses = $query->paginate(setting('businesses_per_page_all'));
         $grouped = collect($paginatedGroups);
 
-        return view('businesses.index', compact('grouped', 'types', 'businesses', 'paginatedGroups'));
+        $towns = Town::active()->ordered()->get();
+
+        return view('businesses.index', compact('grouped', 'types', 'businesses', 'paginatedGroups', 'towns'));
     }
 
     public function show(Business $business): View

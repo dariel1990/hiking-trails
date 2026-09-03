@@ -1,5 +1,12 @@
 @extends('layouts.public')
 
+@php
+    /** Every param the filter panel owns, so the empty state stays in step with it. */
+    $filterKeys = ['town', 'search', 'type'];
+    $isFiltered = request()->hasAny($filterKeys);
+@endphp
+
+
 @section('title', 'Local Businesses — Smithers Partners')
 
 @section('content')
@@ -25,58 +32,30 @@
             </h1>
         </div>
 
-        <div class="slide-in-up mb-12" style="animation-delay: 0.2s;">
-            <p class="text-xl md:text-2xl text-white leading-relaxed max-w-4xl mx-auto text-shadow-md">
-                Support local. Eat, stay, shop, and explore with Smithers' best local partners — your adventure starts here.
+        {{-- Phone gets its own short line rather than a clamped desktop one. --}}
+        <div class="slide-in-up mb-8" style="animation-delay: 0.2s;">
+            <p class="text-lg md:text-2xl text-white leading-relaxed max-w-4xl mx-auto text-shadow-md text-pretty">
+                <span class="sm:hidden">Eat, stay, shop and gear up with local partners.</span>
+                <span class="hidden sm:inline">
+                    Support local. Eat, stay, shop, and explore with Smithers' best local partners — your adventure starts here.
+                </span>
             </p>
         </div>
 
         @include('partials.app-promo-banner')
 
-        {{-- Search & Filter --}}
-        <div class="w-full max-w-4xl mx-auto scale-in" style="animation-delay: 0.4s;">
-            <div class="bg-white/20 backdrop-blur-md rounded-2xl p-6 shadow-2xl border border-white/30">
-                <form method="GET" action="{{ route('businesses.public.index') }}">
-                    <div class="mb-4">
-                        <label class="block text-white text-sm font-medium mb-2">Search Businesses</label>
-                        <input type="text" name="search" placeholder="Cafe, restaurant, gear shop..."
-                               value="{{ request('search') }}"
-                               class="w-full px-4 py-3 bg-white/90 border border-white/40 rounded-lg text-gray-900 placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:border-transparent font-medium">
-                    </div>
-                    <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
-                        <div class="col-span-2 md:col-span-3">
-                            <label class="block text-white text-sm font-medium mb-2">Category</label>
-                            <select name="type" class="w-full px-3 py-3 bg-white/90 border border-white/40 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:border-transparent font-medium text-sm">
-                                <option value="">All Categories</option>
-                                @foreach($types as $key => $label)
-                                    <option value="{{ $key }}" {{ request('type') == $key ? 'selected' : '' }}>{{ $label }}</option>
-                                @endforeach
-                            </select>
-                        </div>
-                        <div class="col-span-2 md:col-span-1 flex items-end">
-                            <button type="submit" class="btn-primary w-full">
-                                Find Businesses
-                            </button>
-                        </div>
-                    </div>
-
-                    @if(request()->hasAny(['search', 'type']))
-                        <div class="flex flex-col md:flex-row items-center justify-between bg-white/10 rounded-lg p-4 border border-white/20 mt-4">
-                            <span class="text-white text-sm font-medium mb-2 md:mb-0">
-                                {{ $businesses->count() }} {{ Str::plural('business', $businesses->count()) }} found
-                            </span>
-                            <a href="{{ route('businesses.public.index') }}"
-                               class="text-emerald-300 hover:text-emerald-200 text-sm font-medium transition-colors flex items-center">
-                                Clear filters
-                                <svg class="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                                </svg>
-                            </a>
-                        </div>
-                    @endif
-                </form>
-            </div>
-        </div>
+        <x-filter-panel
+            :action="route('businesses.public.index')"
+            search-label="Search businesses"
+            search-placeholder="Cafe, restaurant, gear shop…"
+            submit-label="Show businesses"
+            :result-count="$businesses->total()"
+            result-noun="business"
+            :filters="[
+                ['name' => 'town', 'label' => 'Town', 'placeholder' => 'All towns', 'options' => $towns->pluck('name', 'slug')],
+                ['name' => 'type', 'label' => 'Category', 'placeholder' => 'All categories', 'options' => $types],
+            ]"
+        />
     </div>
 </section>
 
@@ -97,7 +76,7 @@
             </div>
         @else
 
-            @if(!request()->hasAny(['search', 'type']))
+            @if(!$isFiltered)
                 <div class="text-center mb-12">
                     <h2 class="section-title text-forest-600">Smithers Local Partners</h2>
                     <p class="section-subtitle">
@@ -108,7 +87,7 @@
                 <div class="mb-10"></div>
             @endif
 
-            @if(request()->hasAny(['search', 'type']))
+            @if($isFiltered)
                 {{-- Flat grid when filtered --}}
                 <div
                     x-data="{

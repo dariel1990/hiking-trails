@@ -536,6 +536,108 @@
     background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23059669' fill-opacity='0.05'%3E%3Cpath d='M30 30l15-15v30h-30z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
   }
 
+  /* ---- Filter panel -------------------------------------------------
+     Shared by the trails, fishing-lakes and businesses listings via
+     components/filter-panel.blade.php. The sheet follows the same shape as
+     partials/share-modal and subscription/_upgrade-modal: bottom sheet on a
+     phone, centred dialog from 640px up. Every rule is scoped to its own
+     class so nothing here can be outranked by a third-party stylesheet. */
+
+  .filter-chip {
+    @apply inline-flex items-center gap-1.5 rounded-full bg-white/90 pl-3 pr-2 py-1.5 text-xs font-semibold text-forest-800 shadow-sm transition-colors;
+  }
+
+  .filter-chip-x {
+    @apply inline-flex items-center justify-center w-4 h-4 rounded-full bg-forest-700/10 text-forest-700 text-sm leading-none transition-colors;
+  }
+
+  @media (hover: hover) {
+    .filter-chip:hover { @apply bg-white; }
+    .filter-chip:hover .filter-chip-x { @apply bg-accent-500 text-white; }
+  }
+
+  .filter-chip:focus-visible {
+    @apply outline-none ring-2 ring-white ring-offset-2 ring-offset-transparent;
+  }
+
+  .filter-sheet {
+    position: fixed;
+    inset: 0;
+    z-index: 9990;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+  }
+
+  @media (min-width: 640px) {
+    .filter-sheet { align-items: center; }
+  }
+
+  .filter-sheet-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(10, 20, 19, 0.66);
+    backdrop-filter: blur(3px);
+  }
+
+  .filter-sheet-dialog {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    max-height: 88dvh;
+    background: #fff;
+    border-radius: 24px 24px 0 0;
+    box-shadow: 0 -8px 40px rgba(10, 20, 19, 0.35);
+    animation: filterSheetUp 0.42s cubic-bezier(0.22, 1, 0.36, 1);
+    text-align: left;
+  }
+
+  @media (min-width: 640px) {
+    .filter-sheet-dialog {
+      max-width: 30rem;
+      max-height: 80vh;
+      border-radius: 20px;
+      animation-name: filterSheetUpDesktop;
+    }
+  }
+
+  @keyframes filterSheetUp {
+    from { transform: translateY(100%); }
+    to { transform: translateY(0); }
+  }
+
+  @keyframes filterSheetUpDesktop {
+    from { opacity: 0; transform: translateY(36px) scale(0.98); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .filter-sheet-dialog { animation: none; }
+  }
+
+  .filter-sheet-select {
+    @apply w-full h-12 px-3 rounded-xl border border-gray-300 bg-white text-gray-900 font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500;
+  }
+
+  .filter-sheet-close {
+    @apply grid place-items-center w-9 h-9 rounded-full text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-forest-600;
+  }
+
+  .filter-sheet-clear {
+    @apply flex-1 grid place-items-center h-12 rounded-xl bg-gray-100 text-gray-800 font-semibold transition-colors hover:bg-gray-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-forest-600;
+  }
+
+  .filter-sheet-apply {
+    @apply flex-[2] h-12 rounded-xl bg-forest-600 text-white font-semibold transition-colors hover:bg-forest-700 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-forest-600 focus-visible:ring-offset-2;
+  }
+
+  /* Touch devices get roomier controls, matching towns/show.blade.php. */
+  @media (pointer: coarse) {
+    .filter-chip { @apply py-2 pl-3.5 pr-2.5 text-sm; }
+    .filter-chip-x { @apply w-5 h-5 text-base; }
+  }
+
   /* Text shadows for type sitting over hero imagery. These were referenced by
      the hero headlines long before they existed as utilities. */
   .text-shadow-sm {

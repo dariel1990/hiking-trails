@@ -1,5 +1,12 @@
 @extends('layouts.public')
 
+@php
+    /** Every param the filter panel owns, so the empty state stays in step with it. */
+    $filterKeys = ['town', 'search', 'difficulty', 'distance', 'activity', 'season'];
+    $isFiltered = request()->hasAny($filterKeys);
+@endphp
+
+
 @section('title', 'Discover Hiking Trails')
 
 @section('content')
@@ -30,106 +37,35 @@
             </h1>
         </div>
 
-        <!-- Subtitle -->
-        <div class="slide-in-up mb-12" style="animation-delay: 0.2s;">
-            <p class="text-xl md:text-2xl text-white leading-relaxed max-w-4xl mx-auto text-shadow-md">
-                Explore {{ $hikingTrails->total() }} carefully curated hiking adventures with detailed information, photos, and maps.
-                Every trail supports sustainable tourism and local communities.
+        {{-- Subtitle. The phone gets its own short line rather than a clamped
+             version of the desktop one, so it never truncates mid-sentence. --}}
+        <div class="slide-in-up mb-8" style="animation-delay: 0.2s;">
+            <p class="text-lg md:text-2xl text-white leading-relaxed max-w-4xl mx-auto text-shadow-md text-pretty">
+                <span class="sm:hidden">{{ $hikingTrails->total() }} mapped trails with photos, distance and elevation.</span>
+                <span class="hidden sm:inline">
+                    Explore {{ $hikingTrails->total() }} carefully curated hiking adventures with detailed information, photos, and maps.
+                    Every trail supports sustainable tourism and local communities.
+                </span>
             </p>
         </div>
 
         @include('partials.app-promo-banner')
 
-        <!-- Enhanced Search Bar with Better Layout -->
-        <div class="w-full max-w-5xl mx-auto scale-in" style="animation-delay: 0.4s;">
-            <div class="bg-white/20 backdrop-blur-md rounded-2xl p-6 shadow-2xl border border-white/30">
-                <form method="GET" action="{{ route('trails.index') }}">
-                    <!-- Top Row: Search Input (Full Width) -->
-                    <div class="mb-4">
-                        <label class="block text-white text-sm font-medium mb-2">Search Trails</label>
-                        <input type="text" name="search" placeholder="Trail name, location..."
-                            value="{{ request('search') }}"
-                            class="w-full px-4 py-3 bg-white/90 border border-white/40 rounded-lg text-gray-900 placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:border-transparent font-medium">
-                    </div>
-
-                    <!-- Bottom Row: All Filters -->
-                    <div class="grid grid-cols-2 md:grid-cols-6 gap-3">
-                        <!-- Activity Filter -->
-                        <div class="col-span-2 md:col-span-1">
-                            <label class="block text-white text-sm font-medium mb-2">Activity Type</label>
-                            <select name="activity" class="w-full px-3 py-3 bg-white/90 border border-white/40 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:border-transparent font-medium text-sm">
-                                <option value="">All Activities</option>
-                                @foreach($activities as $activity)
-                                    <option value="{{ $activity->slug }}" {{ request('activity') == $activity->slug ? 'selected' : '' }}>
-                                        {{ $activity->name }}
-                                    </option>
-                                @endforeach
-                            </select>
-                        </div>
-
-                        <!-- Season Filter -->
-                        <div class="col-span-2 md:col-span-1">
-                            <label class="block text-white text-sm font-medium mb-2">Best Season</label>
-                            <select name="season" class="w-full px-3 py-3 bg-white/90 border border-white/40 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:border-transparent font-medium text-sm">
-                                <option value="">All Seasons</option>
-                                <option value="spring" {{ request('season') == 'spring' ? 'selected' : '' }}>🌸 Spring</option>
-                                <option value="summer" {{ request('season') == 'summer' ? 'selected' : '' }}>☀️ Summer</option>
-                                <option value="fall" {{ request('season') == 'fall' ? 'selected' : '' }}>🍂 Fall</option>
-                                <option value="winter" {{ request('season') == 'winter' ? 'selected' : '' }}>❄️ Winter</option>
-                            </select>
-                        </div>
-
-                        <!-- Difficulty Filter -->
-                        <div class="col-span-2 md:col-span-1">
-                            <label class="block text-white text-sm font-medium mb-2">Challenge Level</label>
-                            <select name="difficulty" class="w-full px-3 py-3 bg-white/90 border border-white/40 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:border-transparent font-medium text-sm">
-                                <option value="">All Levels</option>
-                                <option value="1" {{ request('difficulty') == '1' ? 'selected' : '' }}>1 - Very Easy</option>
-                                <option value="2" {{ request('difficulty') == '2' ? 'selected' : '' }}>2 - Easy</option>
-                                <option value="3" {{ request('difficulty') == '3' ? 'selected' : '' }}>3 - Moderate</option>
-                                <option value="4" {{ request('difficulty') == '4' ? 'selected' : '' }}>4 - Hard</option>
-                                <option value="5" {{ request('difficulty') == '5' ? 'selected' : '' }}>5 - Very Hard</option>
-                            </select>
-                        </div>
-
-                        <!-- Distance Filter -->
-                        <div class="col-span-2 md:col-span-1">
-                            <label class="block text-white text-sm font-medium mb-2">Distance Range</label>
-                            <select name="distance" class="w-full px-3 py-3 bg-white/90 border border-white/40 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:border-transparent font-medium text-sm">
-                                <option value="">Any Distance</option>
-                                <option value="0-5" {{ request('distance') == '0-5' ? 'selected' : '' }}>Under 5km</option>
-                                <option value="5-10" {{ request('distance') == '5-10' ? 'selected' : '' }}>5-10km</option>
-                                <option value="10-20" {{ request('distance') == '10-20' ? 'selected' : '' }}>10-20km</option>
-                                <option value="20+" {{ request('distance') == '20+' ? 'selected' : '' }}>Over 20km</option>
-                            </select>
-                        </div>
-
-                        <!-- Search Button -->
-                        <div class="col-span-2 flex items-end">
-                            <button type="submit" class="btn-primary w-full">
-                                Find Trails
-                            </button>
-                        </div>
-                    </div>
-
-                    <!-- Filter Results Info -->
-                    @if(request()->hasAny(['search', 'difficulty', 'distance', 'activity', 'season']))
-                        <div class="flex flex-col md:flex-row items-center justify-between bg-white/10 rounded-lg p-4 border border-white/20 mt-4">
-                            <span class="text-white text-sm font-medium mb-2 md:mb-0">
-                                {{ $hikingTrails->total() }} hiking trails found
-                            </span>
-                            <a href="{{ route('trails.index') }}"
-                            class="text-emerald-300 hover:text-emerald-200 text-sm font-medium transition-colors flex items-center">
-                                Clear all filters
-                                <svg class="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                                </svg>
-                            </a>
-                        </div>
-                    @endif
-                </form>
-            </div>
-        </div>
+        <x-filter-panel
+            :action="route('trails.index')"
+            search-label="Search trails"
+            search-placeholder="Trail name, location…"
+            submit-label="Show trails"
+            :result-count="$hikingTrails->total()"
+            result-noun="trail"
+            :filters="[
+                ['name' => 'town', 'label' => 'Town', 'placeholder' => 'All towns', 'options' => $towns->pluck('name', 'slug')],
+                ['name' => 'activity', 'label' => 'Activity', 'placeholder' => 'All activities', 'options' => $activities->pluck('name', 'slug')],
+                ['name' => 'season', 'label' => 'Best season', 'placeholder' => 'Any season', 'options' => \App\Models\Trail::getSeasons()],
+                ['name' => 'difficulty', 'label' => 'Challenge', 'placeholder' => 'Any level', 'options' => \App\Models\Trail::getDifficultyLevels()],
+                ['name' => 'distance', 'label' => 'Distance', 'placeholder' => 'Any distance', 'options' => \App\Models\Trail::getDistanceRanges()],
+            ]"
+        />
     </div>
 </section>
 
@@ -206,13 +142,13 @@
                     </div>
                     <h3 class="text-2xl font-bold text-gray-900 mb-4">No Trails Found</h3>
                     <p class="text-gray-600 mb-8">
-                        @if(request()->hasAny(['search', 'difficulty', 'distance', 'activity', 'season']))
+                        @if($isFiltered)
                             We couldn't find hiking trails matching your criteria. Try adjusting your search filters.
                         @else
                             We're curating amazing hiking adventures for you. Check back soon!
                         @endif
                     </p>
-                    @if(request()->hasAny(['search', 'difficulty', 'distance', 'activity', 'season']))
+                    @if($isFiltered)
                         <a href="{{ route('trails.index') }}" class="btn-primary">View All Trails</a>
                     @endif
                 </div>

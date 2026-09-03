@@ -291,4 +291,109 @@ class TownPageTest extends TestCase
             ->assertOk()
             ->assertSee('storage/towns/1/houston.jpg', false);
     }
+
+    /**
+     * The bootstrap config the page injects for Mapbox.
+     *
+     * Trails are not in here by design - the map fetches them from
+     * /api/trails?town= exactly as the main interactive map does.
+     *
+     * @return array<string, mixed>
+     */
+    private function mapConfig(Town $town): array
+    {
+        $html = $this->get(route('towns.show', $town))->assertOk()->getContent();
+
+        preg_match('/const config = (\{.*?\});\n/s', $html, $matches);
+
+        return json_decode($matches[1], true);
+    }
+
+    /**
+     * The trails the town map will actually plot.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    private function mapTrails(Town $town): array
+    {
+        return $this->getJson('/api/trails?town='.$town->slug)->assertOk()->json();
+    }
+
+    public function test_the_map_plots_every_trail_in_the_town_not_just_the_cards(): void
+    {
+        $town = Town::factory()->create();
+
+        // More trails than the page shows as cards, so a map fed the card
+        // shortlist would come up short.
+        for ($i = 1; $i <= 20; $i++) {
+            $this->makeTrail($town, ['name' => "Trail {$i}"]);
+        }
+
+        $this->assertCount(20, $this->mapTrails($town), 'The map must plot every trail, not the card shortlist.');
+    }
+
+    public function test_the_map_pin_count_matches_the_headline_counts(): void
+    {
+        $town = Town::factory()->create();
+
+        for ($i = 1; $i <= 15; $i++) {
+            $this->makeTrail($town, ['name' => "Hike {$i}"]);
+        }
+
+        for ($i = 1; $i <= 8; $i++) {
+            $this->makeTrail($town, ['name' => "Lake {$i}", 'location_type' => 'fishing_lake', 'geometry_type' => 'point']);
+        }
+
+        $types = array_count_values(array_column($this->mapTrails($town), 'location_type'));
+
+        $this->assertSame(15, $types['trail']);
+        $this->assertSame(8, $types['fishing_lake']);
+    }
+
+    public function test_the_map_excludes_closed_trails_and_other_towns(): void
+    {
+        $town = Town::factory()->create();
+        $other = Town::factory()->create();
+
+        $this->makeTrail($town, ['name' => 'Shown']);
+        $this->makeTrail($town, ['name' => 'Closed', 'status' => 'closed']);
+        $this->makeTrail($other, ['name' => 'Elsewhere']);
+
+        $this->assertSame(['Shown'], array_column($this->mapTrails($town), 'name'));
+    }
+
+    public function test_the_map_feed_carries_what_the_main_map_draws_with(): void
+    {
+        $town = Town::factory()->create();
+        $this->makeTrail($town, [
+            'name' => 'Routed Trail',
+            'route_coordinates' => [[54.1, -127.1], [54.2, -127.2], [54.3, -127.3]],
+            'trail_type' => 'out-and-back',
+        ]);
+
+        $trail = $this->mapTrails($town)[0];
+
+        // The town map reproduces the main map's markers and route lines, so
+        // the feed has to carry the same fields both rely on.
+        foreach (['coordinates', 'route_coordinates', 'location_type', 'trail_type', 'icon', 'icon_image_url', 'activities', 'trail_network_id'] as $field) {
+            $this->assertArrayHasKey($field, $trail, "The map feed is missing [{$field}].");
+        }
+
+        $this->assertCount(3, $trail['route_coordinates']);
+        $this->assertSame('out-and-back', $trail['trail_type']);
+    }
+
+    public function test_the_map_config_carries_the_town_slug_and_url_template(): void
+    {
+        $town = Town::factory()->create();
+        $this->makeTrail($town);
+
+        $config = $this->mapConfig($town);
+
+        $this->assertSame($town->slug, $config['townSlug'], 'The map fetches /api/trails using this slug.');
+        $this->assertStringContainsString('__ID__', $config['trailUrlTemplate']);
+        $this->assertArrayHasKey('center', $config);
+        $this->assertArrayHasKey('zoom', $config);
+        $this->assertArrayNotHasKey('trails', $config, 'Trails come from the API, not the inline payload.');
+    }
 }

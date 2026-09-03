@@ -115,4 +115,97 @@ class TownAssignmentTest extends TestCase
     {
         $this->artisan('towns:assign')->assertFailed();
     }
+
+    public function test_the_town_option_writes_only_the_named_town(): void
+    {
+        $smithers = Town::factory()->at(54.7824, -127.1686, 35)->create(['name' => 'Smithers', 'slug' => 'smithers-bc']);
+        $telkwa = Town::factory()->at(54.6939, -127.0522, 25)->create(['name' => 'Telkwa', 'slug' => 'telkwa-bc']);
+
+        $nearSmithers = $this->makeTrail(54.7820, -127.1690);
+        $nearTelkwa = $this->makeTrail(54.6950, -127.0530);
+
+        $this->artisan('towns:assign', ['--town' => ['telkwa-bc']])->assertSuccessful();
+
+        $this->assertSame($telkwa->id, $nearTelkwa->fresh()->town_id);
+        $this->assertNull($nearSmithers->fresh()->town_id, 'A scoped run must not touch another town.');
+    }
+
+    public function test_a_scoped_run_cannot_claim_a_neighbours_trail(): void
+    {
+        $smithers = Town::factory()->at(54.7824, -127.1686, 35)->create(['slug' => 'smithers-bc']);
+        $telkwa = Town::factory()->at(54.6939, -127.0522, 25)->create(['slug' => 'telkwa-bc']);
+
+        // Sits inside Smithers' 35 km radius but is nearer to Telkwa. Scoping to
+        // Smithers must not hand it over, because matching still runs against
+        // every town.
+        $trail = $this->makeTrail(54.6950, -127.0530);
+
+        $this->artisan('towns:assign', ['--town' => ['smithers-bc']])->assertSuccessful();
+
+        $this->assertNull($trail->fresh()->town_id);
+
+        $this->artisan('towns:assign', ['--town' => ['telkwa-bc']])->assertSuccessful();
+
+        $this->assertSame($telkwa->id, $trail->fresh()->town_id);
+    }
+
+    public function test_the_town_option_accepts_a_name_as_well_as_a_slug(): void
+    {
+        $town = Town::factory()->at(54.2286, -125.7594, 45)->create(['name' => 'Burns Lake', 'slug' => 'burns-lake-bc']);
+        $trail = $this->makeTrail(54.2300, -125.7600);
+
+        $this->artisan('towns:assign', ['--town' => ['Burns Lake']])->assertSuccessful();
+
+        $this->assertSame($town->id, $trail->fresh()->town_id);
+    }
+
+    public function test_several_towns_can_be_scoped_at_once(): void
+    {
+        $smithers = Town::factory()->at(54.7824, -127.1686, 35)->create(['slug' => 'smithers-bc']);
+        $telkwa = Town::factory()->at(54.6939, -127.0522, 25)->create(['slug' => 'telkwa-bc']);
+        $houston = Town::factory()->at(54.3986, -126.6470, 40)->create(['slug' => 'houston-bc']);
+
+        $s = $this->makeTrail(54.7820, -127.1690);
+        $t = $this->makeTrail(54.6950, -127.0530);
+        $h = $this->makeTrail(54.3990, -126.6480);
+
+        $this->artisan('towns:assign', ['--town' => ['smithers-bc', 'houston-bc']])->assertSuccessful();
+
+        $this->assertSame($smithers->id, $s->fresh()->town_id);
+        $this->assertSame($houston->id, $h->fresh()->town_id);
+        $this->assertNull($t->fresh()->town_id);
+    }
+
+    public function test_an_unknown_town_stops_the_run(): void
+    {
+        Town::factory()->at(54.7824, -127.1686, 35)->create(['slug' => 'smithers-bc']);
+        $trail = $this->makeTrail(54.7820, -127.1690);
+
+        $this->artisan('towns:assign', ['--town' => ['nowhere-bc']])->assertFailed();
+
+        $this->assertNull($trail->fresh()->town_id, 'A typo must not silently assign nothing and report success.');
+    }
+
+    public function test_a_scoped_dry_run_writes_nothing(): void
+    {
+        Town::factory()->at(54.7824, -127.1686, 35)->create(['slug' => 'smithers-bc']);
+        $trail = $this->makeTrail(54.7820, -127.1690);
+
+        $this->artisan('towns:assign', ['--town' => ['smithers-bc'], '--dry-run' => true])->assertSuccessful();
+
+        $this->assertNull($trail->fresh()->town_id);
+    }
+
+    public function test_scoped_force_moves_a_record_onto_the_named_town(): void
+    {
+        $smithers = Town::factory()->at(54.7824, -127.1686, 35)->create(['slug' => 'smithers-bc']);
+        $telkwa = Town::factory()->at(54.6939, -127.0522, 25)->create(['slug' => 'telkwa-bc']);
+
+        // Hand-assigned to the wrong town; nearest is really Telkwa.
+        $trail = $this->makeTrail(54.6950, -127.0530, ['town_id' => $smithers->id]);
+
+        $this->artisan('towns:assign', ['--town' => ['telkwa-bc'], '--force' => true])->assertSuccessful();
+
+        $this->assertSame($telkwa->id, $trail->fresh()->town_id);
+    }
 }

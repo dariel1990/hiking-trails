@@ -1,5 +1,12 @@
 @extends('layouts.public')
 
+@php
+    /** Every param the filter panel owns, so the empty state stays in step with it. */
+    $filterKeys = ['town', 'search', 'activity', 'season'];
+    $isFiltered = request()->hasAny($filterKeys);
+@endphp
+
+
 @section('title', 'Discover Fishing Lakes')
 
 @section('content')
@@ -24,74 +31,32 @@
             </h1>
         </div>
 
-        <div class="slide-in-up mb-12" style="animation-delay: 0.2s;">
-            <p class="text-xl md:text-2xl text-white leading-relaxed max-w-4xl mx-auto text-shadow-md">
-                Explore {{ $fishingLakes->total() }} pristine fishing lakes with detailed information on fish species, best seasons, and access points.
-                Every lake supports sustainable tourism and local communities.
+        {{-- Phone gets its own short line rather than a clamped desktop one. --}}
+        <div class="slide-in-up mb-8" style="animation-delay: 0.2s;">
+            <p class="text-lg md:text-2xl text-white leading-relaxed max-w-4xl mx-auto text-shadow-md text-pretty">
+                <span class="sm:hidden">{{ $fishingLakes->total() }} lakes with fish species, seasons and access notes.</span>
+                <span class="hidden sm:inline">
+                    Explore {{ $fishingLakes->total() }} pristine fishing lakes with detailed information on fish species, best seasons, and access points.
+                    Every lake supports sustainable tourism and local communities.
+                </span>
             </p>
         </div>
 
         @include('partials.app-promo-banner')
 
-        <!-- Search Bar -->
-        <div class="w-full max-w-5xl mx-auto scale-in" style="animation-delay: 0.4s;">
-            <div class="bg-white/20 backdrop-blur-md rounded-2xl p-6 shadow-2xl border border-white/30">
-                <form method="GET" action="{{ route('fishing-lakes.index') }}">
-                    <div class="mb-4">
-                        <label class="block text-white text-sm font-medium mb-2">Search Lakes</label>
-                        <input type="text" name="search" placeholder="Lake name, location..."
-                            value="{{ request('search') }}"
-                            class="w-full px-4 py-3 bg-white/90 border border-white/40 rounded-lg text-gray-900 placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:border-transparent font-medium">
-                    </div>
-
-                    <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
-                        <div class="col-span-2 md:col-span-1">
-                            <label class="block text-white text-sm font-medium mb-2">Activity Type</label>
-                            <select name="activity" class="w-full px-3 py-3 bg-white/90 border border-white/40 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:border-transparent font-medium text-sm">
-                                <option value="">All Activities</option>
-                                @foreach($activities as $activity)
-                                    <option value="{{ $activity->slug }}" {{ request('activity') == $activity->slug ? 'selected' : '' }}>
-                                        {{ $activity->name }}
-                                    </option>
-                                @endforeach
-                            </select>
-                        </div>
-
-                        <div class="col-span-2 md:col-span-1">
-                            <label class="block text-white text-sm font-medium mb-2">Best Season</label>
-                            <select name="season" class="w-full px-3 py-3 bg-white/90 border border-white/40 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:border-transparent font-medium text-sm">
-                                <option value="">All Seasons</option>
-                                <option value="spring" {{ request('season') == 'spring' ? 'selected' : '' }}>🌸 Spring</option>
-                                <option value="summer" {{ request('season') == 'summer' ? 'selected' : '' }}>☀️ Summer</option>
-                                <option value="fall" {{ request('season') == 'fall' ? 'selected' : '' }}>🍂 Fall</option>
-                                <option value="winter" {{ request('season') == 'winter' ? 'selected' : '' }}>❄️ Winter</option>
-                            </select>
-                        </div>
-
-                        <div class="col-span-2 flex items-end">
-                            <button type="submit" class="btn-primary w-full">
-                                Find Lakes
-                            </button>
-                        </div>
-                    </div>
-
-                    @if(request()->hasAny(['search', 'activity', 'season']))
-                        <div class="flex flex-col md:flex-row items-center justify-between bg-white/10 rounded-lg p-4 border border-white/20 mt-4">
-                            <span class="text-white text-sm font-medium mb-2 md:mb-0">
-                                {{ $fishingLakes->total() }} fishing lakes found
-                            </span>
-                            <a href="{{ route('fishing-lakes.index') }}"
-                            class="text-emerald-300 hover:text-emerald-200 text-sm font-medium transition-colors flex items-center">
-                                Clear all filters
-                                <svg class="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                                </svg>
-                            </a>
-                        </div>
-                    @endif
-                </form>
-            </div>
-        </div>
+        <x-filter-panel
+            :action="route('fishing-lakes.index')"
+            search-label="Search lakes"
+            search-placeholder="Lake name, location…"
+            submit-label="Show lakes"
+            :result-count="$fishingLakes->total()"
+            result-noun="lake"
+            :filters="[
+                ['name' => 'town', 'label' => 'Town', 'placeholder' => 'All towns', 'options' => $towns->pluck('name', 'slug')],
+                ['name' => 'activity', 'label' => 'Activity', 'placeholder' => 'All activities', 'options' => $activities->pluck('name', 'slug')],
+                ['name' => 'season', 'label' => 'Best season', 'placeholder' => 'Any season', 'options' => \App\Models\Trail::getSeasons()],
+            ]"
+        />
     </div>
 </section>
 
@@ -167,13 +132,13 @@
                     </div>
                     <h3 class="text-2xl font-bold text-gray-900 mb-4">No Lakes Found</h3>
                     <p class="text-gray-600 mb-8">
-                        @if(request()->hasAny(['search', 'activity', 'season']))
+                        @if($isFiltered)
                             We couldn't find fishing lakes matching your criteria. Try adjusting your search filters.
                         @else
                             We're curating pristine fishing destinations for you. Check back soon!
                         @endif
                     </p>
-                    @if(request()->hasAny(['search', 'activity', 'season']))
+                    @if($isFiltered)
                         <a href="{{ route('fishing-lakes.index') }}" class="btn-primary">View All Lakes</a>
                     @endif
                 </div>

@@ -66,7 +66,9 @@ class TrailController extends Controller
 
         $mapboxToken = config('services.mapbox.access_token');
 
-        return view('home', compact('featuredTrails', 'stats', 'activities', 'mapboxToken'));
+        $towns = Town::active()->ordered()->get();
+
+        return view('home', compact('featuredTrails', 'stats', 'activities', 'mapboxToken', 'towns'));
     }
 
     /**
@@ -84,6 +86,8 @@ class TrailController extends Controller
             ->orderBy('name')
             ->get();
 
+        $towns = Town::active()->ordered()->get();
+
         if ($request->ajax_type === 'hiking') {
             return response()->json([
                 'html' => view('trails._cards', ['trails' => $hikingTrails, 'type' => 'hiking'])->render(),
@@ -92,7 +96,7 @@ class TrailController extends Controller
             ]);
         }
 
-        return view('trails.index', compact('hikingTrails', 'activities'));
+        return view('trails.index', compact('hikingTrails', 'activities', 'towns'));
     }
 
     /**
@@ -110,6 +114,8 @@ class TrailController extends Controller
             ->orderBy('name')
             ->get();
 
+        $towns = Town::active()->ordered()->get();
+
         if ($request->ajax_type === 'lakes') {
             return response()->json([
                 'html' => view('trails._cards', ['trails' => $fishingLakes, 'type' => 'lakes'])->render(),
@@ -118,7 +124,7 @@ class TrailController extends Controller
             ]);
         }
 
-        return view('fishing-lakes.index', compact('fishingLakes', 'activities'));
+        return view('fishing-lakes.index', compact('fishingLakes', 'activities', 'towns'));
     }
 
     /**

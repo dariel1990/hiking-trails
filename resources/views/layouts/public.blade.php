@@ -119,6 +119,11 @@
                         <span>Ski Trails</span>
                         <div class="absolute bottom-0 left-0 w-0 h-0.5 bg-accent-600 group-hover:w-full transition-all duration-300 {{ request()->routeIs('trail-networks.*') ? 'w-full' : '' }}"></div>
                     </a>
+                    <a href="{{ route('businesses.public.index') }}"
+                       class="relative text-forest-700 hover:text-accent-600 font-medium transition-all duration-300 py-2 group {{ request()->routeIs('businesses.public.*') ? 'text-accent-700' : '' }}">
+                        <span>Local Businesses</span>
+                        <div class="absolute bottom-0 left-0 w-0 h-0.5 bg-accent-600 group-hover:w-full transition-all duration-300 {{ request()->routeIs('businesses.public.*') ? 'w-full' : '' }}"></div>
+                    </a>
                     <a href="{{ route('tours.index') }}"
                     class="relative text-forest-700 hover:text-accent-600 font-medium transition-all duration-300 py-2 group {{ request()->routeIs('tours.*') ? 'text-accent-700' : '' }}">
                         <span>Tours</span>
@@ -128,11 +133,6 @@
                        class="relative text-forest-700 hover:text-accent-600 font-medium transition-all duration-300 py-2 group {{ request()->routeIs('map') ? 'text-accent-700' : '' }}">
                         <span>Interactive Map</span>
                         <div class="absolute bottom-0 left-0 w-0 h-0.5 bg-accent-600 group-hover:w-full transition-all duration-300 {{ request()->routeIs('map') ? 'w-full' : '' }}"></div>
-                    </a>
-                    <a href="{{ route('businesses.public.index') }}"
-                       class="relative text-forest-700 hover:text-accent-600 font-medium transition-all duration-300 py-2 group {{ request()->routeIs('businesses.public.*') ? 'text-accent-700' : '' }}">
-                        <span>Local Businesses</span>
-                        <div class="absolute bottom-0 left-0 w-0 h-0.5 bg-accent-600 group-hover:w-full transition-all duration-300 {{ request()->routeIs('businesses.public.*') ? 'w-full' : '' }}"></div>
                     </a>
                     <a href="{{ route('towns.index') }}"
                        class="relative text-forest-700 hover:text-accent-600 font-medium transition-all duration-300 py-2 group {{ request()->routeIs('towns.*') ? 'text-accent-700' : '' }}">

@@ -385,6 +385,56 @@ class Trail extends Model
      * Limit to trails belonging to the given town, accepting either a model or
      * a slug so controllers can pass a `?town=` query parameter straight in.
      */
+    /**
+     * Season options for the public filters.
+     *
+     * Keys are what travels in the URL and must stay lowercase: the listing
+     * query matches with whereJsonContains('best_seasons', ucfirst($season)),
+     * and best_seasons stores capitalised values.
+     *
+     * @return array<string, string>
+     */
+    public static function getSeasons(): array
+    {
+        return [
+            'spring' => '🌸 Spring',
+            'summer' => '☀️ Summer',
+            'fall' => '🍂 Fall',
+            'winter' => '❄️ Winter',
+        ];
+    }
+
+    /**
+     * Difficulty options. Keys are matched with ROUND(difficulty_level) = ?.
+     *
+     * @return array<int, string>
+     */
+    public static function getDifficultyLevels(): array
+    {
+        return [
+            1 => '1 — Very easy',
+            2 => '2 — Easy',
+            3 => '3 — Moderate',
+            4 => '4 — Hard',
+            5 => '5 — Very hard',
+        ];
+    }
+
+    /**
+     * Distance bands. Keys must match the switch in the listing query.
+     *
+     * @return array<string, string>
+     */
+    public static function getDistanceRanges(): array
+    {
+        return [
+            '0-5' => 'Under 5 km',
+            '5-10' => '5 – 10 km',
+            '10-20' => '10 – 20 km',
+            '20+' => 'Over 20 km',
+        ];
+    }
+
     public function scopeInTown($query, Town|string $town)
     {
         if ($town instanceof Town) {
