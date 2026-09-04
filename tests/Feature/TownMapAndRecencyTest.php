@@ -64,7 +64,7 @@ class TownMapAndRecencyTest extends TestCase
         $this->assertNull($trail['town_id']);
     }
 
-    public function test_the_map_renders_a_legend_row_per_town_plus_unassigned(): void
+    public function test_the_map_renders_one_legend_row_per_town(): void
     {
         Town::factory()->create(['name' => 'Houston', 'color' => '#C2410C']);
         Town::factory()->create(['name' => 'Telkwa', 'color' => '#0E7490']);
@@ -72,12 +72,26 @@ class TownMapAndRecencyTest extends TestCase
         $html = $this->get(route('map'))->assertOk()->getContent();
 
         $this->assertStringContainsString('id="town-legend"', $html);
-        $this->assertStringContainsString('data-town-id="none"', $html);
-        $this->assertStringContainsString('Unassigned', $html);
         $this->assertStringContainsString('#C2410C', $html);
 
-        // One row per town plus the unassigned bucket.
-        $this->assertSame(3, substr_count($html, 'class="town-legend-row"'));
+        // Exactly one row per town - no unassigned bucket. Visitors do not
+        // need to see which trails our own assignment pass could not place.
+        $this->assertSame(2, substr_count($html, 'class="town-legend-row"'));
+        $this->assertStringNotContainsString('data-town-id="none"', $html);
+        $this->assertStringNotContainsString('town-legend-name">Unassigned', $html);
+    }
+
+    /**
+     * The legend drops it, but All Filters keeps it: filtering to unplaced
+     * trails is still a legitimate thing to want, and it is opt-in there.
+     */
+    public function test_all_filters_still_offers_the_unassigned_option(): void
+    {
+        Town::factory()->create();
+
+        $this->get(route('map'))
+            ->assertOk()
+            ->assertSee('value="none" class="town-checkbox', false);
     }
 
     public function test_the_map_offers_a_town_checkbox_per_town_plus_unassigned(): void

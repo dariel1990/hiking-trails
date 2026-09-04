@@ -7,6 +7,7 @@ use App\Http\Requests\Admin\StoreBusinessRequest;
 use App\Http\Requests\Admin\UpdateBusinessRequest;
 use App\Models\Business;
 use App\Models\BusinessMedia;
+use App\Models\Town;
 use App\Services\ImageThumbnailService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -24,8 +25,10 @@ class BusinessController extends Controller
     public function index(Request $request): View
     {
         $search = $request->string('search')->toString();
+        $town = $request->string('town')->toString();
 
         $businesses = Business::withCount('media')
+            ->with('town:id,name')
             ->when($search !== '', function ($query) use ($search) {
                 $query->where(function ($q) use ($search) {
                     $q->where('name', 'like', "%{$search}%")
@@ -34,11 +37,17 @@ class BusinessController extends Controller
                         ->orWhere('address', 'like', "%{$search}%");
                 });
             })
+            // 'none' surfaces businesses that fell outside every town's radius
+            // during towns:assign - the set an admin most often needs to fix.
+            ->when($town === 'none', fn ($q) => $q->whereNull('town_id'))
+            ->when($town !== '' && $town !== 'none', fn ($q) => $q->where('town_id', $town))
             ->orderBy('business_type')
             ->orderBy('name')
             ->get();
 
-        return view('admin.businesses.index', compact('businesses', 'search'));
+        $townFilterOptions = Town::active()->ordered()->get(['id', 'name']);
+
+        return view('admin.businesses.index', compact('businesses', 'search', 'town', 'townFilterOptions'));
     }
 
     public function create(): View

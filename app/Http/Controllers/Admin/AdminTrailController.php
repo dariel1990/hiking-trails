@@ -7,6 +7,7 @@ use App\Models\ActivityType;
 use App\Models\Facility;
 use App\Models\SeasonalTrailData;
 use App\Models\Tour;
+use App\Models\Town;
 use App\Models\Trail;
 use App\Models\TrailFeature;
 use App\Models\TrailMedia;
@@ -56,13 +57,26 @@ class AdminTrailController extends Controller
             });
         }
 
-        $trails = $query->with(['activities:id,name,slug', 'trailNetwork:id,network_name,slug'])->latest()->paginate(setting('admin_per_page'));
+        // 'none' surfaces trails that fell outside every town's radius during
+        // towns:assign - the set an admin most often needs to find and fix.
+        if ($request->town) {
+            $request->town === 'none'
+                ? $query->whereNull('town_id')
+                : $query->where('town_id', $request->town);
+        }
+
+        $trails = $query->with(['activities:id,name,slug', 'trailNetwork:id,network_name,slug', 'town:id,name'])
+            ->latest()
+            ->paginate(setting('admin_per_page'))
+            ->withQueryString();
 
         $activityFilterOptions = ActivityType::where('is_active', true)
             ->orderBy('name')
             ->get(['id', 'name']);
 
-        return view('admin.trails.index', compact('trails', 'activityFilterOptions'));
+        $townFilterOptions = Town::active()->ordered()->get(['id', 'name']);
+
+        return view('admin.trails.index', compact('trails', 'activityFilterOptions', 'townFilterOptions'));
     }
 
     /**

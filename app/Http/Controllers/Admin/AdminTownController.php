@@ -12,18 +12,39 @@ use Illuminate\View\View;
 
 class AdminTownController extends Controller
 {
-    public function index(): View
+    public function index(Request $request): View
     {
-        $towns = Town::ordered()
-            ->withCount([
-                'trails',
-                'businesses',
-                'facilities',
-                'tours',
-            ])
+        $search = $request->string('search')->toString();
+        $status = $request->string('status', 'all')->toString();
+
+        $baseQuery = Town::query()
+            ->when($search !== '', function ($query) use ($search) {
+                $query->where(function ($q) use ($search) {
+                    $q->where('name', 'like', "%{$search}%")
+                        ->orWhere('slug', 'like', "%{$search}%")
+                        ->orWhere('tagline', 'like', "%{$search}%")
+                        ->orWhere('province', 'like', "%{$search}%");
+                });
+            });
+
+        // Counts describe the search-filtered set, so the tabs stay truthful
+        // while a search is active rather than reporting site-wide totals.
+        $counts = [
+            'all' => (clone $baseQuery)->count(),
+            'published' => (clone $baseQuery)->where('is_active', true)->count(),
+            'hidden' => (clone $baseQuery)->where('is_active', false)->count(),
+            'empty' => (clone $baseQuery)->whereDoesntHave('trails')->count(),
+        ];
+
+        $towns = (clone $baseQuery)
+            ->withCount(['trails', 'businesses', 'facilities', 'tours'])
+            ->when($status === 'published', fn ($q) => $q->where('is_active', true))
+            ->when($status === 'hidden', fn ($q) => $q->where('is_active', false))
+            ->when($status === 'empty', fn ($q) => $q->whereDoesntHave('trails'))
+            ->ordered()
             ->get();
 
-        return view('admin.towns.index', compact('towns'));
+        return view('admin.towns.index', compact('towns', 'search', 'status', 'counts'));
     }
 
     public function create(): View

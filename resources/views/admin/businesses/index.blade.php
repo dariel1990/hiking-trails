@@ -41,7 +41,7 @@
         </a>
     </div>
 
-    <!-- Search -->
+    <!-- Search & filters -->
     <div class="rounded-lg border bg-card text-card-foreground shadow-sm p-5">
         <form method="GET" action="{{ route('admin.businesses.index') }}" class="flex flex-col sm:flex-row gap-3">
             <div class="relative flex-1">
@@ -52,12 +52,25 @@
                        placeholder="Search businesses by name, tagline, description, or address..."
                        class="flex h-10 w-full rounded-md border border-input bg-background pl-10 pr-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
             </div>
+            <div class="sm:w-52">
+                <label for="business-town" class="sr-only">Town</label>
+                <select name="town" id="business-town"
+                        class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
+                    <option value="">All Towns</option>
+                    @foreach($townFilterOptions as $option)
+                        <option value="{{ $option->id }}" @selected((string) $town === (string) $option->id)>{{ $option->name }}</option>
+                    @endforeach
+                    {{-- Businesses outside every town's radius; the set most often needing a fix. --}}
+                    <option value="none" @selected($town === 'none')>&mdash; Unassigned &mdash;</option>
+                </select>
+            </div>
+
             <div class="flex gap-2">
                 <button type="submit"
                         class="inline-flex items-center justify-center rounded-md bg-black text-white hover:bg-black/90 h-10 px-4 py-2 text-sm font-medium transition-colors">
                     Search
                 </button>
-                @if($search)
+                @if($search !== '' || $town !== '')
                     <a href="{{ route('admin.businesses.index') }}"
                        class="inline-flex items-center justify-center rounded-md border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2 text-sm font-medium transition-colors">
                         Clear

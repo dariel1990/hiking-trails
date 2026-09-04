@@ -561,12 +561,6 @@
                 <span class="town-legend-count" data-town-count="{{ $town->id }}">0</span>
             </button>
             @endforeach
-            {{-- Trails outside every town's radius would otherwise be an unexplained grey pin. --}}
-            <button type="button" class="town-legend-row" data-town-id="none">
-                <span class="town-legend-swatch" style="background-color: {{ \App\Models\Town::DEFAULT_COLOR }};"></span>
-                <span class="town-legend-name">Unassigned</span>
-                <span class="town-legend-count" data-town-count="none">0</span>
-            </button>
         </div>
     </div>
 
@@ -2427,7 +2421,8 @@
     // Kept in step with App\Models\Town::DEFAULT_COLOR.
     const UNASSIGNED_TOWN_COLOR = @json(\App\Models\Town::DEFAULT_COLOR);
 
-    // Keyed by town id, plus 'none' for trails outside every town's radius.
+    // Keyed by town id. The legend only spotlights real towns, but the
+    // All Filters panel can still filter to 'none', so the fallback stays.
     const TOWN_COLORS = Object.assign(
         @json($towns->mapWithKeys(fn ($t) => [$t->id => $t->colorOrDefault()])),
         { none: UNASSIGNED_TOWN_COLOR }
@@ -3417,12 +3412,6 @@
                 // so it doubles as the key to what the spotlight will show.
                 row.setAttribute('aria-pressed', String(spotlitTownId !== null && String(spotlitTownId) === key));
             });
-        }
-
-        // Municipality colour for a trail's pin. Trails outside every town's
-        // radius fall back to grey and are surfaced as "Unassigned" in the legend.
-        getTownColor(trail) {
-            return (trail && trail.town && trail.town.color) || UNASSIGNED_TOWN_COLOR;
         }
 
         /**

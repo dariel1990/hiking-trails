@@ -189,4 +189,140 @@ class AdminTownTest extends TestCase
             ->assertSee('type="color"', false)
             ->assertSee('#B91C1C', false);
     }
+
+    // ------------------------------------------------------------- filtering
+
+    public function test_the_town_list_can_be_searched_by_name(): void
+    {
+        Town::factory()->create(['name' => 'Houston', 'slug' => 'houston-bc']);
+        Town::factory()->create(['name' => 'Telkwa', 'slug' => 'telkwa-bc']);
+
+        $this->actingAs($this->makeAdmin())
+            ->get(route('admin.towns.index', ['search' => 'Houston']))
+            ->assertOk()
+            ->assertSee('Houston')
+            ->assertDontSee('Telkwa');
+    }
+
+    public function test_search_also_matches_slug_tagline_and_province(): void
+    {
+        Town::factory()->create(['name' => 'Houston', 'slug' => 'houston-bc', 'tagline' => 'Waterfall country']);
+        Town::factory()->create(['name' => 'Telkwa', 'slug' => 'telkwa-bc', 'tagline' => 'Riverside trails']);
+
+        $admin = $this->makeAdmin();
+
+        foreach (['houston-bc', 'Waterfall'] as $term) {
+            $this->actingAs($admin)
+                ->get(route('admin.towns.index', ['search' => $term]))
+                ->assertOk()
+                ->assertSee('Houston')
+                ->assertDontSee('Telkwa', false);
+        }
+    }
+
+    public function test_the_status_filter_separates_published_from_hidden(): void
+    {
+        Town::factory()->create(['name' => 'Livetown']);
+        Town::factory()->inactive()->create(['name' => 'Hiddentown']);
+
+        $admin = $this->makeAdmin();
+
+        $this->actingAs($admin)
+            ->get(route('admin.towns.index', ['status' => 'published']))
+            ->assertOk()
+            ->assertSee('Livetown')
+            ->assertDontSee('Hiddentown');
+
+        $this->actingAs($admin)
+            ->get(route('admin.towns.index', ['status' => 'hidden']))
+            ->assertOk()
+            ->assertSee('Hiddentown')
+            ->assertDontSee('Livetown');
+    }
+
+    public function test_the_no_trails_filter_finds_towns_with_nothing_assigned(): void
+    {
+        $withTrails = Town::factory()->create(['name' => 'Populated']);
+        Town::factory()->create(['name' => 'Barren']);
+
+        Trail::create([
+            'town_id' => $withTrails->id,
+            'name' => 'A Trail',
+            'location_type' => 'trail',
+            'geometry_type' => 'linestring',
+            'status' => 'active',
+            'trail_type' => 'loop',
+            'start_coordinates' => [54.0, -127.0],
+        ]);
+
+        $this->actingAs($this->makeAdmin())
+            ->get(route('admin.towns.index', ['status' => 'empty']))
+            ->assertOk()
+            ->assertSee('Barren')
+            ->assertDontSee('Populated');
+    }
+
+    public function test_search_and_status_combine(): void
+    {
+        Town::factory()->create(['name' => 'Houston']);
+        Town::factory()->inactive()->create(['name' => 'Houston Hidden']);
+
+        $this->actingAs($this->makeAdmin())
+            ->get(route('admin.towns.index', ['search' => 'Houston', 'status' => 'hidden']))
+            ->assertOk()
+            ->assertSee('Houston Hidden')
+            // The published Houston must be excluded by the status half.
+            ->assertSee('1</span>', false);
+    }
+
+    /**
+     * The tabs report the search-filtered set, not site-wide totals - otherwise
+     * a tab could promise results a search has already excluded.
+     */
+    public function test_the_tab_counts_respect_an_active_search(): void
+    {
+        Town::factory()->create(['name' => 'Houston']);
+        Town::factory()->create(['name' => 'Telkwa']);
+        Town::factory()->inactive()->create(['name' => 'Stewart']);
+
+        $html = $this->actingAs($this->makeAdmin())
+            ->get(route('admin.towns.index', ['search' => 'Houston']))
+            ->assertOk()
+            ->getContent();
+
+        // "All" reflects the one search hit, not the three towns that exist.
+        preg_match('/All\s*<span[^>]*>(\d+)<\/span>/s', $html, $matches);
+        $this->assertSame('1', $matches[1]);
+    }
+
+    public function test_the_empty_state_distinguishes_no_match_from_no_towns(): void
+    {
+        $admin = $this->makeAdmin();
+
+        // Nothing exists at all.
+        $this->actingAs($admin)
+            ->get(route('admin.towns.index'))
+            ->assertOk()
+            ->assertSee('No towns yet');
+
+        Town::factory()->create(['name' => 'Houston']);
+
+        // Something exists, but nothing matched.
+        $this->actingAs($admin)
+            ->get(route('admin.towns.index', ['search' => 'Nowhere']))
+            ->assertOk()
+            ->assertSee('No towns match this filter')
+            ->assertSee('Clear filters');
+    }
+
+    public function test_searching_preserves_the_active_status_tab(): void
+    {
+        Town::factory()->inactive()->create(['name' => 'Hiddentown']);
+
+        $this->actingAs($this->makeAdmin())
+            ->get(route('admin.towns.index', ['status' => 'hidden']))
+            ->assertOk()
+            // A hidden input carries the tab through the search form.
+            ->assertSee('name="status" value="hidden"', false);
+    }
 }

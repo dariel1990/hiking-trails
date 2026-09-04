@@ -80,12 +80,27 @@
                     </select>
                 </div>
 
+                <div class="grid gap-2 min-w-[160px]">
+                    <label class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                        Town
+                    </label>
+                    <select name="town"
+                            class="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50">
+                        <option value="">All Towns</option>
+                        @foreach($townFilterOptions as $town)
+                            <option value="{{ $town->id }}" {{ (string) request('town') === (string) $town->id ? 'selected' : '' }}>{{ $town->name }}</option>
+                        @endforeach
+                        {{-- Trails outside every town's radius; the set most often needing a fix. --}}
+                        <option value="none" {{ request('town') === 'none' ? 'selected' : '' }}>&mdash; Unassigned &mdash;</option>
+                    </select>
+                </div>
+
                 <div class="flex gap-2">
                     <button type="submit"
                             class="inline-flex items-center justify-center rounded-md bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2 text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50">
                         Filter
                     </button>
-                    @if(request('search') || request('status') || request('location_type') || request('activity'))
+                    @if(request('search') || request('status') || request('location_type') || request('activity') || request('town'))
                         <a href="{{ route('admin.trails.index') }}"
                            class="inline-flex items-center justify-center rounded-md border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2 text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50">
                             Clear
