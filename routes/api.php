@@ -15,6 +15,7 @@ use App\Models\ActivityType;
 use App\Models\Business;
 use App\Models\Facility;
 use App\Models\Tour;
+use App\Models\Town;
 use App\Models\TrailNetwork;
 use App\Services\RouteService;
 use Illuminate\Http\Request;
@@ -339,6 +340,24 @@ Route::withoutMiddleware(VerifyAppKey::class)->middleware('throttle:public-api')
                 'icon_image_url' => $activity->icon_image ? asset('storage/'.$activity->icon_image) : null,
                 'color' => $activity->color,
                 'season_applicable' => $activity->season_applicable,
+            ]);
+    });
+
+    // Towns — drives the map's municipality legend and the Town filter section.
+    // The app needs every active town, not just those with trails on screen, so
+    // the legend keeps a stable order and the camera has a fallback position.
+    Route::get('/towns', function () {
+        return Town::active()
+            ->ordered()
+            ->get()
+            ->map(fn ($town) => [
+                'id' => $town->id,
+                'name' => $town->name,
+                'slug' => $town->slug,
+                'color' => $town->colorOrDefault(),
+                'latitude' => (float) $town->latitude,
+                'longitude' => (float) $town->longitude,
+                'map_zoom' => (int) $town->map_zoom,
             ]);
     });
 
