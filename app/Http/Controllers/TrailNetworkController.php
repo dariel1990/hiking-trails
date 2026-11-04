@@ -4,7 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Models\Facility;
 use App\Models\TrailFeature;
+use App\Models\TrailMedia;
 use App\Models\TrailNetwork;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
@@ -39,15 +41,7 @@ class TrailNetworkController extends Controller
             ->active()
             ->with(['trails' => function ($query) {
                 $query->select('id', 'trail_network_id', 'name', 'description', 'difficulty_level', 'distance_km', 'elevation_gain_m', 'estimated_time_hours', 'trail_type', 'route_coordinates', 'start_coordinates', 'status')
-                    ->with(['trailMedia' => function ($q) {
-                        $q->where('media_type', 'photo')
-                            ->where(function ($q2) {
-                                $q2->where('is_featured', true)
-                                    ->orWhereRaw('id IN (SELECT MIN(id) FROM trail_media WHERE trail_id = trail_media.trail_id AND media_type = "photo")');
-                            })
-                            ->orderBy('is_featured', 'desc')
-                            ->limit(1);
-                    },  'features.media'])
+                    ->with(['media', 'generalMedia', 'features.media'])
                     ->where(function ($q) {
                         $q->where('status', 'active')
                             ->orWhere('status', 'seasonal');
@@ -55,24 +49,20 @@ class TrailNetworkController extends Controller
             }])
             ->firstOrFail();
 
-        // Add preview_photo and photos to each trail
+        // Same image/video setup as the /maps trail panel: featured photo as hero,
+        // trail-level (non-highlight) photos and videos as the gallery.
         $network->trails->each(function ($trail) {
-            $media = $trail->trailMedia->first();
+            $photoMedia = $trail->media->where('media_type', 'photo');
+            $featuredMedia = $photoMedia->firstWhere('is_featured', true) ?? $photoMedia->first();
 
-            if ($media) {
-                // Build full URL for the image
-                $trail->preview_photo = asset('storage/'.$media->storage_path);
-            } else {
-                $trail->preview_photo = null;
-            }
+            $trail->preview_photo = $featuredMedia ? Storage::url($featuredMedia->storage_path) : null;
 
-            // Also add photos array for compatibility
-            $trail->photos = $trail->trailMedia->map(function ($media) {
-                return [
-                    'url' => asset('storage/'.$media->storage_path),
-                    'caption' => $media->caption,
-                ];
-            })->toArray();
+            $gallery = $this->formatTrailGalleryMedia($trail->generalMedia);
+            $trail->photos = $gallery['photos'];
+            $trail->videos = $gallery['videos'];
+
+            $trail->unsetRelation('media');
+            $trail->unsetRelation('generalMedia');
 
             // Format features/highlights data
             if ($trail->features) {
@@ -117,6 +107,43 @@ class TrailNetworkController extends Controller
             });
 
         return view('trail-networks.show', compact('network', 'mapboxToken', 'facilities'));
+    }
+
+    /**
+     * Split a trail's general media into the photo and video lists used by the map gallery.
+     *
+     * @param  Collection<int, TrailMedia>  $media
+     * @return array{
+     *     photos: list<array{id: int, url: string, caption: ?string, is_featured: bool}>,
+     *     videos: list<array{id: int, media_type: string, url: ?string, video_url: ?string, thumbnail_url: ?string, embed_url: ?string, caption: ?string, is_featured: bool, video_provider: ?string}>
+     * }
+     */
+    private function formatTrailGalleryMedia(Collection $media): array
+    {
+        $photos = $media->where('media_type', 'photo')
+            ->map(fn (TrailMedia $item) => [
+                'id' => $item->id,
+                'url' => Storage::url($item->storage_path),
+                'caption' => $item->caption,
+                'is_featured' => (bool) $item->is_featured,
+            ])->values()->all();
+
+        $videos = $media->filter(fn (TrailMedia $item) => in_array($item->media_type, ['video', 'video_url']))
+            ->map(fn (TrailMedia $item) => [
+                'id' => $item->id,
+                'media_type' => $item->media_type,
+                'url' => $item->media_type === 'video_url'
+                    ? $item->video_url
+                    : Storage::url($item->storage_path),
+                'video_url' => $item->video_url,
+                'thumbnail_url' => $item->thumbnail_url,
+                'embed_url' => $item->embed_url,
+                'caption' => $item->caption,
+                'is_featured' => (bool) $item->is_featured,
+                'video_provider' => $item->video_provider,
+            ])->values()->all();
+
+        return ['photos' => $photos, 'videos' => $videos];
     }
 
     public function trailHighlights()
