@@ -65,6 +65,9 @@
             @if($type !== 'all')
                 <input type="hidden" name="type" value="{{ $type }}">
             @endif
+            @if($status !== 'all')
+                <input type="hidden" name="status" value="{{ $status }}">
+            @endif
             <div class="relative flex-1">
                 <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
@@ -79,7 +82,7 @@
                     Search
                 </button>
                 @if($search)
-                    <a href="{{ route('admin.facilities.index', array_filter(['type' => $type !== 'all' ? $type : null])) }}"
+                    <a href="{{ route('admin.facilities.index', array_filter(['type' => $type !== 'all' ? $type : null, 'status' => $status !== 'all' ? $status : null])) }}"
                        class="inline-flex items-center justify-center gap-2 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 px-4 py-2.5 rounded-lg font-medium text-sm transition-colors">
                         Clear
                     </a>
@@ -102,7 +105,8 @@
             <div class="text-3xl font-bold text-gray-900">{{ $totalCount }}</div>
         </div>
 
-        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
+        <a href="{{ route('admin.facilities.index', array_filter(['search' => $search ?: null, 'type' => $type !== 'all' ? $type : null, 'status' => 'active'])) }}"
+           class="block bg-white rounded-xl shadow-sm border p-5 transition-colors {{ $status === 'active' ? 'border-green-500 ring-1 ring-green-500' : 'border-gray-200 hover:border-gray-300' }}">
             <div class="flex items-center justify-between mb-3">
                 <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Active</p>
                 <div class="w-9 h-9 rounded-lg bg-green-50 text-green-600 flex items-center justify-center">
@@ -112,7 +116,7 @@
                 </div>
             </div>
             <div class="text-3xl font-bold text-green-600">{{ $activeCount }}</div>
-        </div>
+        </a>
 
         <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
             <div class="flex items-center justify-between mb-3">
@@ -126,7 +130,8 @@
             <div class="text-3xl font-bold text-blue-600">{{ $withMediaCount }}</div>
         </div>
 
-        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
+        <a href="{{ route('admin.facilities.index', array_filter(['search' => $search ?: null, 'type' => $type !== 'all' ? $type : null, 'status' => 'inactive'])) }}"
+           class="block bg-white rounded-xl shadow-sm border p-5 transition-colors {{ $status === 'inactive' ? 'border-gray-500 ring-1 ring-gray-500' : 'border-gray-200 hover:border-gray-300' }}">
             <div class="flex items-center justify-between mb-3">
                 <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Inactive</p>
                 <div class="w-9 h-9 rounded-lg bg-gray-100 text-gray-500 flex items-center justify-center">
@@ -136,7 +141,7 @@
                 </div>
             </div>
             <div class="text-3xl font-bold text-gray-400">{{ $inactiveCount }}</div>
-        </div>
+        </a>
     </div>
 
     {{-- Facilities Grid (filtered by type) --}}
@@ -147,13 +152,23 @@
     <div class="bg-white rounded-xl shadow-sm border border-gray-200">
         <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
             <h2 class="text-sm font-semibold text-gray-900 uppercase tracking-wide">All Facilities</h2>
-            <span class="text-xs text-gray-500">{{ $facilities->total() }} {{ Str::plural('facility', $facilities->total()) }}</span>
+            <div class="flex items-center gap-3">
+                <div class="inline-flex rounded-lg border border-gray-300 p-0.5 bg-gray-50">
+                    @foreach(['all' => ['All', $totalCount], 'active' => ['Active', $activeCount], 'inactive' => ['Inactive', $inactiveCount]] as $statusKey => [$statusLabel, $statusCount])
+                        <a href="{{ route('admin.facilities.index', array_filter(['search' => $search ?: null, 'type' => $type !== 'all' ? $type : null, 'status' => $statusKey !== 'all' ? $statusKey : null])) }}"
+                           class="px-3 py-1 rounded-md text-xs font-semibold transition-colors {{ $status === $statusKey ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700' }}">
+                            {{ $statusLabel }} <span class="opacity-60">{{ $statusCount }}</span>
+                        </a>
+                    @endforeach
+                </div>
+                <span class="text-xs text-gray-500">{{ $facilities->total() }} {{ Str::plural('facility', $facilities->total()) }}</span>
+            </div>
         </div>
 
         @if($totalCount > 0)
             {{-- Type Tabs --}}
             <div class="px-6 pt-5 pb-1 flex flex-wrap gap-2 border-b border-gray-100">
-                <a href="{{ route('admin.facilities.index', array_filter(['search' => $search ?: null, 'type' => 'all'])) }}"
+                <a href="{{ route('admin.facilities.index', array_filter(['search' => $search ?: null, 'type' => 'all', 'status' => $status !== 'all' ? $status : null])) }}"
                    class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border text-xs font-semibold transition-colors mb-4 {{ $type === 'all' ? 'bg-green-600 text-white border-green-600 shadow-sm' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50' }}">
                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
@@ -169,7 +184,7 @@
                         $emoji = $parts[0] ?? '📍';
                         $name = $parts[1] ?? $label;
                     @endphp
-                    <a href="{{ route('admin.facilities.index', array_filter(['search' => $search ?: null, 'type' => $typeKey])) }}"
+                    <a href="{{ route('admin.facilities.index', array_filter(['search' => $search ?: null, 'type' => $typeKey, 'status' => $status !== 'all' ? $status : null])) }}"
                        class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border text-xs font-semibold transition-colors mb-4 {{ $type === $typeKey ? 'bg-green-600 text-white border-green-600 shadow-sm' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50' }}">
                         <span class="text-sm leading-none">{{ $emoji }}</span>
                         <span>{{ $name }}</span>
@@ -179,13 +194,45 @@
             </div>
         @endif
 
-        <div class="p-6">
+        @php
+            $inactiveOnPage = $facilities->getCollection()->where('is_active', false)->pluck('id')->values();
+        @endphp
+        <div class="p-6" x-data="{ selected: [], pageIds: @js($inactiveOnPage) }">
+            @if($inactiveOnPage->isNotEmpty())
+                <form id="bulk-activate-form" method="POST" action="{{ route('admin.facilities.bulk-activate') }}"
+                      class="flex flex-wrap items-center justify-between gap-3 mb-4 rounded-lg border border-gray-200 bg-gray-50 px-4 py-3">
+                    @csrf
+                    <label class="inline-flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+                        <input type="checkbox" class="rounded border-gray-300 text-green-600 focus:ring-green-500"
+                               :checked="selected.length === pageIds.length"
+                               @change="selected = $event.target.checked ? [...pageIds] : []">
+                        Select all inactive on this page
+                        <span class="text-xs text-gray-500" x-text="`(${selected.length} selected)`"></span>
+                    </label>
+                    <div class="flex items-center gap-3">
+                        @error('ids')
+                            <span class="text-xs text-red-600">{{ $message }}</span>
+                        @enderror
+                        <button type="submit" :disabled="selected.length === 0"
+                                class="inline-flex items-center gap-1.5 bg-green-600 hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                            </svg>
+                            Activate selected
+                        </button>
+                    </div>
+                </form>
+            @endif
             @if($facilities->count() > 0)
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     @foreach($facilities as $facility)
                     <div class="group relative rounded-xl border border-gray-200 bg-white p-5 hover:border-gray-300 hover:shadow-md transition-all">
                         {{-- Status badge (top-right) --}}
                         @if(!$facility->is_active)
+                            <input type="checkbox" name="ids[]" value="{{ $facility->id }}" form="bulk-activate-form"
+                                   x-model.number="selected"
+                                   class="absolute top-1.5 left-1.5 rounded border-gray-300 text-green-600 focus:ring-green-500"
+                                   aria-label="Select {{ $facility->name }}">
                             <span class="absolute top-4 right-4 inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide bg-gray-100 text-gray-600 border border-gray-200">
                                 Inactive
                             </span>
@@ -241,6 +288,24 @@
 
                         {{-- Actions --}}
                         <div class="flex items-center justify-end gap-2 pt-3 border-t border-gray-100">
+                            <form action="{{ route('admin.facilities.toggle-active', $facility) }}" method="POST" class="inline mr-auto">
+                                @csrf
+                                @method('PATCH')
+                                @if($facility->is_active)
+                                    <button type="submit"
+                                            class="inline-flex items-center gap-1.5 bg-white border border-gray-300 hover:bg-gray-50 text-gray-600 px-3 py-1.5 rounded-md text-xs font-medium transition-colors">
+                                        Deactivate
+                                    </button>
+                                @else
+                                    <button type="submit"
+                                            class="inline-flex items-center gap-1.5 bg-green-50 hover:bg-green-100 text-green-700 border border-green-200 px-3 py-1.5 rounded-md text-xs font-medium transition-colors">
+                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                                        </svg>
+                                        Activate
+                                    </button>
+                                @endif
+                            </form>
                             <a href="{{ route('admin.facilities.edit', $facility) }}"
                                class="inline-flex items-center gap-1.5 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 px-3 py-1.5 rounded-md text-xs font-medium transition-colors">
                                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -299,7 +364,7 @@
                         </p>
                         <a href="{{ route('admin.facilities.index', array_filter(['search' => $search ?: null])) }}"
                            class="inline-flex items-center gap-2 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 px-5 py-2.5 rounded-lg font-medium text-sm transition-colors">
-                            Clear type filter
+                            Clear filters
                         </a>
                     @endif
                 </div>

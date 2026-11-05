@@ -236,6 +236,8 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::delete('/facilities/icons', [FacilityController::class, 'deleteIcon'])->name('facilities.icons.delete');
         Route::post('/facilities/photos/upload', [FacilityController::class, 'uploadPhoto'])->name('facilities.photos.upload');
         Route::delete('/facilities/photos/upload', [FacilityController::class, 'deleteUploadedPhoto'])->name('facilities.photos.upload.delete');
+        Route::post('/facilities/bulk-activate', [FacilityController::class, 'bulkActivate'])->name('facilities.bulk-activate');
+        Route::patch('/facilities/{facility}/toggle-active', [FacilityController::class, 'toggleActive'])->name('facilities.toggle-active');
         Route::resource('facilities', FacilityController::class)
             ->names([
                 'index' => 'facilities.index',
