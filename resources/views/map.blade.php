@@ -4087,6 +4087,9 @@
                 else if (type.includes('hike') || type.includes('hiking')) icon = '🥾';
                 else if (type.includes('bike') || type.includes('cycling')) icon = '🚵';
             }
+            if (network.icon_image_url) {
+                icon = `<img src="${network.icon_image_url}" style="width:36px;height:36px;object-fit:contain;" alt="">`;
+            }
             this._showMobileCard({
                 imageUrl: network.image || null,
                 placeholderIcon: icon,
@@ -5912,12 +5915,16 @@
             }
         }
 
-        _createNetworkMarkerEl(emoji) {
+        _createNetworkMarkerEl(emoji, iconImageUrl = null) {
             const el = document.createElement('div');
             el.className = 'selectable-marker-el network-marker-el';
             el.dataset.emoji = emoji;
-            el.style.cssText = 'background-color:#166534;width:38px;height:38px;border-radius:8px;border:2px solid #ffffff;box-shadow:0 3px 10px rgba(0,0,0,0.4);display:flex;align-items:center;justify-content:center;font-size:17px;cursor:pointer;line-height:1;';
-            el.textContent = emoji;
+            el.style.cssText = 'background-color:#166534;width:38px;height:38px;border-radius:8px;border:2px solid #ffffff;box-shadow:0 3px 10px rgba(0,0,0,0.4);display:flex;align-items:center;justify-content:center;font-size:17px;cursor:pointer;line-height:1;overflow:hidden;';
+            if (iconImageUrl) {
+                el.innerHTML = `<img src="${iconImageUrl}" alt="" style="width:28px;height:28px;object-fit:contain;">`;
+            } else {
+                el.textContent = emoji;
+            }
             return el;
         }
 
@@ -5980,7 +5987,7 @@
                     else if (type.includes('bike') || type.includes('cycling')) { icon = '🚵'; }
                 }
 
-                const el = this._createNetworkMarkerEl(icon);
+                const el = this._createNetworkMarkerEl(icon, network.icon_image_url || null);
                 el.dataset.networkId = network.id;
 
                 el.addEventListener('click', (e) => {
@@ -6016,6 +6023,9 @@
                 else if (type.includes('hike') || type.includes('hiking')) { heroIcon = '🥾'; }
                 else if (type.includes('bike') || type.includes('cycling')) { heroIcon = '🚵'; }
             }
+            if (network.icon_image_url) {
+                heroIcon = `<img src="${network.icon_image_url}" style="width:56px;height:56px;object-fit:contain;" alt="">`;
+            }
 
             const hero = network.image
                 ? `<div class="biz-panel-hero"><img src="${network.image}" alt="${escapeHtml(network.name || network.network_name || '')}" onerror="window.xsImgFallback(this)"></div>`
@@ -6039,17 +6049,17 @@
                     </a>`);
             }
 
-            // Ski-run difficulty scale — matches /trail-networks/ (green/blue/black diamond/proline)
-            const diffLabel = { 1: 'Green', 2: 'Blue', 3: 'Black Diamond', 4: 'Double Black Diamond', 5: 'Proline' };
+            // Trailforks difficulty scale — matches /trail-networks/ (white/green/blue/black diamond/double black diamond)
+            const diffLabel = { 1: '⚪ Very Easy', 2: '🟢 Easy', 3: '🟦 Moderate', 4: '◆ Hard', 5: '◆◆ Very Hard' };
             const diffStyle = {
-                1: 'background:#dcfce7;color:#166534;',
-                2: 'background:#dbeafe;color:#1d4ed8;',
-                3: 'background:#1a1a1a;color:#ffffff;',
+                1: 'background:#ffffff;color:#1f2937;border:1px solid #d1d5db;',
+                2: 'background:#dcfce7;color:#166534;',
+                3: 'background:#dbeafe;color:#1d4ed8;',
                 4: 'background:#111827;color:#ffffff;',
-                5: 'background:#fee2e2;color:#991b1b;',
+                5: 'background:#000000;color:#ffffff;',
             };
             const trailRows = (network.trails || []).map(t => {
-                const level = Math.floor(t.difficulty);
+                const level = Math.min(Math.floor(t.difficulty), 5);
                 const style = diffStyle[level] || 'background:#f3f4f6;color:#374151;';
                 const label = diffLabel[level] || (t.difficulty ? `Level ${t.difficulty}` : '');
                 return `

@@ -133,8 +133,12 @@
                             <tr class="hover:bg-gray-50/60 transition-colors">
                                 <td class="px-6 py-4 whitespace-nowrap">
                                     <div class="flex items-center gap-3">
-                                        <div class="w-9 h-9 rounded-lg bg-amber-600 border-2 border-white shadow-sm flex items-center justify-center text-base select-none flex-shrink-0">
-                                            {{ $network->icon ?: '🏔️' }}
+                                        <div class="w-9 h-9 rounded-lg bg-amber-600 border-2 border-white shadow-sm flex items-center justify-center text-base select-none flex-shrink-0 overflow-hidden">
+                                            @if($network->icon_image)
+                                                <img src="{{ $network->icon_image_url }}" alt="" class="w-full h-full object-contain p-0.5">
+                                            @else
+                                                {{ $network->icon ?: '🏔️' }}
+                                            @endif
                                         </div>
                                         <div class="min-w-0">
                                             <div class="text-sm font-medium text-gray-900 truncate">{{ $network->network_name }}</div>
