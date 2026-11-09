@@ -6,7 +6,7 @@
 @section('content')
 <link href="https://api.mapbox.com/mapbox-gl-js/v3.10.0/mapbox-gl.css" rel="stylesheet">
 
-<div x-data="iconPicker('{{ old('icon', $trailNetwork->icon ?? '') }}', {{ $trailNetwork->image ? "'".asset('storage/'.$trailNetwork->image)."'" : 'null' }})" class="px-4 lg:px-8 py-6">
+<div x-data="iconPicker('{{ old('icon', $trailNetwork->icon ?? '') }}', {{ $trailNetwork->image ? "'".asset('storage/'.$trailNetwork->image)."'" : 'null' }}, @js(old('icon_image', $trailNetwork->icon_image) ?: null))" class="px-4 lg:px-8 py-6">
 
     {{-- Page Header --}}
     <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 pb-6 mb-6 border-b border-gray-200">
@@ -20,7 +20,7 @@
             </nav>
             <div class="flex items-center gap-3">
                 <div class="w-10 h-10 rounded-lg bg-amber-600 border-2 border-white shadow-md flex items-center justify-center text-lg select-none"
-                     x-text="selectedIcon"></div>
+                     ><img x-show="iconImageUrl" :src="iconImageUrl" alt="" class="w-full h-full object-contain p-1" style="display:none"><span x-show="!iconImageUrl" x-text="selectedIcon"></span></div>
                 <div>
                     <h1 class="text-2xl font-bold text-gray-900 leading-tight">Edit Trail Network</h1>
                     <p class="text-sm text-gray-500">{{ $trailNetwork->network_name }} · {{ $trailNetwork->trails()->count() }} trail(s)</p>
@@ -135,7 +135,7 @@
                                 <div class="flex items-start gap-5">
                                     <div class="flex-shrink-0 flex flex-col items-center gap-1.5">
                                         <div class="w-12 h-12 rounded-lg bg-amber-600 border-2 border-white shadow-md flex items-center justify-center text-2xl select-none"
-                                             x-text="selectedIcon"></div>
+                                             ><img x-show="iconImageUrl" :src="iconImageUrl" alt="" class="w-full h-full object-contain p-1" style="display:none"><span x-show="!iconImageUrl" x-text="selectedIcon"></span></div>
                                         <span class="text-[10px] uppercase tracking-wide text-gray-400">Preview</span>
                                     </div>
                                     <div class="flex-1 min-w-0">
@@ -159,6 +159,7 @@
                                         </div>
                                     </div>
                                 </div>
+                                @include('admin.trail-networks._icon-image-field')
                             </div>
                             <input type="hidden" name="icon" :value="selectedIcon">
                         </div>
@@ -367,9 +368,11 @@
 
 <script src="https://api.mapbox.com/mapbox-gl-js/v3.10.0/mapbox-gl.js"></script>
 <script>
-function iconPicker(initial, existingImage = null) {
+function iconPicker(initial, existingImage = null, iconImage = null) {
     return {
         selectedIcon: initial || '🏔️',
+        iconImagePath: iconImage,
+        iconImageUrl: iconImage ? @js(asset('storage')) + '/' + iconImage : null,
         customEmoji: '',
         emojiOptions: ['🏔️', '⛷️', '🎿', '🏂', '❄️', '🥾', '🧗', '🚵', '🚴', '🌲', '⛺', '🌄', '🗺️', '📍', '⭐', '🏕️', '🌊', '🦅'],
         imagePreview: existingImage || null,

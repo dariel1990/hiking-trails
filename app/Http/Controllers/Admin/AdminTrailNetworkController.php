@@ -7,8 +7,11 @@ use App\Models\Facility;
 use App\Models\TrailNetwork;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Intervention\Image\Drivers\Gd\Driver;
+use Intervention\Image\ImageManager;
 
 class AdminTrailNetworkController extends Controller
 {
@@ -43,6 +46,7 @@ class AdminTrailNetworkController extends Controller
             $validated['slug'] = $this->uniqueSlug($validated['network_name']);
         }
 
+        $validated = $this->sanitizeIconImage($validated);
         $validated['is_always_visible'] = $request->has('is_always_visible');
         $validated['is_active'] = $request->has('is_active');
 
@@ -99,6 +103,7 @@ class AdminTrailNetworkController extends Controller
             $validated['slug'] = $this->uniqueSlug($validated['network_name'], $trailNetwork->id);
         }
 
+        $validated = $this->sanitizeIconImage($validated);
         $validated['is_always_visible'] = $request->has('is_always_visible');
         $validated['is_active'] = $request->has('is_active');
 
@@ -135,6 +140,70 @@ class AdminTrailNetworkController extends Controller
             'success' => true,
             'is_active' => $trailNetwork->is_active,
         ]);
+    }
+
+    /**
+     * List previously uploaded trail network map icons for reuse.
+     */
+    public function listIcons(): JsonResponse
+    {
+        $icons = collect(Storage::disk('public')->files('trail-network-icons'))
+            ->filter(fn (string $file) => preg_match('/\.(png|jpg|jpeg|webp|gif)$/i', $file))
+            ->map(fn (string $file) => [
+                'path' => $file,
+                'url' => asset('storage/'.$file),
+            ])
+            ->values();
+
+        return response()->json($icons);
+    }
+
+    /**
+     * Upload a new trail network map icon and return its path + URL.
+     */
+    public function uploadIcon(Request $request): JsonResponse
+    {
+        $request->validate([
+            'icon' => 'required|image|mimes:jpg,jpeg,png,webp,gif|max:2048',
+        ]);
+
+        $path = $this->compressAndStoreIcon($request->file('icon'), 'trail-network-icons');
+
+        return response()->json([
+            'path' => $path,
+            'url' => asset('storage/'.$path),
+        ]);
+    }
+
+    /**
+     * Delete a trail network map icon. Networks still using it fall back to their emoji icon.
+     */
+    public function deleteIcon(Request $request): JsonResponse
+    {
+        $request->validate([
+            'path' => 'required|string',
+            'force' => 'nullable|boolean',
+        ]);
+
+        $path = $request->string('path')->toString();
+
+        if (! $this->isNetworkIconPath($path)) {
+            abort(422, 'Invalid icon path.');
+        }
+
+        $inUse = TrailNetwork::where('icon_image', $path)->count();
+
+        if ($inUse > 0 && ! $request->boolean('force')) {
+            return response()->json(['deleted' => false, 'in_use' => $inUse]);
+        }
+
+        if ($inUse > 0) {
+            TrailNetwork::where('icon_image', $path)->update(['icon_image' => null]);
+        }
+
+        Storage::disk('public')->delete($path);
+
+        return response()->json(['deleted' => true]);
     }
 
     /**
@@ -179,6 +248,7 @@ class AdminTrailNetworkController extends Controller
             'type' => 'required|in:nordic_skiing,downhill_skiing,hiking,mountain_biking',
             'season' => 'required|in:summer,winter,both',
             'icon' => 'nullable|string|max:10',
+            'icon_image' => 'nullable|string|max:255',
             'image' => 'nullable|image|mimes:jpeg,jpg,png,webp|max:5120',
             'description' => 'nullable|string',
             'latitude' => 'required|numeric|between:-90,90',
@@ -285,6 +355,43 @@ class AdminTrailNetworkController extends Controller
                 $seenIds[] = $created->id;
             }
         }
+    }
+
+    /**
+     * Ensure icon_image, when set, points at an uploaded trail network icon.
+     *
+     * @param  array<string, mixed>  $validated
+     * @return array<string, mixed>
+     */
+    private function sanitizeIconImage(array $validated): array
+    {
+        if (empty($validated['icon_image'])) {
+            $validated['icon_image'] = null;
+
+            return $validated;
+        }
+
+        if (! $this->isNetworkIconPath($validated['icon_image'])) {
+            abort(422, 'Invalid icon image.');
+        }
+
+        return $validated;
+    }
+
+    private function isNetworkIconPath(string $path): bool
+    {
+        return str_starts_with($path, 'trail-network-icons/') && ! str_contains($path, '..');
+    }
+
+    private function compressAndStoreIcon(UploadedFile $icon, string $directory): string
+    {
+        $image = (new ImageManager(new Driver))->read($icon->getRealPath());
+        $image->scaleDown(width: 256, height: 256);
+
+        $path = $directory.'/'.Str::random(40).'.webp';
+        Storage::disk('public')->put($path, (string) $image->toWebp(90));
+
+        return $path;
     }
 
     private function nullable(mixed $value): ?string

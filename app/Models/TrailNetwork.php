@@ -17,6 +17,7 @@ class TrailNetwork extends Model
         'type',
         'season',
         'icon',
+        'icon_image',
         'image',
         'description',
         'latitude',
@@ -50,6 +51,11 @@ class TrailNetwork extends Model
                 $network->slug = $slug;
             }
         });
+    }
+
+    public function getIconImageUrlAttribute(): ?string
+    {
+        return $this->icon_image ? asset('storage/'.$this->icon_image) : null;
     }
 
     public function scopeActive($query)

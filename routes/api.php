@@ -165,6 +165,7 @@ Route::withoutMiddleware(VerifyAppKey::class)->middleware('throttle:public-api')
                 'type' => $network->type,
                 'season' => $network->season,
                 'icon' => $network->icon,
+                'icon_image_url' => $network->icon_image_url,
                 'image' => $network->image ? asset('storage/'.$network->image) : null,
                 'description' => $network->description,
                 'latitude' => $network->latitude ? (float) $network->latitude : null,

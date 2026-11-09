@@ -837,19 +837,19 @@
                                             @php
                                                 $dl = $difficultyLevel;
                                                 $dlLabel = match(true) {
-                                                    $dl == 1 => '🟢 Green',
-                                                    $dl == 2 => '🔵 Blue',
-                                                    $dl == 3 => '⚫ Black Diamond',
-                                                    $dl == 4 => '⚫⚫ Double Black Diamond',
-                                                    $dl >= 5 => '🔴 Proline',
+                                                    $dl == 1 => '⚪ Very Easy',
+                                                    $dl == 2 => '🟢 Easy',
+                                                    $dl == 3 => '🟦 Moderate',
+                                                    $dl == 4 => '◆ Hard',
+                                                    $dl >= 5 => '◆◆ Very Hard',
                                                     default  => "Level {$dl}",
                                                 };
                                                 $dlClass = match(true) {
-                                                    $dl == 1 => 'bg-green-100 text-green-700 ring-1 ring-green-600/20',
-                                                    $dl == 2 => 'bg-blue-100 text-blue-700 ring-1 ring-blue-600/20',
-                                                    $dl == 3 => 'bg-gray-900 text-white ring-1 ring-gray-700',
-                                                    $dl == 4 => 'bg-gray-950 text-white ring-1 ring-gray-700',
-                                                    $dl >= 5 => 'bg-red-100 text-red-700 ring-1 ring-red-600/20',
+                                                    $dl == 1 => 'bg-white text-gray-800 ring-1 ring-gray-300',
+                                                    $dl == 2 => 'bg-green-100 text-green-700 ring-1 ring-green-600/20',
+                                                    $dl == 3 => 'bg-blue-100 text-blue-700 ring-1 ring-blue-600/20',
+                                                    $dl == 4 => 'bg-gray-900 text-white ring-1 ring-gray-700',
+                                                    $dl >= 5 => 'bg-black text-white ring-1 ring-gray-700',
                                                     default  => 'bg-gray-100 text-gray-700',
                                                 };
                                             @endphp
@@ -860,9 +860,9 @@
                                         </div>
                                     </div>
                                     <div class="ml-3 flex-shrink-0">
-                                        <div class="w-9 h-9 rounded-full flex items-center justify-center shadow-sm ring-2 ring-white trail-color-badge"
+                                        <div class="w-9 h-9 rounded-full flex items-center justify-center shadow-sm ring-2 {{ $difficultyLevel == 1 ? 'ring-gray-300' : 'ring-white' }} trail-color-badge"
                                             data-difficulty="{{ $difficultyLevel }}">
-                                            <span class="text-white text-xs font-bold">{{ substr($trail->name, 0, 1) }}</span>
+                                            <span class="{{ $difficultyLevel == 1 ? 'text-gray-800' : 'text-white' }} text-xs font-bold">{{ substr($trail->name, 0, 1) }}</span>
                                         </div>
                                     </div>
                                 </div>
@@ -1078,35 +1078,35 @@ const isMobileDevice = () => window.innerWidth <= 768;
 // Difficulty color mapping
 function getDifficultyColor(difficulty) {
     const colors = {
-        1: '#22c55e', // Green
-        2: '#3b82f6', // Blue
-        3: '#1a1a1a', // Black Diamond
-        4: '#1a1a1a', // Double Black Diamond
-        5: '#ef4444', // Proline (red)
+        1: '#ffffff', // Very Easy - White Circle
+        2: '#22c55e', // Easy - Green Circle
+        3: '#3b82f6', // Moderate - Blue Square
+        4: '#111827', // Hard - Black Diamond
+        5: '#000000', // Very Hard - Double Black Diamond
     };
-    return colors[Math.floor(difficulty)] || '#6b7280';
+    return colors[Math.min(Math.floor(difficulty), 5)] || '#6b7280';
 }
 
 function getDifficultyLabel(difficulty) {
     const labels = {
-        1: 'Green',
-        2: 'Blue',
-        3: 'Black Diamond',
-        4: 'Double Black Diamond',
-        5: 'Proline',
+        1: 'Very Easy',
+        2: 'Easy',
+        3: 'Moderate',
+        4: 'Hard ◆',
+        5: 'Very Hard ◆◆',
     };
-    return labels[Math.floor(difficulty)] || `Level ${difficulty}`;
+    return labels[Math.min(Math.floor(difficulty), 5)] || `Level ${difficulty}`;
 }
 
 function getDifficultyStyle(difficulty) {
     const styles = {
-        1: 'background:#dcfce7;color:#166534;',
-        2: 'background:#dbeafe;color:#1d4ed8;',
-        3: 'background:#1a1a1a;color:#ffffff;',
+        1: 'background:#ffffff;color:#1f2937;border:1px solid #d1d5db;',
+        2: 'background:#dcfce7;color:#166534;',
+        3: 'background:#dbeafe;color:#1d4ed8;',
         4: 'background:#111827;color:#ffffff;',
-        5: 'background:#fee2e2;color:#991b1b;',
+        5: 'background:#000000;color:#ffffff;',
     };
-    return styles[Math.floor(difficulty)] || 'background:#f3f4f6;color:#374151;';
+    return styles[Math.min(Math.floor(difficulty), 5)] || 'background:#f3f4f6;color:#374151;';
 }
 
 // State
@@ -1147,7 +1147,7 @@ const trailFeatures = trails
     .map(t => ({
         type: 'Feature',
         id: t.id,
-        properties: { trailId: t.id, color: getDifficultyColor(t.difficulty_level), name: t.name },
+        properties: { trailId: t.id, color: getDifficultyColor(t.difficulty_level), difficulty: Math.floor(t.difficulty_level), name: t.name },
         geometry: { type: 'LineString', coordinates: t.route_coordinates.map(c => [c[1], c[0]]) },
     }));
 
@@ -1181,6 +1181,25 @@ function initMapLayers() {
                     ['boolean', ['feature-state', 'selected'], false], 1,
                     ['boolean', ['feature-state', 'hovered'], false], 0.7,
                     0
+                ],
+            },
+            layout: { 'line-join': 'round', 'line-cap': 'round' },
+        });
+    }
+
+    // Dark casing so white (Very Easy) trails stay visible on light tiles
+    if (!map.getLayer('trail-routes-casing')) {
+        map.addLayer({
+            id: 'trail-routes-casing',
+            type: 'line',
+            source: 'trail-routes',
+            filter: ['==', ['get', 'difficulty'], 1],
+            paint: {
+                'line-color': '#374151',
+                'line-width': ['case',
+                    ['boolean', ['feature-state', 'selected'], false], 5,
+                    ['boolean', ['feature-state', 'hovered'], false], 4.5,
+                    3
                 ],
             },
             layout: { 'line-join': 'round', 'line-cap': 'round' },
@@ -1538,7 +1557,7 @@ function showMobileTrailCard(trailId) {
         placeholderIcon: '🥾',
         placeholderBg: 'linear-gradient(135deg,#166534,#22c55e)',
         name: trail.name,
-        metaHtml: `<span style="width:9px;height:9px;border-radius:50%;background:${diffColor};display:inline-block;flex-shrink:0;"></span><span style="font-size:12px;font-weight:600;color:#374151;">${diffLabel}</span><span style="color:#d1d5db;font-size:11px;">·</span><span style="font-size:12px;color:#6b7280;">${trailType}</span>`,
+        metaHtml: `<span style="width:9px;height:9px;border-radius:50%;background:${diffColor};border:1px solid #9ca3af;display:inline-block;flex-shrink:0;"></span><span style="font-size:12px;font-weight:600;color:#374151;">${diffLabel}</span><span style="color:#d1d5db;font-size:11px;">·</span><span style="font-size:12px;color:#6b7280;">${trailType}</span>`,
         statsText: parts.join(' · '),
         actionsHtml: `<button type="button" onclick="focusTrail(${trail.id})" class="${btnClass}"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-1.447-.894L15 9m0 8V9m0 0V7"/></svg>Route</button><a href="/trails/${trail.id}" class="${btnClass}"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>Details</a>`,
     });

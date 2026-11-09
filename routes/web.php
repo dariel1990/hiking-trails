@@ -210,6 +210,9 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::patch('/trails/{trail}/toggle-status', [AdminTrailController::class, 'toggleStatus'])->name('trails.toggle-status')->middleware('throttle:300,1');
 
         // Add the trail networks routes here
+        Route::get('/trail-networks/icons', [AdminTrailNetworkController::class, 'listIcons'])->name('trail-networks.icons');
+        Route::post('/trail-networks/icons/upload', [AdminTrailNetworkController::class, 'uploadIcon'])->name('trail-networks.icons.upload');
+        Route::delete('/trail-networks/icons', [AdminTrailNetworkController::class, 'deleteIcon'])->name('trail-networks.icons.delete');
         Route::patch('/trail-networks/{trail_network}/toggle-active', [AdminTrailNetworkController::class, 'toggleActive'])
             ->name('trail-networks.toggle-active');
         Route::resource('trail-networks', AdminTrailNetworkController::class)
