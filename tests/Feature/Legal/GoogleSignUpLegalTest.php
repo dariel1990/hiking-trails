@@ -84,7 +84,7 @@ class GoogleSignUpLegalTest extends TestCase
         $this->signInWithGoogle('new-hiker@example.com');
 
         $this->assertSame(0, LegalAcceptance::query()->count());
-        $this->get(route('home'))->assertRedirect(route('legal.accept.show'));
+        $this->get(route('home'))->assertOk()->assertSee('Review updated terms');
     }
 
     public function test_an_outdated_document_returns_to_the_review(): void
@@ -129,7 +129,7 @@ class GoogleSignUpLegalTest extends TestCase
 
         $this->signInWithGoogle('new-hiker@example.com');
 
-        $this->get(route('home'))->assertRedirect(route('legal.accept.show'));
+        $this->get(route('home'))->assertOk()->assertSee('Review updated terms');
 
         $this->get(route('legal.accept.show'))
             ->assertOk()
@@ -144,7 +144,7 @@ class GoogleSignUpLegalTest extends TestCase
 
         $this->signInWithGoogle('old-hiker@example.com');
 
-        $this->get(route('home'))->assertRedirect(route('legal.accept.show'));
+        $this->get(route('home'))->assertOk()->assertSee('Review updated terms');
 
         $this->get(route('legal.accept.show'))
             ->assertSee('New terms wording.')

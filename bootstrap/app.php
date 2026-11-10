@@ -1,7 +1,7 @@
 <?php
 
 use App\Http\Middleware\AdminMiddleware;
-use App\Http\Middleware\EnsureLegalAccepted;
+use App\Http\Middleware\SharePendingLegalDocuments;
 use App\Http\Middleware\VerifyAppKey;
 use App\Support\DeveloperAlert;
 use Illuminate\Console\Scheduling\Schedule;
@@ -27,7 +27,7 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
 
         $middleware->web(append: [
-            EnsureLegalAccepted::class,
+            SharePendingLegalDocuments::class,
         ]);
 
         // Stripe posts server-to-server; it can't carry a CSRF token (verified by signature).

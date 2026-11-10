@@ -153,7 +153,7 @@
                         <div class="relative" x-data="{ open: false }">
                             <button type="button" @click="open = !open" @keydown.escape.window="open = false"
                                     :aria-expanded="open" aria-haspopup="true"
-                                    class="flex items-center gap-2.5 rounded-full pl-1 pr-2.5 py-1 hover:bg-gray-100 transition-colors focus:outline-none focus:ring-2 focus:ring-forest-600/20">
+                                    class="relative flex items-center gap-2.5 rounded-full pl-1 pr-2.5 py-1 hover:bg-gray-100 transition-colors focus:outline-none focus:ring-2 focus:ring-forest-600/20">
                                 <span class="relative flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-forest-600 to-forest-800 text-white text-sm font-semibold shadow-sm overflow-hidden">
                                     @if($navUser->avatar_url)
                                         <img src="{{ $navUser->avatar_url }}" alt="" class="h-full w-full object-cover">
@@ -164,6 +164,10 @@
                                         <span class="absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 rounded-full bg-accent-500 ring-2 ring-white" title="XploreSmithers Pro"></span>
                                     @endif
                                 </span>
+                                @if(! empty($pendingLegalTitles))
+                                    <span class="absolute left-8 top-0.5 h-3 w-3 rounded-full bg-red-500 ring-2 ring-white" data-legal-notice-dot></span>
+                                    <span class="sr-only">You have a policy update to review</span>
+                                @endif
                                 <span class="hidden xl:block text-sm font-medium text-forest-700 max-w-[120px] truncate">{{ $navUser->name }}</span>
                                 <svg class="h-4 w-4 text-gray-400 transition-transform duration-200" :class="open && 'rotate-180'" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
                             </button>
@@ -191,6 +195,10 @@
                                 </div>
 
                                 <div class="py-1.5">
+                                    @if(! empty($pendingLegalTitles))
+                                        @include('legal._account_notice', ['class' => 'flex items-start gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors'])
+                                        <div class="my-1.5 border-t border-gray-100"></div>
+                                    @endif
                                     @if(subscriptions_enabled())
                                         @if($navIsPro)
                                             <p class="flex items-center gap-2 px-4 pt-2 pb-1 text-[11px] font-semibold uppercase tracking-wide text-accent-600">
@@ -234,7 +242,10 @@
                 <div class="lg:hidden" x-data="{ mobileOpen: false }">
                     <button type="button" 
                             @click="mobileOpen = !mobileOpen"
-                            class="text-gray-700 hover:text-emerald-600 p-2 rounded-lg hover:bg-emerald-50 transition-all duration-300">
+                            class="relative text-gray-700 hover:text-emerald-600 p-2 rounded-lg hover:bg-emerald-50 transition-all duration-300">
+                        @if(! empty($pendingLegalTitles))
+                            <span class="absolute right-1.5 top-1.5 h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-white"></span>
+                        @endif
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
                         </svg>
@@ -277,6 +288,9 @@
                                     <p class="text-xs text-gray-500 truncate">{{ auth()->user()->email }}</p>
                                 </div>
                             </div>
+                            @if(! empty($pendingLegalTitles))
+                                @include('legal._account_notice', ['class' => 'flex items-start gap-3 px-6 py-3 text-gray-700 hover:bg-emerald-50 transition-colors'])
+                            @endif
                             @if(subscriptions_enabled())
                                 @if(auth()->user()->hasActiveProEntitlement())
                                     <a href="{{ route('pro.portal') }}" class="block px-6 py-3 font-medium text-accent-700 transition-colors">
@@ -350,6 +364,7 @@
 
         @yield('content')
     </main>
+
 
     @unless(request()->routeIs('map') || request()->routeIs('trail-networks.show') || request()->routeIs('admin.login') || request()->routeIs('login', 'register'))
     <!-- Enhanced Footer inspired by XploreSmithers -->

@@ -15,6 +15,8 @@ class LegalAcceptanceTest extends TestCase
 {
     use RefreshDatabase;
 
+    private const NOTICE = 'Review updated terms';
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -152,7 +154,7 @@ class LegalAcceptanceTest extends TestCase
     {
         $this->actingAs($this->existingUser())
             ->get(route('pro.show'))
-            ->assertDontSee('updated our policies');
+            ->assertDontSee(self::NOTICE);
 
         $this->get(route('legal.accept.show'))->assertRedirect(route('home'));
     }
@@ -161,19 +163,25 @@ class LegalAcceptanceTest extends TestCase
     {
         LegalDocumentVersion::factory()->published()->create();
 
-        $response = $this->actingAs($this->existingUser())->get(route('pro.show'));
-
-        $this->assertNotSame(route('legal.accept.show'), $response->headers->get('Location'));
+        $this->actingAs($this->existingUser())->get(route('pro.show'))->assertOk()->assertDontSee(self::NOTICE);
     }
 
-    public function test_a_material_publish_redirects_then_returns_to_the_original_page(): void
+    public function test_a_material_publish_shows_an_account_menu_notice_without_blocking_the_page(): void
     {
         $version = LegalDocumentVersion::factory()->material()->create(['change_summary' => 'New liability wording.']);
         $user = $this->existingUser();
 
-        $this->actingAs($user)->get(route('pro.show', ['plan' => 'annual']))->assertRedirect(route('legal.accept.show'));
+        $this->actingAs($user)
+            ->get(route('pro.show', ['plan' => 'annual']))
+            ->assertOk()
+            ->assertSee(self::NOTICE)
+            ->assertSee('data-legal-notice-dot', false)
+            ->assertDontSee('Terms & Conditions and Privacy Policy');
 
-        $this->get(route('legal.accept.show'))->assertOk()->assertSee('New liability wording.');
+        $this->withHeader('referer', route('pro.show', ['plan' => 'annual']))
+            ->get(route('legal.accept.show'))
+            ->assertOk()
+            ->assertSee('New liability wording.');
 
         $this->post(route('legal.accept.store'), $this->acceptancePayload($version))
             ->assertRedirect(route('pro.show', ['plan' => 'annual']));
@@ -192,9 +200,7 @@ class LegalAcceptanceTest extends TestCase
 
         $this->actingAs($user)->post(route('legal.accept.store'), $this->acceptancePayload($version));
 
-        $response = $this->get(route('pro.show'));
-
-        $this->assertNotSame(route('legal.accept.show'), $response->headers->get('Location'));
+        $this->get(route('pro.show'))->assertOk()->assertDontSee(self::NOTICE);
     }
 
     public function test_a_later_non_material_version_does_not_reprompt_accepted_users(): void
@@ -205,9 +211,7 @@ class LegalAcceptanceTest extends TestCase
 
         LegalDocumentVersion::factory()->published()->create();
 
-        $response = $this->get(route('pro.show'));
-
-        $this->assertNotSame(route('legal.accept.show'), $response->headers->get('Location'));
+        $this->get(route('pro.show'))->assertOk()->assertDontSee(self::NOTICE);
     }
 
     public function test_users_accept_the_live_version_when_newer_than_the_material_one(): void
@@ -266,9 +270,7 @@ class LegalAcceptanceTest extends TestCase
     {
         LegalDocumentVersion::factory()->material()->create();
 
-        $response = $this->get(route('pro.show'));
-
-        $this->assertNotSame(route('legal.accept.show'), $response->headers->get('Location'));
+        $this->get(route('pro.show'))->assertOk()->assertDontSee(self::NOTICE);
         $this->get(route('legal.accept.show'))->assertRedirect(route('login'));
     }
 
@@ -278,8 +280,8 @@ class LegalAcceptanceTest extends TestCase
 
         $this->actingAs($this->existingUser());
 
-        $this->get(route('terms'))->assertOk();
-        $this->get(route('privacy-policy'))->assertOk();
+        $this->get(route('terms'))->assertOk()->assertDontSee(self::NOTICE);
+        $this->get(route('privacy-policy'))->assertOk()->assertDontSee(self::NOTICE);
     }
 
     public function test_users_can_log_out_while_acceptance_is_pending(): void
@@ -297,7 +299,32 @@ class LegalAcceptanceTest extends TestCase
 
         $this->actingAs(User::factory()->create(['is_admin' => true]))
             ->get(route('admin.legal.index'))
+            ->assertOk()
+            ->assertDontSee(self::NOTICE);
+    }
+
+    public function test_new_accounts_see_both_documents_in_the_notice(): void
+    {
+        LegalDocumentVersion::factory()->material()->create();
+
+        $this->actingAs(User::factory()->create())
+            ->get(route('pro.show'))
+            ->assertOk()
+            ->assertSee(self::NOTICE)
+            ->assertSee('Terms & Conditions and Privacy Policy');
+    }
+
+    public function test_the_review_page_ignores_external_referers(): void
+    {
+        $version = LegalDocumentVersion::factory()->material()->create();
+
+        $this->actingAs($this->existingUser())
+            ->withHeader('referer', 'https://evil.example.com/page')
+            ->get(route('legal.accept.show'))
             ->assertOk();
+
+        $this->post(route('legal.accept.store'), $this->acceptancePayload($version))
+            ->assertRedirect(route('home'));
     }
 
     public function test_json_requests_are_not_redirected(): void
@@ -306,6 +333,6 @@ class LegalAcceptanceTest extends TestCase
 
         $response = $this->actingAs($this->existingUser())->getJson(route('pro.show'));
 
-        $this->assertNotSame(route('legal.accept.show'), $response->headers->get('Location'));
+        $this->assertFalse($response->isRedirect());
     }
 }

@@ -5,9 +5,14 @@ namespace App\Http\Middleware;
 use App\Services\LegalDocumentService;
 use Closure;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\View;
 use Symfony\Component\HttpFoundation\Response;
 
-class EnsureLegalAccepted
+/**
+ * Shares the titles of legal documents the user still has to accept with the views,
+ * so the account menu can show a notice. It never redirects.
+ */
+class SharePendingLegalDocuments
 {
     /**
      * @var array<int, string>
@@ -25,8 +30,12 @@ class EnsureLegalAccepted
 
     public function handle(Request $request, Closure $next): Response
     {
-        if ($this->shouldPrompt($request) && $this->legalDocuments->pendingFor($request->user())->isNotEmpty()) {
-            return redirect()->guest(route('legal.accept.show'));
+        if ($this->shouldPrompt($request)) {
+            $pending = $this->legalDocuments->pendingFor($request->user());
+
+            if ($pending->isNotEmpty()) {
+                View::share('pendingLegalTitles', $pending->map->title()->all());
+            }
         }
 
         return $next($request);

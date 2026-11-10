@@ -12,7 +12,7 @@
     <div class="max-w-2xl mx-auto flex flex-col gap-5 bg-white rounded-2xl shadow-sm border border-gray-100 p-6 sm:p-8">
         <div>
             <h1 class="text-2xl font-bold text-gray-900">Please review our policies</h1>
-            <p class="mt-1 text-sm text-gray-600">You need to read and accept these before continuing.</p>
+            <p class="mt-1 text-sm text-gray-600">We've made changes. Please take a moment to review and accept them.</p>
         </div>
 
         @error('versions')
@@ -32,10 +32,7 @@
             @include('legal._review', ['documents' => $documents])
         </form>
 
-        <form method="POST" action="{{ route('logout') }}" class="text-center">
-            @csrf
-            <button type="submit" class="text-sm text-gray-500 hover:text-gray-700">Log out instead</button>
-        </form>
+        <a href="{{ $returnUrl }}" class="text-center text-sm text-gray-500 hover:text-gray-700">Not now</a>
     </div>
 </div>
 @endsection
