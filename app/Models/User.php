@@ -84,6 +84,11 @@ class User extends Authenticatable implements MustVerifyEmail
         return $initials;
     }
 
+    public function legalAcceptances(): HasMany
+    {
+        return $this->hasMany(LegalAcceptance::class);
+    }
+
     public function subscriptions(): HasMany
     {
         return $this->hasMany(Subscription::class);

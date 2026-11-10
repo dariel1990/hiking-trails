@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\BillingController;
 use App\Http\Controllers\Api\EntitlementController;
 use App\Http\Controllers\Api\EventImportController;
+use App\Http\Controllers\Api\LegalController;
 use App\Http\Controllers\Api\ReviewPromptEventController;
 use App\Http\Controllers\Api\TrailPhotoController;
 use App\Http\Controllers\TrailController;
@@ -99,6 +100,8 @@ Route::prefix('auth')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth:sanctum');
 });
 
+Route::get('/legal/current', [LegalController::class, 'current'])->middleware('throttle:300,1');
+
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('/me', [AuthController::class, 'me']);
     Route::put('/me', [AuthController::class, 'updateProfile']);
@@ -106,6 +109,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('/me/password', [AuthController::class, 'updatePassword']);
     Route::delete('/me', [AuthController::class, 'deleteAccount']);
     Route::get('/me/entitlements', [EntitlementController::class, 'show']);
+    Route::get('/legal/status', [LegalController::class, 'status']);
+    Route::post('/legal/accept', [LegalController::class, 'accept']);
 
     // Phase B (deferred) — wiring in place, Google verification stubbed.
     Route::post('/billing/verify-purchase', [BillingController::class, 'verifyPurchase'])

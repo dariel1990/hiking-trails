@@ -4,6 +4,7 @@ use App\Http\Controllers\Admin\ActivityTypeController;
 use App\Http\Controllers\Admin\AdminAnalyticsController;
 use App\Http\Controllers\Admin\AdminController;
 use App\Http\Controllers\Admin\AdminEmailLogController;
+use App\Http\Controllers\Admin\AdminLegalDocumentController;
 use App\Http\Controllers\Admin\AdminSettingsController;
 use App\Http\Controllers\Admin\AdminSubscriptionController;
 use App\Http\Controllers\Admin\AdminTourController;
@@ -25,6 +26,8 @@ use App\Http\Controllers\Auth\WebAuthController;
 use App\Http\Controllers\Auth\WebGoogleAuthController;
 use App\Http\Controllers\BusinessPublicController;
 use App\Http\Controllers\EventsController;
+use App\Http\Controllers\LegalAcceptanceController;
+use App\Http\Controllers\LegalDocumentController;
 use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\SitemapController;
 use App\Http\Controllers\Subscription\StripeWebhookController;
@@ -33,6 +36,7 @@ use App\Http\Controllers\TourController;
 use App\Http\Controllers\TownController;
 use App\Http\Controllers\TrailController;
 use App\Http\Controllers\TrailNetworkController;
+use App\Models\LegalDocumentVersion;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Route;
@@ -71,8 +75,13 @@ Route::get('/trails/{trail}', [TrailController::class, 'show'])->name('trails.sh
 Route::get('/map', [TrailController::class, 'map'])->name('map');
 Route::get('/map-v2', [TrailController::class, 'mapV2'])->name('map.v2');
 
-Route::get('/privacy-policy', fn () => view('privacy-policy'))->name('privacy-policy');
-Route::get('/terms-and-conditions', fn () => view('terms-and-conditions'))->name('terms');
+Route::get('/privacy-policy', [LegalDocumentController::class, 'show'])->defaults('type', LegalDocumentVersion::PRIVACY)->name('privacy-policy');
+Route::get('/terms-and-conditions', [LegalDocumentController::class, 'show'])->defaults('type', LegalDocumentVersion::TERMS)->name('terms');
+
+Route::middleware('auth')->prefix('legal/accept')->name('legal.accept.')->group(function () {
+    Route::get('/', [LegalAcceptanceController::class, 'show'])->name('show');
+    Route::post('/', [LegalAcceptanceController::class, 'store'])->name('store');
+});
 
 // Minimal video-only YouTube player for the mobile app's in-app Custom Tab. Path is kept
 // OUTSIDE the app's deep-link prefixes so it opens in the browser tab, not the native app.
@@ -125,6 +134,7 @@ Route::middleware(['auth', 'verified'])->prefix('settings')->name('settings.')->
 });
 
 // Web user authentication — Google OAuth redirect flow (session-based)
+Route::post('/auth/google/accept', [WebGoogleAuthController::class, 'acceptLegalDocuments'])->name('google.accept');
 Route::get('/auth/google/redirect', [WebGoogleAuthController::class, 'redirect'])->name('google.redirect');
 Route::get('/auth/google/callback', [WebGoogleAuthController::class, 'callback'])->name('google.callback');
 Route::post('/logout', [WebGoogleAuthController::class, 'logout'])->name('logout');
@@ -176,6 +186,22 @@ Route::prefix('admin')->name('admin.')->group(function () {
         // Site settings
         Route::get('settings', [AdminSettingsController::class, 'edit'])->name('settings.edit');
         Route::put('settings', [AdminSettingsController::class, 'update'])->name('settings.update');
+
+        // Terms & Privacy Policy versions
+        Route::prefix('legal')->name('legal.')->controller(AdminLegalDocumentController::class)->group(function () {
+            Route::get('/', 'index')->name('index');
+            Route::post('preview', 'preview')->name('preview');
+
+            Route::prefix('{type}')->where(['type' => 'terms|privacy'])->group(function () {
+                Route::get('/', 'history')->name('history');
+                Route::get('compare', 'compare')->name('compare');
+                Route::get('versions/{version}', 'version')->whereNumber('version')->name('version');
+                Route::get('draft', 'draft')->name('draft');
+                Route::put('draft', 'saveDraft')->name('draft.save');
+                Route::delete('draft', 'discardDraft')->name('draft.discard');
+                Route::post('draft/publish', 'publish')->name('draft.publish');
+            });
+        });
 
         // Trail management
         Route::post('/trails/bulk-action', [AdminTrailController::class, 'bulkAction'])->name('trails.bulk-action');

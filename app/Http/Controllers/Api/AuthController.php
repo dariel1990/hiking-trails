@@ -11,12 +11,15 @@ use App\Http\Requests\Api\UpdatePasswordRequest;
 use App\Http\Requests\Api\UpdateProfileRequest;
 use App\Http\Requests\Auth\ForgotPasswordRequest;
 use App\Http\Requests\Auth\ResetPasswordRequest;
+use App\Models\LegalAcceptance;
 use App\Models\User;
 use App\Notifications\AccountDeletedNotification;
 use App\Notifications\PasswordChangedNotification;
 use App\Notifications\WelcomeNotification;
 use App\Services\AppleIdTokenVerifier;
+use App\Services\LegalDocumentService;
 use Google\Client as GoogleClient;
+use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -29,8 +32,12 @@ use Throwable;
 
 class AuthController extends Controller
 {
-    public function register(RegisterRequest $request): JsonResponse
+    public function register(RegisterRequest $request, LegalDocumentService $legalDocuments): JsonResponse
     {
+        if ($conflict = $this->legalDocumentsConflict($request, $legalDocuments)) {
+            return $conflict;
+        }
+
         $firstName = $request->string('first_name')->value();
         $lastName = $request->string('last_name')->value();
 
@@ -41,6 +48,8 @@ class AuthController extends Controller
             'email' => $request->string('email')->value(),
             'password' => $request->string('password')->value(),
         ]);
+
+        $this->recordAcceptedLegalDocuments($user, $request, $legalDocuments);
 
         try {
             $user->notify(new WelcomeNotification);
@@ -80,8 +89,12 @@ class AuthController extends Controller
         ]);
     }
 
-    public function googleSignIn(GoogleSignInRequest $request): JsonResponse
+    public function googleSignIn(GoogleSignInRequest $request, LegalDocumentService $legalDocuments): JsonResponse
     {
+        if ($conflict = $this->legalDocumentsConflict($request, $legalDocuments)) {
+            return $conflict;
+        }
+
         $client = app(GoogleClient::class);
         $client->setClientId(config('services.google.web_client_id'));
         $payload = $client->verifyIdToken($request->string('id_token')->value());
@@ -118,14 +131,20 @@ class AuthController extends Controller
             }
         }
 
+        $this->recordAcceptedLegalDocuments($user, $request, $legalDocuments);
+
         return response()->json([
             'token' => $this->issueToken($user, $request),
             'user' => $this->userPayload($user),
         ]);
     }
 
-    public function appleSignIn(AppleSignInRequest $request): JsonResponse
+    public function appleSignIn(AppleSignInRequest $request, LegalDocumentService $legalDocuments): JsonResponse
     {
+        if ($conflict = $this->legalDocumentsConflict($request, $legalDocuments)) {
+            return $conflict;
+        }
+
         $claims = app(AppleIdTokenVerifier::class)->verify($request->string('id_token')->value());
 
         if ($claims === null || empty($claims['sub'])) {
@@ -173,10 +192,38 @@ class AuthController extends Controller
             }
         }
 
+        $this->recordAcceptedLegalDocuments($user, $request, $legalDocuments);
+
         return response()->json([
             'token' => $this->issueToken($user, $request),
             'user' => $this->userPayload($user),
         ]);
+    }
+
+    /**
+     * A conflict response when the submitted acceptance is for outdated documents.
+     * Older app builds send no acceptance at all, which is not a conflict.
+     */
+    private function legalDocumentsConflict(FormRequest $request, LegalDocumentService $legalDocuments): ?JsonResponse
+    {
+        $acceptedVersionIds = $request->validated('accepted_versions');
+        $currentVersions = $legalDocuments->currentVersions();
+
+        if ($acceptedVersionIds === null || $legalDocuments->matchesVersions($acceptedVersionIds, $currentVersions)) {
+            return null;
+        }
+
+        return response()->json([
+            'message' => 'The legal documents have changed.',
+            'documents' => $legalDocuments->reviewPayload($currentVersions),
+        ], Response::HTTP_CONFLICT);
+    }
+
+    private function recordAcceptedLegalDocuments(User $user, FormRequest $request, LegalDocumentService $legalDocuments): void
+    {
+        if ($request->validated('accepted_versions') !== null) {
+            $legalDocuments->recordAcceptance($user, $legalDocuments->currentVersions(), $request, LegalAcceptance::SOURCE_API);
+        }
     }
 
     public function forgotPassword(ForgotPasswordRequest $request): JsonResponse

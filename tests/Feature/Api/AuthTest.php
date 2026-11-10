@@ -2,8 +2,11 @@
 
 namespace Tests\Feature\Api;
 
+use App\Models\LegalAcceptance;
+use App\Models\LegalDocumentVersion;
 use App\Models\User;
 use App\Services\AppleIdTokenVerifier;
+use App\Services\LegalDocumentService;
 use Google\Client as GoogleClient;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
@@ -31,6 +34,44 @@ class AuthTest extends TestCase
 
         $this->assertDatabaseHas('users', ['email' => 'jane@example.com']);
         $this->assertNotEmpty($response->json('token'));
+    }
+
+    public function test_register_splits_a_single_name_field_from_the_mobile_apps(): void
+    {
+        $this->postJson('/api/auth/register', [
+            'name' => 'Jane Mary Hiker',
+            'email' => 'jane@example.com',
+            'password' => 'secret123',
+            'password_confirmation' => 'secret123',
+        ])->assertCreated();
+
+        $this->assertDatabaseHas('users', [
+            'email' => 'jane@example.com',
+            'first_name' => 'Jane',
+            'last_name' => 'Mary Hiker',
+            'name' => 'Jane Mary Hiker',
+        ]);
+    }
+
+    public function test_register_accepts_a_one_word_name_from_the_mobile_apps(): void
+    {
+        $this->postJson('/api/auth/register', [
+            'name' => 'Jane',
+            'email' => 'jane@example.com',
+            'password' => 'secret123',
+            'password_confirmation' => 'secret123',
+        ])->assertCreated();
+
+        $this->assertDatabaseHas('users', ['email' => 'jane@example.com', 'name' => 'Jane']);
+    }
+
+    public function test_register_still_requires_some_name(): void
+    {
+        $this->postJson('/api/auth/register', [
+            'email' => 'jane@example.com',
+            'password' => 'secret123',
+            'password_confirmation' => 'secret123',
+        ])->assertStatus(422)->assertJsonValidationErrors(['first_name', 'last_name']);
     }
 
     public function test_register_rejects_duplicate_email(): void
@@ -133,6 +174,71 @@ class AuthTest extends TestCase
             'email' => 'jane@example.com',
             'google_id' => 'google-uid-123',
         ]);
+    }
+
+    /**
+     * @return array<int, int>
+     */
+    private function currentLegalVersionIds(): array
+    {
+        return app(LegalDocumentService::class)->currentVersions()->pluck('id')->all();
+    }
+
+    public function test_google_sign_up_records_the_accepted_versions(): void
+    {
+        $this->fakeGoogleToken(['sub' => 'g-1', 'email' => 'jane@example.com', 'email_verified' => true, 'name' => 'Jane']);
+
+        $this->postJson('/api/auth/google', [
+            'id_token' => 'valid-token',
+            'accepted_versions' => $this->currentLegalVersionIds(),
+        ])->assertOk();
+
+        $this->assertSame(2, User::first()->legalAcceptances()->where('source', LegalAcceptance::SOURCE_API)->count());
+    }
+
+    public function test_google_sign_in_without_acceptance_records_nothing(): void
+    {
+        $this->fakeGoogleToken(['sub' => 'g-1', 'email' => 'jane@example.com', 'email_verified' => true, 'name' => 'Jane']);
+
+        $this->postJson('/api/auth/google', ['id_token' => 'valid-token'])->assertOk();
+
+        $this->assertSame(0, LegalAcceptance::query()->count());
+    }
+
+    public function test_google_sign_up_with_outdated_documents_creates_no_account(): void
+    {
+        $outdated = $this->currentLegalVersionIds();
+        $current = LegalDocumentVersion::factory()->material()->create();
+
+        $this->postJson('/api/auth/google', ['id_token' => 'valid-token', 'accepted_versions' => $outdated])
+            ->assertStatus(409)
+            ->assertJsonPath('message', 'The legal documents have changed.')
+            ->assertJsonPath('documents.0.id', $current->id);
+
+        $this->assertDatabaseMissing('users', ['email' => 'jane@example.com']);
+    }
+
+    public function test_apple_sign_up_records_the_accepted_versions(): void
+    {
+        $this->fakeAppleToken(['sub' => 'a-1', 'email' => 'jane@example.com']);
+
+        $this->postJson('/api/auth/apple', [
+            'id_token' => 'valid-token',
+            'accepted_versions' => $this->currentLegalVersionIds(),
+        ])->assertOk();
+
+        $this->assertSame(2, User::first()->legalAcceptances()->where('source', LegalAcceptance::SOURCE_API)->count());
+    }
+
+    public function test_apple_sign_up_with_outdated_documents_is_rejected(): void
+    {
+        $outdated = $this->currentLegalVersionIds();
+        LegalDocumentVersion::factory()->material()->create();
+
+        $this->postJson('/api/auth/apple', ['id_token' => 'valid-token', 'accepted_versions' => $outdated])
+            ->assertStatus(409);
+
+        $this->assertSame(0, User::query()->count());
     }
 
     public function test_google_sign_in_rejects_invalid_token(): void
