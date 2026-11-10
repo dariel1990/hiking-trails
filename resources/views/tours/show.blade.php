@@ -61,8 +61,9 @@
     .stop-timeline-item:last-child .timeline-connector { display: none; }
 
     /* Map markers */
-    .tour-marker { display: flex; align-items: center; gap: 0; cursor: pointer; }
+    .tour-marker { cursor: pointer; }
     .tour-marker-badge {
+        position: relative;
         width: 2.1rem; height: 2.1rem; border-radius: 9999px;
         background: linear-gradient(145deg, #2C5F5D, #1d4644);
         color: #fff; font-size: 0.85rem; font-weight: 700;
@@ -81,7 +82,8 @@
         animation: tour-marker-pulse 1.4s ease-out infinite;
     }
     .tour-marker-label {
-        margin-left: -0.5rem; padding: 0.3rem 0.7rem 0.3rem 1rem;
+        position: absolute; left: 1.6rem; top: 50%; transform: translateY(-50%); z-index: 1;
+        padding: 0.3rem 0.7rem 0.3rem 1rem;
         background: rgba(255,255,255,0.95); color: #1f2937;
         font-size: 0.72rem; font-weight: 600; white-space: nowrap;
         border-radius: 0 9999px 9999px 0;
@@ -89,7 +91,25 @@
         border: 1px solid rgba(0,0,0,0.06); border-left: none;
         transition: box-shadow 0.15s;
         display: flex; align-items: center; gap: 0.35rem;
+        pointer-events: none;
     }
+    /* Label tucked behind the left side of the badge */
+    .tour-marker.label-left .tour-marker-label {
+        padding: 0.3rem 1rem 0.3rem 0.7rem;
+        border-radius: 9999px 0 0 9999px;
+        border-left: 1px solid rgba(0,0,0,0.06); border-right: none;
+    }
+    /* Label nudged up/down beside a stacked badge: a full pill, not tucked */
+    .tour-marker.label-detached .tour-marker-label {
+        padding: 0.3rem 0.7rem;
+        border-radius: 9999px;
+        border: 1px solid rgba(0,0,0,0.06);
+    }
+    /* Hidden only when it would overlap another label/badge; hover or selecting brings it back */
+    .tour-marker.label-hidden .tour-marker-label { visibility: hidden; }
+    .tour-marker.label-hidden:hover .tour-marker-label,
+    .tour-marker.label-hidden.active .tour-marker-label { visibility: visible; }
+    .tour-marker:hover, .tour-marker.active { z-index: 10; }
     .tour-marker:hover .tour-marker-label { box-shadow: 0 4px 10px rgba(0,0,0,0.25); }
     .tour-marker.active .tour-marker-label {
         font-size: 0.85rem;
@@ -255,9 +275,15 @@
             <div class="lg:col-span-2 mt-6 lg:mt-0">
 
                 @if($tour->description)
-                    <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 mb-6">
+                    <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 mb-6"
+                        x-data="{ open: false, clamped: false }"
+                        x-init="$nextTick(() => clamped = $refs.desc.scrollHeight > $refs.desc.clientHeight + 1)">
                         <h2 class="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-2">About This Tour</h2>
-                        <p class="text-gray-700 text-sm leading-relaxed whitespace-pre-line text-justify">{{ $tour->description }}</p>
+                        <p x-ref="desc" :class="{ 'line-clamp-4': !open }"
+                            class="text-gray-700 text-sm leading-relaxed whitespace-pre-line line-clamp-4">{{ $tour->description }}</p>
+                        <button type="button" x-show="clamped" x-cloak @click="open = !open"
+                            class="mt-2 text-xs font-semibold text-forest-700 hover:text-accent-600 transition-colors"
+                            x-text="open ? 'Show less' : 'Read more'"></button>
                     </div>
                 @endif
 
@@ -329,54 +355,54 @@
                                 id="stop-card-{{ $loop->index }}"
                                 onclick="focusStop({{ $loop->index }}, {{ $coordsJs }})">
 
-                                @if($trail?->cover_image_url ?? false)
-                                    <div class="relative h-28 overflow-hidden bg-gray-100">
+                                <!-- Summary row (always visible) -->
+                                <div class="flex items-center gap-3 p-3">
+                                    @if($trail?->cover_image_url ?? false)
                                         <img src="{{ $trail->cover_image_url }}" alt="{{ $displayName }}"
-                                            class="w-full h-full object-cover">
-                                        <div class="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent"></div>
+                                            class="h-14 w-14 flex-shrink-0 rounded-lg object-cover bg-gray-100">
+                                    @endif
+
+                                    <div class="min-w-0 flex-1">
+                                        <h3 class="font-bold text-gray-900 text-sm leading-snug">{{ $displayName }}</h3>
+
+                                        <div class="flex flex-wrap items-center gap-1.5 mt-1">
+                                            @if($stop->estimated_visit_time)
+                                                <span class="text-xs text-gray-400 flex items-center gap-1">
+                                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                                    {{ $stop->estimated_visit_time }}
+                                                </span>
+                                            @endif
+                                            @if($trail)
+                                                @if($trail->difficulty_level)
+                                                    <span class="text-xs bg-gray-100 text-gray-600 rounded px-1.5 py-0.5 font-medium">
+                                                        Lvl {{ number_format($trail->difficulty_level, 1) }}
+                                                    </span>
+                                                @endif
+                                                @if($trail->distance_km)
+                                                    <span class="text-xs bg-gray-100 text-gray-600 rounded px-1.5 py-0.5 font-medium">
+                                                        {{ number_format($trail->distance_km, 1) }} km
+                                                    </span>
+                                                @endif
+                                                @if($trail->estimated_time_hours)
+                                                    <span class="text-xs bg-gray-100 text-gray-600 rounded px-1.5 py-0.5 font-medium">
+                                                        {{ $trail->estimated_time_hours }}h hike
+                                                    </span>
+                                                @endif
+                                            @elseif($stop->facility)
+                                                <span class="text-xs bg-amber-50 text-amber-700 rounded px-1.5 py-0.5 font-medium">
+                                                    {{ $stop->facility->facility_type_label }}
+                                                </span>
+                                            @endif
+                                        </div>
                                     </div>
-                                @endif
+                                </div>
 
-                                <div class="p-3.5">
-                                    <h3 class="font-bold text-gray-900 text-sm leading-snug">{{ $displayName }}</h3>
-
-                                    @if($stop->estimated_visit_time)
-                                        <p class="text-xs text-gray-400 mt-0.5 flex items-center gap-1">
-                                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                                            {{ $stop->estimated_visit_time }}
-                                        </p>
-                                    @endif
-
-                                    @if($trail)
-                                        <div class="flex flex-wrap gap-1.5 mt-2">
-                                            @if($trail->difficulty_level)
-                                                <span class="text-xs bg-gray-100 text-gray-600 rounded px-1.5 py-0.5 font-medium">
-                                                    Lvl {{ number_format($trail->difficulty_level, 1) }}
-                                                </span>
-                                            @endif
-                                            @if($trail->distance_km)
-                                                <span class="text-xs bg-gray-100 text-gray-600 rounded px-1.5 py-0.5 font-medium">
-                                                    {{ number_format($trail->distance_km, 1) }} km
-                                                </span>
-                                            @endif
-                                            @if($trail->estimated_time_hours)
-                                                <span class="text-xs bg-gray-100 text-gray-600 rounded px-1.5 py-0.5 font-medium">
-                                                    {{ $trail->estimated_time_hours }}h hike
-                                                </span>
-                                            @endif
-                                        </div>
-                                    @elseif($stop->facility)
-                                        <div class="flex flex-wrap gap-1.5 mt-2">
-                                            <span class="text-xs bg-amber-50 text-amber-700 rounded px-1.5 py-0.5 font-medium">
-                                                {{ $stop->facility->facility_type_label }}
-                                            </span>
-                                        </div>
-                                    @endif
-
+                                <!-- Details -->
+                                <div class="px-3.5 pb-3.5">
                                     @if($trail && $trail->description)
-                                        <p class="text-xs text-gray-500 mt-2 leading-relaxed line-clamp-2 whitespace-pre-line text-justify">{{ Str::limit(strip_tags($trail->description), 110) }}</p>
+                                        <p class="text-xs text-gray-500 leading-relaxed line-clamp-3 whitespace-pre-line">{{ strip_tags($trail->description) }}</p>
                                     @elseif($stop->facility && $stop->facility->description)
-                                        <p class="text-xs text-gray-500 mt-2 leading-relaxed whitespace-pre-line text-justify">{{ strip_tags($stop->facility->description) }}</p>
+                                        <p class="text-xs text-gray-500 leading-relaxed line-clamp-3 whitespace-pre-line">{{ strip_tags($stop->facility->description) }}</p>
                                     @endif
 
                                     @if($stop->driving_notes)
@@ -493,7 +519,7 @@ function addRouteAndMarkers() {
         `;
         el.addEventListener('click', () => focusStop(i, stop.coords));
 
-        const marker = new mapboxgl.Marker({ element: el, anchor: 'left' })
+        const marker = new mapboxgl.Marker({ element: el, anchor: 'center' })
             .setLngLat(lngLat)
             .addTo(map);
 
@@ -503,11 +529,139 @@ function addRouteAndMarkers() {
     });
 
     if (hasCoords) {
-        map.fitBounds(bounds, { padding: 60, maxZoom: 12 });
+        const isSmallScreen = window.innerWidth < 768;
+        const padding = isSmallScreen
+            ? { top: 40, bottom: 30, left: 30, right: 50 }
+            : { top: 60, bottom: 50, left: 50, right: 70 };
+        map.fitBounds(bounds, { padding, maxZoom: 17, duration: 0 });
     }
+    layoutLabels();
+}
+
+/**
+ * Place each stop's name on the left or right of its badge. A stop whose
+ * nearest neighbour sits to its right puts its name on the left (and vice
+ * versa), so side-by-side stops spread their names outwards. If the preferred
+ * side would collide with another label, the other side is used, then the name
+ * is nudged up/down as a last resort. Stops whose badges overlap at the current
+ * zoom also split left/right. Only when every spot is blocked is the label
+ * hidden; hover/select still reveals it. The selected stop is placed first.
+ */
+function layoutLabels() {
+    const badgeRadius = 17;
+    const badgeCore = 6;
+    const tuck = 9;
+    const gap = 3;
+    const neighbourRange = 160;
+    const container = map.getContainer();
+    const viewWidth = container.clientWidth;
+    const viewHeight = container.clientHeight;
+    const intersects = (a, b) => a.x1 < b.x2 && a.x2 > b.x1 && a.y1 < b.y2 && a.y2 > b.y1;
+
+    const items = activeMarkers.map((marker) => {
+        const el = marker.getElement();
+        const p = map.project(marker.getLngLat());
+        const label = el.querySelector('.tour-marker-label');
+        return {
+            el, p, label,
+            width: label ? label.offsetWidth : 0,
+            height: label ? label.offsetHeight : 0,
+            // Only the badge's core blocks labels, so a name may brush past a
+            // neighbouring badge's edge instead of being pushed away from it.
+            badge: { x1: p.x - badgeCore, x2: p.x + badgeCore, y1: p.y - badgeCore, y2: p.y + badgeCore },
+        };
+    });
+
+    const distance = (a, b) => Math.hypot(a.p.x - b.p.x, a.p.y - b.p.y);
+    // Badges this close practically sit on top of each other at the current zoom.
+    const overlapRange = badgeRadius * 2;
+
+    const nearestNeighbour = (it) => {
+        let nearest = null;
+        let nearestDist = neighbourRange;
+        items.forEach((other) => {
+            if (other === it) { return; }
+            const dist = distance(it, other);
+            if (dist < nearestDist) { nearest = other; nearestDist = dist; }
+        });
+        return nearest;
+    };
+
+    const taken = items.map((it) => ({ rect: it.badge, owner: it }));
+    const ordered = [...items].sort((a, b) => b.el.classList.contains('active') - a.el.classList.contains('active'));
+
+    ordered.forEach((it) => {
+        if (!it.label) { return; }
+        const w = it.width;
+        const h = it.height;
+        const nudge = h / 2 + 3;
+
+        const neighbour = nearestNeighbour(it);
+        const isStacked = neighbour && distance(it, neighbour) < overlapRange;
+
+        // Spread neighbouring stops outwards: the western one puts its name on
+        // the left, the eastern one on the right. For stops stacked almost on top
+        // of each other, the upper one breaks a tie by taking the left.
+        const neighbourIsEast = neighbour && (
+            neighbour.p.x > it.p.x + 1
+            || (isStacked && Math.abs(neighbour.p.x - it.p.x) <= 1 && neighbour.p.y > it.p.y)
+        );
+        const sides = neighbourIsEast ? ['left', 'right'] : ['right', 'left'];
+        // Nudging up/down is only a last resort when neither side has room.
+        const nudges = [0, -nudge, nudge, -nudge * 2, nudge * 2];
+
+        // Offsets of the label's top-left corner from the badge centre.
+        const makeCandidate = (side, dy) => {
+            const x = side === 'right' ? tuck : -tuck - w;
+            const y = -h / 2 + dy;
+            const box = { x1: it.p.x + x, x2: it.p.x + x + w, y1: it.p.y + y, y2: it.p.y + y + h };
+            return {
+                name: side, x, y, nudged: dy !== 0, box,
+                rect: { x1: box.x1 - gap, x2: box.x2 + gap, y1: box.y1 - gap, y2: box.y2 + gap },
+            };
+        };
+        // Stacked stops keep their own side (nudging if needed) so the two
+        // names never cross over. If their side has no room (e.g. map edge),
+        // they share the neighbour's side, nudged away from it (upper one up,
+        // lower one down). Other stops try both sides before nudging.
+        const awayFromNeighbour = isStacked && it.p.y > neighbour.p.y ? 1 : -1;
+        const sharedSideNudges = [awayFromNeighbour * nudge, awayFromNeighbour * nudge * 2];
+        const candidates = isStacked
+            ? [
+                ...nudges.map((dy) => makeCandidate(sides[0], dy)),
+                ...sharedSideNudges.map((dy) => makeCandidate(sides[1], dy)),
+            ]
+            : nudges.flatMap((dy) => sides.map((side) => makeCandidate(side, dy)));
+
+        // Labels keep a small gap from other labels but may sit right up against
+        // a badge's core. Badges sitting under this one are ignored entirely.
+        const isFree = (c) => taken.every((t) => {
+            if (t.owner === it || (t.owner && distance(it, t.owner) < overlapRange)) { return true; }
+            return !intersects(t.owner ? c.box : c.rect, t.rect);
+        });
+        const isInView = (rect) => rect.x1 >= 0 && rect.x2 <= viewWidth && rect.y1 >= 0 && rect.y2 <= viewHeight;
+
+        const choice = candidates.find((c) => isFree(c) && isInView(c.box))
+            ?? candidates.find((c) => isFree(c))
+            ?? null;
+
+        it.el.classList.toggle('label-hidden', choice === null);
+        const placed = choice ?? candidates[0];
+        it.el.classList.toggle('label-left', placed.name === 'left');
+        it.el.classList.toggle('label-detached', placed.nudged);
+
+        it.label.style.left = (badgeRadius + placed.x) + 'px';
+        it.label.style.top = (badgeRadius + placed.y) + 'px';
+        it.label.style.right = 'auto';
+        it.label.style.transform = 'none';
+
+        if (choice) { taken.push({ rect: choice.rect, owner: null }); }
+    });
 }
 
 map.on('load', addRouteAndMarkers);
+map.on('moveend', layoutLabels);
+map.on('resize', layoutLabels);
 
 // Map style switcher
 const layersToggle = document.getElementById('tour-layers-toggle');
@@ -537,22 +691,26 @@ document.querySelectorAll('.tour-layer-card').forEach(btn => {
 });
 
 function focusStop(index, coords) {
-    document.querySelectorAll('.stop-card').forEach((c, i) => {
-        c.classList.toggle('active', i === index);
+    const card = document.getElementById('stop-card-' + index);
+
+    document.querySelectorAll('.stop-card').forEach((c) => {
+        c.classList.toggle('active', c === card);
     });
-    document.querySelectorAll('.tour-marker').forEach((m, i) => {
+    document.querySelectorAll('.tour-marker').forEach((m) => {
+        const i = Number(m.id.replace('tour-marker-', ''));
         m.classList.toggle('active', i === index);
         // Mapbox positions this element directly (no per-marker wrapper), so
         // z-index must be set on it, not a parent, to beat sibling markers.
         m.style.zIndex = i === index ? '10' : '';
     });
+    layoutLabels();
+
     // Scroll the active stop card into view
-    const card = document.getElementById('stop-card-' + index);
     if (card) { card.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }
 
     if (!coords || coords.length < 2) { return; }
     const [lat, lng] = coords;
-    map.flyTo({ center: [lng, lat], zoom: 13, duration: 800 });
+    map.flyTo({ center: [lng, lat], zoom: Math.max(map.getZoom(), 16), duration: 800 });
 }
 </script>
 
