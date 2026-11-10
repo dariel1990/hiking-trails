@@ -39,7 +39,7 @@
                         <td class="px-4 py-3 text-gray-600">{{ $version->publisher?->name ?? '—' }}</td>
                         <td class="px-4 py-3 text-gray-600">{{ $version->change_summary }}</td>
                         <td class="px-4 py-3 text-gray-600">{{ $version->is_material ? 'Yes' : 'No' }}</td>
-                        <td class="px-4 py-3 text-gray-600">{{ number_format($version->acceptances_count) }}</td>
+                        <td class="px-4 py-3"><a href="{{ route('admin.legal.version', [$type, $version->version]) }}" class="text-emerald-700 hover:underline">{{ number_format($version->acceptances_count) }}</a></td>
                         <td class="whitespace-nowrap px-4 py-3 text-right">
                             <a href="{{ route('admin.legal.version', [$type, $version->version]) }}" class="font-medium text-emerald-700 hover:underline">View</a>
                             @unless ($version->version === 1)

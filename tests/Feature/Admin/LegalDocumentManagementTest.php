@@ -65,7 +65,7 @@ class LegalDocumentManagementTest extends TestCase
         $this->get(route('admin.legal.index'))->assertOk()->assertSee('Terms &amp; Conditions', false);
         $this->get(route('admin.legal.history', LegalDocumentVersion::PRIVACY))->assertOk()->assertSee('v1');
         $this->get(route('admin.legal.draft', LegalDocumentVersion::TERMS))->assertOk()->assertSee('Assumption of Risk');
-        $this->get(route('admin.legal.version', [LegalDocumentVersion::TERMS, 1]))->assertOk()->assertSee('Assumption of Risk');
+        $this->get(route('admin.legal.version', [LegalDocumentVersion::TERMS, 1, 'tab' => 'document']))->assertOk()->assertSee('Assumption of Risk');
     }
 
     public function test_unknown_document_type_and_version_return_404(): void

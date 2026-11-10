@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\LegalAcceptance;
 use App\Models\LegalDocumentVersion;
 use App\Models\User;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
@@ -112,6 +113,37 @@ class LegalDocumentService
                     || ($accepted === 0 && $isNewAccount);
             })
             ->values();
+    }
+
+    /**
+     * Users who still have to accept the current version of a document type,
+     * using the same rules as pendingFor() but as a single query for admin lists.
+     *
+     * @return Builder<User>
+     */
+    public function pendingUsersQuery(string $type): Builder
+    {
+        $state = $this->publishedState();
+        $required = $state['material'][$type] ?? null;
+        $firstMaterialAt = $state['first_material_at'];
+
+        if ($firstMaterialAt === null || $this->current($type) === null) {
+            return User::query()->whereRaw('0 = 1');
+        }
+
+        $acceptedAtLeast = fn (int $minimumVersion): \Closure => fn (Builder $query): Builder => $query
+            ->where('type', $type)
+            ->where('version', '>=', $minimumVersion);
+
+        return User::query()->where(function (Builder $query) use ($required, $firstMaterialAt, $acceptedAtLeast): void {
+            if ($required !== null) {
+                $query->whereDoesntHave('legalAcceptances.version', $acceptedAtLeast($required->version));
+            }
+
+            $query->orWhere(fn (Builder $newAccounts): Builder => $newAccounts
+                ->where('created_at', '>=', $firstMaterialAt)
+                ->whereDoesntHave('legalAcceptances.version', $acceptedAtLeast(1)));
+        });
     }
 
     /**

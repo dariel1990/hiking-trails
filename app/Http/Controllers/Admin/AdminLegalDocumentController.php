@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\PublishLegalDraftRequest;
 use App\Http\Requests\Admin\StoreLegalDraftRequest;
 use App\Models\LegalDocumentVersion;
+use App\Models\User;
 use App\Services\LegalDocumentService;
 use App\Support\LineDiff;
 use Illuminate\Database\Eloquent\Builder;
@@ -47,14 +48,50 @@ class AdminLegalDocumentController extends Controller
         ]);
     }
 
-    public function version(string $type, int $version): View
+    public function version(Request $request, string $type, int $version): View
     {
         $document = $this->publishedVersions($type)->where('version', $version)->with('publisher')->firstOrFail();
+        $isCurrent = $this->legalDocuments->current($type)?->is($document) ?? false;
+        $tab = in_array($request->query('tab'), ['accepted', 'pending', 'document'], true) ? $request->query('tab') : 'accepted';
+        $search = trim((string) $request->query('search'));
+
+        if ($tab === 'pending' && ! $isCurrent) {
+            $tab = 'accepted';
+        }
+
+        $pendingQuery = $isCurrent ? $this->legalDocuments->pendingUsersQuery($type) : null;
 
         return view('admin.legal.version', [
             'document' => $document,
-            'html' => $this->legalDocuments->render($document->content),
+            'html' => $tab === 'document' ? $this->legalDocuments->render($document->content) : null,
+            'tab' => $tab,
+            'search' => $search,
+            'isCurrent' => $isCurrent,
+            'acceptedCount' => $document->acceptances()->count(),
+            'pendingCount' => $pendingQuery?->count(),
+            'acceptances' => $tab === 'accepted' ? $document->acceptances()
+                ->with('user')
+                ->when($search !== '', fn (Builder $query): Builder => $query->whereHas('user', fn (Builder $users): Builder => $this->searchUsers($users, $search)))
+                ->orderByDesc('accepted_at')
+                ->paginate(setting('admin_per_page'))
+                ->withQueryString() : null,
+            'pendingUsers' => $tab === 'pending' ? $pendingQuery
+                ->when($search !== '', fn (Builder $query): Builder => $this->searchUsers($query, $search))
+                ->orderByDesc('created_at')
+                ->paginate(setting('admin_per_page'))
+                ->withQueryString() : null,
         ]);
+    }
+
+    /**
+     * @param  Builder<User>  $query
+     * @return Builder<User>
+     */
+    private function searchUsers(Builder $query, string $search): Builder
+    {
+        return $query->where(fn (Builder $users): Builder => $users
+            ->where('name', 'like', "%{$search}%")
+            ->orWhere('email', 'like', "%{$search}%"));
     }
 
     public function compare(Request $request, string $type): View
