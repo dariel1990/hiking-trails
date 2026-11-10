@@ -9,8 +9,8 @@
     $playStoreUrl = config('services.android_app.play_store_url');
 
     // Falls back to the older Play-era artwork until the dual-store poster is uploaded.
-    $promoImage = file_exists(public_path('images/xplore-smithers-app-promo.jpg'))
-        ? 'images/xplore-smithers-app-promo.jpg'
+    $promoImage = file_exists(public_path('images/xplore-smithers-app-promo.png'))
+        ? 'images/xplore-smithers-app-promo.png'
         : 'images/explore-more-promo.jpeg';
 @endphp
 @if(($showAppStore || $showPlayStore) && ! $isInNativeApp)

@@ -25,6 +25,7 @@ use App\Http\Controllers\Auth\WebAuthController;
 use App\Http\Controllers\Auth\WebGoogleAuthController;
 use App\Http\Controllers\BusinessPublicController;
 use App\Http\Controllers\EventsController;
+use App\Http\Controllers\ExploreController;
 use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\SitemapController;
 use App\Http\Controllers\Subscription\StripeWebhookController;
@@ -65,6 +66,9 @@ Route::get('/fishing-lakes', [TrailController::class, 'fishingLakes'])->name('fi
 // Town landing pages - one per municipality, e.g. /hiking-trails/houston-bc
 Route::get('/hiking-trails', [TownController::class, 'index'])->name('towns.index');
 Route::get('/hiking-trails/{town}', [TownController::class, 'show'])->name('towns.show');
+
+// Road-trip guide to every town other than Smithers
+Route::get('/explore-northern-bc', [ExploreController::class, 'index'])->name('explore.index');
 
 Route::get('/sitemap.xml', SitemapController::class)->name('sitemap');
 Route::get('/trails/{trail}', [TrailController::class, 'show'])->name('trails.show');
