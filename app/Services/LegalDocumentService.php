@@ -2,9 +2,11 @@
 
 namespace App\Services;
 
+use App\Models\EmailLog;
 use App\Models\LegalAcceptance;
 use App\Models\LegalDocumentVersion;
 use App\Models\User;
+use App\Notifications\LegalUpdateReminderNotification;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -144,6 +146,52 @@ class LegalDocumentService
                 ->where('created_at', '>=', $firstMaterialAt)
                 ->whereDoesntHave('legalAcceptances.version', $acceptedAtLeast(1)));
         });
+    }
+
+    /**
+     * Pending users who can be emailed a reminder now: active accounts that
+     * have not been sent one within the cooldown set in site settings.
+     *
+     * @return Builder<User>
+     */
+    public function remindableUsersQuery(string $type): Builder
+    {
+        $cooldownDays = (int) setting('legal_reminder_cooldown_days');
+
+        return $this->pendingUsersQuery($type)
+            ->where('is_active', true)
+            ->when($cooldownDays > 0, fn (Builder $query): Builder => $query->whereNotIn(
+                'id',
+                $this->sentRemindersQuery()->where('created_at', '>=', now()->subDays($cooldownDays))->select('notifiable_id'),
+            ));
+    }
+
+    /**
+     * Adds a `last_reminded_at` column with when each user was last emailed a reminder.
+     *
+     * @param  Builder<User>  $users
+     * @return Builder<User>
+     */
+    public function withLastReminder(Builder $users): Builder
+    {
+        return $users->addSelect([
+            'last_reminded_at' => $this->sentRemindersQuery()
+                ->whereColumn('notifiable_id', 'users.id')
+                ->select('created_at')
+                ->latest()
+                ->limit(1),
+        ]);
+    }
+
+    /**
+     * @return Builder<EmailLog>
+     */
+    private function sentRemindersQuery(): Builder
+    {
+        return EmailLog::query()
+            ->where('notification_type', LegalUpdateReminderNotification::class)
+            ->where('notifiable_type', (new User)->getMorphClass())
+            ->where('status', EmailLog::STATUS_SENT);
     }
 
     /**

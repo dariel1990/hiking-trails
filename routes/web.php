@@ -200,6 +200,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
                 Route::put('draft', 'saveDraft')->name('draft.save');
                 Route::delete('draft', 'discardDraft')->name('draft.discard');
                 Route::post('draft/publish', 'publish')->name('draft.publish');
+                Route::post('reminders', 'sendReminders')->name('reminders.send');
             });
         });
 

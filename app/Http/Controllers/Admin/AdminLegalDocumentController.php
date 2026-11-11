@@ -4,15 +4,19 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\PublishLegalDraftRequest;
+use App\Http\Requests\Admin\SendLegalRemindersRequest;
 use App\Http\Requests\Admin\StoreLegalDraftRequest;
 use App\Models\LegalDocumentVersion;
 use App\Models\User;
+use App\Notifications\LegalUpdateReminderNotification;
 use App\Services\LegalDocumentService;
 use App\Support\LineDiff;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Str;
 use Illuminate\View\View;
 
 class AdminLegalDocumentController extends Controller
@@ -69,18 +73,56 @@ class AdminLegalDocumentController extends Controller
             'isCurrent' => $isCurrent,
             'acceptedCount' => $document->acceptances()->count(),
             'pendingCount' => $pendingQuery?->count(),
+            'remindableCount' => $isCurrent ? $this->legalDocuments->remindableUsersQuery($type)->count() : 0,
+            'reminderCooldownDays' => (int) setting('legal_reminder_cooldown_days'),
             'acceptances' => $tab === 'accepted' ? $document->acceptances()
                 ->with('user')
                 ->when($search !== '', fn (Builder $query): Builder => $query->whereHas('user', fn (Builder $users): Builder => $this->searchUsers($users, $search)))
                 ->orderByDesc('accepted_at')
                 ->paginate(setting('admin_per_page'))
                 ->withQueryString() : null,
-            'pendingUsers' => $tab === 'pending' ? $pendingQuery
+            'pendingUsers' => $tab === 'pending' ? $this->legalDocuments->withLastReminder($pendingQuery)
                 ->when($search !== '', fn (Builder $query): Builder => $this->searchUsers($query, $search))
                 ->orderByDesc('created_at')
                 ->paginate(setting('admin_per_page'))
                 ->withQueryString() : null,
         ]);
+    }
+
+    /**
+     * Queue a reminder email to one pending user, or to every pending user who
+     * has not been reminded within the cooldown.
+     */
+    public function sendReminders(SendLegalRemindersRequest $request, string $type): RedirectResponse
+    {
+        $current = $this->legalDocuments->current($type);
+        abort_if($current === null, 404);
+
+        $back = redirect()->route('admin.legal.version', [$type, $current->version, 'tab' => 'pending']);
+        $userId = $request->validated('user_id');
+
+        if ($userId !== null) {
+            $user = $this->legalDocuments->pendingUsersQuery($type)->whereKey($userId)->first();
+
+            if ($user === null) {
+                return $back->with('error', 'That user has nothing left to accept.');
+            }
+
+            $user->notify(new LegalUpdateReminderNotification);
+
+            return $back->with('success', "Reminder email queued for {$user->email}.");
+        }
+
+        $sent = 0;
+
+        $this->legalDocuments->remindableUsersQuery($type)->chunkById(200, function ($users) use (&$sent): void {
+            Notification::send($users, new LegalUpdateReminderNotification);
+            $sent += $users->count();
+        });
+
+        return $sent === 0
+            ? $back->with('error', 'Nobody to remind right now. Everyone pending was already emailed recently.')
+            : $back->with('success', 'Reminder emails queued for '.number_format($sent).' '.Str::plural('user', $sent).'.');
     }
 
     /**

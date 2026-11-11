@@ -35,6 +35,33 @@
         <a href="{{ $tabUrl('document') }}" class="-mb-px border-b-2 px-1 pb-3 {{ $tabClass('document') }}">Document</a>
     </nav>
 
+    @if ($tab === 'pending' && $pendingCount > 0)
+        <div class="flex flex-col gap-3 rounded-xl border border-gray-200 bg-white p-5 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+            <div>
+                <h3 class="text-sm font-semibold text-gray-900">Email a reminder</h3>
+                <p class="mt-0.5 text-sm text-gray-500">
+                    @if ($remindableCount > 0)
+                        {{ number_format($remindableCount) }} of {{ number_format($pendingCount) }} pending {{ Str::plural('user', $pendingCount) }} will get an email asking them to review and accept.
+                    @else
+                        Everyone pending has already been emailed recently.
+                    @endif
+                    @if ($reminderCooldownDays > 0)
+                        Anyone emailed in the last {{ $reminderCooldownDays }} {{ Str::plural('day', $reminderCooldownDays) }}, or with a suspended account, is skipped.
+                    @endif
+                </p>
+            </div>
+            <form method="POST" action="{{ route('admin.legal.reminders.send', $document->type) }}"
+                  onsubmit="return confirm(@js('Send a reminder email to '.number_format($remindableCount).' '.Str::plural('user', $remindableCount).'?'))">
+                @csrf
+                <button type="submit" @disabled($remindableCount === 0)
+                        class="inline-flex shrink-0 items-center gap-2 rounded-lg bg-emerald-700 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-emerald-800 disabled:cursor-not-allowed disabled:opacity-50">
+                    <i class="fas fa-envelope" aria-hidden="true"></i>
+                    Send reminder to {{ number_format($remindableCount) }}
+                </button>
+            </form>
+        </div>
+    @endif
+
     @if ($tab === 'document')
         <div class="rounded-2xl border border-gray-200 bg-white p-8 shadow-sm">
             <div class="legal-content">{!! $html !!}</div>
@@ -65,6 +92,8 @@
                             <th class="h-11 px-6">User</th>
                             @if ($tab === 'pending')
                                 <th class="h-11 px-4">Joined</th>
+                                <th class="h-11 px-4">Last reminded</th>
+                                <th class="h-11 px-6 text-right"><span class="sr-only">Actions</span></th>
                             @else
                                 <th class="h-11 px-4">Accepted</th>
                                 <th class="h-11 px-4">Where</th>
@@ -81,9 +110,20 @@
                                         <p class="text-xs text-gray-500">{{ $user->email }}</p>
                                     </td>
                                     <td class="px-4 py-3 text-gray-600">{{ $user->created_at?->format('M j, Y') }}</td>
+                                    <td class="px-4 py-3 text-gray-600">
+                                        {{ $user->last_reminded_at ? \Illuminate\Support\Carbon::parse($user->last_reminded_at)->format('M j, Y') : 'Never' }}
+                                    </td>
+                                    <td class="px-6 py-3 text-right">
+                                        <form method="POST" action="{{ route('admin.legal.reminders.send', $document->type) }}"
+                                              onsubmit="return confirm(@js('Send a reminder email to '.$user->email.'?'))">
+                                            @csrf
+                                            <input type="hidden" name="user_id" value="{{ $user->id }}">
+                                            <button type="submit" class="text-sm font-medium text-emerald-700 hover:underline">Send</button>
+                                        </form>
+                                    </td>
                                 </tr>
                             @empty
-                                <tr><td colspan="2" class="px-6 py-10 text-center text-sm text-gray-500">{{ $search !== '' ? 'No pending users match your search.' : 'Everyone is up to date.' }}</td></tr>
+                                <tr><td colspan="4" class="px-6 py-10 text-center text-sm text-gray-500">{{ $search !== '' ? 'No pending users match your search.' : 'Everyone is up to date.' }}</td></tr>
                             @endforelse
                         @else
                             @forelse ($acceptances as $acceptance)
