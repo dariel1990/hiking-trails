@@ -48,7 +48,7 @@
                 'item' => array_filter([
                     '@type' => 'TouristAttraction',
                     'name' => $trail->name,
-                    'url' => route('trails.show', $trail->id),
+                    'url' => $trail->canonicalUrl(),
                     'description' => $trail->description ? Str::limit(strip_tags($trail->description), 200) : null,
                     'geo' => $trail->start_latitude === null ? null : [
                         '@type' => 'GeoCoordinates',

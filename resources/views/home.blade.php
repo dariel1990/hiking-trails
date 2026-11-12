@@ -179,7 +179,7 @@
                     }
                 @endphp
                 <div class="trail-card group hover-lift">
-                    <div class="trail-card-image group-hover:scale-105 transition-transform duration-500" onclick="window.location.href='{{ route('trails.show', $trail->id) }}'">
+                    <div class="trail-card-image group-hover:scale-105 transition-transform duration-500" onclick="window.location.href='{{ $trail->publicUrl() }}'">
                         @if($featuredUrl)
                             <img src="{{ $featuredUrl }}" alt="{{ $trail->name }}" class="w-full h-full object-cover">
                         @else
@@ -201,7 +201,7 @@
                     <div class="trail-card-body">
                         <div class="mb-3">
                             <h3 class="text-xl font-bold text-gray-900 mb-2 group-hover:text-accent-600 transition-colors">
-                                <a href="{{ route('trails.show', $trail->id) }}">{{ $trail->name }}</a>
+                                <a href="{{ $trail->publicUrl() }}">{{ $trail->name }}</a>
                             </h3>
                             @if($trail->location)
                                 <p class="text-sm text-gray-500 flex items-center">
@@ -231,7 +231,7 @@
                         </div>
                         <div class="flex items-center justify-between">
                             <span class="badge-secondary">{{ ucwords(str_replace('-', ' ', $trail->trail_type)) }}</span>
-                            <a href="{{ route('trails.show', $trail->id) }}" class="text-emerald-600 hover:text-emerald-700 font-semibold text-sm flex items-center">
+                            <a href="{{ $trail->publicUrl() }}" class="text-emerald-600 hover:text-emerald-700 font-semibold text-sm flex items-center">
                                 Explore Trail
                                 <svg class="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
@@ -271,7 +271,7 @@
                     }
                 @endphp
                 <div class="trail-card group hover-lift">
-                    <div class="trail-card-image group-hover:scale-105 transition-transform duration-500" onclick="window.location.href='{{ route('trails.show', $trail->id) }}'">
+                    <div class="trail-card-image group-hover:scale-105 transition-transform duration-500" onclick="window.location.href='{{ $trail->publicUrl() }}'">
                         @if($featuredUrl)
                             <img src="{{ $featuredUrl }}" alt="{{ $trail->name }}" class="w-full h-full object-cover">
                         @else
@@ -291,7 +291,7 @@
                     <div class="trail-card-body">
                         <div class="mb-3">
                             <h3 class="text-xl font-bold text-gray-900 mb-2 group-hover:text-accent-600 transition-colors">
-                                <a href="{{ route('trails.show', $trail->id) }}">{{ $trail->name }}</a>
+                                <a href="{{ $trail->publicUrl() }}">{{ $trail->name }}</a>
                             </h3>
                             @if($trail->location)
                                 <p class="text-sm text-gray-500 flex items-center">
@@ -321,7 +321,7 @@
                         </div>
                         <div class="flex items-center justify-between">
                             <span class="badge-secondary">Fishing Lake</span>
-                            <a href="{{ route('trails.show', $trail->id) }}" class="text-blue-600 hover:text-blue-700 font-semibold text-sm flex items-center">
+                            <a href="{{ $trail->publicUrl() }}" class="text-blue-600 hover:text-blue-700 font-semibold text-sm flex items-center">
                                 View Lake
                                 <svg class="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
@@ -811,7 +811,7 @@
                     <div class="text-center">
                         <strong class="text-emerald-600">${trail.name}</strong><br>
                         <span class="text-gray-600">${trail.distance_km} km • Difficulty ${trail.difficulty_level}/5</span><br>
-                        <a href="/trails/${trail.id}" class="text-emerald-600 hover:text-emerald-700 font-medium text-sm">View Details →</a>
+                        <a href="${window.trailUrl(trail)}" class="text-emerald-600 hover:text-emerald-700 font-medium text-sm">View Details →</a>
                     </div>
                 `);
 

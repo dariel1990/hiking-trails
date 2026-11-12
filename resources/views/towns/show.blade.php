@@ -836,7 +836,7 @@
     const ICON_CLOCK = '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>';
 
     function popupHtml(trail) {
-        const url = config.trailUrlTemplate.replace('__ID__', trail.id);
+        const url = window.trailUrl(trail);
         const isLake = trail.location_type === 'fishing_lake';
         const photo = trail.preview_photo
             || (Array.isArray(trail.photos) && trail.photos.length ? trail.photos[0].url : null);

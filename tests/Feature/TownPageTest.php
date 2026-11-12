@@ -222,6 +222,35 @@ class TownPageTest extends TestCase
             ->assertDontSee('Hiddenville');
     }
 
+    public function test_the_hub_page_keeps_six_towns_in_the_lead_layout(): void
+    {
+        foreach (['Alpha', 'Bravo', 'Charlie', 'Delta', 'Echo', 'Foxtrot'] as $order => $name) {
+            Town::factory()->create(['name' => $name, 'sort_order' => $order]);
+        }
+
+        $this->get(route('towns.index'))
+            ->assertOk()
+            ->assertSeeInOrder(['Alpha', 'Bravo', 'Charlie', 'Delta', 'Echo', 'Foxtrot'])
+            ->assertDontSee('grid gap-4 mt-4 lg:grid-cols-3', false);
+    }
+
+    public function test_the_hub_page_moves_towns_beyond_six_into_a_grid_below(): void
+    {
+        foreach (['Alpha', 'Bravo', 'Charlie', 'Delta', 'Echo', 'Foxtrot', 'Golf', 'Hotel'] as $order => $name) {
+            Town::factory()->create(['name' => $name, 'sort_order' => $order]);
+        }
+
+        $response = $this->get(route('towns.index'))->assertOk();
+
+        $html = $response->getContent();
+        $gridStart = strpos($html, 'grid gap-4 mt-4 lg:grid-cols-3');
+
+        $this->assertNotFalse($gridStart);
+        $this->assertLessThan($gridStart, strpos($html, 'Terrain around Foxtrot'));
+        $this->assertGreaterThan($gridStart, strpos($html, 'Terrain around Golf'));
+        $this->assertGreaterThan($gridStart, strpos($html, 'Terrain around Hotel'));
+    }
+
     public function test_saving_a_trail_syncs_its_indexed_coordinates(): void
     {
         $town = Town::factory()->create();
@@ -383,7 +412,7 @@ class TownPageTest extends TestCase
         $this->assertSame('out-and-back', $trail['trail_type']);
     }
 
-    public function test_the_map_config_carries_the_town_slug_and_url_template(): void
+    public function test_the_map_config_carries_the_town_slug(): void
     {
         $town = Town::factory()->create();
         $this->makeTrail($town);
@@ -391,7 +420,7 @@ class TownPageTest extends TestCase
         $config = $this->mapConfig($town);
 
         $this->assertSame($town->slug, $config['townSlug'], 'The map fetches /api/trails using this slug.');
-        $this->assertStringContainsString('__ID__', $config['trailUrlTemplate']);
+        $this->assertArrayNotHasKey('trailUrlTemplate', $config, 'Popup links use the shared window.trailUrl() helper.');
         $this->assertArrayHasKey('center', $config);
         $this->assertArrayHasKey('zoom', $config);
         $this->assertArrayNotHasKey('trails', $config, 'Trails come from the API, not the inline payload.');

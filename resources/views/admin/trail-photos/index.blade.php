@@ -100,7 +100,7 @@
 
                     <div class="p-4 space-y-3 flex-1 flex flex-col">
                         <div>
-                            <a href="{{ route('trails.show', $photo->trail) }}" target="_blank" class="font-semibold hover:underline">{{ $photo->trail?->name ?? 'Trail #'.$photo->trail_id }}</a>
+                            <a href="{{ $photo->trail?->canonicalUrl() }}" target="_blank" class="font-semibold hover:underline">{{ $photo->trail?->name ?? 'Trail #'.$photo->trail_id }}</a>
                             <p class="text-xs text-muted-foreground">
                                 Submitted {{ $photo->created_at->diffForHumans() }}
                                 @if($photo->reviewer)

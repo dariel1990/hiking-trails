@@ -3,11 +3,13 @@
 namespace App\Models;
 
 use App\Observers\TownContentObserver;
+use App\Support\AppClient;
 use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Str;
 
 #[ObservedBy(TownContentObserver::class)]
 class Trail extends Model
@@ -17,6 +19,7 @@ class Trail extends Model
     protected $fillable = [
         'town_id',
         'name',
+        'slug',
         'icon',
         'icon_image',
         'description',
@@ -451,6 +454,12 @@ class Trail extends Model
      */
     protected static function booted(): void
     {
+        static::creating(function (Trail $trail) {
+            if (empty($trail->slug)) {
+                $trail->slug = static::uniqueSlugFor((string) $trail->name);
+            }
+        });
+
         static::saving(function (Trail $trail) {
             $coordinates = $trail->start_coordinates;
 
@@ -462,5 +471,67 @@ class Trail extends Model
                 $trail->start_longitude = null;
             }
         });
+    }
+
+    /**
+     * Build a slug from a name that no other trail uses yet.
+     *
+     * An all-digit slug would be read as a trail ID by the /trails/{key} route,
+     * so those get a "-trail" suffix.
+     */
+    public static function uniqueSlugFor(string $name): string
+    {
+        $base = Str::slug($name) ?: 'trail';
+
+        if (ctype_digit($base)) {
+            $base .= '-trail';
+        }
+
+        $slug = $base;
+        $suffix = 1;
+
+        while (static::query()->where('slug', $slug)->exists()) {
+            $slug = $base.'-'.++$suffix;
+        }
+
+        return $slug;
+    }
+
+    /**
+     * The trail page URL for the current visitor.
+     *
+     * The native apps recognise trail pages by the numeric /trails/{id} URL
+     * (favorites, offline downloads), so app WebViews keep getting ID URLs while
+     * browsers get the readable slug URL.
+     */
+    public function publicUrl(): string
+    {
+        return AppClient::isApp() ? $this->idUrl() : $this->canonicalUrl();
+    }
+
+    /**
+     * How this trail is identified in URLs for the current visitor, e.g. the
+     * ?trail= parameter on the map. The apps parse that parameter as an integer
+     * to open their native map, so they keep getting the ID.
+     */
+    public function urlKey(): int|string
+    {
+        return AppClient::isApp() || ! $this->slug ? $this->id : $this->slug;
+    }
+
+    /**
+     * The readable slug URL, used for canonical tags, the sitemap and SEO data.
+     */
+    public function canonicalUrl(): string
+    {
+        return $this->slug ? route('trails.show', $this->slug) : $this->idUrl();
+    }
+
+    /**
+     * The numeric ID URL that the native apps depend on.
+     */
+    public function idUrl(): string
+    {
+        return route('trails.show', $this->id);
     }
 }

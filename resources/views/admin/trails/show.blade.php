@@ -18,6 +18,9 @@
             <div class="space-y-1">
                 <h1 class="text-3xl font-bold tracking-tight">{{ $trail->name }}</h1>
                 <p class="text-muted-foreground">{{ $trail->location ?? 'Location not specified' }}</p>
+                <p class="mt-1 text-xs text-muted-foreground break-all">
+                    Public URL: <a href="{{ $trail->canonicalUrl() }}" target="_blank" class="font-mono hover:underline">{{ $trail->canonicalUrl() }}</a>
+                </p>
             </div>
             <div class="flex items-center gap-2">
                 <a href="{{ route('admin.trails.edit', $trail) }}" 
@@ -28,7 +31,7 @@
                     Edit {{ $trail->isFishingLake() ? 'Fishing Lake' : 'Trail' }}
                 </a>
                 
-                <a href="{{ route('trails.show', $trail) }}" target="_blank"
+                <a href="{{ $trail->canonicalUrl() }}" target="_blank"
                 class="inline-flex items-center justify-center rounded-md bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2 text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50">
                     <svg class="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>

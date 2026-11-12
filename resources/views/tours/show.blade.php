@@ -414,7 +414,7 @@
 
                                     @if($trail)
                                         <div class="mt-3 pt-3 border-t border-gray-100 flex items-center justify-between">
-                                            <a href="{{ route('trails.show', $trail) }}"
+                                            <a href="{{ $trail->publicUrl() }}"
                                                 onclick="event.stopPropagation()"
                                                 class="text-xs font-semibold text-forest-700 hover:text-accent-600 flex items-center gap-1 transition-colors">
                                                 Trail Details

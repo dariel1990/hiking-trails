@@ -4022,7 +4022,7 @@
                     ${highlight.description ? `<p class="text-sm text-gray-700 mb-2">${highlight.description}</p>` : ''}
                     
                     <div class="text-xs text-gray-500 mb-2">
-                        On trail: <a href="/trails/${trail.id}" class="text-primary-600 hover:underline">${trail.name}</a>
+                        On trail: <a href="${window.trailUrl(trail)}" class="text-primary-600 hover:underline">${trail.name}</a>
                     </div>
                     
                     <button onclick="window.trailMap.viewHighlight(${trail.id}, ${JSON.stringify(highlight.coordinates).replace(/"/g, '&quot;')})" 
@@ -4081,7 +4081,7 @@
                 name: highlight.name,
                 metaHtml: `<span style="font-size:12px;font-weight:600;color:${color};">${inlineIconHtml} ${escapeHtml(highlight.type.replace(/_/g, ' '))}</span><span style="color:#d1d5db;font-size:11px;">·</span><span style="font-size:12px;color:#6b7280;">on ${escapeHtml(trail.name)}</span>`,
                 statsText: highlight.description || '',
-                actionsHtml: `<button type="button" onclick="window.trailMap.viewHighlight(${trail.id},${coordsJson})" class="${btnClass}"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>Center</button><a href="/trails/${trail.id}" class="${btnClass}"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-1.447-.894L15 9m0 8V9m0 0V7"/></svg>Full Trail</a>`,
+                actionsHtml: `<button type="button" onclick="window.trailMap.viewHighlight(${trail.id},${coordsJson})" class="${btnClass}"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>Center</button><a href="${window.trailUrl(trail)}" class="${btnClass}"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-1.447-.894L15 9m0 8V9m0 0V7"/></svg>Full Trail</a>`,
             });
 
             // Gallery (below the info row) — includes the photo shown as the square
@@ -4148,7 +4148,7 @@
                         </div>
                         <span class="biz-panel-action-label" style="color:${highlight.color || '#166534'};">Center</span>
                     </button>
-                    <a href="/trails/${trail.id}" class="biz-panel-action-btn">
+                    <a href="${window.trailUrl(trail)}" class="biz-panel-action-btn">
                         <div class="biz-panel-action-icon" style="background:${highlight.color || '#16a34a'};">
                             <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-1.447-.894L15 9m0 8V9m0 0V7"/></svg>
                         </div>
@@ -4473,7 +4473,7 @@
                     actions.push(`<button type="button" onclick="window.trailMap.flyAlongTrail(${trail.id})" class="${btnClass}"><svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M13.49 5.48c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm-3.6 13.9 1-4.4 2.1 2v6h2v-7.5l-2.1-2 .6-3c1.3 1.5 3.3 2.5 5.5 2.5v-2c-1.9 0-3.5-1-4.3-2.4l-1-1.6c-.4-.6-1-1-1.7-1-.3 0-.5.1-.8.1l-5.2 2.2v4.7h2v-3.4l1.8-.7-1.6 8.1-4.9-1-.4 2 7 1.4z"/></svg>Fly Along</button>`);
                 }
             }
-            actions.push(`<a href="/trails/${trail.id}?from=map" class="${btnClass}"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>Details</button>`);
+            actions.push(`<a href="${window.trailUrl(trail)}?from=map" class="${btnClass}"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>Details</button>`);
             document.getElementById('mobile-trail-actions').innerHTML = actions.join('');
 
             document.getElementById('business-panel')?.classList.add('hidden');
@@ -4484,7 +4484,7 @@
         showTrailInfo(trail) {
             // Clear ?trail= from the URL when the user moves to a different trail
             const urlTrailId = new URLSearchParams(window.location.search).get('trail');
-            if (urlTrailId && String(urlTrailId) !== String(trail.id)) {
+            if (urlTrailId && !window.trailMatchesKey(trail, urlTrailId)) {
                 history.replaceState(null, '', window.location.pathname);
             }
 
@@ -4613,7 +4613,7 @@
                 }
             }
             actions.push(`
-                <a href="/trails/${trail.id}?from=map" target="_blank" class="biz-panel-action-btn" ${trailActionBtn}>
+                <a href="${window.trailUrl(trail)}?from=map" target="_blank" class="biz-panel-action-btn" ${trailActionBtn}>
                     <div class="biz-panel-action-icon" ${trailActionIcon}>
                         <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                     </div>
@@ -5595,7 +5595,7 @@
                 
                 if (trailId) {
                     setTimeout(() => {
-                        const trail = this.allTrails.find(t => t.id == trailId);
+                        const trail = this.allTrails.find(t => window.trailMatchesKey(t, trailId));
                         if (trail) {
                             this.focusOnTrail(trail, { flyToTrail: true, activateLine: true });
                         }
@@ -6867,7 +6867,7 @@
             window.trailMap.showTrailInfo(trail);
         } else {
             // On desktop: Navigate to trail detail page
-            window.location.href = `/trails/${trailId}`;
+            window.location.href = window.trailUrl(trail);
         }
     }
 
@@ -7310,7 +7310,7 @@
         
         if (trailId) {
             setTimeout(() => {
-                const trail = trailMap.allTrails.find(t => t.id == trailId);
+                const trail = trailMap.allTrails.find(t => window.trailMatchesKey(t, trailId));
                 if (trail) {
                     // Fishing lakes only render on their own tab — switch first
                     if (trail.location_type === 'fishing_lake') {
