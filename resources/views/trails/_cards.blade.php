@@ -24,7 +24,7 @@
     $isNew = ($showNew ?? false) && $trail->created_at?->gte(now()->subDays(30));
 @endphp
 <div class="trail-card group cursor-pointer hover-lift"
-     onclick="window.location.href='{{ route('trails.show', $trail->id) }}'">
+     onclick="window.location.href='{{ $trail->publicUrl() }}'">
     <div class="trail-card-image group-hover:scale-105 transition-transform duration-500">
         @if($featuredUrl)
             <img src="{{ $featuredUrl }}" alt="{{ $trail->name }}" class="w-full h-full object-cover">
@@ -96,7 +96,7 @@
                 </div>
             </div>
             <div class="flex items-center justify-between">
-                <a href="{{ route('trails.show', $trail->id) }}" class="text-blue-600 hover:text-blue-700 font-semibold text-sm flex items-center">
+                <a href="{{ $trail->publicUrl() }}" class="text-blue-600 hover:text-blue-700 font-semibold text-sm flex items-center">
                     View Lake
                     <svg class="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
                 </a>
@@ -131,7 +131,7 @@
                 </div>
             </div>
             <div class="flex items-center justify-between">
-                <a href="{{ route('trails.show', $trail->id) }}" class="text-emerald-600 hover:text-emerald-700 font-semibold text-sm flex items-center">
+                <a href="{{ $trail->publicUrl() }}" class="text-emerald-600 hover:text-emerald-700 font-semibold text-sm flex items-center">
                     Start Adventure
                     <svg class="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
                 </a>

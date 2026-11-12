@@ -1330,7 +1330,7 @@ map.on('load', () => {
         // Store trail details data
         if (!window.trailDetailsData) window.trailDetailsData = {};
         window.trailDetailsData[trail.id] = {
-            id: trail.id, name: trail.name, trail_type: trail.trail_type,
+            id: trail.id, slug: trail.slug, name: trail.name, trail_type: trail.trail_type,
             description: trail.description, distance_km: trail.distance_km,
             difficulty_level: trail.difficulty_level, elevation_gain: trail.elevation_gain_m,
             preview_photo: trail.preview_photo, photos: trail.photos || [], videos: trail.videos || [],
@@ -1386,10 +1386,11 @@ map.on('load', () => {
         facilityMarkers.push(marker);
     });
 
-    // Auto-focus a specific trail when navigated here with ?trail={id}
-    const requestedTrailId = new URLSearchParams(window.location.search).get('trail');
-    if (requestedTrailId) {
-        setTimeout(() => window.focusTrail(parseInt(requestedTrailId, 10)), 300);
+    // Auto-focus a specific trail when navigated here with ?trail={id|slug}
+    const requestedTrailKey = new URLSearchParams(window.location.search).get('trail');
+    const requestedTrail = requestedTrailKey ? trails.find(t => window.trailMatchesKey(t, requestedTrailKey)) : null;
+    if (requestedTrail) {
+        setTimeout(() => window.focusTrail(requestedTrail.id), 300);
     }
 });
 
@@ -1559,7 +1560,7 @@ function showMobileTrailCard(trailId) {
         name: trail.name,
         metaHtml: `<span style="width:9px;height:9px;border-radius:50%;background:${diffColor};border:1px solid #9ca3af;display:inline-block;flex-shrink:0;"></span><span style="font-size:12px;font-weight:600;color:#374151;">${diffLabel}</span><span style="color:#d1d5db;font-size:11px;">·</span><span style="font-size:12px;color:#6b7280;">${trailType}</span>`,
         statsText: parts.join(' · '),
-        actionsHtml: `<button type="button" onclick="focusTrail(${trail.id})" class="${btnClass}"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-1.447-.894L15 9m0 8V9m0 0V7"/></svg>Route</button><a href="/trails/${trail.id}" class="${btnClass}"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>Details</a>`,
+        actionsHtml: `<button type="button" onclick="focusTrail(${trail.id})" class="${btnClass}"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-1.447-.894L15 9m0 8V9m0 0V7"/></svg>Route</button><a href="${window.trailUrl(trail)}" class="${btnClass}"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>Details</a>`,
     });
 }
 
@@ -1639,7 +1640,7 @@ function showTrailDetailsCard(trailId) {
                     </div>
                     <span class="tdc-action-label">View Route</span>
                 </button>
-                <a href="/trails/${trail.id}" target="_blank" rel="noopener" class="tdc-action-btn">
+                <a href="${window.trailUrl(trail)}" target="_blank" rel="noopener" class="tdc-action-btn">
                     <div class="tdc-action-icon">
                         <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                     </div>

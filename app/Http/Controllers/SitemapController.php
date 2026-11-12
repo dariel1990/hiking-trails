@@ -55,11 +55,11 @@ class SitemapController extends Controller
         Trail::query()
             ->whereIn('status', ['active', 'seasonal'])
             ->whereDoesntHave('trailNetwork', fn ($q) => $q->where('is_active', false))
-            ->select('id', 'updated_at')
+            ->select('id', 'slug', 'updated_at')
             ->orderBy('id')
             ->chunk(500, function ($trails) use (&$urls) {
                 foreach ($trails as $trail) {
-                    $urls[] = $this->url(route('trails.show', $trail->id), $trail->updated_at?->toAtomString(), '0.7');
+                    $urls[] = $this->url($trail->canonicalUrl(), $trail->updated_at?->toAtomString(), '0.7');
                 }
             });
 

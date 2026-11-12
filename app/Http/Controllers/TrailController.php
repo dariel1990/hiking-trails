@@ -6,11 +6,14 @@ use App\Models\ActivityType;
 use App\Models\Town;
 use App\Models\Trail;
 use App\Models\TrailNetwork;
+use App\Support\AppClient;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Illuminate\View\View;
 use Jenssegers\Agent\Agent;
 
 class TrailController extends Controller
@@ -203,16 +206,32 @@ class TrailController extends Controller
     }
 
     /**
-     * Show trail detail page
+     * Show trail detail page.
+     *
+     * Browsers use the readable /trails/{slug} URL; the native apps keep the
+     * numeric /trails/{id} URL their WebViews depend on. Each side is redirected
+     * to its own form, keeping any query string (e.g. ?from=map).
      */
-    public function show($id)
+    public function show(Request $request, string $key): View|RedirectResponse
     {
+        $isNumericKey = ctype_digit($key);
+
         $trail = Trail::with([
             'media',
             'features.media',
             'highlights.media',
             'trailNetwork',
-        ])->findOrFail($id);
+        ])->where($isNumericKey ? 'id' : 'slug', $key)->firstOrFail();
+
+        $isApp = AppClient::isApp($request);
+
+        if ($isNumericKey && ! $isApp && $trail->slug) {
+            return $this->redirectPreservingQuery($request, $trail->canonicalUrl(), 301);
+        }
+
+        if (! $isNumericKey && $isApp) {
+            return $this->redirectPreservingQuery($request, $trail->idUrl(), 302);
+        }
 
         if ($trail->status === 'closed' || ($trail->trailNetwork && ! $trail->trailNetwork->is_active)) {
             abort(404);
@@ -228,6 +247,21 @@ class TrailController extends Controller
         $mapboxToken = config('services.mapbox.access_token');
 
         return view('trails.show', compact('trail', 'generalMedia', 'mapboxToken'));
+    }
+
+    /**
+     * Find a trail by numeric ID or by slug.
+     */
+    private function findTrailByKey(string $key): ?Trail
+    {
+        return Trail::query()->where(ctype_digit($key) ? 'id' : 'slug', $key)->first();
+    }
+
+    private function redirectPreservingQuery(Request $request, string $url, int $status): RedirectResponse
+    {
+        $query = $request->getQueryString();
+
+        return redirect()->to($query ? $url.'?'.$query : $url, $status);
     }
 
     private function recordVisit(Trail $trail): void
@@ -253,8 +287,20 @@ class TrailController extends Controller
     /**
      * Show map page
      */
-    public function map(Request $request)
+    public function map(Request $request): View|RedirectResponse
     {
+        $trailKey = is_string($request->query('trail')) ? $request->query('trail') : '';
+        $focusTrail = $trailKey !== '' ? $this->findTrailByKey($trailKey) : null;
+
+        // Browsers get the readable ?trail={slug}; the apps open /map?trail={id}
+        // in their native map, so their numeric links are left alone.
+        if ($focusTrail && $focusTrail->slug && ctype_digit($trailKey) && ! AppClient::isApp($request)) {
+            return redirect()->to(
+                route('map', array_merge($request->query(), ['trail' => $focusTrail->slug])),
+                301
+            );
+        }
+
         // Fetch all active activities for the filters
         $activities = ActivityType::where('is_active', true)
             ->orderBy('name')
@@ -273,14 +319,11 @@ class TrailController extends Controller
             }
         }
 
-        if ($trailId = $request->query('trail')) {
-            $focusTrail = Trail::find($trailId);
-            if ($focusTrail && is_array($focusTrail->start_coordinates) && count($focusTrail->start_coordinates) === 2) {
-                $focusCoordinates = [
-                    (float) $focusTrail->start_coordinates[0],
-                    (float) $focusTrail->start_coordinates[1],
-                ];
-            }
+        if ($focusTrail && is_array($focusTrail->start_coordinates) && count($focusTrail->start_coordinates) === 2) {
+            $focusCoordinates = [
+                (float) $focusTrail->start_coordinates[0],
+                (float) $focusTrail->start_coordinates[1],
+            ];
         }
 
         // Drives the municipality legend and the Town section of All Filters.
@@ -566,6 +609,7 @@ class TrailController extends Controller
             return [
                 'id' => $trail->id,
                 'name' => $trail->name,
+                'slug' => $trail->slug,
                 'description' => $trail->description ? Str::limit(strip_tags($trail->description), 150) : null,
                 'location' => $trail->location,
                 'location_type' => $trail->location_type,
@@ -683,6 +727,7 @@ class TrailController extends Controller
         return response()->json([
             'id' => $trail->id,
             'name' => $trail->name,
+            'slug' => $trail->slug,
             'icon' => $trail->icon,
             'icon_image_url' => $trail->icon_image_url,
             'description' => $trail->description,

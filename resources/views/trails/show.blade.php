@@ -1,10 +1,11 @@
 @extends('layouts.public')
 
 @section('title', $trail->name . ' - Trail Finder')
+@section('canonical', $trail->canonicalUrl())
 @push('meta')
 <!-- Open Graph / Facebook Meta Tags -->
 <meta property="og:type" content="website">
-<meta property="og:url" content="{{ url()->current() }}">
+<meta property="og:url" content="{{ $trail->canonicalUrl() }}">
 <meta property="og:title" content="{{ $trail->name }} - {{ $trail->difficulty_text }} Trail">
 <meta property="og:description" content="{{ Str::limit($trail->description, 200) }}">
 @if($trail->featured_media_url)
@@ -19,7 +20,7 @@
 
 <!-- Twitter Card Meta Tags -->
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:url" content="{{ url()->current() }}">
+<meta name="twitter:url" content="{{ $trail->canonicalUrl() }}">
 <meta name="twitter:title" content="{{ $trail->name }} - {{ $trail->difficulty_text }} Trail">
 <meta name="twitter:description" content="{{ Str::limit($trail->description, 200) }}">
 @if($trail->featured_media_url)
@@ -258,7 +259,7 @@
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-12 w-full">
             <!-- Breadcrumb -->
             <nav class="mb-6">
-                <a href="{{ request()->query('from') === 'map' ? route('map') . '?trail=' . $trail->id : route('trails.index') }}"
+                <a href="{{ request()->query('from') === 'map' ? route('map') . '?trail=' . $trail->urlKey() : route('trails.index') }}"
                    class="inline-flex items-center text-white/90 hover:text-white text-sm font-medium transition-colors group">
                     <svg class="w-4 h-4 mr-2 group-hover:-translate-x-1 transition-transform" fill="currentColor" viewBox="0 0 20 20">
                         <path fill-rule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clip-rule="evenodd" />
@@ -1405,7 +1406,7 @@
                 <input type="text"
                        id="trail-url"
                        readonly
-                       value="{{ url()->current() }}"
+                       value="{{ $trail->canonicalUrl() }}"
                        class="xs-share-link-input">
                 <button id="copy-link-btn" class="xs-share-copy-btn">
                     <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -2925,9 +2926,9 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
         @if($trail->trailNetwork)
-            window.location.href = '{{ route('trail-networks.show', $trail->trailNetwork->slug) }}?trail={{ $trail->id }}';
+            window.location.href = '{{ route('trail-networks.show', $trail->trailNetwork->slug) }}?trail={{ $trail->urlKey() }}';
         @else
-            window.location.href = '{{ route('map') }}?trail={{ $trail->id }}';
+            window.location.href = '{{ route('map') }}?trail={{ $trail->urlKey() }}';
         @endif
     });
 

@@ -17,7 +17,7 @@ class AdminTrailPhotoController extends Controller
         $trailId = $request->integer('trail_id') ?: null;
 
         $photos = TrailPhoto::query()
-            ->with(['trail:id,name,location_type', 'reviewer:id,name'])
+            ->with(['trail:id,name,slug,location_type', 'reviewer:id,name'])
             ->when(in_array($status, $this->validStatuses(), true), fn ($q) => $q->where('status', $status))
             ->when($trailId, fn ($q) => $q->where('trail_id', $trailId))
             ->latest()

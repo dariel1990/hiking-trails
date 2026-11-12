@@ -161,8 +161,6 @@ class TownController extends Controller
             'center' => [(float) $town->latitude, (float) $town->longitude],
             'zoom' => $town->map_zoom,
             'townSlug' => $town->slug,
-            // Built once so the view does not repeat a route() call per pin.
-            'trailUrlTemplate' => route('trails.show', ['trail' => '__ID__']),
             'facilities' => $facilities,
         ];
     }

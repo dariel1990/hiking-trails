@@ -71,6 +71,21 @@
     <!-- Additional design fonts for headings -->
     <link href="https://fonts.bunny.net/css?family=Playfair+Display:400,500,600,700" rel="stylesheet">
 
+    {{-- Trail page links: browsers get /trails/{slug}; the native apps' WebViews keep /trails/{id}, which they parse for favorites and offline downloads. --}}
+    <script>
+        window.IS_NATIVE_APP = @json(\App\Support\AppClient::isApp());
+        window.trailUrl = function (trail) {
+            if (!trail) { return '/trails'; }
+            var key = (!window.IS_NATIVE_APP && trail.slug) ? trail.slug : trail.id;
+            return '/trails/' + encodeURIComponent(key);
+        };
+        // A ?trail= value may be an ID (apps, old links) or a slug (browsers).
+        window.trailMatchesKey = function (trail, key) {
+            if (!trail || key === null || key === undefined || key === '') { return false; }
+            return String(trail.id) === String(key) || (!!trail.slug && trail.slug === String(key));
+        };
+    </script>
+
     <!-- Scripts -->
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     

@@ -37,7 +37,7 @@ class TrailPhotoApprovedNotification extends Notification implements ShouldQueue
         }
 
         if ($trail !== null) {
-            $message->action('See it on the trail page', route('trails.show', $trail));
+            $message->action('See it on the trail page', $trail->canonicalUrl());
         }
 
         return $message->line('Thanks for sharing your adventure with the community!');

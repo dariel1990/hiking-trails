@@ -383,7 +383,7 @@ class TownPageTest extends TestCase
         $this->assertSame('out-and-back', $trail['trail_type']);
     }
 
-    public function test_the_map_config_carries_the_town_slug_and_url_template(): void
+    public function test_the_map_config_carries_the_town_slug(): void
     {
         $town = Town::factory()->create();
         $this->makeTrail($town);
@@ -391,7 +391,7 @@ class TownPageTest extends TestCase
         $config = $this->mapConfig($town);
 
         $this->assertSame($town->slug, $config['townSlug'], 'The map fetches /api/trails using this slug.');
-        $this->assertStringContainsString('__ID__', $config['trailUrlTemplate']);
+        $this->assertArrayNotHasKey('trailUrlTemplate', $config, 'Popup links use the shared window.trailUrl() helper.');
         $this->assertArrayHasKey('center', $config);
         $this->assertArrayHasKey('zoom', $config);
         $this->assertArrayNotHasKey('trails', $config, 'Trails come from the API, not the inline payload.');

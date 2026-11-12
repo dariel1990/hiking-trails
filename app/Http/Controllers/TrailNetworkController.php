@@ -40,7 +40,7 @@ class TrailNetworkController extends Controller
         $network = TrailNetwork::where('slug', $slug)
             ->active()
             ->with(['trails' => function ($query) {
-                $query->select('id', 'trail_network_id', 'name', 'description', 'difficulty_level', 'distance_km', 'elevation_gain_m', 'estimated_time_hours', 'trail_type', 'route_coordinates', 'start_coordinates', 'status')
+                $query->select('id', 'trail_network_id', 'name', 'slug', 'description', 'difficulty_level', 'distance_km', 'elevation_gain_m', 'estimated_time_hours', 'trail_type', 'route_coordinates', 'start_coordinates', 'status')
                     ->with(['media', 'generalMedia', 'features.media'])
                     ->where(function ($q) {
                         $q->where('status', 'active')
@@ -148,7 +148,7 @@ class TrailNetworkController extends Controller
 
     public function trailHighlights()
     {
-        $highlights = TrailFeature::with(['media', 'trail:id,name'])
+        $highlights = TrailFeature::with(['media', 'trail:id,name,slug'])
             ->get()
             ->map(function ($feature) {
                 // Normalize coordinates — stored as {lat,lng} object or [lat,lng] array
@@ -197,6 +197,7 @@ class TrailNetworkController extends Controller
                     'trail' => [
                         'id' => $feature->trail->id,
                         'name' => $feature->trail->name,
+                        'slug' => $feature->trail->slug,
                     ],
                 ];
             });
