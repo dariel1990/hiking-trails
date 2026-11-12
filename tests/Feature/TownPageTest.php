@@ -222,6 +222,35 @@ class TownPageTest extends TestCase
             ->assertDontSee('Hiddenville');
     }
 
+    public function test_the_hub_page_keeps_six_towns_in_the_lead_layout(): void
+    {
+        foreach (['Alpha', 'Bravo', 'Charlie', 'Delta', 'Echo', 'Foxtrot'] as $order => $name) {
+            Town::factory()->create(['name' => $name, 'sort_order' => $order]);
+        }
+
+        $this->get(route('towns.index'))
+            ->assertOk()
+            ->assertSeeInOrder(['Alpha', 'Bravo', 'Charlie', 'Delta', 'Echo', 'Foxtrot'])
+            ->assertDontSee('grid gap-4 mt-4 lg:grid-cols-3', false);
+    }
+
+    public function test_the_hub_page_moves_towns_beyond_six_into_a_grid_below(): void
+    {
+        foreach (['Alpha', 'Bravo', 'Charlie', 'Delta', 'Echo', 'Foxtrot', 'Golf', 'Hotel'] as $order => $name) {
+            Town::factory()->create(['name' => $name, 'sort_order' => $order]);
+        }
+
+        $response = $this->get(route('towns.index'))->assertOk();
+
+        $html = $response->getContent();
+        $gridStart = strpos($html, 'grid gap-4 mt-4 lg:grid-cols-3');
+
+        $this->assertNotFalse($gridStart);
+        $this->assertLessThan($gridStart, strpos($html, 'Terrain around Foxtrot'));
+        $this->assertGreaterThan($gridStart, strpos($html, 'Terrain around Golf'));
+        $this->assertGreaterThan($gridStart, strpos($html, 'Terrain around Hotel'));
+    }
+
     public function test_saving_a_trail_syncs_its_indexed_coordinates(): void
     {
         $town = Town::factory()->create();
