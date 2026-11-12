@@ -19,6 +19,8 @@ class GoogleSignInRequest extends FormRequest
         return [
             'id_token' => ['required', 'string'],
             'device_name' => ['nullable', 'string', 'max:255'],
+            'accepted_versions' => ['sometimes', 'array', 'min:1'],
+            'accepted_versions.*' => ['integer'],
         ];
     }
 }

@@ -3,11 +3,13 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\BulkActivateFacilitiesRequest;
 use App\Models\Facility;
 use App\Models\FacilityMedia;
 use App\Models\TrailNetwork;
 use App\Services\ImageThumbnailService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
@@ -26,6 +28,7 @@ class FacilityController extends Controller
     {
         $search = $request->string('search')->toString();
         $type = $request->string('type', 'all')->toString();
+        $status = $request->string('status', 'all')->toString();
 
         $baseQuery = Facility::query()
             ->when($search !== '', function ($query) use ($search) {
@@ -49,14 +52,41 @@ class FacilityController extends Controller
         $facilities = (clone $baseQuery)
             ->withCount('media')
             ->when($type !== 'all', fn ($q) => $q->where('facility_type', $type))
+            ->when($status === 'active', fn ($q) => $q->where('is_active', true))
+            ->when($status === 'inactive', fn ($q) => $q->where('is_active', false))
             ->orderBy('facility_type')
             ->orderBy('name')
             ->paginate(setting('admin_per_page'))
             ->withQueryString();
 
         return view('admin.facilities.index', compact(
-            'facilities', 'totalCount', 'activeCount', 'inactiveCount', 'withMediaCount', 'typeCounts', 'search', 'type'
+            'facilities', 'totalCount', 'activeCount', 'inactiveCount', 'withMediaCount', 'typeCounts', 'search', 'type', 'status'
         ));
+    }
+
+    /**
+     * Flip a facility between active and inactive.
+     */
+    public function toggleActive(Facility $facility): RedirectResponse
+    {
+        $facility->update(['is_active' => ! $facility->is_active]);
+
+        return back()->with('success', "{$facility->name} is now ".($facility->is_active ? 'active' : 'inactive').'.');
+    }
+
+    /**
+     * Activate several facilities at once.
+     */
+    public function bulkActivate(BulkActivateFacilitiesRequest $request): RedirectResponse
+    {
+        $activated = Facility::query()
+            ->whereIn('id', $request->validated('ids'))
+            ->where('is_active', false)
+            ->get()
+            ->each(fn (Facility $facility) => $facility->update(['is_active' => true]))
+            ->count();
+
+        return back()->with('success', "{$activated} ".Str::plural('facility', $activated).' activated.');
     }
 
     /**

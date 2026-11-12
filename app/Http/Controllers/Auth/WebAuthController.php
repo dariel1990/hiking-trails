@@ -5,8 +5,10 @@ namespace App\Http\Controllers\Auth;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
 use App\Http\Requests\Auth\RegisterRequest;
+use App\Models\LegalAcceptance;
 use App\Models\User;
 use App\Notifications\WelcomeNotification;
+use App\Services\LegalDocumentService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Auth;
@@ -46,17 +48,27 @@ class WebAuthController extends Controller
         return redirect()->intended(route('home'));
     }
 
-    public function showRegister(): View|RedirectResponse
+    public function showRegister(LegalDocumentService $legalDocuments): View|RedirectResponse
     {
         if (Auth::check()) {
             return redirect()->route('home');
         }
 
-        return view('auth.register');
+        return view('auth.register', [
+            'documents' => $legalDocuments->reviewPayload($legalDocuments->currentVersions()),
+        ]);
     }
 
-    public function register(RegisterRequest $request): RedirectResponse
+    public function register(RegisterRequest $request, LegalDocumentService $legalDocuments): RedirectResponse
     {
+        $currentVersions = $legalDocuments->currentVersions();
+
+        if (! $legalDocuments->matchesVersions($request->validated('accepted_versions'), $currentVersions)) {
+            return back()
+                ->withInput($request->except('password', 'password_confirmation'))
+                ->withErrors(['accepted_versions' => 'These documents were just updated. Please review the latest versions.']);
+        }
+
         $firstName = $request->string('first_name')->value();
         $lastName = $request->string('last_name')->value();
 
@@ -67,6 +79,8 @@ class WebAuthController extends Controller
             'email' => $request->string('email')->value(),
             'password' => $request->string('password')->value(),
         ]);
+
+        $legalDocuments->recordAcceptance($user, $currentVersions, $request, LegalAcceptance::SOURCE_WEB);
 
         try {
             $user->notify(new WelcomeNotification);

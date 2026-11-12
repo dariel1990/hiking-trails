@@ -146,7 +146,7 @@
                     </div>
                     <div class="grid grid-cols-2 gap-2">
                         @foreach(\App\Models\Facility::getFacilityTypes() as $facilityType => $facilityLabel)
-                            @continue(in_array($facilityType, ['viewpoint', 'point_of_interest', 'first_nation']))
+                            @continue(in_array($facilityType, ['viewpoint', 'point_of_interest', 'first_nation', 'recreational_site']))
                             <label class="flex items-center cursor-pointer hover:bg-gray-50 p-3 rounded-lg">
                                 <input type="checkbox" value="{{ $facilityType }}" class="facility-type-checkbox w-5 h-5">
                                 <span class="ml-3 text-sm">{{ $facilityLabel }}</span>
@@ -305,6 +305,13 @@
                     class="location-filter-btn sidebar-nav-btn flex flex-col items-center gap-1 w-full py-3 px-1 text-center transition-colors">
                 <span class="text-xl">📍</span>
                 <span class="text-[10px] font-medium leading-tight">First Nation</span>
+            </button>
+
+            <!-- Recreational Sites -->
+            <button data-location-filter="recreational_site"
+                    class="location-filter-btn sidebar-nav-btn flex flex-col items-center gap-1 w-full py-3 px-1 text-center transition-colors">
+                <span class="text-xl">🏞️</span>
+                <span class="text-[10px] font-medium leading-tight">Recreational Sites</span>
             </button>
         </div>
 
@@ -511,6 +518,7 @@
             <button data-location-filter="business" class="mobile-map-tab">🏪 Business</button>
             <button data-location-filter="tour" class="mobile-map-tab">🗺️ Tours</button>
             <button data-location-filter="first_nation" class="mobile-map-tab">📍 Nations</button>
+            <button data-location-filter="recreational_site" class="mobile-map-tab">🏞️ Rec</button>
         </div>
     </div>
 
@@ -658,6 +666,9 @@
         </button>
         <button data-mobile-location-filter="first_nation" class="mobile-location-tab flex-1 flex flex-col items-center gap-1 py-2 text-xs font-medium text-gray-500 border-b-2 border-transparent">
             <span class="text-lg">📍</span><span>Nations</span>
+        </button>
+        <button data-mobile-location-filter="recreational_site" class="mobile-location-tab flex-1 flex flex-col items-center gap-1 py-2 text-xs font-medium text-gray-500 border-b-2 border-transparent">
+            <span class="text-lg">🏞️</span><span>Rec Sites</span>
         </button>
     </div>
     <!-- Results -->
@@ -5635,9 +5646,9 @@
                 if (focusFacilityId) {
                     const facility = this.facilityData.find(f => f.id == focusFacilityId);
                     if (facility) {
-                        // First Nation facilities only render on their own tab
-                        if (facility.facility_type === 'first_nation') {
-                            this.activateLocationTab('first_nation');
+                        // First Nation and Recreational Site facilities only render on their own tab
+                        if (['first_nation', 'recreational_site'].includes(facility.facility_type)) {
+                            this.activateLocationTab(facility.facility_type);
                         }
                         this.focusOnFacility(facility.id);
                     }
@@ -5654,6 +5665,9 @@
         shouldShowFacility(facilityType) {
             if (facilityType === 'first_nation') {
                 return this.showFirstNationFacilities && this.activeLocationFilter === 'first_nation';
+            }
+            if (facilityType === 'recreational_site') {
+                return this.activeLocationFilter === 'recreational_site';
             }
             if (!this.showFacilities || !['trail', 'fishing_lake'].includes(this.activeLocationFilter)) {
                 return false;
@@ -6947,7 +6961,12 @@
             );
         }
 
-        function renderFirstNationCards(facilities, targetContainerId = 'trail-cards') {
+        const facilityTabEmptyLabels = {
+            first_nation: 'No First Nation sites found',
+            recreational_site: 'No recreational sites found',
+        };
+
+        function renderFacilityTabCards(facilityType, facilities, targetContainerId = 'trail-cards') {
             const container = document.getElementById(targetContainerId);
             if (targetContainerId === 'trail-cards') {
                 const countEl = document.getElementById('trail-count');
@@ -6956,12 +6975,12 @@
             if (!container) { return; }
 
             if (facilities.length === 0) {
-                container.innerHTML = `<div class="text-center py-8 text-gray-500"><p class="font-medium">No First Nation sites found</p></div>`;
+                container.innerHTML = `<div class="text-center py-8 text-gray-500"><p class="font-medium">${facilityTabEmptyLabels[facilityType]}</p></div>`;
                 return;
             }
 
             container.innerHTML = facilities.map(f => `
-                <div class="business-list-card trail-list-card" data-location-type="first_nation" onclick="window.trailMap.focusOnFacility(${f.id})">
+                <div class="business-list-card trail-list-card" data-location-type="${facilityType}" onclick="window.trailMap.focusOnFacility(${f.id})">
                     <div class="flex-shrink-0 text-xl w-8 text-center">${f.icon_image_url ? `<img src="${escapeHtml(f.icon_image_url)}" style="width:24px;height:24px;object-fit:contain;display:inline-block;border-radius:4px;" alt="">` : (f.icon || '📍')}</div>
                     <div class="flex-1 min-w-0">
                         <div class="font-medium text-sm text-gray-900 truncate">${escapeHtml(f.name)}</div>
@@ -7032,9 +7051,9 @@
                 });
             } else if (activeLocationFilter === 'business') {
                 window.trailMap.renderTrailList([], filterBusinesses(allBusinesses, searchTerm));
-            } else if (activeLocationFilter === 'first_nation') {
-                const allFacilities = (window.trailMap.facilityData || []).filter(f => f.facility_type === 'first_nation');
-                renderFirstNationCards(filterFacilities(allFacilities, searchTerm));
+            } else if (activeLocationFilter in facilityTabEmptyLabels) {
+                const allFacilities = (window.trailMap.facilityData || []).filter(f => f.facility_type === activeLocationFilter);
+                renderFacilityTabCards(activeLocationFilter, filterFacilities(allFacilities, searchTerm));
             } else if (activeLocationFilter === 'fishing_lake') {
                 const fishing = filterTrails(allTrails.filter(t => t.location_type === 'fishing_lake'), searchTerm);
                 window.trailMap.renderTrailList(fishing, []);
@@ -7212,9 +7231,9 @@
                         `).join('');
                     });
                     return;
-                } else if (filter === 'first_nation') {
-                    const allFacilities = (window.trailMap.facilityData || []).filter(f => f.facility_type === 'first_nation');
-                    renderFirstNationCards(filterFacilities(allFacilities, q), 'mobile-search-results-inner');
+                } else if (filter in facilityTabEmptyLabels) {
+                    const allFacilities = (window.trailMap.facilityData || []).filter(f => f.facility_type === filter);
+                    renderFacilityTabCards(filter, filterFacilities(allFacilities, q), 'mobile-search-results-inner');
                     return;
                 } else if (filter === 'business') {
                     trails = [];

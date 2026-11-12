@@ -19,6 +19,7 @@ class DatabaseSeeder extends Seeder
             TownSeoSeeder::class,
             ConsolidatedTrailSeeder::class,
             SettingsSeeder::class,
+            LegalDocumentSeeder::class,
         ]);
     }
 }

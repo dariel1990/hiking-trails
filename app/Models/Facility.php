@@ -129,6 +129,7 @@ class Facility extends Model
             'bridge' => '🌉',
             'trail_sign' => '🚶',
             'ttf' => '⚠️',
+            'recreational_site' => '🏞️',
         ];
 
         return $icons[$this->facility_type] ?? '📍';
@@ -156,6 +157,7 @@ class Facility extends Model
             'trail_sign' => '🚶 Trail Sign',
             'ttf' => '⚠️ TTF (Technical Trail Feature)',
             'first_nation' => 'First Nation',
+            'recreational_site' => '🏞️ Recreational Site',
         ];
     }
 

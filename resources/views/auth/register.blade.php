@@ -44,6 +44,52 @@
         background: radial-gradient(circle, rgba(232,123,53,0.38), transparent 70%);
     }
 </style>
+@include('legal._styles')
+@include('legal._review_script')
+<script>
+    function legalRegistration(alreadyAccepted, mustReview, initialAction) {
+        return {
+            showPassword: false,
+            accepted: alreadyAccepted,
+            reviewOpen: false,
+            reviewAction: initialAction,
+            init() {
+                if (mustReview) {
+                    this.openReview();
+                }
+            },
+            interceptSubmit(event) {
+                if (! this.accepted) {
+                    event.preventDefault();
+                    this.reviewAction = 'email';
+                    this.openReview();
+                }
+            },
+            continueWithGoogle() {
+                this.reviewAction = 'google';
+
+                if (this.accepted) {
+                    this.$refs.googleForm.submit();
+                } else {
+                    this.openReview();
+                }
+            },
+            openReview() {
+                this.setReviewOpen(true);
+                this.$nextTick(() => window.dispatchEvent(new CustomEvent('legal-review-open')));
+            },
+            setReviewOpen(isOpen) {
+                this.reviewOpen = isOpen;
+                document.body.style.overflow = isOpen ? 'hidden' : '';
+            },
+            completeReview() {
+                this.accepted = true;
+                this.setReviewOpen(false);
+                this.$nextTick(() => (this.reviewAction === 'google' ? this.$refs.googleForm : this.$refs.registerForm).submit());
+            },
+        };
+    }
+</script>
 @endpush
 
 @section('content')
@@ -73,7 +119,15 @@
         </div>
 
         {{-- Body --}}
-        <div class="px-7 sm:px-8 pt-7 pb-8" x-data="{ agreed: {{ old('terms') ? 'true' : 'false' }} }">
+        @php
+            $mustReviewDocuments = $errors->has('accepted_versions') || $errors->has('terms') || $errors->has('privacy');
+            $alreadyAccepted = old('terms') && old('privacy') && ! $mustReviewDocuments;
+        @endphp
+
+        <div class="px-7 sm:px-8 pt-7 pb-8"
+             x-data="legalRegistration(@js((bool) $alreadyAccepted), @js($mustReviewDocuments), @js(session('legalReviewAction', 'email')))"
+             @legal-review-complete.window="completeReview()"
+             @legal-review-cancel.window="setReviewOpen(false)">
             @if (session('error'))
                 <div class="mb-5 flex items-start gap-2.5 rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
                     <svg class="h-4 w-4 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
@@ -81,16 +135,11 @@
                 </div>
             @endif
 
-            {{-- Google — gated by the Terms checkbox below (mirrors the app) --}}
+            {{-- The review comes first; Google opens only after "I Agree" --}}
             <a href="{{ route('google.redirect') }}"
-               @click="if (! agreed) $event.preventDefault()"
-               :aria-disabled="(! agreed).toString()"
-               :tabindex="agreed ? '0' : '-1'"
-               class="w-full inline-flex items-center justify-center gap-3 py-3 px-5 bg-white border rounded-xl text-sm font-semibold shadow-[0_1px_2px_rgba(0,0,0,0.04)] transition focus:outline-none focus:ring-4 focus:ring-forest-600/10"
-               :class="agreed
-                   ? 'border-gray-200 text-gray-700 hover:border-forest-400 hover:bg-gray-50 active:scale-[0.99] cursor-pointer'
-                   : 'border-gray-200 text-gray-400 opacity-60 cursor-not-allowed'">
-                <svg class="w-5 h-5 transition" :class="agreed ? '' : 'grayscale opacity-70'" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+               @click.prevent="continueWithGoogle()"
+               class="w-full inline-flex items-center justify-center gap-3 py-3 px-5 bg-white border border-gray-200 rounded-xl text-sm font-semibold text-gray-700 shadow-[0_1px_2px_rgba(0,0,0,0.04)] transition hover:border-forest-400 hover:bg-gray-50 active:scale-[0.99] focus:outline-none focus:ring-4 focus:ring-forest-600/10">
+                <svg class="w-5 h-5" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                     <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.27-4.74 3.27-8.1z"/>
                     <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.99.66-2.26 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84A11 11 0 0 0 12 23z"/>
                     <path fill="#FBBC05" d="M5.84 14.1a6.6 6.6 0 0 1 0-4.2V7.06H2.18a11 11 0 0 0 0 9.88l3.66-2.84z"/>
@@ -105,7 +154,18 @@
                 <span class="h-px flex-1 bg-gray-200"></span>
             </div>
 
-            <form class="space-y-4" method="POST" action="{{ route('register.post') }}" x-data="{ showPassword: false }">
+            <form method="POST" action="{{ route('google.accept') }}" x-ref="googleForm" class="hidden">
+                @csrf
+                <input type="hidden" name="terms" value="1">
+                <input type="hidden" name="privacy" value="1">
+                @foreach ($documents as $document)
+                    <input type="hidden" name="accepted_versions[]" value="{{ $document['id'] }}">
+                @endforeach
+            </form>
+
+            <form class="space-y-4" method="POST" action="{{ route('register.post') }}"
+                  x-ref="registerForm"
+                  @submit="interceptSubmit($event)">
                 @csrf
 
                 <div class="grid grid-cols-2 gap-4">
@@ -156,19 +216,25 @@
                            placeholder="Re-enter your password">
                 </div>
 
-                <div>
-                    <label for="terms" class="flex items-start gap-2.5 text-xs text-gray-600 leading-relaxed cursor-pointer">
-                        <input id="terms" name="terms" type="checkbox" value="1" required x-model="agreed"
-                               class="mt-0.5 h-4 w-4 shrink-0 rounded border-gray-300 text-forest-600 focus:ring-forest-600/30 @error('terms') border-red-400 @enderror">
-                        <span>
-                            I agree to the
-                            <a href="{{ route('terms') }}" target="_blank" class="font-semibold text-forest-700 hover:text-accent-600 transition">Terms &amp; Conditions</a>
-                            and
-                            <a href="{{ route('privacy-policy') }}" target="_blank" class="font-semibold text-forest-700 hover:text-accent-600 transition">Privacy Policy</a>.
-                        </span>
-                    </label>
-                    @error('terms')<p class="mt-1.5 text-xs text-red-600">{{ $message }}</p>@enderror
-                </div>
+                <input type="hidden" name="terms" :value="accepted ? '1' : ''">
+                <input type="hidden" name="privacy" :value="accepted ? '1' : ''">
+                @foreach ($documents as $document)
+                    <input type="hidden" name="accepted_versions[]" value="{{ $document['id'] }}">
+                @endforeach
+
+                <p class="text-xs text-gray-500 leading-relaxed">You'll review and accept our Terms &amp; Conditions and Privacy Policy before your account is created.</p>
+                @foreach (['terms', 'privacy', 'accepted_versions'] as $legalField)
+                    @error($legalField)<p class="text-xs text-red-600">{{ $message }}</p>@enderror
+                @endforeach
+
+                <template x-teleport="body">
+                    <div x-show="reviewOpen" x-cloak role="dialog" aria-modal="true" aria-label="Review and accept our policies"
+                         class="fixed inset-0 z-[9999] flex items-end justify-center bg-black/60 sm:items-center sm:p-4">
+                        <div class="flex max-h-full w-full max-w-2xl flex-col rounded-t-2xl bg-white p-5 sm:rounded-2xl sm:p-6">
+                            @include('legal._review', ['documents' => $documents, 'cancellable' => true])
+                        </div>
+                    </div>
+                </template>
 
                 <button type="submit"
                         class="w-full flex items-center justify-center gap-2 py-3.5 px-5 bg-accent-500 hover:bg-accent-600 active:scale-[0.99] text-white text-sm font-semibold rounded-xl shadow-[0_8px_20px_rgba(232,123,53,0.3)] transition focus:outline-none focus:ring-4 focus:ring-accent-500/30">

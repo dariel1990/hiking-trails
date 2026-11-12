@@ -3,8 +3,11 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Auth\StoreGoogleSignUpConsentRequest;
+use App\Models\LegalAcceptance;
 use App\Models\User;
 use App\Notifications\WelcomeNotification;
+use App\Services\LegalDocumentService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -14,12 +17,32 @@ use Throwable;
 
 class WebGoogleAuthController extends Controller
 {
+    private const ACCEPTED_VERSIONS_SESSION_KEY = 'google_sign_up.accepted_versions';
+
     public function redirect(): SymfonyRedirectResponse
     {
         return Socialite::driver('google')->redirect();
     }
 
-    public function callback(): RedirectResponse
+    /**
+     * Remember what the visitor accepted on the register page. No account
+     * exists until Google returns, so it is recorded in the callback.
+     */
+    public function acceptLegalDocuments(StoreGoogleSignUpConsentRequest $request, LegalDocumentService $legalDocuments): RedirectResponse
+    {
+        if (! $legalDocuments->matchesVersions($request->validated('accepted_versions'), $legalDocuments->currentVersions())) {
+            return redirect()
+                ->route('register')
+                ->with('legalReviewAction', 'google')
+                ->withErrors(['accepted_versions' => 'These documents were just updated. Please review the latest versions.']);
+        }
+
+        $request->session()->put(self::ACCEPTED_VERSIONS_SESSION_KEY, $request->validated('accepted_versions'));
+
+        return redirect()->route('google.redirect');
+    }
+
+    public function callback(Request $request, LegalDocumentService $legalDocuments): RedirectResponse
     {
         try {
             $googleUser = Socialite::driver('google')->user();
@@ -57,6 +80,13 @@ class WebGoogleAuthController extends Controller
             } catch (Throwable $e) {
                 report($e);
             }
+        }
+
+        $acceptedVersionIds = $request->session()->pull(self::ACCEPTED_VERSIONS_SESSION_KEY);
+        $currentVersions = $legalDocuments->currentVersions();
+
+        if ($acceptedVersionIds !== null && $legalDocuments->matchesVersions($acceptedVersionIds, $currentVersions)) {
+            $legalDocuments->recordAcceptance($user, $currentVersions, $request, LegalAcceptance::SOURCE_WEB);
         }
 
         Auth::login($user, remember: true);

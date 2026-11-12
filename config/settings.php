@@ -371,6 +371,15 @@ return [
             'rules' => ['required', 'integer', 'between:5,200'],
             'hint' => 'Applies to all admin list pages.',
         ],
+        'legal_reminder_cooldown_days' => [
+            'group' => 'content',
+            'label' => 'Days between Terms reminder emails',
+            'type' => 'int',
+            'input' => 'number',
+            'default' => 7,
+            'rules' => ['required', 'integer', 'between:0,365'],
+            'hint' => 'Users emailed about updated Terms or Privacy Policy within this many days are skipped when you send reminders again. Set to 0 to always send.',
+        ],
         'featured_trail_count' => [
             'group' => 'content',
             'label' => 'Featured trails on home page',

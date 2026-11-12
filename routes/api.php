@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\BillingController;
 use App\Http\Controllers\Api\EntitlementController;
 use App\Http\Controllers\Api\EventImportController;
+use App\Http\Controllers\Api\LegalController;
 use App\Http\Controllers\Api\ReviewPromptEventController;
 use App\Http\Controllers\Api\TrailPhotoController;
 use App\Http\Controllers\TrailController;
@@ -15,6 +16,7 @@ use App\Models\ActivityType;
 use App\Models\Business;
 use App\Models\Facility;
 use App\Models\Tour;
+use App\Models\Town;
 use App\Models\TrailNetwork;
 use App\Services\RouteService;
 use Illuminate\Http\Request;
@@ -98,6 +100,8 @@ Route::prefix('auth')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth:sanctum');
 });
 
+Route::get('/legal/current', [LegalController::class, 'current'])->middleware('throttle:300,1');
+
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('/me', [AuthController::class, 'me']);
     Route::put('/me', [AuthController::class, 'updateProfile']);
@@ -105,6 +109,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('/me/password', [AuthController::class, 'updatePassword']);
     Route::delete('/me', [AuthController::class, 'deleteAccount']);
     Route::get('/me/entitlements', [EntitlementController::class, 'show']);
+    Route::get('/legal/status', [LegalController::class, 'status']);
+    Route::post('/legal/accept', [LegalController::class, 'accept']);
 
     // Phase B (deferred) — wiring in place, Google verification stubbed.
     Route::post('/billing/verify-purchase', [BillingController::class, 'verifyPurchase'])
@@ -340,6 +346,24 @@ Route::withoutMiddleware(VerifyAppKey::class)->middleware('throttle:public-api')
                 'icon_image_url' => $activity->icon_image ? asset('storage/'.$activity->icon_image) : null,
                 'color' => $activity->color,
                 'season_applicable' => $activity->season_applicable,
+            ]);
+    });
+
+    // Towns — drives the map's municipality legend and the Town filter section.
+    // The app needs every active town, not just those with trails on screen, so
+    // the legend keeps a stable order and the camera has a fallback position.
+    Route::get('/towns', function () {
+        return Town::active()
+            ->ordered()
+            ->get()
+            ->map(fn ($town) => [
+                'id' => $town->id,
+                'name' => $town->name,
+                'slug' => $town->slug,
+                'color' => $town->colorOrDefault(),
+                'latitude' => (float) $town->latitude,
+                'longitude' => (float) $town->longitude,
+                'map_zoom' => (int) $town->map_zoom,
             ]);
     });
 
