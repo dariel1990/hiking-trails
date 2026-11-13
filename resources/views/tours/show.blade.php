@@ -1,12 +1,26 @@
 @extends('layouts.public')
 
+@php
+    $isChristmas = $tour->isChristmasEvent();
+    $tourTypeLabel = App\Models\Tour::getTourTypes()[$tour->tour_type] ?? ucfirst($tour->tour_type);
+    $tourTypeText = explode(' ', $tourTypeLabel, 2)[1] ?? $tourTypeLabel;
+    $stopCount = $tour->stops->count();
+    // Roaming activities (no fixed spot) are listed separately and get no map pin.
+    $mappedStops = $tour->stops->reject(fn ($stop) => $stop->is_roaming);
+    $roamingStops = $tour->stops->filter(fn ($stop) => $stop->is_roaming);
+    // An event whose stops carry their own icons reads as a map of activities.
+    $isActivityMap = $isChristmas && $tour->stops->contains(fn ($stop) => $stop->hasIcon() || $stop->is_roaming);
+    $stopsHeading = $isActivityMap ? 'Activities' : ($isChristmas ? 'Route Stops' : 'Tour Stops');
+    $stopNoun = $isActivityMap ? 'activit' . ($stopCount === 1 ? 'y' : 'ies') : 'stop' . ($stopCount === 1 ? '' : 's');
+@endphp
+
 @section('title', $tour->title . ' — Xplore Smithers')
 
 @push('meta')
 <!-- Open Graph / Facebook Meta Tags -->
 <meta property="og:type" content="website">
 <meta property="og:url" content="{{ url()->current() }}">
-<meta property="og:title" content="{{ $tour->title }} — Xplore Smithers Tour">
+<meta property="og:title" content="{{ $tour->title }} — Xplore Smithers{{ $isChristmas ? '' : ' Tour' }}">
 <meta property="og:description" content="{{ Str::limit($tour->tagline ?: strip_tags($tour->description ?? ''), 200) }}">
 @if($tour->cover_image_url)
 <meta property="og:image" content="{{ url($tour->cover_image_url) }}">
@@ -20,7 +34,7 @@
 <!-- Twitter Card Meta Tags -->
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:url" content="{{ url()->current() }}">
-<meta name="twitter:title" content="{{ $tour->title }} — Xplore Smithers Tour">
+<meta name="twitter:title" content="{{ $tour->title }} — Xplore Smithers{{ $isChristmas ? '' : ' Tour' }}">
 <meta name="twitter:description" content="{{ Str::limit($tour->tagline ?: strip_tags($tour->description ?? ''), 200) }}">
 @if($tour->cover_image_url)
 <meta name="twitter:image" content="{{ url($tour->cover_image_url) }}">
@@ -29,25 +43,13 @@
 @endpush
 
 @push('styles')
-<link href="https://api.mapbox.com/mapbox-gl-js/v3.10.0/mapbox-gl.css" rel="stylesheet">
+@include('tours._map-styles')
 <style>
-    /* Map style switcher */
-    .tour-layer-card {
-        position: relative; cursor: pointer; border-radius: 0.5rem;
-        overflow: hidden; border: 2px solid #E5E7EB;
-        display: flex; flex-direction: column; align-items: center;
-    }
-    .tour-layer-card:hover { border-color: #a8c4b9; }
-    .tour-layer-card.active { border-color: #2C5F5D; box-shadow: 0 0 0 3px rgba(44,95,93,0.12); }
-    .tour-layer-card .layer-preview { width: 100%; height: 56px; overflow: hidden; }
-    .tour-layer-card .layer-label { display: block; font-size: 0.7rem; font-weight: 600; color: #374151; text-align: center; padding: 0.25rem 0.25rem 0.35rem; }
-    .tour-layer-card .layer-checkmark { position: absolute; top: 4px; right: 4px; width: 16px; height: 16px; color: white; background-color: #2C5F5D; border-radius: 50%; padding: 2px; display: none; }
-    .tour-layer-card.active .layer-checkmark { display: block; }
-
     /* Stop cards */
     .stop-card { transition: all 0.18s ease; }
-    .stop-card:hover { border-color: #a8c4b9; background-color: #f5f8f7; }
-    .stop-card.active { border-color: #2C5F5D; background-color: #f5f8f7; box-shadow: 0 0 0 3px rgba(44,95,93,0.1); }
+    .stop-card:hover { border-color: var(--tour-primary-border); background-color: var(--tour-primary-soft); }
+    .stop-card.active { border-color: var(--tour-primary); background-color: var(--tour-primary-soft); box-shadow: 0 0 0 3px rgba(0,0,0,0.06); }
+    .stop-number-badge { background: linear-gradient(145deg, var(--tour-primary), var(--tour-primary-dark)); }
 
     /* Timeline connector */
     .timeline-connector {
@@ -56,106 +58,87 @@
         top: 3.5rem;
         bottom: -1rem;
         width: 2px;
-        background: linear-gradient(to bottom, #d1e1db, #e5e7eb);
+        background: linear-gradient(to bottom, var(--tour-primary-border), #e5e7eb);
     }
     .stop-timeline-item:last-child .timeline-connector { display: none; }
+</style>
+@if($isChristmas)
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Mountains+of+Christmas:wght@700&display=swap" rel="stylesheet">
+<style>
+    .christmas-hero { background: linear-gradient(160deg, #0F1B2D 0%, #13283f 45%, #1E5B3A 100%); }
+    .christmas-title { font-family: 'Mountains of Christmas', 'Playfair Display', Georgia, serif; letter-spacing: 0.01em; }
 
-    /* Map markers */
-    .tour-marker { cursor: pointer; }
-    .tour-marker-badge {
-        position: relative;
-        width: 2.1rem; height: 2.1rem; border-radius: 9999px;
-        background: linear-gradient(145deg, #2C5F5D, #1d4644);
-        color: #fff; font-size: 0.85rem; font-weight: 700;
-        display: flex; align-items: center; justify-content: center;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.35);
-        border: 2.5px solid #fff;
-        flex-shrink: 0;
-        transition: box-shadow 0.15s, filter 0.15s, transform 0.15s;
-        z-index: 2;
+    /* Gentle CSS snowfall: three layers of dots drifting down at different speeds. */
+    .christmas-snow {
+        position: absolute; inset: 0; pointer-events: none;
+        background-image:
+            radial-gradient(2px 2px at 20px 30px, rgba(255,255,255,0.9) 50%, transparent 51%),
+            radial-gradient(2px 2px at 120px 80px, rgba(255,255,255,0.8) 50%, transparent 51%),
+            radial-gradient(3px 3px at 60px 140px, rgba(255,255,255,0.7) 50%, transparent 51%),
+            radial-gradient(2px 2px at 170px 170px, rgba(255,255,255,0.85) 50%, transparent 51%),
+            radial-gradient(3px 3px at 90px 10px, rgba(255,255,255,0.6) 50%, transparent 51%);
+        background-size: 200px 200px;
+        animation: christmas-snowfall 14s linear infinite;
+        opacity: 0.85;
     }
-    .tour-marker:hover .tour-marker-badge { box-shadow: 0 4px 14px rgba(0,0,0,0.45); filter: brightness(1.15); transform: scale(1.06); }
-    .tour-marker.active .tour-marker-badge {
-        background: linear-gradient(145deg, #e8a33d, #c9821f);
-        box-shadow: 0 0 0 4px rgba(232,163,61,0.35), 0 4px 14px rgba(0,0,0,0.45);
-        transform: scale(1.15);
-        animation: tour-marker-pulse 1.4s ease-out infinite;
+    .christmas-snow.layer-2 { background-size: 300px 300px; animation-duration: 22s; opacity: 0.55; }
+    @keyframes christmas-snowfall {
+        from { background-position: 0 0; }
+        to { background-position: 40px 600px; }
     }
-    .tour-marker-label {
-        position: absolute; left: 1.6rem; top: 50%; transform: translateY(-50%); z-index: 1;
-        padding: 0.3rem 0.7rem 0.3rem 1rem;
-        background: rgba(255,255,255,0.95); color: #1f2937;
-        font-size: 0.72rem; font-weight: 600; white-space: nowrap;
-        border-radius: 0 9999px 9999px 0;
-        box-shadow: 0 2px 6px rgba(0,0,0,0.18);
-        border: 1px solid rgba(0,0,0,0.06); border-left: none;
-        transition: box-shadow 0.15s;
-        display: flex; align-items: center; gap: 0.35rem;
-        pointer-events: none;
+
+    /* String of lights along the bottom of the hero */
+    .christmas-lights {
+        position: absolute; left: 0; right: 0; bottom: 0; height: 18px; pointer-events: none;
+        background:
+            radial-gradient(circle, #ff4d5a 0 4px, transparent 5px) 0 6px / 60px 12px repeat-x,
+            radial-gradient(circle, #3ddc84 0 4px, transparent 5px) 20px 6px / 60px 12px repeat-x,
+            radial-gradient(circle, #ffd24a 0 4px, transparent 5px) 40px 6px / 60px 12px repeat-x,
+            linear-gradient(#0b1422, #0b1422) 0 5px / 100% 1px no-repeat;
+        animation: christmas-twinkle 2.4s ease-in-out infinite alternate;
     }
-    /* Label tucked behind the left side of the badge */
-    .tour-marker.label-left .tour-marker-label {
-        padding: 0.3rem 1rem 0.3rem 0.7rem;
-        border-radius: 9999px 0 0 9999px;
-        border-left: 1px solid rgba(0,0,0,0.06); border-right: none;
+    @keyframes christmas-twinkle {
+        from { filter: brightness(0.85); }
+        to { filter: brightness(1.25) drop-shadow(0 0 4px rgba(255, 220, 120, 0.7)); }
     }
-    /* Label nudged up/down beside a stacked badge: a full pill, not tucked */
-    .tour-marker.label-detached .tour-marker-label {
-        padding: 0.3rem 0.7rem;
-        border-radius: 9999px;
-        border: 1px solid rgba(0,0,0,0.06);
-    }
-    /* Hidden only when it would overlap another label/badge; hover or selecting brings it back */
-    .tour-marker.label-hidden .tour-marker-label { visibility: hidden; }
-    .tour-marker.label-hidden:hover .tour-marker-label,
-    .tour-marker.label-hidden.active .tour-marker-label { visibility: visible; }
-    .tour-marker:hover, .tour-marker.active { z-index: 10; }
-    .tour-marker:hover .tour-marker-label { box-shadow: 0 4px 10px rgba(0,0,0,0.25); }
-    .tour-marker.active .tour-marker-label {
-        font-size: 0.85rem;
-        box-shadow: 0 4px 10px rgba(232,163,61,0.4);
-        border: 2px solid #e8a33d;
-    }
-    @keyframes tour-marker-pulse {
-        0% { box-shadow: 0 0 0 4px rgba(232,163,61,0.35), 0 4px 14px rgba(0,0,0,0.45); }
-        70% { box-shadow: 0 0 0 10px rgba(232,163,61,0), 0 4px 14px rgba(0,0,0,0.45); }
-        100% { box-shadow: 0 0 0 4px rgba(232,163,61,0), 0 4px 14px rgba(0,0,0,0.45); }
-    }
-    .tour-marker-icon { width: 1.05rem; height: 1.05rem; border-radius: 9999px; object-fit: cover; flex-shrink: 0; }
-    .tour-marker-icon-emoji {
-        display: flex; align-items: center; justify-content: center; font-size: 0.85rem; line-height: 1;
-        width: 1.05rem; height: 1.05rem; flex-shrink: 0; overflow: hidden; white-space: nowrap;
+
+    @media (prefers-reduced-motion: reduce) {
+        .christmas-snow, .christmas-lights { animation: none; }
     }
 </style>
+@endif
 @endpush
 
 @section('content')
 
 <!-- Hero -->
-<div class="bg-hero-gradient relative overflow-hidden" style="min-height: 340px;">
+<div class="{{ $isChristmas ? 'christmas-hero' : 'bg-hero-gradient' }} relative overflow-hidden" style="min-height: 340px;">
     @if($tour->cover_image_url)
         <img src="{{ $tour->cover_image_url }}" alt="{{ $tour->title }}"
-            class="absolute inset-0 w-full h-full object-cover opacity-40">
+            class="absolute inset-0 w-full h-full object-cover {{ $isChristmas ? 'opacity-30' : 'opacity-40' }}">
     @endif
     <div class="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent"></div>
+    @if($isChristmas)
+        <div class="christmas-snow" aria-hidden="true"></div>
+        <div class="christmas-snow layer-2" aria-hidden="true"></div>
+        <div class="christmas-lights" aria-hidden="true"></div>
+    @endif
 
     <!-- Back link -->
     <div class="relative z-10 pt-24 px-4 max-w-7xl mx-auto">
-        <a href="{{ route('tours.index') }}"
+        <a href="{{ $backUrl ?? route('tours.index') }}"
             class="inline-flex items-center gap-1.5 text-white/70 hover:text-white text-sm transition-colors">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
             </svg>
-            All Tours
+            {{ $backLabel ?? 'All Tours' }}
         </a>
     </div>
 
     <!-- Hero content -->
     <div class="relative z-10 max-w-7xl mx-auto px-4 pb-10 pt-6">
-        @php
-            $tourTypeLabel = App\Models\Tour::getTourTypes()[$tour->tour_type] ?? ucfirst($tour->tour_type);
-            $tourTypeText = explode(' ', $tourTypeLabel, 2)[1] ?? $tourTypeLabel;
-        @endphp
         <div class="flex flex-wrap items-center gap-2 mb-4">
             <span class="inline-flex items-center gap-1.5 rounded-full bg-white/15 border border-white/25 backdrop-blur-sm px-3 py-1 text-xs font-semibold text-white/90">
                 @if($tour->icon_image_url)
@@ -167,12 +150,12 @@
             </span>
             @if($tour->is_featured)
                 <span class="inline-flex items-center rounded-full bg-accent-500 px-3 py-1 text-xs font-semibold text-white">
-                    ★ Featured Tour
+                    ★ Featured {{ $isChristmas ? 'Event' : 'Tour' }}
                 </span>
             @endif
         </div>
 
-        <h1 class="text-3xl md:text-5xl font-bold text-white mb-3 leading-tight drop-shadow-lg">
+        <h1 class="{{ $isChristmas ? 'christmas-title text-4xl md:text-6xl' : 'text-3xl md:text-5xl' }} font-bold text-white mb-3 leading-tight drop-shadow-lg">
             {{ $tour->title }}
         </h1>
         @if($tour->tagline)
@@ -185,7 +168,7 @@
                 <svg class="w-4 h-4 text-sand-100" fill="currentColor" viewBox="0 0 20 20">
                     <path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd"/>
                 </svg>
-                <span><strong class="text-white">{{ $tour->stops->count() }}</strong> stop{{ $tour->stops->count() !== 1 ? 's' : '' }}</span>
+                <span><strong class="text-white">{{ $stopCount }}</strong> {{ $stopNoun }}</span>
             </div>
             @if($tour->duration_estimate)
                 <div class="flex items-center gap-2 rounded-full bg-white/10 backdrop-blur-sm border border-white/15 px-3 py-1.5 text-sm text-white/90">
@@ -208,7 +191,7 @@
                     <svg class="w-4 h-4 text-sand-100" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/>
                     </svg>
-                    <strong class="text-white">{{ number_format($tour->total_driving_km, 0) }} km</strong><span class="text-white/60 ml-1">drive</span>
+                    <strong class="text-white">{{ number_format($tour->total_driving_km, $isChristmas ? 1 : 0) }} km</strong><span class="text-white/60 ml-1">{{ $isChristmas ? 'route' : 'drive' }}</span>
                 </div>
             @endif
             <button type="button" data-share-open="tour-share"
@@ -228,8 +211,17 @@
         <div class="lg:grid lg:grid-cols-5 lg:gap-8">
 
             <!-- Map (left 3/5) -->
-            <div id="tour-map-sticky" class="lg:col-span-3 w-auto md:w-full h-[300px] md:h-[400px] lg:h-[560px] md:sticky md:top-20 lg:top-24 z-20 pt-4 pb-6 px-[5px] md:p-0 bg-white rounded-none md:rounded-2xl -mx-4 md:mx-0">
+            <div id="tour-map-sticky" class="lg:col-span-3 w-auto md:w-full h-[300px] md:h-[400px] lg:h-[560px] relative md:sticky md:top-20 lg:top-24 z-20 pt-4 pb-6 px-[5px] md:p-0 bg-white rounded-none md:rounded-2xl -mx-4 md:mx-0">
                 <div id="tour-map" class="w-full h-full rounded-none md:rounded-2xl overflow-hidden shadow-lg border border-gray-200 bg-gray-200"></div>
+
+                <!-- Reset view -->
+                <button type="button" id="tour-map-reset" title="Show the whole route"
+                    class="absolute bottom-9 left-4 md:bottom-3 md:left-3 z-10 inline-flex items-center gap-1.5 bg-white rounded-xl shadow-md px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-50 transition-colors border border-gray-200">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4h4M20 8V4h-4M4 16v4h4M20 16v4h-4"/>
+                    </svg>
+                    Reset view
+                </button>
 
                 <!-- Map Style Switcher -->
                 <div class="absolute top-7 right-14 md:top-3 z-10">
@@ -278,7 +270,7 @@
                     <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 mb-6"
                         x-data="{ open: false, clamped: false }"
                         x-init="$nextTick(() => clamped = $refs.desc.scrollHeight > $refs.desc.clientHeight + 1)">
-                        <h2 class="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-2">About This Tour</h2>
+                        <h2 class="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-2">About This {{ $isChristmas ? 'Event' : 'Tour' }}</h2>
                         <p x-ref="desc" :class="{ 'line-clamp-4': !open }"
                             class="text-gray-700 text-sm leading-relaxed whitespace-pre-line line-clamp-4">{{ $tour->description }}</p>
                         <button type="button" x-show="clamped" x-cloak @click="open = !open"
@@ -296,48 +288,25 @@
 
                 <div class="flex items-center justify-between mb-4">
                     <h2 class="text-base font-bold text-gray-900">
-                        Tour Stops
+                        {{ $stopsHeading }}
                         <span class="ml-1.5 text-xs font-semibold text-forest-700 bg-forest-50 border border-forest-200 rounded-full px-2 py-0.5">
-                            {{ $tour->stops->count() }}
+                            {{ $stopCount }}
                         </span>
                     </h2>
-                    <p class="text-xs text-gray-400">Click a stop to zoom the map</p>
+                    @if($mappedStops->isNotEmpty())
+                        <p class="text-xs text-gray-400">Click {{ $isActivityMap ? 'an activity' : 'a stop' }} to zoom the map</p>
+                    @endif
                 </div>
-
-                @php
-                /**
-                 * Returns the best [lat, lng] for a tour stop:
-                 * 1. The stop's linked feature's coordinates (when trail_feature_id is set)
-                 * 2. First route_coordinates point of the trail (GPX linestring)
-                 * 3. First feature with coordinates on the trail
-                 * 4. Trail's start_coordinates
-                 */
-                $bestCoords = function (App\Models\TourStop $stop): ?array {
-                    if ($stop->trail_feature_id && $stop->feature?->coordinates) {
-                        return $stop->feature->coordinates;
-                    }
-                    if ($stop->facility_id && $stop->facility) {
-                        return [(float) $stop->facility->latitude, (float) $stop->facility->longitude];
-                    }
-                    $trail = $stop->trail;
-                    if (!$trail) { return null; }
-                    if (!empty($trail->route_coordinates) && count($trail->route_coordinates) > 0) {
-                        return $trail->route_coordinates[0];
-                    }
-                    $feature = $trail->features->whereNotNull('coordinates')->first();
-                    if ($feature) { return $feature->coordinates; }
-                    return $trail->start_coordinates ?: null;
-                };
-                @endphp
 
                 <!-- Timeline -->
                 <div class="space-y-0">
-                    @foreach($tour->stops as $stop)
+                    @foreach($mappedStops as $stopIndex => $stop)
                         @php
                             $trail = $stop->trail;
-                            $displayName = $stop->stop_label ?: ($stop->feature?->name ?? $stop->facility?->name ?? $trail?->name ?? 'Stop ' . $loop->iteration);
-                            $coords = $bestCoords($stop);
+                            $displayName = $stop->displayName('Stop ' . $loop->iteration);
+                            $coords = $stop->coordinates();
                             $coordsJs = $coords ? '[' . implode(',', $coords) . ']' : 'null';
+                            $thumbnailUrl = $stop->image_url ?? $trail?->cover_image_url;
                         @endphp
                         <div class="stop-timeline-item relative pl-12 pb-4">
                             <!-- Timeline line -->
@@ -345,20 +314,18 @@
                                 <div class="timeline-connector"></div>
                             @endif
 
-                            <!-- Number badge -->
-                            <div class="absolute left-0 top-0 flex h-11 w-11 items-center justify-center rounded-full text-white text-sm font-bold shadow-md border-2 border-white ring-2 ring-forest-100" style="background: linear-gradient(145deg, #2C5F5D, #1d4644);">
-                                {{ $loop->iteration }}
-                            </div>
+                            <!-- Number badge, or the activity's icon -->
+                            @include('tours._stop-badge', ['stop' => $stop, 'number' => $loop->iteration])
 
                             <!-- Card -->
                             <div class="stop-card bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden cursor-pointer"
-                                id="stop-card-{{ $loop->index }}"
-                                onclick="focusStop({{ $loop->index }}, {{ $coordsJs }})">
+                                id="stop-card-{{ $stopIndex }}"
+                                onclick="focusStop({{ $stopIndex }}, {{ $coordsJs }})">
 
                                 <!-- Summary row (always visible) -->
                                 <div class="flex items-center gap-3 p-3">
-                                    @if($trail?->cover_image_url ?? false)
-                                        <img src="{{ $trail->cover_image_url }}" alt="{{ $displayName }}"
+                                    @if($thumbnailUrl)
+                                        <img src="{{ $thumbnailUrl }}" alt="{{ $displayName }}"
                                             class="h-14 w-14 flex-shrink-0 rounded-lg object-cover bg-gray-100">
                                     @endif
 
@@ -367,7 +334,7 @@
 
                                         <div class="flex flex-wrap items-center gap-1.5 mt-1">
                                             @if($stop->estimated_visit_time)
-                                                <span class="text-xs text-gray-400 flex items-center gap-1">
+                                                <span class="text-xs {{ $isChristmas ? 'font-semibold text-red-700' : 'text-gray-400' }} flex items-center gap-1">
                                                     <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                                                     {{ $stop->estimated_visit_time }}
                                                 </span>
@@ -399,14 +366,16 @@
 
                                 <!-- Details -->
                                 <div class="px-3.5 pb-3.5">
-                                    @if($trail && $trail->description)
+                                    @if($stop->description)
+                                        <p class="text-xs text-gray-600 leading-relaxed line-clamp-4 whitespace-pre-line">{{ $stop->description }}</p>
+                                    @elseif($trail && $trail->description)
                                         <p class="text-xs text-gray-500 leading-relaxed line-clamp-3 whitespace-pre-line">{{ strip_tags($trail->description) }}</p>
                                     @elseif($stop->facility && $stop->facility->description)
                                         <p class="text-xs text-gray-500 leading-relaxed line-clamp-3 whitespace-pre-line">{{ strip_tags($stop->facility->description) }}</p>
                                     @endif
 
                                     @if($stop->driving_notes)
-                                        <p class="text-xs text-blue-600 mt-2 flex items-start gap-1">
+                                        <p class="text-xs {{ $isChristmas ? 'text-gray-600' : 'text-blue-600' }} mt-2 flex items-start gap-1">
                                             <svg class="w-3 h-3 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/></svg>
                                             {{ $stop->driving_notes }}
                                         </p>
@@ -420,7 +389,7 @@
                                                 Trail Details
                                                 <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
                                             </a>
-                                            <span class="text-xs text-gray-400">Stop {{ $loop->iteration }} of {{ $tour->stops->count() }}</span>
+                                            <span class="text-xs text-gray-400">Stop {{ $loop->iteration }} of {{ $mappedStops->count() }}</span>
                                         </div>
                                     @elseif($stop->facility)
                                         <div class="mt-3 pt-3 border-t border-gray-100 flex items-center justify-between">
@@ -430,7 +399,18 @@
                                                 View on Map
                                                 <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
                                             </a>
-                                            <span class="text-xs text-gray-400">Stop {{ $loop->iteration }} of {{ $tour->stops->count() }}</span>
+                                            <span class="text-xs text-gray-400">Stop {{ $loop->iteration }} of {{ $mappedStops->count() }}</span>
+                                        </div>
+                                    @elseif($coords)
+                                        <div class="mt-3 pt-3 border-t border-gray-100 flex items-center justify-between">
+                                            <a href="https://www.google.com/maps/dir/?api=1&destination={{ $coords[0] }},{{ $coords[1] }}"
+                                                target="_blank" rel="noopener"
+                                                onclick="event.stopPropagation()"
+                                                class="text-xs font-semibold text-forest-700 hover:text-accent-600 flex items-center gap-1 transition-colors">
+                                                Get Directions
+                                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                                            </a>
+                                            <span class="text-xs text-gray-400">{{ $isActivityMap ? 'Activity' : 'Stop' }} {{ $loop->iteration }} of {{ $mappedStops->count() }}</span>
                                         </div>
                                     @endif
                                 </div>
@@ -439,288 +419,54 @@
                     @endforeach
                 </div>
 
+                @if($roamingStops->isNotEmpty())
+                    <!-- Roaming activities: no fixed spot, so listed without a map pin -->
+                    <div class="mt-6">
+                        <h2 class="text-base font-bold text-gray-900 mb-1">Around downtown</h2>
+                        <p class="text-xs text-gray-400 mb-4">These happen all around the event — keep an eye out!</p>
+                        <div class="grid gap-3">
+                            @foreach($roamingStops as $stop)
+                                <div class="flex gap-3 rounded-xl border border-dashed border-gray-300 bg-white p-3 shadow-sm">
+                                    @include('tours._stop-badge', ['stop' => $stop, 'number' => null, 'inline' => true])
+                                    <div class="min-w-0 flex-1">
+                                        <h3 class="font-bold text-gray-900 text-sm leading-snug">{{ $stop->displayName() }}</h3>
+                                        @if($stop->estimated_visit_time)
+                                            <p class="text-xs font-semibold {{ $isChristmas ? 'text-red-700' : 'text-gray-500' }} mt-0.5">{{ $stop->estimated_visit_time }}</p>
+                                        @endif
+                                        @if($stop->description)
+                                            <p class="text-xs text-gray-600 leading-relaxed whitespace-pre-line mt-1">{{ $stop->description }}</p>
+                                        @endif
+                                        @if($stop->driving_notes)
+                                            <p class="text-xs text-gray-500 mt-1">{{ $stop->driving_notes }}</p>
+                                        @endif
+                                    </div>
+                                    @if($stop->image_url)
+                                        <img src="{{ $stop->image_url }}" alt="{{ $stop->displayName() }}"
+                                            class="h-14 w-14 flex-shrink-0 rounded-lg object-cover bg-gray-100">
+                                    @endif
+                                </div>
+                            @endforeach
+                        </div>
+                    </div>
+                @endif
+
             </div>
 
         </div>
     </div>
 </div>
 
-@php
-$tourStopsData = $tour->stops->values()->map(fn ($s, $i) => [
-    'index' => $i,
-    'label' => $s->stop_label ?: ($s->feature?->name ?? $s->facility?->name ?? $s->trail?->name ?? 'Stop'),
-    'coords' => $bestCoords($s),
-])->values();
-@endphp
-
-<script src="https://api.mapbox.com/mapbox-gl-js/v3.10.0/mapbox-gl.js"></script>
-<script>
-mapboxgl.accessToken = @json($mapboxToken);
-
-const tourStops = @json($tourStopsData);
-const drivingRoute = @json($tour->driving_route_coordinates);
-const tourIconImage = @json($tour->icon_image_url);
-// Guard against bad data (e.g. a stray non-emoji string saved to the tour's icon field)
-// blowing out the small icon slot in map marker labels — cap to a few characters.
-const tourIconEmoji = (@json($tour->tour_icon) || '📍').slice(0, 4);
-
-const map = new mapboxgl.Map({
-    container: 'tour-map',
-    style: 'mapbox://styles/mapbox/outdoors-v12',
-    center: [-127.17, 54.78],
-    zoom: 9,
-});
-
-map.addControl(new mapboxgl.NavigationControl(), 'top-right');
-
-const activeMarkers = [];
-
-function addRouteAndMarkers() {
-    if (drivingRoute && drivingRoute.length > 1) {
-        if (!map.getSource('tour-route')) {
-            map.addSource('tour-route', {
-                type: 'geojson',
-                data: { type: 'Feature', geometry: { type: 'LineString', coordinates: drivingRoute } },
-            });
-        }
-        if (!map.getLayer('tour-route-line')) {
-            map.addLayer({
-                id: 'tour-route-line',
-                type: 'line',
-                source: 'tour-route',
-                paint: { 'line-color': '#2C5F5D', 'line-width': 3, 'line-dasharray': [2, 1] },
-            });
-        }
-    }
-
-    activeMarkers.forEach(m => m.remove());
-    activeMarkers.length = 0;
-
-    const bounds = new mapboxgl.LngLatBounds();
-    let hasCoords = false;
-
-    tourStops.forEach((stop, i) => {
-        if (!stop.coords || stop.coords.length < 2) { return; }
-
-        const [lat, lng] = stop.coords;
-        const lngLat = [lng, lat];
-
-        const el = document.createElement('div');
-        el.className = 'tour-marker';
-        el.id = 'tour-marker-' + i;
-        el.title = stop.label;
-        const iconHtml = tourIconImage
-            ? `<img src="${tourIconImage}" alt="" class="tour-marker-icon">`
-            : `<span class="tour-marker-icon tour-marker-icon-emoji">${tourIconEmoji}</span>`;
-
-        el.innerHTML = `
-            <div class="tour-marker-badge">${i + 1}</div>
-            <div class="tour-marker-label">${iconHtml}<span>${stop.label}</span></div>
-        `;
-        el.addEventListener('click', () => focusStop(i, stop.coords));
-
-        const marker = new mapboxgl.Marker({ element: el, anchor: 'center' })
-            .setLngLat(lngLat)
-            .addTo(map);
-
-        activeMarkers.push(marker);
-        bounds.extend(lngLat);
-        hasCoords = true;
-    });
-
-    if (hasCoords) {
-        const isSmallScreen = window.innerWidth < 768;
-        const padding = isSmallScreen
-            ? { top: 40, bottom: 30, left: 30, right: 50 }
-            : { top: 60, bottom: 50, left: 50, right: 70 };
-        map.fitBounds(bounds, { padding, maxZoom: 17, duration: 0 });
-    }
-    layoutLabels();
-}
-
-/**
- * Place each stop's name on the left or right of its badge. A stop whose
- * nearest neighbour sits to its right puts its name on the left (and vice
- * versa), so side-by-side stops spread their names outwards. If the preferred
- * side would collide with another label, the other side is used, then the name
- * is nudged up/down as a last resort. Stops whose badges overlap at the current
- * zoom also split left/right. Only when every spot is blocked is the label
- * hidden; hover/select still reveals it. The selected stop is placed first.
- */
-function layoutLabels() {
-    const badgeRadius = 17;
-    const badgeCore = 6;
-    const tuck = 9;
-    const gap = 3;
-    const neighbourRange = 160;
-    const container = map.getContainer();
-    const viewWidth = container.clientWidth;
-    const viewHeight = container.clientHeight;
-    const intersects = (a, b) => a.x1 < b.x2 && a.x2 > b.x1 && a.y1 < b.y2 && a.y2 > b.y1;
-
-    const items = activeMarkers.map((marker) => {
-        const el = marker.getElement();
-        const p = map.project(marker.getLngLat());
-        const label = el.querySelector('.tour-marker-label');
-        return {
-            el, p, label,
-            width: label ? label.offsetWidth : 0,
-            height: label ? label.offsetHeight : 0,
-            // Only the badge's core blocks labels, so a name may brush past a
-            // neighbouring badge's edge instead of being pushed away from it.
-            badge: { x1: p.x - badgeCore, x2: p.x + badgeCore, y1: p.y - badgeCore, y2: p.y + badgeCore },
-        };
-    });
-
-    const distance = (a, b) => Math.hypot(a.p.x - b.p.x, a.p.y - b.p.y);
-    // Badges this close practically sit on top of each other at the current zoom.
-    const overlapRange = badgeRadius * 2;
-
-    const nearestNeighbour = (it) => {
-        let nearest = null;
-        let nearestDist = neighbourRange;
-        items.forEach((other) => {
-            if (other === it) { return; }
-            const dist = distance(it, other);
-            if (dist < nearestDist) { nearest = other; nearestDist = dist; }
-        });
-        return nearest;
-    };
-
-    const taken = items.map((it) => ({ rect: it.badge, owner: it }));
-    const ordered = [...items].sort((a, b) => b.el.classList.contains('active') - a.el.classList.contains('active'));
-
-    ordered.forEach((it) => {
-        if (!it.label) { return; }
-        const w = it.width;
-        const h = it.height;
-        const nudge = h / 2 + 3;
-
-        const neighbour = nearestNeighbour(it);
-        const isStacked = neighbour && distance(it, neighbour) < overlapRange;
-
-        // Spread neighbouring stops outwards: the western one puts its name on
-        // the left, the eastern one on the right. For stops stacked almost on top
-        // of each other, the upper one breaks a tie by taking the left.
-        const neighbourIsEast = neighbour && (
-            neighbour.p.x > it.p.x + 1
-            || (isStacked && Math.abs(neighbour.p.x - it.p.x) <= 1 && neighbour.p.y > it.p.y)
-        );
-        const sides = neighbourIsEast ? ['left', 'right'] : ['right', 'left'];
-        // Nudging up/down is only a last resort when neither side has room.
-        const nudges = [0, -nudge, nudge, -nudge * 2, nudge * 2];
-
-        // Offsets of the label's top-left corner from the badge centre.
-        const makeCandidate = (side, dy) => {
-            const x = side === 'right' ? tuck : -tuck - w;
-            const y = -h / 2 + dy;
-            const box = { x1: it.p.x + x, x2: it.p.x + x + w, y1: it.p.y + y, y2: it.p.y + y + h };
-            return {
-                name: side, x, y, nudged: dy !== 0, box,
-                rect: { x1: box.x1 - gap, x2: box.x2 + gap, y1: box.y1 - gap, y2: box.y2 + gap },
-            };
-        };
-        // Stacked stops keep their own side (nudging if needed) so the two
-        // names never cross over. If their side has no room (e.g. map edge),
-        // they share the neighbour's side, nudged away from it (upper one up,
-        // lower one down). Other stops try both sides before nudging.
-        const awayFromNeighbour = isStacked && it.p.y > neighbour.p.y ? 1 : -1;
-        const sharedSideNudges = [awayFromNeighbour * nudge, awayFromNeighbour * nudge * 2];
-        const candidates = isStacked
-            ? [
-                ...nudges.map((dy) => makeCandidate(sides[0], dy)),
-                ...sharedSideNudges.map((dy) => makeCandidate(sides[1], dy)),
-            ]
-            : nudges.flatMap((dy) => sides.map((side) => makeCandidate(side, dy)));
-
-        // Labels keep a small gap from other labels but may sit right up against
-        // a badge's core. Badges sitting under this one are ignored entirely.
-        const isFree = (c) => taken.every((t) => {
-            if (t.owner === it || (t.owner && distance(it, t.owner) < overlapRange)) { return true; }
-            return !intersects(t.owner ? c.box : c.rect, t.rect);
-        });
-        const isInView = (rect) => rect.x1 >= 0 && rect.x2 <= viewWidth && rect.y1 >= 0 && rect.y2 <= viewHeight;
-
-        const choice = candidates.find((c) => isFree(c) && isInView(c.box))
-            ?? candidates.find((c) => isFree(c))
-            ?? null;
-
-        it.el.classList.toggle('label-hidden', choice === null);
-        const placed = choice ?? candidates[0];
-        it.el.classList.toggle('label-left', placed.name === 'left');
-        it.el.classList.toggle('label-detached', placed.nudged);
-
-        it.label.style.left = (badgeRadius + placed.x) + 'px';
-        it.label.style.top = (badgeRadius + placed.y) + 'px';
-        it.label.style.right = 'auto';
-        it.label.style.transform = 'none';
-
-        if (choice) { taken.push({ rect: choice.rect, owner: null }); }
-    });
-}
-
-map.on('load', addRouteAndMarkers);
-map.on('moveend', layoutLabels);
-map.on('resize', layoutLabels);
-
-// Map style switcher
-const layersToggle = document.getElementById('tour-layers-toggle');
-const layersDropdown = document.getElementById('tour-layers-dropdown');
-
-layersToggle.addEventListener('click', (e) => {
-    e.stopPropagation();
-    layersDropdown.classList.toggle('hidden');
-});
-
-document.addEventListener('click', (e) => {
-    if (!layersToggle.contains(e.target) && !layersDropdown.contains(e.target)) {
-        layersDropdown.classList.add('hidden');
-    }
-});
-
-document.querySelectorAll('.tour-layer-card').forEach(btn => {
-    btn.addEventListener('click', () => {
-        const style = btn.dataset.style;
-        if (!style) { return; }
-        document.querySelectorAll('.tour-layer-card').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        layersDropdown.classList.add('hidden');
-        map.setStyle(style);
-        map.once('styledata', addRouteAndMarkers);
-    });
-});
-
-function focusStop(index, coords) {
-    const card = document.getElementById('stop-card-' + index);
-
-    document.querySelectorAll('.stop-card').forEach((c) => {
-        c.classList.toggle('active', c === card);
-    });
-    document.querySelectorAll('.tour-marker').forEach((m) => {
-        const i = Number(m.id.replace('tour-marker-', ''));
-        m.classList.toggle('active', i === index);
-        // Mapbox positions this element directly (no per-marker wrapper), so
-        // z-index must be set on it, not a parent, to beat sibling markers.
-        m.style.zIndex = i === index ? '10' : '';
-    });
-    layoutLabels();
-
-    // Scroll the active stop card into view
-    if (card) { card.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }
-
-    if (!coords || coords.length < 2) { return; }
-    const [lat, lng] = coords;
-    map.flyTo({ center: [lng, lat], zoom: Math.max(map.getZoom(), 16), duration: 800 });
-}
-</script>
+@include('tours._map-script')
 
 @include('partials.share-modal', [
     'shareId' => 'tour-share',
-    'kicker' => 'Share This Tour',
+    'kicker' => $isChristmas ? 'Share This Event' : 'Share This Tour',
     'title' => $tour->title,
     'subtitle' => $tour->tagline,
-    'shareText' => 'Check out the '.$tour->title.' tour in Smithers, BC! 🥾⛰️',
-    'emailSubject' => 'Check out this tour: '.$tour->title,
-    'emailBody' => 'I found this tour and thought you might be interested!'."\n\n".'Tour: '.$tour->title.($tour->tagline ? "\n".$tour->tagline : ''),
+    'shareText' => $isChristmas
+        ? 'Check out the '.$tour->title.' in Smithers, BC! 🎄🚚'
+        : 'Check out the '.$tour->title.' tour in Smithers, BC! 🥾⛰️',
+    'emailSubject' => ($isChristmas ? 'Check out this event: ' : 'Check out this tour: ').$tour->title,
+    'emailBody' => 'I found this '.($isChristmas ? 'event' : 'tour').' and thought you might be interested!'."\n\n".($isChristmas ? 'Event: ' : 'Tour: ').$tour->title.($tour->tagline ? "\n".$tour->tagline : ''),
 ])
 @endsection

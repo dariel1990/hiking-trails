@@ -1,15 +1,54 @@
 <script src="https://api.mapbox.com/mapbox-gl-js/v3.10.0/mapbox-gl.js"></script>
 
 <script>
+let tourStopUid = 0;
+
+/**
+ * Build a stop object for the Alpine form with every field present, so all
+ * stop types (trail, feature, facility, pinned, roaming) behave the same.
+ * `uid` keys the x-for rows so a selected photo file moves with its stop.
+ */
+function makeTourStop(fields) {
+    return {
+        uid: ++tourStopUid,
+        trail_id: null,
+        feature_id: null,
+        facility_id: null,
+        latitude: null,
+        longitude: null,
+        item_type: 'trail',
+        feature_type: null,
+        facility_type_label: null,
+        name: '',
+        start_coordinates: null,
+        stop_label: '',
+        estimated_visit_time: '',
+        driving_notes: '',
+        icon: '',
+        icon_image: '',
+        icon_image_url: null,
+        description: '',
+        existing_image: '',
+        image_url: null,
+        new_image_preview: null,
+        remove_image: false,
+        showDetails: false,
+        showIconPicker: false,
+        ...fields,
+    };
+}
+
 function tourForm(availableTrails, availableFeatures, availableFacilities, existingStops) {
     return {
         availableTrails: availableTrails,
         availableFeatures: availableFeatures,
         availableFacilities: availableFacilities,
-        stops: existingStops.map(s => ({
+        stops: existingStops.map(s => makeTourStop({
             trail_id: s.trail_id,
             feature_id: s.feature_id || null,
             facility_id: s.facility_id || null,
+            latitude: s.latitude ?? null,
+            longitude: s.longitude ?? null,
             item_type: s.item_type || 'trail',
             feature_type: s.feature_type || null,
             facility_type_label: s.facility_type_label || null,
@@ -18,13 +57,62 @@ function tourForm(availableTrails, availableFeatures, availableFacilities, exist
             stop_label: s.stop_label || '',
             estimated_visit_time: s.estimated_visit_time || '',
             driving_notes: s.driving_notes || '',
+            icon: s.icon || '',
+            icon_image: s.icon_image || '',
+            icon_image_url: s.icon_image_url || null,
+            description: s.description || '',
+            existing_image: s.existing_image || '',
+            image_url: s.image_url || null,
+            showDetails: Boolean(s.icon || s.icon_image || s.description || s.existing_image),
         })),
         search: '',
+        iconPresets: ['🐴', '🎅', '📸', '🤶', '🎵', '🎶', '🎨', '🔥', '🍿', '🛍️', '🎄', '☕', '🍪', '🎁', '⛸️', '🚚'],
+        iconGallery: [],
+        iconGalleryStatus: '',
+        iconGalleryLoaded: false,
+
+        init() {
+            window.tourRouteEditor.attachForm(this);
+            this.$watch('stops', () => window.tourRouteEditor.renderStops());
+        },
+
+        /** Pinned and roaming stops are custom activities that need their own name. */
+        isCustomStop(stop) {
+            return stop.item_type === 'pinned' || stop.item_type === 'roaming';
+        },
+
+        /**
+         * Add a stop pinned at a clicked map location (e.g. a parade street corner).
+         */
+        addPinnedStop(lat, lng) {
+            const roundedLat = Number(lat.toFixed(7));
+            const roundedLng = Number(lng.toFixed(7));
+            this.stops.push(makeTourStop({
+                latitude: roundedLat,
+                longitude: roundedLng,
+                item_type: 'pinned',
+                name: 'Pinned on map',
+                start_coordinates: [roundedLat, roundedLng],
+            }));
+        },
+
+        /** Add an activity with no fixed spot (listed on the page, no map pin). */
+        addRoamingStop() {
+            this.stops.push(makeTourStop({ item_type: 'roaming', name: 'Roaming activity' }));
+        },
+
+        movePinnedStop(index, lat, lng) {
+            const stop = this.stops[index];
+            if (!stop || stop.item_type !== 'pinned') { return; }
+            stop.latitude = Number(lat.toFixed(7));
+            stop.longitude = Number(lng.toFixed(7));
+            stop.start_coordinates = [stop.latitude, stop.longitude];
+        },
 
         get filteredItems() {
             if (this.search.length < 2) { return []; }
             const q = this.search.toLowerCase();
-            const existingTrailIds = this.stops.filter(s => !s.feature_id && !s.facility_id).map(s => s.trail_id);
+            const existingTrailIds = this.stops.filter(s => s.item_type === 'trail').map(s => s.trail_id);
             const existingFeatureIds = this.stops.filter(s => s.feature_id).map(s => s.feature_id);
             const existingFacilityIds = this.stops.filter(s => s.facility_id).map(s => s.facility_id);
 
@@ -45,47 +133,29 @@ function tourForm(availableTrails, availableFeatures, availableFacilities, exist
 
         addStop(item) {
             if (item.item_type === 'feature') {
-                this.stops.push({
+                this.stops.push(makeTourStop({
                     trail_id: item.trail_id,
                     feature_id: item.id,
-                    facility_id: null,
                     item_type: 'feature',
                     feature_type: item.feature_type,
-                    facility_type_label: null,
                     name: item.name,
                     start_coordinates: item.coordinates,
-                    stop_label: '',
-                    estimated_visit_time: '',
-                    driving_notes: '',
-                });
+                }));
             } else if (item.item_type === 'facility') {
-                this.stops.push({
-                    trail_id: null,
-                    feature_id: null,
+                this.stops.push(makeTourStop({
                     facility_id: item.id,
                     item_type: 'facility',
-                    feature_type: null,
                     facility_type_label: item.facility_type_label,
                     name: item.name,
                     start_coordinates: item.start_coordinates,
-                    stop_label: '',
-                    estimated_visit_time: '',
-                    driving_notes: '',
-                });
+                }));
             } else {
-                this.stops.push({
+                this.stops.push(makeTourStop({
                     trail_id: item.id,
-                    feature_id: null,
-                    facility_id: null,
                     item_type: 'trail',
-                    feature_type: null,
-                    facility_type_label: null,
                     name: item.name,
                     start_coordinates: item.start_coordinates,
-                    stop_label: '',
-                    estimated_visit_time: '',
-                    driving_notes: '',
-                });
+                }));
             }
             this.search = '';
         },
@@ -108,6 +178,87 @@ function tourForm(availableTrails, availableFeatures, availableFacilities, exist
             this.stops[index] = this.stops[index + 1];
             this.stops[index + 1] = temp;
             this.stops = [...this.stops];
+        },
+
+        // ── Stop icon (emoji, or an image from the shared icon gallery) ──────
+
+        setStopEmoji(stop, emoji) {
+            stop.icon = emoji;
+            stop.icon_image = '';
+            stop.icon_image_url = null;
+        },
+
+        clearStopIcon(stop) {
+            stop.icon = '';
+            stop.icon_image = '';
+            stop.icon_image_url = null;
+        },
+
+        toggleIconPicker(stop) {
+            stop.showIconPicker = !stop.showIconPicker;
+            if (stop.showIconPicker) { this.loadIconGallery(); }
+        },
+
+        async loadIconGallery() {
+            if (this.iconGalleryLoaded) { return; }
+            this.iconGalleryStatus = 'Loading icons…';
+            try {
+                const res = await fetch('{{ route("admin.trails.feature-icons") }}', { headers: { 'Accept': 'application/json' } });
+                this.iconGallery = await res.json();
+                this.iconGalleryLoaded = true;
+                this.iconGalleryStatus = this.iconGallery.length ? '' : 'No icons uploaded yet.';
+            } catch {
+                this.iconGalleryStatus = 'Could not load icons.';
+            }
+        },
+
+        chooseStopIconImage(stop, icon) {
+            stop.icon_image = icon.path;
+            stop.icon_image_url = icon.url;
+            stop.showIconPicker = false;
+        },
+
+        async uploadStopIcon(stop, event) {
+            const file = event.target.files && event.target.files[0];
+            if (!file) { return; }
+            this.iconGalleryStatus = 'Uploading…';
+
+            const fd = new FormData();
+            fd.append('icon', file);
+            fd.append('_token', document.querySelector('meta[name="csrf-token"]').content);
+
+            try {
+                const res = await fetch('{{ route("admin.trails.feature-icons.upload") }}', {
+                    method: 'POST',
+                    body: fd,
+                    headers: { 'Accept': 'application/json' },
+                });
+                const data = await res.json();
+                if (!res.ok || !data.path) { throw new Error('upload failed'); }
+                this.iconGallery = [data, ...this.iconGallery];
+                this.iconGalleryStatus = '';
+                this.chooseStopIconImage(stop, data);
+            } catch {
+                this.iconGalleryStatus = 'Upload failed (images up to 2 MB).';
+            }
+            event.target.value = '';
+        },
+
+        // ── Stop photo ───────────────────────────────────────────────────────
+
+        previewStopImage(stop, event) {
+            const file = event.target.files && event.target.files[0];
+            if (stop.new_image_preview) { URL.revokeObjectURL(stop.new_image_preview); }
+            stop.new_image_preview = file ? URL.createObjectURL(file) : null;
+            if (file) { stop.remove_image = false; }
+        },
+
+        removeStopImage(stop, button) {
+            const fileInput = button.closest('[data-stop-row]')?.querySelector(`input[type="file"][name$="[image]"]`);
+            if (fileInput) { fileInput.value = ''; }
+            if (stop.new_image_preview) { URL.revokeObjectURL(stop.new_image_preview); }
+            stop.new_image_preview = null;
+            stop.remove_image = true;
         },
     };
 }
@@ -196,7 +347,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
 // Compute multi-stop driving route via /api/tour-route
 async function computeTourRoute() {
-    const alpineEl = document.querySelector('[x-data]');
+    const alpineEl = document.getElementById('tour-form-root');
     if (!alpineEl || !window.Alpine) {
         alert('Page not fully loaded. Please try again.');
         return;
@@ -244,25 +395,17 @@ async function computeTourRoute() {
             return;
         }
 
-        // Store in hidden textarea
-        document.getElementById('driving_route_coordinates').value = JSON.stringify(result.coordinates);
-
-        // Fill total_driving_km
-        const kmInput = document.getElementById('total_driving_km');
-        if (kmInput && result.total_km) {
-            kmInput.value = result.total_km;
-        }
+        // Show it in the route editor (which also stores it in the hidden textarea
+        // and fills total_driving_km).
+        window.tourRouteEditor.setRoute(result.coordinates);
 
         status.textContent = `Route computed: ${result.total_km} km total driving distance.`;
-
-        // Render preview map
-        renderRoutePreview(result.coordinates, stops);
 
     } catch (err) {
         status.textContent = 'Failed to reach route service. Check your internet connection.';
     } finally {
         btn.disabled = false;
-        btn.innerHTML = `<svg class="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/></svg>Recompute Route`;
+        btn.textContent = '🚗 Recompute route through stops';
     }
 }
 
@@ -477,6 +620,7 @@ const TOUR_TYPE_ICONS = {
     fishing: '🎣',
     heritage: '🏛️',
     scenic: '🌄',
+    christmas: '🎄',
 };
 
 function syncTourTypeIcon(type) {
@@ -494,56 +638,350 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 });
 
-function renderRoutePreview(coordinates, stops) {
-    const mapEl = document.getElementById('route-map');
-    mapEl.classList.remove('hidden');
+// ── Route & Map editor ───────────────────────────────────────────────────────
+// Lets an admin draw the route by clicking along streets, pin stops anywhere,
+// snap a drawn line to real roads, and see stops + route on one map.
+// Route coordinates are kept as [lng, lat] (Mapbox order), as stored in the DB.
 
-    if (window._routePreviewMap) {
-        window._routePreviewMap.remove();
-    }
+window.tourRouteEditor = {
+    map: null,
+    form: null,
+    mode: 'none',
+    route: [],
+    history: [],
+    stopMarkers: [],
+    isReady: false,
+    maxSnapWaypoints: 50,
 
-    mapboxgl.accessToken = '{{ config('services.mapbox.access_token') }}';
-    const map = new mapboxgl.Map({
-        container: 'route-map',
-        style: 'mapbox://styles/mapbox/outdoors-v12',
-        center: coordinates[Math.floor(coordinates.length / 2)],
-        zoom: 9,
-    });
+    attachForm(form) {
+        this.form = form;
+        this.renderStops();
+    },
 
-    window._routePreviewMap = map;
+    init() {
+        const container = document.getElementById('route-map');
+        if (!container || typeof mapboxgl === 'undefined') { return; }
 
-    map.on('load', () => {
-        map.addSource('preview-route', {
-            type: 'geojson',
-            data: {
-                type: 'Feature',
-                geometry: { type: 'LineString', coordinates: coordinates },
-            },
+        const textarea = document.getElementById('driving_route_coordinates');
+        try {
+            const parsed = JSON.parse(textarea.value || '[]');
+            this.route = Array.isArray(parsed) ? parsed : [];
+        } catch {
+            this.route = [];
+        }
+
+        mapboxgl.accessToken = @json(config('services.mapbox.access_token'));
+        this.map = new mapboxgl.Map({
+            container: 'route-map',
+            style: 'mapbox://styles/mapbox/streets-v12',
+            center: [-127.17, 54.78],
+            zoom: 13,
+        });
+        this.map.addControl(new mapboxgl.NavigationControl(), 'top-right');
+
+        this.map.on('load', () => {
+            this.addArrowImage();
+            this.map.addSource('editor-route', { type: 'geojson', data: this.routeGeoJson() });
+            this.map.addLayer({
+                id: 'editor-route-line',
+                type: 'line',
+                source: 'editor-route',
+                filter: ['==', '$type', 'LineString'],
+                layout: { 'line-join': 'round', 'line-cap': 'round' },
+                paint: { 'line-color': '#B3202A', 'line-width': 4 },
+            });
+            this.map.addLayer({
+                id: 'editor-route-arrows',
+                type: 'symbol',
+                source: 'editor-route',
+                filter: ['==', '$type', 'LineString'],
+                layout: {
+                    'symbol-placement': 'line',
+                    'symbol-spacing': 70,
+                    'icon-image': 'editor-arrow',
+                    'icon-size': 0.55,
+                    'icon-allow-overlap': true,
+                    'icon-rotation-alignment': 'map',
+                },
+            });
+            this.map.addLayer({
+                id: 'editor-route-points',
+                type: 'circle',
+                source: 'editor-route',
+                filter: ['==', '$type', 'Point'],
+                paint: {
+                    'circle-radius': ['case', ['get', 'isEnd'], 6, 3.5],
+                    'circle-color': ['case', ['get', 'isStart'], '#1E5B3A', '#ffffff'],
+                    'circle-stroke-color': '#B3202A',
+                    'circle-stroke-width': 2,
+                },
+            });
+
+            this.isReady = true;
+            this.renderStops();
+            this.updateRouteUi(false);
+            this.fitToContent();
         });
 
-        map.addLayer({
-            id: 'preview-route-line',
-            type: 'line',
-            source: 'preview-route',
-            paint: { 'line-color': '#3b82f6', 'line-width': 3 },
-        });
+        this.map.on('click', (e) => this.handleMapClick(e));
+    },
 
-        // Add numbered markers for each stop
-        stops.forEach((stop, i) => {
-            if (!stop.start_coordinates || stop.start_coordinates.length < 2) { return; }
+    addArrowImage() {
+        const size = 48;
+        const canvas = document.createElement('canvas');
+        canvas.width = size;
+        canvas.height = size;
+        const ctx = canvas.getContext('2d');
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 7;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        ctx.beginPath();
+        ctx.moveTo(16, 12);
+        ctx.lineTo(32, 24);
+        ctx.lineTo(16, 36);
+        ctx.stroke();
+        this.map.addImage('editor-arrow', ctx.getImageData(0, 0, size, size), { pixelRatio: 2 });
+    },
+
+    /**
+     * The line plus vertex points. Vertices are shown only for hand-drawn
+     * routes (computed/snapped routes have hundreds of points).
+     */
+    routeGeoJson() {
+        const features = [];
+        if (this.route.length >= 2) {
+            features.push({ type: 'Feature', geometry: { type: 'LineString', coordinates: this.route }, properties: {} });
+        }
+        const showVertices = this.route.length <= 150;
+        this.route.forEach((coord, i) => {
+            const isStart = i === 0;
+            const isEnd = i === 0 || i === this.route.length - 1;
+            if (!showVertices && !isEnd) { return; }
+            features.push({ type: 'Feature', geometry: { type: 'Point', coordinates: coord }, properties: { isStart, isEnd } });
+        });
+        return { type: 'FeatureCollection', features };
+    },
+
+    toggleMode(mode) {
+        this.mode = this.mode === mode ? 'none' : mode;
+
+        document.getElementById('route-draw-btn')?.classList.toggle('ring-2', this.mode === 'draw');
+        document.getElementById('route-draw-btn')?.classList.toggle('ring-red-500', this.mode === 'draw');
+        document.getElementById('route-pin-btn')?.classList.toggle('ring-2', this.mode === 'pin');
+        document.getElementById('route-pin-btn')?.classList.toggle('ring-red-500', this.mode === 'pin');
+
+        const hint = document.getElementById('route-mode-hint');
+        const hints = {
+            draw: 'Drawing: click along the streets in parade order. Each click adds a point to the end of the route. Click "Draw route" again to stop.',
+            pin: 'Pinning: click the map to add a stop there, then type its name in the Tour Stops list. Click "Pin stop on map" again to stop.',
+        };
+        if (hint) {
+            hint.textContent = hints[this.mode] || '';
+            hint.classList.toggle('hidden', this.mode === 'none');
+        }
+
+        if (this.map) {
+            this.map.getCanvas().style.cursor = this.mode === 'none' ? '' : 'crosshair';
+        }
+    },
+
+    handleMapClick(e) {
+        if (this.mode === 'draw') {
+            this.pushHistory();
+            this.route = [...this.route, [Number(e.lngLat.lng.toFixed(6)), Number(e.lngLat.lat.toFixed(6))]];
+            this.updateRouteUi();
+        } else if (this.mode === 'pin' && this.form) {
+            this.form.addPinnedStop(e.lngLat.lat, e.lngLat.lng);
+        }
+    },
+
+    pushHistory() {
+        this.history.push(this.route.map((c) => [...c]));
+        if (this.history.length > 200) { this.history.shift(); }
+    },
+
+    undo() {
+        if (!this.history.length) { return; }
+        this.route = this.history.pop();
+        this.updateRouteUi();
+    },
+
+    clear() {
+        if (!this.route.length) { return; }
+        if (!confirm('Clear the whole route line? (Stops are kept. You can undo this.)')) { return; }
+        this.pushHistory();
+        this.route = [];
+        this.updateRouteUi();
+    },
+
+    /**
+     * Replace the route (e.g. from the route service) and frame it.
+     *
+     * @param {Array<[number, number]>} coordinates [lng, lat] pairs
+     */
+    setRoute(coordinates) {
+        this.pushHistory();
+        this.route = coordinates.map((c) => [Number(c[0]), Number(c[1])]);
+        this.updateRouteUi();
+        this.fitToContent();
+    },
+
+    /** Re-trace the current line along real roads via /api/tour-route. */
+    async snapToStreets() {
+        if (this.route.length < 2) {
+            alert('Draw at least two route points first.');
+            return;
+        }
+
+        // The route service accepts a limited number of waypoints: keep the
+        // first and last points and sample evenly in between.
+        let waypoints = this.route;
+        if (waypoints.length > this.maxSnapWaypoints) {
+            const step = (waypoints.length - 1) / (this.maxSnapWaypoints - 1);
+            waypoints = Array.from({ length: this.maxSnapWaypoints }, (_, i) => this.route[Math.round(i * step)]);
+        }
+
+        const btn = document.getElementById('route-snap-btn');
+        const status = document.getElementById('route-status');
+        btn.disabled = true;
+        status.classList.remove('hidden');
+        status.textContent = 'Snapping the route to streets…';
+
+        try {
+            const res = await fetch('/api/tour-route', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                    'Accept': 'application/json',
+                },
+                // The endpoint takes [lat, lng] waypoints.
+                body: JSON.stringify({ waypoints: waypoints.map((c) => [c[1], c[0]]) }),
+            });
+            const result = await res.json();
+
+            if (!res.ok || result.error) {
+                status.textContent = 'Could not snap to streets: ' + (result.error || 'route service error') + '. Your drawn line is unchanged.';
+                return;
+            }
+
+            this.setRoute(result.coordinates);
+            status.textContent = `Snapped to streets (${result.total_km} km). Check it follows the parade streets — use Undo to go back to your drawn line.`;
+        } catch {
+            status.textContent = 'Failed to reach the route service. Your drawn line is unchanged.';
+        } finally {
+            btn.disabled = false;
+        }
+    },
+
+    routeLengthKm() {
+        const toRad = (d) => d * Math.PI / 180;
+        let km = 0;
+        for (let i = 1; i < this.route.length; i++) {
+            const [lng1, lat1] = this.route[i - 1];
+            const [lng2, lat2] = this.route[i];
+            const dLat = toRad(lat2 - lat1);
+            const dLng = toRad(lng2 - lng1);
+            const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
+            km += 6371 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        }
+        return km;
+    },
+
+    /**
+     * Sync the map line, hidden form field, distance and button states.
+     * The saved distance field is only overwritten after an actual edit.
+     */
+    updateRouteUi(isEdit = true) {
+        const km = this.routeLengthKm();
+
+        if (isEdit) {
+            document.getElementById('driving_route_coordinates').value = JSON.stringify(this.route);
+            const kmInput = document.getElementById('total_driving_km');
+            if (kmInput) { kmInput.value = this.route.length >= 2 ? km.toFixed(1) : ''; }
+        }
+
+        document.getElementById('route-point-count').textContent = this.route.length;
+        document.getElementById('route-km').textContent = km.toFixed(1);
+        document.getElementById('route-undo-btn').disabled = this.history.length === 0;
+        document.getElementById('route-clear-btn').disabled = this.route.length === 0;
+        document.getElementById('route-snap-btn').disabled = this.route.length < 2;
+
+        if (this.isReady) {
+            this.map.getSource('editor-route').setData(this.routeGeoJson());
+        }
+    },
+
+    /** Numbered markers for every stop; pinned stops can be dragged. */
+    renderStops() {
+        if (!this.isReady || !this.form) { return; }
+
+        this.stopMarkers.forEach((m) => m.remove());
+        this.stopMarkers = [];
+
+        this.form.stops.forEach((stop, index) => {
+            const coords = stop.start_coordinates;
+            if (!coords || coords.length < 2) { return; }
+
+            const isPinned = stop.item_type === 'pinned';
+            const hasIcon = Boolean(stop.icon_image_url || stop.icon);
             const el = document.createElement('div');
-            el.className = 'flex h-6 w-6 items-center justify-center rounded-full bg-black text-white text-xs font-bold';
-            el.textContent = i + 1;
-            new mapboxgl.Marker({ element: el })
-                .setLngLat([stop.start_coordinates[1], stop.start_coordinates[0]])
-                .addTo(map);
+            el.className = 'flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold border-2 shadow overflow-hidden';
+            el.style.background = hasIcon ? '#ffffff' : (isPinned ? '#B3202A' : '#111827');
+            el.style.borderColor = hasIcon ? '#B3202A' : '#ffffff';
+            el.style.color = '#ffffff';
+            el.style.cursor = isPinned ? 'grab' : 'default';
+            if (stop.icon_image_url) {
+                const img = document.createElement('img');
+                img.src = stop.icon_image_url;
+                img.alt = '';
+                img.className = 'h-full w-full object-contain';
+                img.draggable = false;
+                el.appendChild(img);
+            } else if (stop.icon) {
+                el.style.fontSize = '15px';
+                el.textContent = stop.icon;
+            } else {
+                el.textContent = index + 1;
+            }
+            el.title = (stop.stop_label || stop.name) + (isPinned ? ' — drag to move' : '');
+
+            const marker = new mapboxgl.Marker({ element: el, draggable: isPinned })
+                .setLngLat([coords[1], coords[0]])
+                .addTo(this.map);
+
+            if (isPinned) {
+                marker.on('dragend', () => {
+                    const { lat, lng } = marker.getLngLat();
+                    this.form.movePinnedStop(index, lat, lng);
+                });
+            }
+
+            this.stopMarkers.push(marker);
+        });
+    },
+
+    fitToContent() {
+        if (!this.isReady) { return; }
+        const bounds = new mapboxgl.LngLatBounds();
+        let hasContent = false;
+
+        this.route.forEach((c) => { bounds.extend(c); hasContent = true; });
+        (this.form?.stops || []).forEach((s) => {
+            if (s.start_coordinates && s.start_coordinates.length >= 2) {
+                bounds.extend([s.start_coordinates[1], s.start_coordinates[0]]);
+                hasContent = true;
+            }
         });
 
-        // Fit bounds to route
-        const bounds = coordinates.reduce((b, c) => b.extend(c), new mapboxgl.LngLatBounds(coordinates[0], coordinates[0]));
-        map.fitBounds(bounds, { padding: 40 });
-    });
-}
+        if (hasContent) {
+            this.map.fitBounds(bounds, { padding: 50, maxZoom: 16, duration: 0 });
+        }
+    },
+};
+
+document.addEventListener('DOMContentLoaded', () => window.tourRouteEditor.init());
 
 // ── Video link preview ───────────────────────────────────────────────────────
 

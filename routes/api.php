@@ -278,6 +278,7 @@ Route::withoutMiddleware(VerifyAppKey::class)->middleware('throttle:public-api')
     // Tours — public listing for map sidebar
     Route::get('/tours', function () {
         return Tour::active()
+            ->tours()
             ->withCount('stops')
             ->with(['stops.trail', 'stops.feature', 'stops.facility'])
             ->orderBy('sort_order')

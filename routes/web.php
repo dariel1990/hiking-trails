@@ -5,6 +5,7 @@ use App\Http\Controllers\Admin\AdminAnalyticsController;
 use App\Http\Controllers\Admin\AdminController;
 use App\Http\Controllers\Admin\AdminEmailLogController;
 use App\Http\Controllers\Admin\AdminLegalDocumentController;
+use App\Http\Controllers\Admin\AdminLocalEventController;
 use App\Http\Controllers\Admin\AdminSettingsController;
 use App\Http\Controllers\Admin\AdminSubscriptionController;
 use App\Http\Controllers\Admin\AdminTourController;
@@ -29,6 +30,7 @@ use App\Http\Controllers\EventsController;
 use App\Http\Controllers\ExploreController;
 use App\Http\Controllers\LegalAcceptanceController;
 use App\Http\Controllers\LegalDocumentController;
+use App\Http\Controllers\LocalEventController;
 use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\SitemapController;
 use App\Http\Controllers\Subscription\StripeWebhookController;
@@ -150,6 +152,14 @@ Route::get('/businesses/{business:slug}', [BusinessPublicController::class, 'sho
 // Public Tours Routes
 Route::get('/tours', [TourController::class, 'index'])->name('tours.index');
 Route::get('/tours/{tour:slug}', [TourController::class, 'show'])->name('tours.show');
+Route::get('/embed/tours/{tour:slug}', [TourController::class, 'embed'])->name('tours.embed');
+// Map-based events (e.g. Christmas in the Valley). Separate from /events, which
+// lists the calendar events scraped from SmithersEvents.com.
+Route::get('/local-events', [LocalEventController::class, 'index'])->name('local-events.index');
+Route::get('/local-events/{tour:slug}', [LocalEventController::class, 'show'])->name('local-events.show');
+Route::get('/embed/local-events/{tour:slug}', [LocalEventController::class, 'embed'])->name('local-events.embed');
+Route::get('/christmas-parade', [TourController::class, 'christmasParade'])->name('christmas-parade');
+Route::get('/embed/christmas-parade', [TourController::class, 'christmasParadeEmbed'])->name('christmas-parade.embed');
 
 // Public Trail Networks Routes
 Route::get('/trail-networks', [TrailNetworkController::class, 'index'])
@@ -335,6 +345,21 @@ Route::prefix('admin')->name('admin.')->group(function () {
                 'edit' => 'tours.edit',
                 'update' => 'tours.update',
                 'destroy' => 'tours.destroy',
+            ]);
+
+        // Events Management (map-based events; stored as tours of the event type)
+        Route::post('/local-events/bulk-action', [AdminLocalEventController::class, 'bulkAction'])
+            ->name('local-events.bulk-action');
+        Route::resource('local-events', AdminLocalEventController::class)
+            ->except(['show'])
+            ->parameters(['local-events' => 'tour'])
+            ->names([
+                'index' => 'local-events.index',
+                'create' => 'local-events.create',
+                'store' => 'local-events.store',
+                'edit' => 'local-events.edit',
+                'update' => 'local-events.update',
+                'destroy' => 'local-events.destroy',
             ]);
 
         // Town landing pages

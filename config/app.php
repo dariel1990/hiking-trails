@@ -56,6 +56,32 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Embed Frame Ancestors
+    |--------------------------------------------------------------------------
+    |
+    | Space-separated origins allowed to show embeddable pages (such as
+    | /embed/christmas-parade) inside an iframe. Sent as the CSP
+    | "frame-ancestors" directive on embed routes only.
+    |
+    */
+
+    'embed_frame_ancestors' => env('EMBED_FRAME_ANCESTORS', 'https://xploresmithers.com https://www.xploresmithers.com'),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Christmas Parade Slug
+    |--------------------------------------------------------------------------
+    |
+    | Slug of the Christmas Event tour served at /christmas-parade and
+    | /embed/christmas-parade. Other Christmas events (e.g. Christmas in the
+    | Valley) stay at /tours/{slug} and /embed/tours/{slug}.
+    |
+    */
+
+    'christmas_parade_slug' => env('CHRISTMAS_PARADE_SLUG', 'christmas-truck-parade'),
+
+    /*
+    |--------------------------------------------------------------------------
     | Application Timezone
     |--------------------------------------------------------------------------
     |

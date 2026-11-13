@@ -129,6 +129,11 @@
                         <span>Tours</span>
                         <div class="absolute bottom-0 left-0 w-0 h-0.5 bg-accent-600 group-hover:w-full transition-all duration-300 {{ request()->routeIs('tours.*') ? 'w-full' : '' }}"></div>
                     </a>
+                    <a href="{{ route('local-events.index') }}"
+                    class="relative text-forest-700 hover:text-accent-600 font-medium transition-all duration-300 py-2 group {{ request()->routeIs('local-events.*', 'christmas-parade') ? 'text-accent-700' : '' }}">
+                        <span>Events</span>
+                        <div class="absolute bottom-0 left-0 w-0 h-0.5 bg-accent-600 group-hover:w-full transition-all duration-300 {{ request()->routeIs('local-events.*', 'christmas-parade') ? 'w-full' : '' }}"></div>
+                    </a>
                     <a href="{{ route('map') }}"
                        class="relative text-forest-700 hover:text-accent-600 font-medium transition-all duration-300 py-2 group {{ request()->routeIs('map') ? 'text-accent-700' : '' }}">
                         <span>Interactive Map</span>
@@ -265,6 +270,7 @@
                         <a href="{{ route('fishing-lakes.index') }}" class="block px-6 py-3 text-gray-700 hover:bg-emerald-50 hover:text-emerald-600 font-medium transition-colors">Fishing Lakes</a>
                         <a href="{{ route('trail-networks.index') }}" class="block px-6 py-3 text-gray-700 hover:bg-emerald-50 hover:text-emerald-600 font-medium transition-colors">Ski Trails</a>
                         <a href="{{ route('tours.index') }}" class="block px-6 py-3 text-gray-700 hover:bg-emerald-50 hover:text-emerald-600 font-medium transition-colors">Tours</a>
+                        <a href="{{ route('local-events.index') }}" class="block px-6 py-3 text-gray-700 hover:bg-emerald-50 hover:text-emerald-600 font-medium transition-colors">Events</a>
                         <a href="{{ route('map') }}" class="block px-6 py-3 text-gray-700 hover:bg-emerald-50 hover:text-emerald-600 font-medium transition-colors">Interactive Map</a>
                         <a href="{{ route('businesses.public.index') }}" class="block px-6 py-3 text-gray-700 hover:bg-emerald-50 hover:text-emerald-600 font-medium transition-colors">Local Businesses</a>
                         <a href="{{ route('towns.index') }}" class="block px-6 py-3 text-gray-700 hover:bg-emerald-50 hover:text-emerald-600 font-medium transition-colors">Explore by Town</a>

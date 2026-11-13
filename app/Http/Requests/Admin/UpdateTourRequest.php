@@ -2,7 +2,9 @@
 
 namespace App\Http\Requests\Admin;
 
+use App\Models\Tour;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class UpdateTourRequest extends FormRequest
 {
@@ -18,7 +20,7 @@ class UpdateTourRequest extends FormRequest
             'title' => ['required', 'string', 'max:255'],
             'tagline' => ['nullable', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
-            'tour_type' => ['required', 'string', 'in:waterfalls,fishing,heritage,scenic'],
+            'tour_type' => ['required', 'string', Rule::in(array_keys(Tour::getTourTypes()))],
             'icon' => ['nullable', 'string', 'max:10'],
             'icon_image' => ['nullable', 'string', 'max:500'],
             'difficulty_summary' => ['nullable', 'string', 'max:255'],
@@ -31,17 +33,7 @@ class UpdateTourRequest extends FormRequest
             'cover_image' => ['nullable', 'image', 'max:51200'],
             'video_url' => ['nullable', 'url', 'max:500', 'regex:#^https?://(www\.)?(youtube\.com|youtu\.be|m\.youtube\.com|vimeo\.com)/#i'],
             'stops' => ['nullable', 'array'],
-            'stops.*' => [function ($attribute, $value, $fail) {
-                if (empty($value['trail_id']) && empty($value['facility_id'])) {
-                    $fail('Each stop must reference a trail or a facility.');
-                }
-            }],
-            'stops.*.trail_id' => ['nullable', 'integer', 'exists:trails,id'],
-            'stops.*.feature_id' => ['nullable', 'integer', 'exists:trail_features,id'],
-            'stops.*.facility_id' => ['nullable', 'integer', 'exists:facilities,id'],
-            'stops.*.stop_label' => ['nullable', 'string', 'max:255'],
-            'stops.*.driving_notes' => ['nullable', 'string', 'max:500'],
-            'stops.*.estimated_visit_time' => ['nullable', 'string', 'max:100'],
+            ...StoreTourRequest::stopRules(),
         ];
     }
 

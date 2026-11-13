@@ -430,6 +430,7 @@ class ExploreController extends Controller
     private function tours(array $townIds): EloquentCollection
     {
         return Tour::active()
+            ->tours()
             ->whereIn('town_id', $townIds)
             ->with('town')
             ->withCount('stops')
