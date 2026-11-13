@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Models\Concerns\HasVideoEmbed;
 use App\Observers\TownContentObserver;
 use Illuminate\Database\Eloquent\Attributes\ObservedBy;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -80,12 +81,49 @@ class Tour extends Model
         return 'slug';
     }
 
+    /**
+     * Tour type used for map-based events (e.g. Christmas in the Valley, the
+     * truck parade). Events share the tour engine but are listed, managed and
+     * linked separately under "Events".
+     */
+    public const EVENT_TYPE = 'christmas';
+
     public function scopeActive($query)
     {
         return $query->where('is_active', true);
     }
 
+    /**
+     * Only regular tours (excludes events).
+     */
+    public function scopeTours(Builder $query): Builder
+    {
+        return $query->where('tour_type', '!=', self::EVENT_TYPE);
+    }
+
+    /**
+     * Only map-based events.
+     */
+    public function scopeEvents(Builder $query): Builder
+    {
+        return $query->where('tour_type', self::EVENT_TYPE);
+    }
+
+    /**
+     * Every type, including the event type (used for validation and labels).
+     */
     public static function getTourTypes(): array
+    {
+        return [
+            ...self::getRegularTourTypes(),
+            self::EVENT_TYPE => '🎄 Christmas Event',
+        ];
+    }
+
+    /**
+     * Types offered when creating a regular tour.
+     */
+    public static function getRegularTourTypes(): array
     {
         return [
             'waterfalls' => '💧 Waterfalls',
@@ -93,6 +131,20 @@ class Tour extends Model
             'heritage' => '🏛️ Heritage',
             'scenic' => '🌄 Scenic',
         ];
+    }
+
+    public function isEvent(): bool
+    {
+        return $this->tour_type === self::EVENT_TYPE;
+    }
+
+    /**
+     * Christmas event tours (e.g. the truck parade) get the festive theme,
+     * a solid route line with direction arrows, and start/finish markers.
+     */
+    public function isChristmasEvent(): bool
+    {
+        return $this->isEvent();
     }
 
     protected static function booted(): void

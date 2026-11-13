@@ -7,6 +7,7 @@ use App\Models\ActivityType;
 use App\Models\Facility;
 use App\Models\SeasonalTrailData;
 use App\Models\Tour;
+use App\Models\TourStop;
 use App\Models\Town;
 use App\Models\Trail;
 use App\Models\TrailFeature;
@@ -1256,7 +1257,8 @@ class AdminTrailController extends Controller
         }
 
         $inUse = TrailFeature::where('icon_image', $path)->count()
-            + Tour::where('icon_image', $path)->count();
+            + Tour::where('icon_image', $path)->count()
+            + TourStop::where('icon_image', $path)->count();
 
         if ($inUse > 0 && ! $request->boolean('force')) {
             return response()->json(['deleted' => false, 'in_use' => $inUse]);
@@ -1267,6 +1269,7 @@ class AdminTrailController extends Controller
             // instead of pointing at a now-deleted image.
             TrailFeature::where('icon_image', $path)->update(['icon_image' => null]);
             Tour::where('icon_image', $path)->update(['icon_image' => null]);
+            TourStop::where('icon_image', $path)->update(['icon_image' => null]);
         }
 
         Storage::disk('public')->delete($path);

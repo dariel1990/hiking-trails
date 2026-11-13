@@ -1,5 +1,5 @@
 @php($stopCount = $tour->stops_count ?? $tour->stops->count())
-<a href="{{ route('tours.show', $tour->slug) }}" class="tour-card group block rounded-2xl overflow-hidden bg-white shadow-md">
+<a href="{{ route($tour->isEvent() ? 'local-events.show' : 'tours.show', $tour->slug) }}" class="tour-card group block rounded-2xl overflow-hidden bg-white shadow-md">
 
     <!-- Cover Image -->
     <div class="relative h-56 overflow-hidden bg-gradient-to-br from-forest-700 to-forest-900">
@@ -66,7 +66,7 @@
             @if($tour->total_driving_km)
                 <span class="inline-flex items-center gap-1 rounded-md bg-forest-50 border border-forest-100 px-2 py-0.5 text-xs font-medium text-forest-700">
                     <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/></svg>
-                    {{ number_format($tour->total_driving_km, 0) }} km drive
+                    {{ number_format($tour->total_driving_km, $tour->isEvent() ? 1 : 0) }} km {{ $tour->isEvent() ? 'route' : 'drive' }}
                 </span>
             @endif
         </div>
@@ -74,7 +74,7 @@
         <!-- CTA -->
         <div class="mt-4 pt-4 border-t border-gray-100">
             <span class="text-sm font-semibold text-forest-700 group-hover:text-accent-600 transition-colors flex items-center gap-1">
-                Explore Tour
+                {{ $tour->isEvent() ? 'View Event' : 'Explore Tour' }}
                 <svg class="w-4 h-4 transition-transform group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
                 </svg>

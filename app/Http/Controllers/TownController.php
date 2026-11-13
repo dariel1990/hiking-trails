@@ -102,7 +102,7 @@ class TownController extends Controller
             'hikingTrailsCount' => $town->publishedTrails()->count(),
             'fishingLakesCount' => $town->publishedFishingLakes()->count(),
             'totalDistanceKm' => (float) $town->publishedTrails()->sum('distance_km'),
-            'tours' => Tour::active()->inTown($town)->withCount('stops')->orderBy('sort_order')->orderBy('title')->get(),
+            'tours' => Tour::active()->tours()->inTown($town)->withCount('stops')->orderBy('sort_order')->orderBy('title')->get(),
             'businesses' => $town->nearbyBusinesses(6),
             'events' => $this->eventsNear($town),
             'mapMarkers' => $this->mapMarkers($town),

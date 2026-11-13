@@ -1,7 +1,7 @@
 @extends('layouts.admin')
 
-@section('title', 'Add Tour')
-@section('page-title', 'Add Tour')
+@section('title', 'Add ' . $section['singular'])
+@section('page-title', 'Add ' . $section['singular'])
 
 @section('content')
 
@@ -10,19 +10,19 @@
 <div class="space-y-6">
     <!-- Header -->
     <div class="flex items-center gap-4">
-        <a href="{{ route('admin.tours.index') }}"
+        <a href="{{ route($section['routePrefix'] . '.index') }}"
            class="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 w-10">
             <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
             </svg>
         </a>
         <div class="space-y-1">
-            <h2 class="text-2xl font-semibold tracking-tight">Add Tour</h2>
-            <p class="text-sm text-muted-foreground">Create a new themed tour experience</p>
+            <h2 class="text-2xl font-semibold tracking-tight">Add {{ $section['singular'] }}</h2>
+            <p class="text-sm text-muted-foreground">{{ $section['isEvent'] ? 'Create a new event page with activities on a map' : 'Create a new themed tour experience' }}</p>
         </div>
     </div>
 
-    <form action="{{ route('admin.tours.store') }}" method="POST" enctype="multipart/form-data" class="space-y-6"
+    <form action="{{ route($section['routePrefix'] . '.store') }}" method="POST" enctype="multipart/form-data" class="space-y-6"
         onkeydown="if(event.key==='Enter'&&event.target.tagName!=='TEXTAREA'){event.preventDefault();}">
         @csrf
         @include('admin.tours._form', ['tour' => null])

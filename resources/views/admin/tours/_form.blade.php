@@ -34,21 +34,37 @@ $existingStopsJson = $isEdit
         'trail_id' => $s->trail_id,
         'feature_id' => $s->trail_feature_id,
         'facility_id' => $s->facility_id,
-        'item_type' => $s->facility_id ? 'facility' : ($s->trail_feature_id ? 'feature' : 'trail'),
+        'latitude' => $s->isPinned() ? $s->latitude : null,
+        'longitude' => $s->isPinned() ? $s->longitude : null,
+        'item_type' => $s->is_roaming ? 'roaming' : ($s->isPinned() ? 'pinned' : ($s->facility_id ? 'facility' : ($s->trail_feature_id ? 'feature' : 'trail'))),
         'feature_type' => $s->feature?->feature_type ?? null,
         'facility_type_label' => $s->facility ? (\App\Models\Facility::getFacilityTypes()[$s->facility->facility_type] ?? $s->facility->facility_type) : null,
-        'name' => $s->feature?->name ?? ($s->facility?->name ?? ($s->trail?->name ?? 'Unknown')),
-        'start_coordinates' => $s->feature?->coordinates
-            ?? ($s->facility ? [(float) $s->facility->latitude, (float) $s->facility->longitude] : null)
-            ?? ($s->trail?->start_coordinates ?? null),
+        'name' => $s->is_roaming
+            ? 'Roaming activity'
+            : ($s->isPinned()
+                ? 'Pinned on map'
+                : ($s->feature?->name ?? ($s->facility?->name ?? ($s->trail?->name ?? 'Unknown')))),
+        'start_coordinates' => $s->is_roaming
+            ? null
+            : ($s->isPinned()
+                ? [$s->latitude, $s->longitude]
+                : ($s->feature?->coordinates
+                    ?? ($s->facility ? [(float) $s->facility->latitude, (float) $s->facility->longitude] : null)
+                    ?? ($s->trail?->start_coordinates ?? null))),
         'stop_label' => $s->stop_label ?? '',
         'estimated_visit_time' => $s->estimated_visit_time ?? '',
         'driving_notes' => $s->driving_notes ?? '',
+        'icon' => $s->icon ?? '',
+        'icon_image' => $s->icon_image ?? '',
+        'icon_image_url' => $s->icon_image_url,
+        'description' => $s->description ?? '',
+        'existing_image' => $s->image ?? '',
+        'image_url' => $s->image_url,
     ])->values()->toJson()
     : '[]';
 @endphp
 
-<div class="grid grid-cols-1 lg:grid-cols-3 gap-6"
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6" id="tour-form-root"
      x-data="tourForm({{ $availableTrailsJson }}, {{ $availableFeaturesJson }}, {{ $availableFacilitiesJson }}, {{ $existingStopsJson }})">
 
     <!-- Left: Main fields -->
@@ -64,14 +80,14 @@ $existingStopsJson = $isEdit
                 <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <div class="sm:col-span-2 space-y-2">
                         <label for="tour_type" class="text-sm font-medium leading-none">
-                            Tour Type <span class="text-red-500">*</span>
+                            {{ $section['singular'] }} Type <span class="text-red-500">*</span>
                         </label>
                         <select name="tour_type" id="tour_type" required
                             onchange="syncTourTypeIcon(this.value)"
                             class="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
                             <option value="">Select tour type</option>
-                            @foreach(App\Models\Tour::getTourTypes() as $type => $label)
-                                <option value="{{ $type }}" {{ old('tour_type', $isEdit ? $tour->tour_type : '') === $type ? 'selected' : '' }}>{{ $label }}</option>
+                            @foreach($section['types'] as $type => $label)
+                                <option value="{{ $type }}" {{ old('tour_type', $isEdit ? $tour->tour_type : (count($section['types']) === 1 ? array_key_first($section['types']) : '')) === $type ? 'selected' : '' }}>{{ $label }}</option>
                             @endforeach
                         </select>
                         @error('tour_type') <p class="text-sm text-red-600">{{ $message }}</p> @enderror
@@ -125,11 +141,11 @@ $existingStopsJson = $isEdit
 
                 <div class="space-y-2">
                     <label for="title" class="text-sm font-medium leading-none">
-                        Tour Title <span class="text-red-500">*</span>
+                        {{ $section['singular'] }} Title <span class="text-red-500">*</span>
                     </label>
                     <input type="text" name="title" id="title" required
                         value="{{ old('title', $isEdit ? $tour->title : '') }}"
-                        placeholder="e.g., Houston Waterfalls Tour"
+                        placeholder="{{ $section['isEvent'] ? 'e.g., Christmas in the Valley' : 'e.g., Houston Waterfalls Tour' }}"
                         class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
                     @error('title') <p class="text-sm text-red-600">{{ $message }}</p> @enderror
                 </div>
@@ -146,7 +162,7 @@ $existingStopsJson = $isEdit
                 <div class="space-y-2">
                     <label for="description" class="text-sm font-medium leading-none">Description</label>
                     <textarea name="description" id="description" rows="4"
-                        placeholder="Describe this tour experience..."
+                        placeholder="{{ $section['isEvent'] ? 'Describe this event...' : 'Describe this tour experience...' }}"
                         class="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">{{ old('description', $isEdit ? $tour->description : '') }}</textarea>
                     @error('description') <p class="text-sm text-red-600">{{ $message }}</p> @enderror
                 </div>
@@ -157,7 +173,7 @@ $existingStopsJson = $isEdit
         {{-- Tour Details --}}
         <div class="rounded-lg border bg-card text-card-foreground shadow-sm">
             <div class="flex flex-col space-y-1.5 p-6 border-b">
-                <h3 class="text-lg font-semibold leading-none tracking-tight">Tour Details</h3>
+                <h3 class="text-lg font-semibold leading-none tracking-tight">{{ $section['singular'] }} Details</h3>
             </div>
             <div class="p-6 grid grid-cols-1 sm:grid-cols-3 gap-4">
 
@@ -219,8 +235,8 @@ $existingStopsJson = $isEdit
         {{-- Stops Manager --}}
         <div class="rounded-lg border bg-card text-card-foreground shadow-sm">
             <div class="flex flex-col space-y-1.5 p-6 border-b">
-                <h3 class="text-lg font-semibold leading-none tracking-tight">Tour Stops</h3>
-                <p class="text-sm text-muted-foreground">Add trails, trail features, or facilities as stops in the order visitors should visit them</p>
+                <h3 class="text-lg font-semibold leading-none tracking-tight">{{ $section['isEvent'] ? 'Activities & Stops' : 'Tour Stops' }}</h3>
+                <p class="text-sm text-muted-foreground">Add trails, trail features, or facilities as stops in the order visitors should visit them — or pin any spot (e.g. a street corner or venue) with <strong>Pin stop on map</strong> in the Route &amp; Map section below. For events, give each activity an icon so visitors can tap it on the map.</p>
             </div>
             <div class="p-6 space-y-4">
 
@@ -249,15 +265,23 @@ $existingStopsJson = $isEdit
                         </template>
                     </div>
                     <p x-show="search.length > 1 && filteredItems.length === 0" class="text-sm text-muted-foreground">No matching trails, features, or facilities found.</p>
+                    <button type="button" @click="addRoamingStop()"
+                        class="inline-flex items-center gap-1.5 rounded-md border border-dashed border-input bg-background hover:bg-accent h-8 px-3 text-xs font-medium transition-colors">
+                        🚶 Add roaming activity <span class="text-muted-foreground">(no fixed spot, e.g. carollers)</span>
+                    </button>
                 </div>
 
                 {{-- Stops list --}}
                 <div x-show="stops.length > 0" class="space-y-2">
-                    <template x-for="(stop, index) in stops" :key="index">
-                        <div class="flex gap-3 items-start p-3 rounded-md border bg-muted/30">
-                            {{-- Number badge --}}
-                            <div class="flex-shrink-0 flex h-7 w-7 items-center justify-center rounded-full bg-black text-white text-xs font-bold mt-0.5"
-                                x-text="index + 1"></div>
+                    <template x-for="(stop, index) in stops" :key="stop.uid">
+                        <div class="flex gap-3 items-start p-3 rounded-md border bg-muted/30" data-stop-row>
+                            {{-- Number badge (shows the stop's icon when it has one) --}}
+                            <div class="flex-shrink-0 flex h-7 w-7 items-center justify-center rounded-full bg-black text-white text-xs font-bold mt-0.5 overflow-hidden">
+                                <template x-if="stop.icon_image_url">
+                                    <img :src="stop.icon_image_url" alt="" class="h-full w-full object-contain bg-white">
+                                </template>
+                                <span x-show="!stop.icon_image_url" x-text="stop.icon || (index + 1)" :class="stop.icon ? 'text-base' : ''"></span>
+                            </div>
 
                             {{-- Stop details --}}
                             <div class="flex-1 space-y-2">
@@ -269,27 +293,106 @@ $existingStopsJson = $isEdit
                                     <span x-show="stop.item_type === 'facility'"
                                         class="inline-flex items-center rounded-full bg-amber-50 border border-amber-200 px-1.5 py-0.5 text-xs font-medium text-amber-700"
                                         x-text="stop.facility_type_label || 'Facility'"></span>
+                                    <span x-show="stop.item_type === 'pinned'"
+                                        class="inline-flex items-center rounded-full bg-red-50 border border-red-200 px-1.5 py-0.5 text-xs font-medium text-red-700"
+                                        x-text="'📍 ' + Number(stop.latitude).toFixed(5) + ', ' + Number(stop.longitude).toFixed(5)"></span>
+                                    <span x-show="stop.item_type === 'roaming'"
+                                        class="inline-flex items-center rounded-full bg-purple-50 border border-purple-200 px-1.5 py-0.5 text-xs font-medium text-purple-700">
+                                        🚶 Roaming · listed only, no map pin
+                                    </span>
                                 </div>
                                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
                                     <input type="text"
                                         :name="`stops[${index}][stop_label]`"
                                         x-model="stop.stop_label"
-                                        placeholder="Label override (optional)"
+                                        :required="isCustomStop(stop)"
+                                        :placeholder="isCustomStop(stop) ? 'Name (required, e.g. Wagon Rides)' : 'Label override (optional)'"
                                         class="flex h-8 w-full rounded-md border border-input bg-background px-2 py-1 text-xs ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
                                     <input type="text"
                                         :name="`stops[${index}][estimated_visit_time]`"
                                         x-model="stop.estimated_visit_time"
-                                        placeholder="Visit time (e.g., 1–2 hours)"
+                                        :placeholder="isCustomStop(stop) ? 'Time (e.g., 12:00 – 4:00 PM)' : 'Visit time (e.g., 1–2 hours)'"
                                         class="flex h-8 w-full rounded-md border border-input bg-background px-2 py-1 text-xs ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
                                     <input type="text"
                                         :name="`stops[${index}][driving_notes]`"
                                         x-model="stop.driving_notes"
-                                        placeholder="Driving notes (optional)"
+                                        :placeholder="isCustomStop(stop) ? 'Where / note (e.g., Bugwood Beans, Main St)' : 'Driving notes (optional)'"
                                         class="flex h-8 w-full rounded-md border border-input bg-background px-2 py-1 text-xs ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:col-span-2">
                                     {{-- Hidden inputs --}}
                                     <input type="hidden" :name="`stops[${index}][trail_id]`" :value="stop.trail_id || ''">
                                     <input type="hidden" :name="`stops[${index}][feature_id]`" :value="stop.feature_id || ''">
                                     <input type="hidden" :name="`stops[${index}][facility_id]`" :value="stop.facility_id || ''">
+                                    <input type="hidden" :name="`stops[${index}][latitude]`" :value="stop.item_type === 'pinned' ? stop.latitude : ''">
+                                    <input type="hidden" :name="`stops[${index}][longitude]`" :value="stop.item_type === 'pinned' ? stop.longitude : ''">
+                                    <input type="hidden" :name="`stops[${index}][is_roaming]`" :value="stop.item_type === 'roaming' ? 1 : 0">
+                                    <input type="hidden" :name="`stops[${index}][icon]`" :value="stop.icon || ''">
+                                    <input type="hidden" :name="`stops[${index}][icon_image]`" :value="stop.icon_image || ''">
+                                    <input type="hidden" :name="`stops[${index}][existing_image]`" :value="stop.existing_image || ''">
+                                    <input type="hidden" :name="`stops[${index}][remove_image]`" :value="stop.remove_image ? 1 : 0">
+                                </div>
+
+                                <button type="button" x-show="!isCustomStop(stop) && !stop.showDetails" @click="stop.showDetails = true"
+                                    class="text-xs font-medium text-muted-foreground hover:text-foreground">
+                                    ＋ Icon, description &amp; photo
+                                </button>
+
+                                {{-- Icon, description & photo (always shown for pinned / roaming activities) --}}
+                                <div x-show="isCustomStop(stop) || stop.showDetails" class="space-y-2 rounded-md border bg-background p-2.5">
+                                    {{-- Icon --}}
+                                    <div class="space-y-1.5">
+                                        <p class="text-xs font-medium">Map icon</p>
+                                        <div class="flex flex-wrap items-center gap-1">
+                                            <template x-for="emoji in iconPresets" :key="emoji">
+                                                <button type="button" @click="setStopEmoji(stop, emoji)"
+                                                    :class="stop.icon === emoji && !stop.icon_image ? 'border-red-500 bg-red-50' : 'border-transparent hover:bg-muted'"
+                                                    class="h-8 w-8 rounded-md border text-lg leading-none" x-text="emoji" :title="'Use ' + emoji"></button>
+                                            </template>
+                                            <input type="text" maxlength="16" x-model="stop.icon" @input="stop.icon_image = ''; stop.icon_image_url = null"
+                                                placeholder="or type"
+                                                class="h-8 w-20 rounded-md border border-input bg-background px-2 text-sm placeholder:text-xs placeholder:text-muted-foreground">
+                                            <button type="button" @click="toggleIconPicker(stop)"
+                                                class="h-8 rounded-md border border-input bg-background px-2 text-xs font-medium hover:bg-accent">
+                                                🖼️ Image icon
+                                            </button>
+                                            <button type="button" x-show="stop.icon || stop.icon_image" @click="clearStopIcon(stop)"
+                                                class="h-8 rounded-md px-2 text-xs text-red-600 hover:bg-red-50">Clear</button>
+                                        </div>
+                                        <div x-show="stop.showIconPicker" class="rounded-md border bg-muted/30 p-2 space-y-2">
+                                            <div class="flex flex-wrap gap-1.5">
+                                                <template x-for="ic in iconGallery" :key="ic.path">
+                                                    <button type="button" @click="chooseStopIconImage(stop, ic)"
+                                                        :class="stop.icon_image === ic.path ? 'border-red-500' : 'border-transparent hover:border-gray-300'"
+                                                        class="h-9 w-9 rounded-md border-2 bg-white p-0.5">
+                                                        <img :src="ic.url" alt="" class="h-full w-full object-contain">
+                                                    </button>
+                                                </template>
+                                                <span x-show="iconGalleryStatus" x-text="iconGalleryStatus" class="text-xs text-muted-foreground self-center"></span>
+                                            </div>
+                                            <label class="inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-dashed border-input bg-background px-2 py-1 text-xs text-muted-foreground hover:bg-muted">
+                                                Upload new icon
+                                                <input type="file" accept="image/*" class="hidden" @change="uploadStopIcon(stop, $event)">
+                                            </label>
+                                        </div>
+                                    </div>
+
+                                    {{-- Description --}}
+                                    <textarea :name="`stops[${index}][description]`" x-model="stop.description" rows="2" maxlength="2000"
+                                        placeholder="What's happening (e.g., Free horse-drawn wagon rides around downtown, starting at Bugwood Beans)"
+                                        class="flex w-full rounded-md border border-input bg-background px-2 py-1.5 text-xs placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"></textarea>
+
+                                    {{-- Photo --}}
+                                    <div class="flex items-center gap-2">
+                                        <template x-if="stop.new_image_preview || (stop.image_url && !stop.remove_image)">
+                                            <img :src="stop.new_image_preview || stop.image_url" alt="" class="h-12 w-12 rounded-md border object-cover">
+                                        </template>
+                                        <label class="inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-dashed border-input bg-background px-2 py-1.5 text-xs text-muted-foreground hover:bg-muted">
+                                            📷 <span x-text="(stop.new_image_preview || (stop.image_url && !stop.remove_image)) ? 'Replace photo' : 'Add photo / flyer (optional)'"></span>
+                                            <input type="file" accept="image/*" class="hidden" :name="`stops[${index}][image]`" @change="previewStopImage(stop, $event)">
+                                        </label>
+                                        <button type="button" x-show="stop.new_image_preview || (stop.image_url && !stop.remove_image)"
+                                            @click="removeStopImage(stop, $el)"
+                                            class="text-xs text-red-600 hover:underline">Remove photo</button>
+                                    </div>
                                 </div>
                             </div>
 
@@ -359,23 +462,55 @@ $existingStopsJson = $isEdit
             </div>
         </div>
 
-        {{-- Driving Route (edit + stops present) --}}
-        <div class="rounded-lg border bg-card text-card-foreground shadow-sm" x-show="stops.length >= 2">
+        {{-- Route & Map editor --}}
+        <div class="rounded-lg border bg-card text-card-foreground shadow-sm">
             <div class="flex flex-col space-y-1.5 p-6 border-b">
-                <h3 class="text-lg font-semibold leading-none tracking-tight">Driving Route</h3>
-                <p class="text-sm text-muted-foreground">Compute the road route connecting all stops</p>
+                <h3 class="text-lg font-semibold leading-none tracking-tight">Route &amp; Map</h3>
+                <p class="text-sm text-muted-foreground">
+                    Draw the route yourself by clicking along the streets in order, or compute a driving route through the stops.
+                    The route line shows arrows in the direction you draw it.
+                </p>
             </div>
-            <div class="p-6 space-y-4">
-                <button type="button" id="compute-route-btn"
-                    onclick="computeTourRoute()"
-                    class="inline-flex items-center justify-center rounded-md border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2 text-sm font-medium transition-colors">
-                    <svg class="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/>
-                    </svg>
-                    Compute Driving Route
-                </button>
+            <div class="p-6 space-y-3">
+                <div class="flex flex-wrap gap-2">
+                    <button type="button" id="route-draw-btn" onclick="tourRouteEditor.toggleMode('draw')"
+                        class="route-tool-btn inline-flex items-center gap-1.5 rounded-md border border-input bg-background hover:bg-accent h-9 px-3 text-sm font-medium transition-colors">
+                        ✏️ Draw route
+                    </button>
+                    <button type="button" id="route-pin-btn" onclick="tourRouteEditor.toggleMode('pin')"
+                        class="route-tool-btn inline-flex items-center gap-1.5 rounded-md border border-input bg-background hover:bg-accent h-9 px-3 text-sm font-medium transition-colors">
+                        📍 Pin stop on map
+                    </button>
+                    <span class="w-px bg-border mx-1 hidden sm:block"></span>
+                    <button type="button" id="route-undo-btn" onclick="tourRouteEditor.undo()"
+                        class="inline-flex items-center gap-1.5 rounded-md border border-input bg-background hover:bg-accent h-9 px-3 text-sm font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
+                        ↶ Undo
+                    </button>
+                    <button type="button" id="route-clear-btn" onclick="tourRouteEditor.clear()"
+                        class="inline-flex items-center gap-1.5 rounded-md border border-red-200 bg-red-50 text-red-700 hover:bg-red-100 h-9 px-3 text-sm font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
+                        Clear route
+                    </button>
+                    <span class="w-px bg-border mx-1 hidden sm:block"></span>
+                    <button type="button" id="route-snap-btn" onclick="tourRouteEditor.snapToStreets()"
+                        title="Re-trace the drawn line along real roads (uses the route service)"
+                        class="inline-flex items-center gap-1.5 rounded-md border border-input bg-background hover:bg-accent h-9 px-3 text-sm font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
+                        🧲 Snap to streets
+                    </button>
+                    <button type="button" id="compute-route-btn" onclick="computeTourRoute()" x-show="stops.length >= 2"
+                        class="inline-flex items-center gap-1.5 rounded-md border border-input bg-background hover:bg-accent h-9 px-3 text-sm font-medium transition-colors">
+                        🚗 Compute route through stops
+                    </button>
+                </div>
+
+                <div id="route-mode-hint" class="hidden rounded-md bg-blue-50 border border-blue-200 px-3 py-2 text-xs text-blue-800"></div>
                 <div id="route-status" class="hidden text-sm text-muted-foreground"></div>
-                <div id="route-map" class="w-full h-[300px] rounded-md border hidden"></div>
+
+                <div id="route-map" class="w-full h-[460px] rounded-md border"></div>
+
+                <p class="text-xs text-muted-foreground">
+                    <span id="route-point-count">0</span> route points · <span id="route-km">0.0</span> km.
+                    Tip: zoom in close and click at each corner. Pinned stops can be dragged to fine-tune them.
+                </p>
                 <textarea name="driving_route_coordinates" id="driving_route_coordinates" class="hidden">{{ $isEdit && $tour->driving_route_coordinates ? json_encode($tour->driving_route_coordinates) : '' }}</textarea>
             </div>
         </div>
@@ -393,9 +528,9 @@ $existingStopsJson = $isEdit
             <div class="p-6 flex flex-col gap-2">
                 <button type="submit"
                     class="inline-flex items-center justify-center rounded-md bg-black text-white hover:bg-black/90 h-10 px-4 py-2 text-sm font-medium ring-offset-background transition-colors w-full">
-                    {{ $isEdit ? 'Update Tour' : 'Create Tour' }}
+                    {{ ($isEdit ? 'Update ' : 'Create ') . $section['singular'] }}
                 </button>
-                <a href="{{ route('admin.tours.index') }}"
+                <a href="{{ route($section['routePrefix'] . '.index') }}"
                     class="inline-flex items-center justify-center rounded-md border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2 text-sm font-medium ring-offset-background transition-colors w-full">
                     Cancel
                 </a>

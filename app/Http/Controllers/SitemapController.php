@@ -34,6 +34,7 @@ class SitemapController extends Controller
             $this->url(route('trails.index'), priority: '0.9', changefreq: 'weekly'),
             $this->url(route('fishing-lakes.index'), priority: '0.8', changefreq: 'weekly'),
             $this->url(route('tours.index'), priority: '0.7', changefreq: 'weekly'),
+            $this->url(route('local-events.index'), priority: '0.7', changefreq: 'weekly'),
             $this->url(route('businesses.public.index'), priority: '0.7', changefreq: 'weekly'),
             $this->url(route('trail-networks.index'), priority: '0.7', changefreq: 'weekly'),
             $this->url(route('map'), priority: '0.8', changefreq: 'weekly'),
@@ -67,8 +68,9 @@ class SitemapController extends Controller
             $urls[] = $this->url(route('businesses.public.show', $business->slug), $business->updated_at?->toAtomString(), '0.6');
         }
 
-        foreach (Tour::active()->get(['slug', 'updated_at']) as $tour) {
-            $urls[] = $this->url(route('tours.show', $tour->slug), $tour->updated_at?->toAtomString(), '0.6');
+        foreach (Tour::active()->get(['slug', 'tour_type', 'updated_at']) as $tour) {
+            $showRoute = $tour->isEvent() ? 'local-events.show' : 'tours.show';
+            $urls[] = $this->url(route($showRoute, $tour->slug), $tour->updated_at?->toAtomString(), '0.6');
         }
 
         foreach (TrailNetwork::query()->where('is_active', true)->get(['slug', 'updated_at']) as $network) {

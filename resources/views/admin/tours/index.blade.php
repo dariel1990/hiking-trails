@@ -1,7 +1,7 @@
 @extends('layouts.admin')
 
-@section('title', 'Manage Tours')
-@section('page-title', 'Tours')
+@section('title', 'Manage ' . $section['plural'])
+@section('page-title', $section['plural'])
 
 @section('content')
 
@@ -29,15 +29,15 @@
     <!-- Header -->
     <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div class="space-y-1">
-            <h2 class="text-2xl font-semibold tracking-tight">Tours</h2>
-            <p class="text-sm text-muted-foreground">Manage themed tour packages that appear on the site</p>
+            <h2 class="text-2xl font-semibold tracking-tight">{{ $section['plural'] }}</h2>
+            <p class="text-sm text-muted-foreground">{{ $section['description'] }}</p>
         </div>
-        <a href="{{ route('admin.tours.create') }}"
+        <a href="{{ route($section['routePrefix'] . '.create') }}"
            class="inline-flex items-center justify-center rounded-md bg-black text-white hover:bg-black/90 h-10 px-4 py-2 text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
             <svg class="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
             </svg>
-            Add Tour
+            Add {{ $section['singular'] }}
         </a>
     </div>
 
@@ -92,17 +92,17 @@
                         </svg>
                     </div>
                     <div class="space-y-2">
-                        <h3 class="text-lg font-semibold">No tours yet</h3>
-                        <p class="text-sm text-muted-foreground">Create your first themed tour experience.</p>
+                        <h3 class="text-lg font-semibold">No {{ strtolower($section['plural']) }} yet</h3>
+                        <p class="text-sm text-muted-foreground">Create your first {{ strtolower($section['singular']) }}.</p>
                     </div>
-                    <a href="{{ route('admin.tours.create') }}"
+                    <a href="{{ route($section['routePrefix'] . '.create') }}"
                         class="inline-flex items-center justify-center rounded-md bg-black text-white hover:bg-black/90 h-10 px-4 py-2 text-sm font-medium">
-                        Add First Tour
+                        Add First {{ $section['singular'] }}
                     </a>
                 </div>
             </div>
         @else
-            <form id="bulk-form" method="POST" action="{{ route('admin.tours.bulk-action') }}" class="hidden">
+            <form id="bulk-form" method="POST" action="{{ route($section['routePrefix'] . '.bulk-action') }}" class="hidden">
                 @csrf
                 <input type="hidden" name="action" id="bulk-action-input" value="">
                 <div id="bulk-ids-container"></div>
@@ -133,7 +133,7 @@
                             <th class="h-12 px-4 text-left font-medium text-muted-foreground w-10">
                                 <input type="checkbox" id="select-all" class="h-4 w-4 rounded border-input">
                             </th>
-                            <th class="h-12 px-6 text-left font-medium text-muted-foreground">Tour</th>
+                            <th class="h-12 px-6 text-left font-medium text-muted-foreground">{{ $section['singular'] }}</th>
                             <th class="h-12 px-4 text-left font-medium text-muted-foreground">Type</th>
                             <th class="h-12 px-4 text-left font-medium text-muted-foreground">Stops</th>
                             <th class="h-12 px-4 text-left font-medium text-muted-foreground">Status</th>
@@ -165,7 +165,7 @@
                                 </td>
                                 <td class="px-4 py-4">
                                     <span class="inline-flex items-center rounded-full border border-transparent bg-blue-100 px-2.5 py-0.5 text-xs font-semibold text-blue-800">
-                                        {{ ucfirst($tour->tour_type) }}
+                                        {{ App\Models\Tour::getTourTypes()[$tour->tour_type] ?? ucfirst($tour->tour_type) }}
                                     </span>
                                 </td>
                                 <td class="px-4 py-4 text-muted-foreground">
@@ -192,7 +192,7 @@
                                 </td>
                                 <td class="px-4 py-4">
                                     <div class="flex items-center justify-end gap-2">
-                                        <a href="{{ route('tours.show', $tour->slug) }}"
+                                        <a href="{{ route($section['publicShowRoute'], $tour->slug) }}"
                                             target="_blank"
                                             title="View on site"
                                             class="inline-flex items-center justify-center rounded-md border border-input bg-background hover:bg-accent hover:text-accent-foreground h-8 w-8 transition-colors">
@@ -200,14 +200,14 @@
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
                                             </svg>
                                         </a>
-                                        <a href="{{ route('admin.tours.edit', $tour) }}"
+                                        <a href="{{ route($section['routePrefix'] . '.edit', $tour) }}"
                                             class="inline-flex items-center justify-center rounded-md border border-input bg-background hover:bg-accent hover:text-accent-foreground h-8 w-8 transition-colors">
                                             <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
                                             </svg>
                                         </a>
-                                        <form method="POST" action="{{ route('admin.tours.destroy', $tour) }}"
-                                            onsubmit="return confirmDelete(event, '{{ $tour->title }}')">
+                                        <form method="POST" action="{{ route($section['routePrefix'] . '.destroy', $tour) }}"
+                                            onsubmit="return confirmDelete(event, @js($tour->title))">
                                             @csrf
                                             @method('DELETE')
                                             <button type="submit"
@@ -229,11 +229,14 @@
 </div>
 
 <script>
+const sectionNoun = @json(strtolower($section['singular']));
+const sectionNounPlural = @json(strtolower($section['plural']));
+
 function confirmDelete(event, name) {
     event.preventDefault();
     const form = event.target;
     document.getElementById('confirm-modal-title').textContent = 'Delete "' + name + '"?';
-    document.getElementById('confirm-modal-message').textContent = 'This will permanently delete this tour and all its stops. This cannot be undone.';
+    document.getElementById('confirm-modal-message').textContent = @json('This will permanently delete this ' . strtolower($section['singular']) . ' and all its stops. This cannot be undone.');
     document.getElementById('confirm-modal-action').onclick = () => form.submit();
     document.getElementById('confirm-modal').classList.remove('hidden');
     return false;
@@ -310,9 +313,9 @@ function submitBulkAction(action) {
     if (selected.length === 0) { return; }
 
     const labels = {
-        delete: { title: 'Delete selected tours?', msg: 'This will permanently delete ' + selected.length + ' tour(s). This cannot be undone.' },
-        activate: { title: 'Mark ' + selected.length + ' tour(s) as Active?', msg: 'They will become visible on the site.' },
-        deactivate: { title: 'Mark ' + selected.length + ' tour(s) as Inactive?', msg: 'They will be hidden from the site.' },
+        delete: { title: 'Delete selected ' + sectionNounPlural + '?', msg: 'This will permanently delete ' + selected.length + ' ' + sectionNoun + '(s). This cannot be undone.' },
+        activate: { title: 'Mark ' + selected.length + ' ' + sectionNoun + '(s) as Active?', msg: 'They will become visible on the site.' },
+        deactivate: { title: 'Mark ' + selected.length + ' ' + sectionNoun + '(s) as Inactive?', msg: 'They will be hidden from the site.' },
     };
     const cfg = labels[action];
 
