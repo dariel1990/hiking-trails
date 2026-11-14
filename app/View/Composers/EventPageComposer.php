@@ -40,7 +40,7 @@ class EventPageComposer
                 : 'stop'.($stopCount === 1 ? '' : 's'),
             'place' => $event->venue ?: $event->location,
             'summary' => Str::limit($event->tagline ?: strip_tags($event->description ?? ''), 200),
-            'accentPalette' => AccentPalette::fromHex($this->accentColor($event)),
+            'accentPalette' => AccentPalette::fromHex($event->accentColor()),
             'galleryMedia' => $galleryMedia,
             'galleryTitle' => $this->galleryTitle($galleryMedia),
         ]);
@@ -78,16 +78,5 @@ class EventPageComposer
             $hasVideos => 'Videos',
             default => 'Photos',
         };
-    }
-
-    /**
-     * Button and icon colour from Settings → Events (Christmas events have their own).
-     */
-    private function accentColor(Event $event): string
-    {
-        $key = $event->isChristmasEvent() ? 'event_christmas_accent_color' : 'event_accent_color';
-        $color = setting($key);
-
-        return AccentPalette::isValidHex($color) ? $color : config("settings.definitions.{$key}.default");
     }
 }

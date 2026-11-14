@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Models\Concerns\HasVideoEmbed;
+use App\Support\AccentPalette;
 use App\Support\RouteMapPayload;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
@@ -145,6 +146,17 @@ class Event extends Model
     {
         return ! empty($this->route_coordinates)
             || $this->stops->contains(fn (EventStop $stop) => ! $stop->is_roaming);
+    }
+
+    /**
+     * Button, icon and map colour from Settings → Events (Christmas events have their own).
+     */
+    public function accentColor(): string
+    {
+        $key = $this->isChristmasEvent() ? 'event_christmas_accent_color' : 'event_accent_color';
+        $color = setting($key);
+
+        return AccentPalette::isValidHex($color) ? $color : config("settings.definitions.{$key}.default");
     }
 
     public function getCoverImageUrlAttribute(): ?string

@@ -14,6 +14,7 @@ use App\Http\Controllers\TrailNetworkController;
 use App\Http\Middleware\VerifyAppKey;
 use App\Models\ActivityType;
 use App\Models\Business;
+use App\Models\Event;
 use App\Models\Facility;
 use App\Models\Tour;
 use App\Models\Town;
@@ -332,6 +333,37 @@ Route::withoutMiddleware(VerifyAppKey::class)->middleware('throttle:public-api')
                     'stops' => $stops,
                 ];
             });
+    });
+
+    // Events — upcoming events with stops or a route, for the map sidebar
+    Route::get('/events', function () {
+        return Event::query()
+            ->current()
+            ->with('stops')
+            ->orderBy('event_date')
+            ->orderBy('event_time')
+            ->get()
+            ->filter(fn (Event $event) => $event->hasMap())
+            ->values()
+            ->map(fn (Event $event) => [
+                'id' => $event->id,
+                'title' => $event->title,
+                'slug' => $event->slug,
+                'tagline' => $event->tagline,
+                'description' => $event->description,
+                'route_distance_km' => $event->route_distance_km !== null ? (float) $event->route_distance_km : null,
+                'theme' => $event->theme,
+                'accent_color' => $event->accentColor(),
+                'date_label' => $event->date_range_label,
+                'time_label' => $event->time_range_label,
+                'venue' => $event->venue,
+                'location' => $event->location,
+                'cover_image_url' => $event->cover_image_url,
+                'icon' => $event->marker_icon,
+                'icon_image_url' => $event->icon_image_url,
+                'url' => route('local-events.show', $event),
+                'map' => $event->toMapPayload(),
+            ]);
     });
 
     // Activity types — drives the map filter's Activities section

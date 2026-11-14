@@ -31,7 +31,9 @@ class RouteMapPayload
 
         return [
             'stops' => $stops->values()
-                ->map(fn ($stop, int $index) => $stop->toMapStop($index, $stop->is_roaming ? null : ++$stopNumber))
+                ->map(function ($stop, int $index) use (&$stopNumber) {
+                    return $stop->toMapStop($index, $stop->is_roaming ? null : ++$stopNumber);
+                })
                 ->all(),
             'route' => $route ?: null,
             'iconImage' => $iconImage,

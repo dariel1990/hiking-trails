@@ -313,6 +313,13 @@
                 <span class="text-xl">🏞️</span>
                 <span class="text-[10px] font-medium leading-tight">Recreational Sites</span>
             </button>
+
+            <!-- Events -->
+            <button data-location-filter="event"
+                    class="location-filter-btn sidebar-nav-btn flex flex-col items-center gap-1 w-full py-3 px-1 text-center transition-colors">
+                <span class="text-xl">🎉</span>
+                <span class="text-[10px] font-medium leading-tight">Events</span>
+            </button>
         </div>
 
         <!-- Right Content Area -->
@@ -519,6 +526,7 @@
             <button data-location-filter="tour" class="mobile-map-tab">🗺️ Tours</button>
             <button data-location-filter="first_nation" class="mobile-map-tab">📍 Nations</button>
             <button data-location-filter="recreational_site" class="mobile-map-tab">🏞️ Rec</button>
+            <button data-location-filter="event" class="mobile-map-tab">🎉 Events</button>
         </div>
     </div>
 
@@ -669,6 +677,9 @@
         </button>
         <button data-mobile-location-filter="recreational_site" class="mobile-location-tab flex-1 flex flex-col items-center gap-1 py-2 text-xs font-medium text-gray-500 border-b-2 border-transparent">
             <span class="text-lg">🏞️</span><span>Rec Sites</span>
+        </button>
+        <button data-mobile-location-filter="event" class="mobile-location-tab flex-1 flex flex-col items-center gap-1 py-2 text-xs font-medium text-gray-500 border-b-2 border-transparent">
+            <span class="text-lg">🎉</span><span>Events</span>
         </button>
     </div>
     <!-- Results -->
@@ -1008,6 +1019,125 @@
     font-size: 11px;
     font-weight: 700;
     line-height: 1;
+}
+
+/* Start / End badges on an event's drawn route */
+.event-route-end-badge {
+    /* No position override: Mapbox markers must stay position:absolute, or the badge stretches across the map */
+    width: max-content;
+    padding: 1px 6px;
+    border-radius: 9999px;
+    border: 1.5px solid #ffffff;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+    color: #ffffff;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    line-height: 1.4;
+    white-space: nowrap;
+    pointer-events: none;
+}
+.event-route-end-badge::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    bottom: -4px;
+    transform: translateX(-50%);
+    border-left: 3px solid transparent;
+    border-right: 3px solid transparent;
+    border-top: 3px solid #ffffff;
+}
+
+/* Previous / Next stop navigation in the event stop panel (accent set via --stop-nav-accent) */
+.event-stop-nav {
+    margin-top: 14px;
+}
+.event-stop-nav-dots {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    margin-bottom: 10px;
+}
+.event-stop-nav-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 9999px;
+    background: #e5e7eb;
+    transition: width 0.2s, background-color 0.2s;
+}
+.event-stop-nav-dot.active {
+    width: 18px;
+    background: var(--stop-nav-accent);
+}
+.event-stop-nav-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+}
+.event-stop-nav-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+    padding: 9px 10px;
+    border-radius: 12px;
+    border: 1.5px solid color-mix(in srgb, var(--stop-nav-accent) 25%, #ffffff);
+    background: color-mix(in srgb, var(--stop-nav-accent) 7%, #ffffff);
+    color: #111827;
+    cursor: pointer;
+    font-family: inherit;
+    text-align: left;
+    transition: background-color 0.15s, border-color 0.15s, box-shadow 0.15s;
+}
+.event-stop-nav-btn:hover {
+    background: color-mix(in srgb, var(--stop-nav-accent) 14%, #ffffff);
+    border-color: color-mix(in srgb, var(--stop-nav-accent) 45%, #ffffff);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+}
+.event-stop-nav-btn.next {
+    flex-direction: row-reverse;
+    text-align: right;
+}
+.event-stop-nav-btn.placeholder {
+    visibility: hidden;
+}
+.event-stop-nav-icon {
+    flex-shrink: 0;
+    width: 26px;
+    height: 26px;
+    border-radius: 9999px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--stop-nav-accent);
+    color: #ffffff;
+}
+.event-stop-nav-icon svg {
+    width: 14px;
+    height: 14px;
+}
+.event-stop-nav-text {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    line-height: 1.2;
+}
+.event-stop-nav-label {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--stop-nav-accent);
+}
+.event-stop-nav-name {
+    font-size: 12px;
+    font-weight: 600;
+    color: #374151;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 /* Sidebar nav buttons (icon nav column) */
@@ -2960,6 +3090,77 @@
                 });
             }
 
+            // Route line of the expanded event on the Events tab (e.g. a parade route)
+            if (!this.map.getSource('event-route')) {
+                this.map.addSource('event-route', {
+                    type: 'geojson',
+                    data: { type: 'FeatureCollection', features: [] },
+                });
+            }
+            // White outline drawn under the route so it stands out on any map style
+            if (!this.map.getLayer('event-route-casing')) {
+                this.map.addLayer({
+                    id: 'event-route-casing',
+                    type: 'line',
+                    source: 'event-route',
+                    layout: { 'line-cap': 'round', 'line-join': 'round' },
+                    paint: {
+                        'line-color': '#ffffff',
+                        'line-width': 9,
+                        'line-opacity': 0.95,
+                    },
+                });
+            }
+            if (!this.map.getLayer('event-route-line')) {
+                this.map.addLayer({
+                    id: 'event-route-line',
+                    type: 'line',
+                    source: 'event-route',
+                    layout: { 'line-cap': 'round', 'line-join': 'round' },
+                    paint: {
+                        'line-color': ['get', 'color'],
+                        'line-width': 5,
+                        'line-opacity': 0.9,
+                    },
+                });
+            }
+
+            // Dashed connector lines from an event's marker to each of its stops (like tours)
+            if (!this.map.getSource('event-connectors')) {
+                this.map.addSource('event-connectors', {
+                    type: 'geojson',
+                    data: { type: 'FeatureCollection', features: [] },
+                });
+            }
+            // White outline under the dashed connectors
+            if (!this.map.getLayer('event-connectors-casing')) {
+                this.map.addLayer({
+                    id: 'event-connectors-casing',
+                    type: 'line',
+                    source: 'event-connectors',
+                    layout: { 'line-cap': 'round' },
+                    paint: {
+                        'line-color': '#ffffff',
+                        'line-width': 5,
+                        'line-opacity': 0.9,
+                    },
+                });
+            }
+            if (!this.map.getLayer('event-connectors-line')) {
+                this.map.addLayer({
+                    id: 'event-connectors-line',
+                    type: 'line',
+                    source: 'event-connectors',
+                    layout: { 'line-cap': 'round' },
+                    paint: {
+                        'line-color': ['get', 'color'],
+                        'line-width': 2,
+                        'line-dasharray': [2, 2],
+                        'line-opacity': 0.8,
+                    },
+                });
+            }
+
             // Click on route line
             this.map.on('click', 'trail-routes-line', (e) => {
                 if (e.features.length > 0) {
@@ -2968,6 +3169,8 @@
             });
             this.map.on('mouseenter', 'trail-routes-line', () => { this.map.getCanvas().style.cursor = 'pointer'; });
             this.map.on('mouseleave', 'trail-routes-line', () => { this.map.getCanvas().style.cursor = ''; });
+            this.map.on('mouseenter', 'event-route-line', () => { this.map.getCanvas().style.cursor = 'pointer'; });
+            this.map.on('mouseleave', 'event-route-line', () => { this.map.getCanvas().style.cursor = ''; });
         }
 
         setupEventListeners() {
@@ -3008,6 +3211,17 @@
 
             // Close panels when clicking map background
             this.map.on('click', (e) => {
+                // Clicking an event's drawn route opens that event's details instead of closing panels
+                const eventRouteHit = this.map.getLayer('event-route-line')
+                    && this.map.queryRenderedFeatures(e.point, { layers: ['event-route-line'] })[0];
+                if (eventRouteHit) {
+                    const event = (this.eventData || []).find(ev => ev.id == eventRouteHit.properties.eventId);
+                    if (event) {
+                        this.openEventPanel(event);
+                        return;
+                    }
+                }
+
                 if (!e.features || e.features.length === 0) {
                     this.closeAllPanels();
                     // Mobile card closes only on deliberate map tap (not from button actions)
@@ -5919,6 +6133,584 @@
             }
         }
 
+        // ── Events tab ────────────────────────────────────────────────────
+        // Mirrors the Tours tab: one marker per event; clicking it draws the
+        // event's own stops (custom pins, not trails) and its route line.
+
+        async ensureEventsLoaded() {
+            if (this.eventData) { return this.eventData; }
+            try {
+                const res = await fetch('/api/events');
+                this.eventData = await res.json();
+            } catch (e) {
+                this.eventData = [];
+            }
+            return this.eventData;
+        }
+
+        _eventPinnedStops(event) {
+            return ((event.map && event.map.stops) || []).filter(s => Array.isArray(s.coords));
+        }
+
+        // Accent colour from Settings → Events (Christmas events have their own)
+        _eventColor(event) {
+            return event.accent_color || '#2C5F5D';
+        }
+
+        // [lng, lat] for the event's marker: the start of its drawn route (e.g. where a
+        // parade sets off), else the middle of its pins
+        _eventCenter(event) {
+            const route = (event.map && event.map.route) || [];
+            if (route.length > 0) {
+                return route[0];
+            }
+            const stops = this._eventPinnedStops(event);
+            if (stops.length > 0) {
+                return [
+                    stops.reduce((sum, s) => sum + s.coords[1], 0) / stops.length,
+                    stops.reduce((sum, s) => sum + s.coords[0], 0) / stops.length,
+                ];
+            }
+            return null;
+        }
+
+        _eventBounds(event, center) {
+            const bounds = new mapboxgl.LngLatBounds();
+            bounds.extend(center);
+            this._eventPinnedStops(event).forEach(s => bounds.extend([s.coords[1], s.coords[0]]));
+            ((event.map && event.map.route) || []).forEach(point => bounds.extend(point));
+            return bounds;
+        }
+
+        renderEventMarkers() {
+            (this.eventMarkers || []).forEach(m => m.remove());
+            this.eventMarkers = [];
+            this._collapseEventStops();
+
+            if (this.activeLocationFilter !== 'event') { return; }
+
+            this.ensureEventsLoaded().then(events => {
+                if (this.activeLocationFilter !== 'event') { return; }
+
+                events.forEach(event => {
+                    const center = this._eventCenter(event);
+                    if (!center) { return; }
+
+                    const el = this._createMarkerEl(event.icon || '🎉', event.icon_image_url || event.cover_image_url || null);
+                    el.dataset.eventId = event.id;
+                    el.title = event.title;
+                    el.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        const expanding = this._expandedEventId !== event.id;
+                        this.toggleEventStops(event);
+                        if (expanding) {
+                            this._selectMarker(el, center[1], center[0]);
+                            this.openEventPanel(event);
+                        } else {
+                            this.closeBusinessPanel();
+                        }
+                    });
+                    const marker = new mapboxgl.Marker({ element: el, anchor: 'center' })
+                        .setLngLat(center)
+                        .addTo(this.map);
+                    this.eventMarkers.push(marker);
+                });
+            });
+        }
+
+        _collapseEventStops() {
+            (this.eventStopMarkers || []).forEach(m => m.remove());
+            this.eventStopMarkers = [];
+            this._expandedEventId = null;
+            (this.eventRouteEndMarkers || []).forEach(m => m.remove());
+            this.eventRouteEndMarkers = [];
+            ['event-route', 'event-connectors'].forEach(id => {
+                this.map.getSource(id)?.setData({ type: 'FeatureCollection', features: [] });
+            });
+        }
+
+        // "Start" / "End" badges at the ends of a drawn route; floats above the point so the
+        // event's own marker (which sits on the route start) stays visible and clickable
+        _addEventRouteEndMarkers(route) {
+            const badge = (text, background) => {
+                const el = document.createElement('div');
+                el.className = 'event-route-end-badge';
+                el.style.background = background;
+                el.textContent = text;
+                return el;
+            };
+            const place = (el, lngLat) => {
+                const marker = new mapboxgl.Marker({ element: el, anchor: 'bottom', offset: [0, -18] })
+                    .setLngLat(lngLat)
+                    .addTo(this.map);
+                this.eventRouteEndMarkers.push(marker);
+            };
+
+            const start = route[0];
+            const end = route[route.length - 1];
+            const isLoop = Math.abs(start[0] - end[0]) < 0.0002 && Math.abs(start[1] - end[1]) < 0.0002;
+
+            if (isLoop) {
+                place(badge('Start · End', '#16a34a'), start);
+                return;
+            }
+            place(badge('Start', '#16a34a'), start);
+            place(badge('End', '#111827'), end);
+        }
+
+        toggleEventStops(event) {
+            const wasExpanded = this._expandedEventId === event.id;
+            this._collapseEventStops();
+            if (wasExpanded) { return; }
+
+            const center = this._eventCenter(event);
+            if (!center) { return; }
+
+            this._expandedEventId = event.id;
+            const color = this._eventColor(event);
+
+            this._eventPinnedStops(event).forEach(stop => {
+                const el = document.createElement('div');
+                el.className = 'tour-stop-marker-el';
+                el.style.cursor = 'pointer';
+                if (stop.iconImage) {
+                    el.style.background = '#ffffff';
+                    el.style.width = el.style.height = '28px';
+                    el.innerHTML = `<img src="${escapeHtml(stop.iconImage)}" alt="" style="width:20px;height:20px;object-fit:contain;">`;
+                } else if (stop.icon) {
+                    el.style.background = '#ffffff';
+                    el.style.width = el.style.height = '28px';
+                    el.style.fontSize = '15px';
+                    el.textContent = stop.icon;
+                } else {
+                    el.style.background = color;
+                    el.textContent = stop.number ?? '';
+                }
+                el.title = stop.label || event.title;
+                el.dataset.eventStopIndex = stop.index;
+                el.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    this.openEventStopPanel(event, stop.index);
+                });
+
+                const marker = new mapboxgl.Marker({ element: el, anchor: 'center' })
+                    .setLngLat([stop.coords[1], stop.coords[0]])
+                    .addTo(this.map);
+                this.eventStopMarkers.push(marker);
+            });
+
+            this.map.getSource('event-connectors')?.setData({
+                type: 'FeatureCollection',
+                features: this._eventPinnedStops(event).map(stop => ({
+                    type: 'Feature',
+                    properties: { eventId: event.id, color },
+                    geometry: { type: 'LineString', coordinates: [center, [stop.coords[1], stop.coords[0]]] },
+                })),
+            });
+
+            const route = (event.map && event.map.route) || [];
+            const routeSource = this.map.getSource('event-route');
+            if (routeSource && route.length > 1) {
+                routeSource.setData({
+                    type: 'FeatureCollection',
+                    features: [{
+                        type: 'Feature',
+                        properties: { eventId: event.id, color },
+                        geometry: { type: 'LineString', coordinates: route },
+                    }],
+                });
+            }
+            if (route.length > 1) {
+                this._addEventRouteEndMarkers(route);
+            }
+
+            this.map.fitBounds(this._eventBounds(event, center), { padding: 80, maxZoom: 15 });
+        }
+
+        focusOnEvent(eventId) {
+            this.ensureEventsLoaded().then(events => {
+                const event = events.find(e => e.id == eventId);
+                if (!event) { return; }
+
+                const center = this._eventCenter(event);
+                if (center) {
+                    const markerEl = document.querySelector(`.selectable-marker-el[data-event-id="${event.id}"]`);
+                    if (markerEl) { this._selectMarker(markerEl, center[1], center[0]); }
+
+                    if (this._expandedEventId !== event.id) {
+                        this.toggleEventStops(event);
+                    } else {
+                        this.map.fitBounds(this._eventBounds(event, center), { padding: 80, maxZoom: 15 });
+                    }
+                }
+
+                this.openEventPanel(event);
+            });
+        }
+
+        openEventPanel(event) {
+            this._highlightEventStop(null);
+            if (this._isMobileViewport()) {
+                this.showMobileEventCard(event);
+                return;
+            }
+            const panel = document.getElementById('business-panel');
+            const content = document.getElementById('business-panel-content');
+            if (!panel || !content) { return; }
+
+            const color = this._eventColor(event);
+            const hero = event.cover_image_url
+                ? `<div class="biz-panel-hero"><img src="${escapeHtml(event.cover_image_url)}" alt="${escapeHtml(event.title)}" onerror="window.xsImgFallback(this)"></div>`
+                : `<div class="biz-panel-hero" style="background:linear-gradient(135deg,${color},#f59e0b);"><div class="biz-panel-hero-placeholder">${escapeHtml(event.icon || '🎉')}</div></div>`;
+
+            const allStops = (event.map && event.map.stops) || [];
+            const metaParts = [`<span class="biz-panel-type" style="color:${color};">📅 ${escapeHtml(event.date_label || '')}</span>`];
+            if (allStops.length) {
+                metaParts.push(`<span class="biz-panel-dot">·</span><span>${allStops.length} stop${allStops.length !== 1 ? 's' : ''}</span>`);
+            }
+
+            const tagline = event.tagline ? `<p class="biz-panel-tagline">${escapeHtml(event.tagline)}</p>` : '';
+
+            const infoRows = [];
+            if (event.time_label) {
+                infoRows.push(`
+                    <div class="biz-panel-info-row">
+                        <svg class="biz-panel-info-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                        <span>${escapeHtml(event.time_label)}</span>
+                    </div>`);
+            }
+            const place = [event.venue, event.location].filter(Boolean).join(', ');
+            if (place) {
+                infoRows.push(`
+                    <div class="biz-panel-info-row">
+                        <svg class="biz-panel-info-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                        <span>${escapeHtml(place)}</span>
+                    </div>`);
+            }
+            if (event.route_distance_km) {
+                infoRows.push(`
+                    <div class="biz-panel-info-row">
+                        <svg class="biz-panel-info-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/></svg>
+                        <span>${escapeHtml(String(event.route_distance_km))} km route</span>
+                    </div>`);
+            }
+
+            // Long descriptions start clamped with a Read more toggle
+            const descriptionBlock = event.description
+                ? `<hr class="biz-panel-divider">
+                   <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">About this event</p>
+                   <p class="event-panel-description text-sm text-gray-600 leading-relaxed line-clamp-6" style="white-space:pre-line;">${escapeHtml(event.description)}</p>
+                   <button type="button" class="event-panel-readmore hidden mt-1 text-xs font-semibold hover:underline" style="color:${color};"
+                           onclick="const d=this.previousElementSibling;const open=d.classList.toggle('line-clamp-6');this.textContent=open?'Read more':'Show less';">Read more</button>`
+                : '';
+
+            const stopsList = allStops.length
+                ? `<hr class="biz-panel-divider">
+                   <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Stops</p>
+                   ${allStops.map(s => `
+                       <div class="biz-panel-info-row cursor-pointer rounded-md hover:bg-gray-50" onclick="window.trailMap.focusOnEventStop(${event.id}, ${s.index})">
+                           <span class="tour-stop-marker-el" style="width:20px;height:20px;font-size:10px;flex-shrink:0;background:${s.coords ? color : '#9ca3af'};">${s.coords ? (s.number ?? '') : '↻'}</span>
+                           <span>${escapeHtml(s.label || 'Stop')}${s.time ? ` <span class="text-gray-400">· ${escapeHtml(s.time)}</span>` : ''}${s.coords ? '' : ' <span class="text-gray-400">· roaming</span>'}</span>
+                       </div>`).join('')}`
+                : '';
+
+            const actions = `<div class="biz-panel-actions">
+                <a href="${escapeHtml(event.url)}" class="biz-panel-action-btn">
+                    <div class="biz-panel-action-icon">
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                    </div>
+                    <span class="biz-panel-action-label">View Event</span>
+                </a>
+            </div>`;
+
+            content.innerHTML = `
+                <div style="position:relative;flex-shrink:0;">
+                    ${hero}
+                    <button onclick="document.getElementById('business-panel').classList.add('hidden');window.trailMap?._clearSelection();"
+                            style="position:absolute;top:10px;right:10px;background:rgba(255,255,255,0.92);border:none;cursor:pointer;border-radius:50%;width:34px;height:34px;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(0,0,0,0.18);"
+                            aria-label="Close">
+                        <svg width="16" height="16" fill="none" stroke="#374151" stroke-width="2.5" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                    </button>
+                </div>
+                <div class="biz-panel-body">
+                    <h2 class="biz-panel-name">${escapeHtml(event.title)}</h2>
+                    <div class="biz-panel-meta">${metaParts.join('')}</div>
+                    ${tagline}
+                    ${actions}
+                    ${infoRows.length ? `<hr class="biz-panel-divider">${infoRows.join('')}` : ''}
+                    ${descriptionBlock}
+                    ${stopsList}
+                </div>
+            `;
+
+            document.getElementById('trail-info-panel')?.classList.add('hidden');
+            panel.classList.remove('hidden');
+
+            // Only offer "Read more" when the clamp actually hides text
+            const desc = content.querySelector('.event-panel-description');
+            if (desc && desc.scrollHeight > desc.clientHeight + 1) {
+                content.querySelector('.event-panel-readmore')?.classList.remove('hidden');
+            }
+        }
+
+        // Highlights the clicked stop's pin and dims the selection ring on the others
+        _highlightEventStop(index) {
+            (this.eventStopMarkers || []).forEach(marker => {
+                const el = marker.getElement();
+                const isActive = el.dataset.eventStopIndex == index;
+                el.style.boxShadow = isActive ? '0 0 0 4px rgba(250,204,21,0.9), 0 2px 6px rgba(0,0,0,0.4)' : '';
+                el.style.zIndex = isActive ? '5' : '';
+            });
+        }
+
+        // From the panel's stop list: expand the event if needed, fly to the stop, show its details
+        focusOnEventStop(eventId, index) {
+            this.ensureEventsLoaded().then(events => {
+                const event = events.find(e => e.id == eventId);
+                if (!event) { return; }
+                const stop = ((event.map && event.map.stops) || []).find(s => s.index == index);
+                if (!stop) { return; }
+
+                if (this._expandedEventId !== event.id) {
+                    this.toggleEventStops(event);
+                }
+                if (Array.isArray(stop.coords)) {
+                    this.map.flyTo({ center: [stop.coords[1], stop.coords[0]], zoom: Math.max(this.map.getZoom(), 16), duration: 800 });
+                }
+                this.openEventStopPanel(event, index);
+            });
+        }
+
+        // "‹ Previous · 2 of 6 · Next ›" row for stepping through an event's stops in order
+        _eventStopNavHtml(event, stop) {
+            const stops = (event.map && event.map.stops) || [];
+            const position = stops.findIndex(s => s.index == stop.index);
+            if (stops.length < 2 || position === -1) { return ''; }
+
+            const chevrons = {
+                prev: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7"/>',
+                next: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7"/>',
+            };
+            const btn = (target, direction, label) => {
+                if (!target) {
+                    return `<span class="event-stop-nav-btn ${direction} placeholder" aria-hidden="true"></span>`;
+                }
+                return `<button type="button" class="event-stop-nav-btn ${direction}"
+                                onclick="window.trailMap.focusOnEventStop(${event.id}, ${target.index})"
+                                aria-label="${label}: ${escapeHtml(target.label || 'Stop')}">
+                    <span class="event-stop-nav-icon"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24">${chevrons[direction]}</svg></span>
+                    <span class="event-stop-nav-text">
+                        <span class="event-stop-nav-label">${label}</span>
+                        <span class="event-stop-nav-name">${escapeHtml(target.label || 'Stop')}</span>
+                    </span>
+                </button>`;
+            };
+
+            const dots = stops.map((s, i) =>
+                `<span class="event-stop-nav-dot ${i === position ? 'active' : ''}"></span>`
+            ).join('');
+
+            return `<div class="event-stop-nav" style="--stop-nav-accent:${escapeHtml(this._eventColor(event))};">
+                <div class="event-stop-nav-dots" role="img" aria-label="Stop ${position + 1} of ${stops.length}">${dots}</div>
+                <div class="event-stop-nav-row">
+                    ${btn(stops[position - 1], 'prev', 'Previous')}
+                    ${btn(stops[position + 1], 'next', 'Next')}
+                </div>
+            </div>`;
+        }
+
+        openEventStopPanel(event, index) {
+            const stop = ((event.map && event.map.stops) || []).find(s => s.index == index);
+            if (!stop) { return; }
+            this._highlightEventStop(index);
+
+            if (this._isMobileViewport()) {
+                this.showMobileEventStopCard(event, stop);
+                return;
+            }
+            const panel = document.getElementById('business-panel');
+            const content = document.getElementById('business-panel-content');
+            if (!panel || !content) { return; }
+
+            const color = this._eventColor(event);
+            const stopIcon = stop.iconImage
+                ? `<img src="${escapeHtml(stop.iconImage)}" alt="" style="width:64px;height:64px;object-fit:contain;">`
+                : escapeHtml(stop.icon || event.icon || '📍');
+            const hero = stop.image
+                ? `<div class="biz-panel-hero"><img src="${escapeHtml(stop.image)}" alt="${escapeHtml(stop.label || '')}" onerror="window.xsImgFallback(this)"></div>`
+                : `<div class="biz-panel-hero" style="background:linear-gradient(135deg,${color},#f59e0b);"><div class="biz-panel-hero-placeholder">${stopIcon}</div></div>`;
+
+            const metaParts = [`<span class="biz-panel-type" style="color:${color};">${escapeHtml(event.title)}</span>`];
+            if (stop.number) {
+                metaParts.push(`<span class="biz-panel-dot">·</span><span>Stop ${stop.number}</span>`);
+            } else if (!stop.coords) {
+                metaParts.push(`<span class="biz-panel-dot">·</span><span>Roaming</span>`);
+            }
+
+            const infoRows = [];
+            if (stop.time) {
+                infoRows.push(`
+                    <div class="biz-panel-info-row">
+                        <svg class="biz-panel-info-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                        <span>${escapeHtml(stop.time)}</span>
+                    </div>`);
+            }
+            if (event.date_label) {
+                infoRows.push(`
+                    <div class="biz-panel-info-row">
+                        <svg class="biz-panel-info-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                        <span>${escapeHtml(event.date_label)}</span>
+                    </div>`);
+            }
+
+            const description = stop.description
+                ? `<p class="text-sm text-gray-600 leading-relaxed" style="white-space:pre-line;">${escapeHtml(stop.description)}</p>`
+                : '';
+            const note = stop.note
+                ? `<p class="text-sm text-gray-500 italic mt-2" style="white-space:pre-line;">${escapeHtml(stop.note)}</p>`
+                : '';
+
+            const actions = `<div class="biz-panel-actions">
+                <button type="button" onclick="window.trailMap.focusOnEvent(${event.id})" class="biz-panel-action-btn">
+                    <div class="biz-panel-action-icon">
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
+                    </div>
+                    <span class="biz-panel-action-label">All Stops</span>
+                </button>
+                <a href="${escapeHtml(event.url)}" class="biz-panel-action-btn">
+                    <div class="biz-panel-action-icon">
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                    </div>
+                    <span class="biz-panel-action-label">View Event</span>
+                </a>
+            </div>`;
+
+            content.innerHTML = `
+                <div style="position:relative;flex-shrink:0;">
+                    ${hero}
+                    <button onclick="document.getElementById('business-panel').classList.add('hidden');window.trailMap?._clearSelection();window.trailMap?._highlightEventStop(null);"
+                            style="position:absolute;top:10px;right:10px;background:rgba(255,255,255,0.92);border:none;cursor:pointer;border-radius:50%;width:34px;height:34px;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(0,0,0,0.18);"
+                            aria-label="Close">
+                        <svg width="16" height="16" fill="none" stroke="#374151" stroke-width="2.5" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                    </button>
+                </div>
+                <div class="biz-panel-body">
+                    <h2 class="biz-panel-name">${escapeHtml(stop.label || 'Stop')}</h2>
+                    <div class="biz-panel-meta">${metaParts.join('')}</div>
+                    ${actions}
+                    ${this._eventStopNavHtml(event, stop)}
+                    ${infoRows.length ? `<hr class="biz-panel-divider">${infoRows.join('')}` : ''}
+                    ${description || note ? `<hr class="biz-panel-divider">${description}${note}` : ''}
+                </div>
+            `;
+
+            document.getElementById('trail-info-panel')?.classList.add('hidden');
+            panel.classList.remove('hidden');
+        }
+
+        showMobileEventStopCard(event, stop) {
+            const btnClass = 'flex-1 flex items-center justify-center gap-1.5 py-2 px-2 rounded-lg text-xs font-semibold border border-gray-200 bg-gray-50 hover:bg-gray-100 text-gray-700 transition-colors';
+            const color = this._eventColor(event);
+            const fallbackBg = `linear-gradient(135deg,${color},#f59e0b)`;
+            const fallbackIcon = stop.icon || event.icon || '📍';
+            const img = document.getElementById('mobile-trail-img');
+            const placeholder = document.getElementById('mobile-trail-placeholder');
+            const showPlaceholder = () => {
+                img.classList.add('hidden');
+                placeholder.classList.remove('hidden');
+                placeholder.style.background = fallbackBg;
+                placeholder.textContent = fallbackIcon;
+            };
+            const photo = stop.image || stop.iconImage;
+            if (photo) {
+                img.onerror = showPlaceholder;
+                img.src = photo;
+                img.classList.remove('hidden');
+                placeholder.classList.add('hidden');
+            } else {
+                showPlaceholder();
+            }
+            this._setMobileHero([], stop.label || event.title, `event-${event.id}-stop-${stop.index}`);
+            document.getElementById('mobile-trail-name').textContent = stop.label || 'Stop';
+
+            const metaParts = [`<span style="font-size:12px;font-weight:600;color:${color};">${escapeHtml(event.title)}</span>`];
+            if (stop.number) {
+                metaParts.push(`<span style="color:#d1d5db;font-size:11px;">·</span><span style="font-size:12px;color:#6b7280;">Stop ${stop.number}</span>`);
+            } else if (!stop.coords) {
+                metaParts.push(`<span style="color:#d1d5db;font-size:11px;">·</span><span style="font-size:12px;color:#6b7280;">Roaming</span>`);
+            }
+            document.getElementById('mobile-trail-diff-row').innerHTML = metaParts.join('');
+            document.getElementById('mobile-trail-stats').textContent = [stop.time, event.date_label].filter(Boolean).join(' · ');
+
+            const descEl = document.getElementById('mobile-trail-description');
+            const text = [stop.description, stop.note].filter(Boolean).join('\n\n');
+            descEl.textContent = text;
+            descEl.classList.toggle('hidden', !text);
+
+            document.getElementById('mobile-trail-actions').innerHTML = `
+                <div class="w-full flex flex-col">
+                    <div class="flex gap-2">
+                        <button type="button" onclick="window.trailMap.focusOnEvent(${event.id})" class="${btnClass}"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>All Stops</button>
+                        <a href="${escapeHtml(event.url)}" class="${btnClass}"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>View Event</a>
+                    </div>
+                    ${this._eventStopNavHtml(event, stop)}
+                </div>`;
+            document.getElementById('trail-info-panel')?.classList.add('hidden');
+            document.getElementById('business-panel')?.classList.add('hidden');
+            document.getElementById('mobile-trail-card').classList.remove('hidden');
+        }
+
+        showMobileEventCard(event) {
+            const btnClass = 'flex-1 flex items-center justify-center gap-1.5 py-2 px-2 rounded-lg text-xs font-semibold border border-gray-200 bg-gray-50 hover:bg-gray-100 text-gray-700 transition-colors';
+            const color = this._eventColor(event);
+            const fallbackBg = `linear-gradient(135deg,${color},#f59e0b)`;
+            const img = document.getElementById('mobile-trail-img');
+            const placeholder = document.getElementById('mobile-trail-placeholder');
+            if (event.cover_image_url) {
+                img.onerror = () => {
+                    img.classList.add('hidden');
+                    placeholder.classList.remove('hidden');
+                    placeholder.style.background = fallbackBg;
+                    placeholder.textContent = event.icon || '🎉';
+                };
+                img.src = event.cover_image_url;
+                img.classList.remove('hidden');
+                placeholder.classList.add('hidden');
+            } else {
+                img.classList.add('hidden');
+                placeholder.classList.remove('hidden');
+                placeholder.textContent = event.icon || '🎉';
+                placeholder.style.background = fallbackBg;
+            }
+            this._setMobileHero([], event.title, `event-${event.id}`);
+            document.getElementById('mobile-trail-name').textContent = event.title;
+            const stops = (event.map && event.map.stops) || [];
+            const metaParts = [`<span style="font-size:12px;font-weight:600;color:${color};">📅 ${escapeHtml(event.date_label || '')}</span>`];
+            if (event.time_label) {
+                metaParts.push(`<span style="color:#d1d5db;font-size:11px;">·</span><span style="font-size:12px;color:#6b7280;">${escapeHtml(event.time_label)}</span>`);
+            }
+            if (stops.length) {
+                metaParts.push(`<span style="color:#d1d5db;font-size:11px;">·</span><span style="font-size:12px;color:#6b7280;">${stops.length} stop${stops.length !== 1 ? 's' : ''}</span>`);
+            }
+            if (event.route_distance_km) {
+                metaParts.push(`<span style="color:#d1d5db;font-size:11px;">·</span><span style="font-size:12px;color:#6b7280;">${escapeHtml(String(event.route_distance_km))} km route</span>`);
+            }
+            document.getElementById('mobile-trail-diff-row').innerHTML = metaParts.join('');
+            document.getElementById('mobile-trail-stats').textContent = event.tagline || [event.venue, event.location].filter(Boolean).join(', ');
+            const descEl = document.getElementById('mobile-trail-description');
+            descEl.textContent = event.description || '';
+            descEl.classList.toggle('hidden', !event.description);
+            document.getElementById('mobile-trail-actions').innerHTML =
+                `<a href="${escapeHtml(event.url)}" class="${btnClass}"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>View Event</a>`;
+            document.getElementById('trail-info-panel')?.classList.add('hidden');
+            document.getElementById('business-panel')?.classList.add('hidden');
+            document.getElementById('mobile-trail-card').classList.remove('hidden');
+        }
+
         async loadTrailNetworks() {
             try {
                 const response = await fetch('/api/trail-networks');
@@ -6913,6 +7705,10 @@
         document.addEventListener('click', (e) => {
             if (!window.trailMap) return;
 
+            // Ignore clicks whose target was removed while handling the click — e.g. a
+            // stop row in the panel that re-rendered the panel with that stop's details
+            if (!e.target.isConnected) return;
+
             // Ignore clicks inside the map canvas (handled by the Mapbox click handler)
             if (document.getElementById('main-map')?.contains(e.target)) return;
             // Ignore clicks on trail/business detail panels
@@ -7031,6 +7827,48 @@
             `).join('');
         }
 
+        function filterEvents(events, searchTerm) {
+            if (!searchTerm) { return events; }
+            return events.filter(e =>
+                e.title.toLowerCase().includes(searchTerm) ||
+                (e.venue && e.venue.toLowerCase().includes(searchTerm)) ||
+                (e.location && e.location.toLowerCase().includes(searchTerm))
+            );
+        }
+
+        function renderEventCards(events, targetContainerId = 'trail-cards') {
+            const container = document.getElementById(targetContainerId);
+            if (targetContainerId === 'trail-cards') {
+                const countEl = document.getElementById('trail-count');
+                if (countEl) { countEl.textContent = events.length; }
+            }
+            if (!container) { return; }
+
+            if (events.length === 0) {
+                container.innerHTML = `<div class="text-center py-8 text-gray-500"><p class="font-medium">No upcoming events</p></div>`;
+                return;
+            }
+
+            container.innerHTML = events.map(event => {
+                const stopCount = ((event.map && event.map.stops) || []).length;
+                const meta = [event.date_label, stopCount ? `${stopCount} stop${stopCount !== 1 ? 's' : ''}` : null]
+                    .filter(Boolean).map(escapeHtml).join(' · ');
+                return `
+                    <div class="trail-list-card flex gap-3 items-center cursor-pointer" onclick="window.trailMap.focusOnEvent(${event.id})">
+                        <div class="flex-shrink-0 w-12 h-12 rounded-lg overflow-hidden" style="background:linear-gradient(135deg,${escapeHtml(window.trailMap._eventColor(event))},#f59e0b);">
+                            ${event.cover_image_url
+                                ? `<img src="${escapeHtml(event.cover_image_url)}" alt="${escapeHtml(event.title)}" class="w-full h-full object-cover">`
+                                : `<div class="w-full h-full flex items-center justify-center text-white text-lg">${escapeHtml(event.icon || '🎉')}</div>`}
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <div class="font-medium text-sm text-gray-900 truncate">${escapeHtml(event.title)}</div>
+                            <div class="text-xs text-gray-500 truncate">${meta}</div>
+                        </div>
+                        <svg class="h-4 w-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                    </div>`;
+            }).join('');
+        }
+
         function refreshList() {
             const searchTerm = searchInput ? searchInput.value.toLowerCase().trim() : '';
             if (!window.trailMap) { return; }
@@ -7048,6 +7886,10 @@
                         ? tours.filter(t => t.title.toLowerCase().includes(searchTerm))
                         : tours;
                     renderTourCards(filtered);
+                });
+            } else if (activeLocationFilter === 'event') {
+                window.trailMap.ensureEventsLoaded().then(events => {
+                    renderEventCards(filterEvents(events, searchTerm));
                 });
             } else if (activeLocationFilter === 'business') {
                 window.trailMap.renderTrailList([], filterBusinesses(allBusinesses, searchTerm));
@@ -7139,6 +7981,7 @@
                     window.trailMap.renderBusinessMarkers();
                     window.trailMap.renderFacilityMarkers();
                     window.trailMap.renderTourMarkers?.();
+                    window.trailMap.renderEventMarkers?.();
                 }
 
                 refreshList();
@@ -7229,6 +8072,11 @@
                                 </div>
                             </div>
                         `).join('');
+                    });
+                    return;
+                } else if (filter === 'event') {
+                    window.trailMap.ensureEventsLoaded().then(events => {
+                        renderEventCards(filterEvents(events, q), 'mobile-search-results-inner');
                     });
                     return;
                 } else if (filter in facilityTabEmptyLabels) {
