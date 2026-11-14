@@ -2,12 +2,19 @@
 
 namespace Tests\Feature;
 
+use App\Models\Event;
+use App\Models\EventStop;
 use App\Models\Tour;
 use App\Models\TourStop;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
+/**
+ * The Christmas parade is an event with the Christmas theme, a drawn route
+ * and pinned stops, reachable at /christmas-parade and embeddable on
+ * xploresmithers.com.
+ */
 class ChristmasParadeTourTest extends TestCase
 {
     use RefreshDatabase;
@@ -17,13 +24,12 @@ class ChristmasParadeTourTest extends TestCase
         return User::factory()->create(['is_admin' => true]);
     }
 
-    private function makeParade(array $overrides = []): Tour
+    private function makeParade(array $overrides = []): Event
     {
-        return Tour::create(array_merge([
+        return Event::factory()->christmas()->create(array_merge([
             'title' => 'Christmas Truck Parade',
-            'tour_type' => 'christmas',
-            'is_active' => true,
-            'driving_route_coordinates' => [[-127.1700, 54.7800], [-127.1680, 54.7810], [-127.1660, 54.7822]],
+            'slug' => 'christmas-truck-parade',
+            'route_coordinates' => [[-127.1700, 54.7800], [-127.1680, 54.7810], [-127.1660, 54.7822]],
         ], $overrides));
     }
 
@@ -34,34 +40,37 @@ class ChristmasParadeTourTest extends TestCase
     {
         return array_merge([
             'title' => 'Christmas Truck Parade',
-            'tour_type' => 'christmas',
+            'event_date' => now()->addDays(10)->toDateString(),
+            'event_time' => '18:00',
+            'theme' => Event::THEME_CHRISTMAS,
+            'is_active' => '1',
         ], $overrides);
     }
 
-    public function test_christmas_parade_page_shows_the_active_christmas_tour(): void
+    public function test_christmas_parade_page_shows_the_active_parade_event(): void
     {
         $this->makeParade();
 
         $this->get(route('christmas-parade'))
             ->assertOk()
             ->assertSee('Christmas Truck Parade')
-            ->assertSee('Route Stops')
-            ->assertSee('christmas-snow', false);
+            ->assertSee('data-theme="christmas"', false)
+            ->assertSee('event-title-festive', false)
+            ->assertSee('id="tour-map"', false);
     }
 
-    public function test_christmas_parade_page_returns_404_without_an_active_christmas_tour(): void
+    public function test_christmas_parade_page_returns_404_without_an_active_parade(): void
     {
         $this->makeParade(['is_active' => false]);
-        Tour::create(['title' => 'Scenic Drive', 'tour_type' => 'scenic', 'is_active' => true]);
 
         $this->get(route('christmas-parade'))->assertNotFound();
         $this->get(route('christmas-parade.embed'))->assertNotFound();
     }
 
-    public function test_christmas_parade_page_resolves_by_slug_not_by_newest_christmas_tour(): void
+    public function test_christmas_parade_page_resolves_by_slug_not_by_newest_christmas_event(): void
     {
         $this->makeParade();
-        $this->makeParade(['title' => 'Christmas in the Valley', 'driving_route_coordinates' => null]);
+        Event::factory()->christmas()->create(['title' => 'Christmas in the Valley']);
 
         $this->get(route('christmas-parade'))
             ->assertOk()
@@ -72,7 +81,7 @@ class ChristmasParadeTourTest extends TestCase
     public function test_christmas_parade_slug_is_configurable(): void
     {
         config(['app.christmas_parade_slug' => 'santa-parade-2026']);
-        $this->makeParade(['title' => 'Santa Parade 2026']);
+        $this->makeParade(['title' => 'Santa Parade 2026', 'slug' => 'santa-parade-2026']);
 
         $this->get(route('christmas-parade'))
             ->assertOk()
@@ -83,86 +92,87 @@ class ChristmasParadeTourTest extends TestCase
     {
         $this->makeParade();
 
-        $response = $this->get(route('christmas-parade.embed'));
-
-        $response->assertOk()
+        $this->get(route('christmas-parade.embed'))
+            ->assertOk()
             ->assertHeader('Content-Security-Policy', "frame-ancestors 'self' https://xploresmithers.com https://www.xploresmithers.com")
             ->assertHeaderMissing('X-Frame-Options')
             ->assertSee('View full map')
             ->assertSee(route('christmas-parade'), false)
-            ->assertDontSee('All Tours');
+            ->assertDontSee('All Events');
     }
 
     public function test_embed_frame_ancestors_can_be_configured(): void
     {
         config(['app.embed_frame_ancestors' => 'https://staging.example.com']);
-        $tour = $this->makeParade();
+        $parade = $this->makeParade();
 
-        $this->get(route('local-events.embed', $tour))
+        $this->get(route('local-events.embed', $parade->slug))
             ->assertOk()
             ->assertHeader('Content-Security-Policy', "frame-ancestors 'self' https://staging.example.com")
-            ->assertSee(route('local-events.show', $tour), false);
+            ->assertSee(route('local-events.show', $parade->slug), false);
     }
 
-    public function test_embed_of_inactive_tour_returns_404(): void
+    public function test_standard_event_and_regular_tour_do_not_get_the_christmas_theme(): void
     {
-        $tour = $this->makeParade(['is_active' => false]);
-
-        $this->get(route('local-events.embed', $tour))->assertNotFound();
-    }
-
-    public function test_regular_tour_page_does_not_get_the_christmas_theme(): void
-    {
+        $event = Event::factory()->withRoute()->create();
         $tour = Tour::create(['title' => 'Scenic Drive', 'tour_type' => 'scenic', 'is_active' => true]);
 
+        $this->get(route('local-events.show', $event->slug))
+            ->assertOk()
+            ->assertSee('data-theme="standard"', false)
+            ->assertDontSee('event-title-festive', false);
         $this->get(route('tours.show', $tour))
             ->assertOk()
             ->assertSee('Tour Stops')
             ->assertDontSee('christmas-snow', false);
     }
 
-    public function test_admin_can_create_christmas_tour_with_pinned_stops_and_drawn_route(): void
+    public function test_admin_can_create_parade_with_pinned_stops_and_drawn_route(): void
     {
         $route = [[-127.1704, 54.7802], [-127.1698, 54.7809], [-127.1663, 54.7822]];
 
         $this->actingAs($this->makeAdmin())
             ->post(route('admin.local-events.store'), $this->paradePayload([
-                'driving_route_coordinates' => json_encode($route),
+                'slug' => 'christmas-truck-parade',
+                'route_coordinates' => json_encode($route),
+                'route_distance_km' => '1.4',
                 'stops' => [
-                    ['latitude' => '54.7802017', 'longitude' => '-127.1704670', 'stop_label' => 'Main St & 3rd Ave', 'estimated_visit_time' => '6:00 PM', 'driving_notes' => 'Start line'],
-                    ['latitude' => '54.7822196', 'longitude' => '-127.1662904', 'stop_label' => 'Central Park', 'estimated_visit_time' => '6:20 PM'],
+                    ['latitude' => '54.7802017', 'longitude' => '-127.1704670', 'stop_label' => 'Main St & 3rd Ave', 'time_label' => '6:00 PM', 'notes' => 'Start line'],
+                    ['latitude' => '54.7822196', 'longitude' => '-127.1662904', 'stop_label' => 'Central Park', 'time_label' => '6:20 PM'],
                 ],
             ]))
+            ->assertSessionHasNoErrors()
             ->assertRedirect(route('admin.local-events.index'));
 
-        $tour = Tour::where('title', 'Christmas Truck Parade')->firstOrFail();
-        $this->assertSame('christmas', $tour->tour_type);
-        $this->assertEquals($route, $tour->driving_route_coordinates);
+        $event = Event::where('slug', 'christmas-truck-parade')->firstOrFail();
+        $this->assertTrue($event->isChristmasEvent());
+        $this->assertEquals($route, $event->route_coordinates);
+        $this->assertEquals(1.4, (float) $event->route_distance_km);
 
-        $stops = $tour->stops;
+        $stops = $event->stops;
         $this->assertCount(2, $stops);
-        $this->assertTrue($stops[0]->isPinned());
         $this->assertSame('Main St & 3rd Ave', $stops[0]->displayName());
         $this->assertEqualsWithDelta(54.7802017, $stops[0]->coordinates()[0], 0.0000001);
         $this->assertEqualsWithDelta(-127.1704670, $stops[0]->coordinates()[1], 0.0000001);
-        $this->assertSame('6:00 PM', $stops[0]->estimated_visit_time);
+        $this->assertSame('6:00 PM', $stops[0]->time_label);
+        $this->assertSame('Start line', $stops[0]->notes);
         $this->assertSame(1, $stops[1]->stop_order);
+
+        $this->get(route('christmas-parade'))->assertOk()->assertSee('Central Park');
     }
 
-    public function test_pinned_stop_requires_a_name(): void
+    public function test_activity_requires_a_name(): void
     {
         $this->actingAs($this->makeAdmin())
             ->post(route('admin.local-events.store'), $this->paradePayload([
-                'stops' => [
-                    ['latitude' => '54.78', 'longitude' => '-127.17', 'stop_label' => ''],
-                ],
+                'stops' => [['latitude' => '54.78', 'longitude' => '-127.17', 'stop_label' => '']],
             ]))
             ->assertSessionHasErrors('stops.0');
 
-        $this->assertDatabaseCount('tours', 0);
+        $this->assertDatabaseCount('events', 0);
     }
 
-    public function test_stop_without_link_or_pin_is_rejected(): void
+    public function test_activity_without_pin_or_roaming_flag_is_rejected(): void
     {
         $this->actingAs($this->makeAdmin())
             ->post(route('admin.local-events.store'), $this->paradePayload([
@@ -171,61 +181,48 @@ class ChristmasParadeTourTest extends TestCase
             ->assertSessionHasErrors('stops.0');
     }
 
-    public function test_pinned_stop_coordinates_must_be_valid(): void
+    public function test_pinned_activity_coordinates_must_be_valid(): void
     {
         $this->actingAs($this->makeAdmin())
             ->post(route('admin.local-events.store'), $this->paradePayload([
-                'stops' => [
-                    ['latitude' => '123', 'longitude' => '-127.17', 'stop_label' => 'Bad pin'],
-                ],
+                'stops' => [['latitude' => '123', 'longitude' => '-127.17', 'stop_label' => 'Bad pin']],
             ]))
             ->assertSessionHasErrors('stops.0.latitude');
     }
 
-    public function test_unknown_tour_type_is_rejected(): void
-    {
-        $this->actingAs($this->makeAdmin())
-            ->post(route('admin.local-events.store'), $this->paradePayload(['tour_type' => 'easter']))
-            ->assertSessionHasErrors('tour_type');
-    }
-
     public function test_clearing_the_route_in_the_editor_removes_it(): void
     {
-        $tour = $this->makeParade();
+        $parade = $this->makeParade(['route_distance_km' => 1.2]);
 
         $this->actingAs($this->makeAdmin())
-            ->put(route('admin.local-events.update', $tour), $this->paradePayload([
-                'driving_route_coordinates' => '[]',
-            ]))
+            ->put(route('admin.local-events.update', $parade), $this->paradePayload(['route_coordinates' => '[]']))
             ->assertRedirect(route('admin.local-events.index'));
 
-        $this->assertNull($tour->fresh()->driving_route_coordinates);
+        $this->assertNull($parade->fresh()->route_coordinates);
+        $this->assertNull($parade->fresh()->route_distance_km);
     }
 
     public function test_blank_route_field_keeps_the_existing_route(): void
     {
-        $tour = $this->makeParade();
-        $original = $tour->driving_route_coordinates;
+        $parade = $this->makeParade();
+        $original = $parade->route_coordinates;
 
         $this->actingAs($this->makeAdmin())
-            ->put(route('admin.local-events.update', $tour), $this->paradePayload([
-                'driving_route_coordinates' => '',
-            ]))
+            ->put(route('admin.local-events.update', $parade), $this->paradePayload(['route_coordinates' => '']))
             ->assertRedirect(route('admin.local-events.index'));
 
-        $this->assertEquals($original, $tour->fresh()->driving_route_coordinates);
+        $this->assertEquals($original, $parade->fresh()->route_coordinates);
+        $this->assertSame('christmas-truck-parade', $parade->fresh()->slug, 'a blank slug keeps the existing one');
     }
 
     public function test_pinned_stops_render_on_the_public_page_with_directions_link(): void
     {
-        $tour = $this->makeParade();
-        TourStop::create([
-            'tour_id' => $tour->id,
+        $parade = $this->makeParade();
+        EventStop::factory()->for($parade)->create([
             'latitude' => 54.7802017,
             'longitude' => -127.1704670,
-            'stop_order' => 0,
             'stop_label' => 'Main St & 3rd Ave',
-            'estimated_visit_time' => '6:00 PM',
+            'time_label' => '6:00 PM',
         ]);
 
         $this->get(route('christmas-parade'))
@@ -237,19 +234,36 @@ class ChristmasParadeTourTest extends TestCase
 
     public function test_admin_edit_page_loads_with_pinned_stop(): void
     {
-        $tour = $this->makeParade();
-        TourStop::create([
-            'tour_id' => $tour->id,
-            'latitude' => 54.78,
-            'longitude' => -127.17,
-            'stop_order' => 0,
-            'stop_label' => 'Corner',
-        ]);
+        $parade = $this->makeParade();
+        EventStop::factory()->for($parade)->create(['stop_label' => 'Corner']);
 
         $this->actingAs($this->makeAdmin())
-            ->get(route('admin.local-events.edit', $tour))
+            ->get(route('admin.local-events.edit', $parade))
             ->assertOk()
-            ->assertSee('Pin stop on map')
+            ->assertSee('Pin activity on map')
             ->assertSee('&quot;item_type&quot;:&quot;pinned&quot;', false);
+    }
+
+    public function test_regular_tours_can_still_have_pinned_stops_and_a_drawn_route(): void
+    {
+        $route = [[-127.1704, 54.7802], [-127.1663, 54.7822]];
+
+        $this->actingAs($this->makeAdmin())
+            ->post(route('admin.tours.store'), [
+                'title' => 'Downtown Heritage Walk',
+                'tour_type' => 'heritage',
+                'driving_route_coordinates' => json_encode($route),
+                'stops' => [['latitude' => '54.7802', 'longitude' => '-127.1704', 'stop_label' => 'Old Courthouse']],
+            ])
+            ->assertSessionHasNoErrors()
+            ->assertRedirect(route('admin.tours.index'));
+
+        $tour = Tour::where('title', 'Downtown Heritage Walk')->firstOrFail();
+        $this->assertEquals($route, $tour->driving_route_coordinates);
+        $this->assertTrue($tour->stops->first()->isPinned());
+
+        $this->get(route('tours.show', $tour))->assertOk()->assertSee('Old Courthouse');
+        $this->get(route('tours.embed', $tour))->assertOk()->assertSee('Downtown Heritage Walk');
+        $this->assertSame(1, TourStop::count());
     }
 }

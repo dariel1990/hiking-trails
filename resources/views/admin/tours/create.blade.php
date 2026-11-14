@@ -18,7 +18,7 @@
         </a>
         <div class="space-y-1">
             <h2 class="text-2xl font-semibold tracking-tight">Add {{ $section['singular'] }}</h2>
-            <p class="text-sm text-muted-foreground">{{ $section['isEvent'] ? 'Create a new event page with activities on a map' : 'Create a new themed tour experience' }}</p>
+            <p class="text-sm text-muted-foreground">Create a new themed tour experience</p>
         </div>
     </div>
 

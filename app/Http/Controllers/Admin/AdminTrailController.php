@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\ActivityType;
+use App\Models\Event;
+use App\Models\EventStop;
 use App\Models\Facility;
 use App\Models\SeasonalTrailData;
 use App\Models\Tour;
@@ -1258,7 +1260,9 @@ class AdminTrailController extends Controller
 
         $inUse = TrailFeature::where('icon_image', $path)->count()
             + Tour::where('icon_image', $path)->count()
-            + TourStop::where('icon_image', $path)->count();
+            + TourStop::where('icon_image', $path)->count()
+            + Event::where('icon_image', $path)->count()
+            + EventStop::where('icon_image', $path)->count();
 
         if ($inUse > 0 && ! $request->boolean('force')) {
             return response()->json(['deleted' => false, 'in_use' => $inUse]);
@@ -1270,6 +1274,8 @@ class AdminTrailController extends Controller
             TrailFeature::where('icon_image', $path)->update(['icon_image' => null]);
             Tour::where('icon_image', $path)->update(['icon_image' => null]);
             TourStop::where('icon_image', $path)->update(['icon_image' => null]);
+            Event::where('icon_image', $path)->update(['icon_image' => null]);
+            EventStop::where('icon_image', $path)->update(['icon_image' => null]);
         }
 
         Storage::disk('public')->delete($path);

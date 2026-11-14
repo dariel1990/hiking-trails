@@ -145,7 +145,7 @@ $existingStopsJson = $isEdit
                     </label>
                     <input type="text" name="title" id="title" required
                         value="{{ old('title', $isEdit ? $tour->title : '') }}"
-                        placeholder="{{ $section['isEvent'] ? 'e.g., Christmas in the Valley' : 'e.g., Houston Waterfalls Tour' }}"
+                        placeholder="e.g., Houston Waterfalls Tour"
                         class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
                     @error('title') <p class="text-sm text-red-600">{{ $message }}</p> @enderror
                 </div>
@@ -162,7 +162,7 @@ $existingStopsJson = $isEdit
                 <div class="space-y-2">
                     <label for="description" class="text-sm font-medium leading-none">Description</label>
                     <textarea name="description" id="description" rows="4"
-                        placeholder="{{ $section['isEvent'] ? 'Describe this event...' : 'Describe this tour experience...' }}"
+                        placeholder="Describe this tour experience..."
                         class="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">{{ old('description', $isEdit ? $tour->description : '') }}</textarea>
                     @error('description') <p class="text-sm text-red-600">{{ $message }}</p> @enderror
                 </div>
@@ -235,8 +235,8 @@ $existingStopsJson = $isEdit
         {{-- Stops Manager --}}
         <div class="rounded-lg border bg-card text-card-foreground shadow-sm">
             <div class="flex flex-col space-y-1.5 p-6 border-b">
-                <h3 class="text-lg font-semibold leading-none tracking-tight">{{ $section['isEvent'] ? 'Activities & Stops' : 'Tour Stops' }}</h3>
-                <p class="text-sm text-muted-foreground">Add trails, trail features, or facilities as stops in the order visitors should visit them — or pin any spot (e.g. a street corner or venue) with <strong>Pin stop on map</strong> in the Route &amp; Map section below. For events, give each activity an icon so visitors can tap it on the map.</p>
+                <h3 class="text-lg font-semibold leading-none tracking-tight">Tour Stops</h3>
+                <p class="text-sm text-muted-foreground">Add trails, trail features, or facilities as stops in the order visitors should visit them — or pin any spot (e.g. a street corner or venue) with <strong>Pin stop on map</strong> in the Route &amp; Map section below.</p>
             </div>
             <div class="p-6 space-y-4">
 

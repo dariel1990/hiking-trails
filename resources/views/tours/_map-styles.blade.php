@@ -1,4 +1,4 @@
-{{-- Shared map styles for the tour page and its embeddable map. Expects $tour. --}}
+{{-- Shared map styles for tour/event pages and their embeddable maps. Expects $map (see _map-script). --}}
 <link href="https://api.mapbox.com/mapbox-gl-js/v3.10.0/mapbox-gl.css" rel="stylesheet">
 <style>
     /* Theme colours. Christmas event tours swap in the festive palette. */
@@ -12,7 +12,7 @@
         --tour-accent-glow: rgba(232, 163, 61, 0.35);
         --tour-accent-glow-clear: rgba(232, 163, 61, 0);
     }
-    @if($tour->isChristmasEvent())
+    @if($map['isChristmas'])
     :root {
         --tour-primary: #B3202A;
         --tour-primary-dark: #7f1720;

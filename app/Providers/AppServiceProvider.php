@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Models\Town;
+use App\View\Composers\EventPageComposer;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
@@ -30,6 +31,9 @@ class AppServiceProvider extends ServiceProvider
         RateLimiter::for('ors', function (Request $request) {
             return Limit::perMinute(20)->by($request->ip());
         });
+
+        // Data shared by every public event page layout (picked in Settings → Events).
+        View::composer('local-events.layouts.*', EventPageComposer::class);
 
         // Every admin form that can assign a record to a town needs the list of
         // towns; a composer keeps that out of four separate controllers.

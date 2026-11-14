@@ -22,18 +22,24 @@ class TourController extends Controller
     }
 
     /**
-     * Events share the tour engine but live under /local-events, so an old
-     * /tours/{slug} link to an event is permanently redirected there.
+     * Events used to be tours of a special type. Links to those old tours are
+     * permanently redirected to the event page with the same slug.
      */
     public function show(Tour $tour): View|RedirectResponse
     {
         abort_unless($tour->is_active, 404);
 
-        if ($tour->isEvent()) {
-            return redirect()->route('local-events.show', $tour, 301);
+        if ($tour->isLegacyEvent()) {
+            return redirect()->route('local-events.show', $tour->slug, 301);
         }
 
-        return $this->showView($tour);
+        $tour->load('stops.trail.features', 'stops.feature', 'stops.facility');
+
+        return view('tours.show', [
+            'tour' => $tour,
+            'map' => $tour->toMapPayload(),
+            'mapboxToken' => config('services.mapbox.access_token'),
+        ]);
     }
 
     /**
@@ -43,58 +49,27 @@ class TourController extends Controller
     {
         abort_unless($tour->is_active, 404);
 
-        if ($tour->isEvent()) {
-            return redirect()->route('local-events.embed', $tour, 301);
+        if ($tour->isLegacyEvent()) {
+            return redirect()->route('local-events.embed', $tour->slug, 301);
         }
 
-        return $this->embedResponse($tour, route('tours.show', $tour));
-    }
-
-    /**
-     * Friendly URL for the Christmas parade: the active event with the
-     * configured slug (other events live at /local-events/{slug}).
-     */
-    public function christmasParade(): View
-    {
-        return $this->showView($this->currentChristmasParade());
-    }
-
-    public function christmasParadeEmbed(): Response
-    {
-        return $this->embedResponse($this->currentChristmasParade(), route('christmas-parade'));
-    }
-
-    private function currentChristmasParade(): Tour
-    {
-        return Tour::active()
-            ->events()
-            ->where('slug', config('app.christmas_parade_slug'))
-            ->firstOrFail();
-    }
-
-    /**
-     * Shared by tours and events: events link back to the Events page.
-     */
-    protected function showView(Tour $tour): View
-    {
         $tour->load('stops.trail.features', 'stops.feature', 'stops.facility');
-
-        $mapboxToken = config('services.mapbox.access_token');
-        $backUrl = $tour->isEvent() ? route('local-events.index') : route('tours.index');
-        $backLabel = $tour->isEvent() ? 'All Events' : 'All Tours';
-
-        return view('tours.show', compact('tour', 'mapboxToken', 'backUrl', 'backLabel'));
-    }
-
-    protected function embedResponse(Tour $tour, string $fullPageUrl): Response
-    {
-        $tour->load('stops.trail.features', 'stops.feature', 'stops.facility');
-
-        $mapboxToken = config('services.mapbox.access_token');
-        $frameAncestors = trim("'self' ".config('app.embed_frame_ancestors'));
 
         return response()
-            ->view('tours.embed', compact('tour', 'mapboxToken', 'fullPageUrl'))
-            ->header('Content-Security-Policy', "frame-ancestors {$frameAncestors}");
+            ->view('tours.embed', [
+                'title' => $tour->title,
+                'map' => $tour->toMapPayload(),
+                'mapboxToken' => config('services.mapbox.access_token'),
+                'fullPageUrl' => route('tours.show', $tour),
+            ])
+            ->header('Content-Security-Policy', self::embedFrameAncestorsPolicy());
+    }
+
+    /**
+     * CSP header value that lets only our own sites frame an embed page.
+     */
+    public static function embedFrameAncestorsPolicy(): string
+    {
+        return 'frame-ancestors '.trim("'self' ".config('app.embed_frame_ancestors'));
     }
 }

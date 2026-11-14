@@ -4,8 +4,8 @@ use App\Http\Controllers\Admin\ActivityTypeController;
 use App\Http\Controllers\Admin\AdminAnalyticsController;
 use App\Http\Controllers\Admin\AdminController;
 use App\Http\Controllers\Admin\AdminEmailLogController;
+use App\Http\Controllers\Admin\AdminEventController;
 use App\Http\Controllers\Admin\AdminLegalDocumentController;
-use App\Http\Controllers\Admin\AdminLocalEventController;
 use App\Http\Controllers\Admin\AdminSettingsController;
 use App\Http\Controllers\Admin\AdminSubscriptionController;
 use App\Http\Controllers\Admin\AdminTourController;
@@ -153,13 +153,13 @@ Route::get('/businesses/{business:slug}', [BusinessPublicController::class, 'sho
 Route::get('/tours', [TourController::class, 'index'])->name('tours.index');
 Route::get('/tours/{tour:slug}', [TourController::class, 'show'])->name('tours.show');
 Route::get('/embed/tours/{tour:slug}', [TourController::class, 'embed'])->name('tours.embed');
-// Map-based events (e.g. Christmas in the Valley). Separate from /events, which
-// lists the calendar events scraped from SmithersEvents.com.
+// Event pages with their maps (e.g. the Christmas parade). Same events table as
+// /events (the calendar iframed on xploresmithers.com), which links by id.
 Route::get('/local-events', [LocalEventController::class, 'index'])->name('local-events.index');
-Route::get('/local-events/{tour:slug}', [LocalEventController::class, 'show'])->name('local-events.show');
-Route::get('/embed/local-events/{tour:slug}', [LocalEventController::class, 'embed'])->name('local-events.embed');
-Route::get('/christmas-parade', [TourController::class, 'christmasParade'])->name('christmas-parade');
-Route::get('/embed/christmas-parade', [TourController::class, 'christmasParadeEmbed'])->name('christmas-parade.embed');
+Route::get('/local-events/{event:slug}', [LocalEventController::class, 'show'])->name('local-events.show');
+Route::get('/embed/local-events/{event:slug}', [LocalEventController::class, 'embed'])->name('local-events.embed');
+Route::get('/christmas-parade', [LocalEventController::class, 'christmasParade'])->name('christmas-parade');
+Route::get('/embed/christmas-parade', [LocalEventController::class, 'christmasParadeEmbed'])->name('christmas-parade.embed');
 
 // Public Trail Networks Routes
 Route::get('/trail-networks', [TrailNetworkController::class, 'index'])
@@ -347,12 +347,18 @@ Route::prefix('admin')->name('admin.')->group(function () {
                 'destroy' => 'tours.destroy',
             ]);
 
-        // Events Management (map-based events; stored as tours of the event type)
-        Route::post('/local-events/bulk-action', [AdminLocalEventController::class, 'bulkAction'])
+        // Events Management (shown on /local-events and the /events calendar)
+        Route::post('/local-events/bulk-action', [AdminEventController::class, 'bulkAction'])
             ->name('local-events.bulk-action');
-        Route::resource('local-events', AdminLocalEventController::class)
+        Route::post('/local-events/media/photos', [AdminEventController::class, 'uploadMediaPhoto'])
+            ->name('local-events.media.upload');
+        Route::delete('/local-events/media/photos', [AdminEventController::class, 'deleteUploadedMediaPhoto'])
+            ->name('local-events.media.upload.delete');
+        Route::delete('/local-events/{event}/cover-image', [AdminEventController::class, 'deleteCoverImage'])
+            ->name('local-events.cover-image.delete');
+        Route::resource('local-events', AdminEventController::class)
             ->except(['show'])
-            ->parameters(['local-events' => 'tour'])
+            ->parameters(['local-events' => 'event'])
             ->names([
                 'index' => 'local-events.index',
                 'create' => 'local-events.create',

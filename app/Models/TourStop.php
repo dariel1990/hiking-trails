@@ -136,4 +136,25 @@ class TourStop extends Model
 
         return $trail->start_coordinates ?: null;
     }
+
+    /**
+     * Data for this stop in the shared route map.
+     *
+     * @return array<string, mixed>
+     */
+    public function toMapStop(int $index, ?int $number): array
+    {
+        return [
+            'index' => $index,
+            'number' => $number,
+            'label' => $this->displayName(),
+            'coords' => $this->coordinates(),
+            'time' => $this->estimated_visit_time,
+            'note' => $this->driving_notes,
+            'description' => $this->description,
+            'icon' => $this->icon,
+            'iconImage' => $this->icon_image_url,
+            'image' => $this->image_url,
+        ];
+    }
 }

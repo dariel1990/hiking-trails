@@ -112,21 +112,22 @@ class TownController extends Controller
     }
 
     /**
-     * Upcoming events that mention the town. Event location and venue are
-     * scraped free text, so this is a best-effort match rather than a join.
+     * Upcoming events linked to the town in the admin, or whose location or
+     * venue mentions it (older scraped events only have free text).
      *
      * @return \Illuminate\Database\Eloquent\Collection<int, Event>
      */
     private function eventsNear(Town $town)
     {
         return Event::query()
-            ->upcoming()
-            ->where('is_active', true)
+            ->current()
             ->where(function ($q) use ($town) {
-                $q->where('location', 'like', "%{$town->name}%")
+                $q->where('town_id', $town->id)
+                    ->orWhere('location', 'like', "%{$town->name}%")
                     ->orWhere('venue', 'like', "%{$town->name}%");
             })
             ->orderBy('event_date')
+            ->orderBy('event_time')
             ->limit(3)
             ->get();
     }

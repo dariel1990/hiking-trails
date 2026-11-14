@@ -14,11 +14,36 @@
 |   'group'   => key of 'groups' below (tab on the settings page)
 |   'label'   => field label shown in the admin form
 |   'type'    => cast type: string | int | float | bool | json
-|   'input'   => form control: text | textarea | number | toggle | url | email | json | time
+|   'input'   => form control: text | textarea | number | toggle | url | email | json | time | choice | color
 |   'default' => fallback value used when no row exists in the database
 |   'rules'   => Laravel validation rules applied on save
 |   'hint'    => optional helper text shown under the field
+|   'options' => for input 'choice': value => ['label' => ..., 'description' => ...]
+|   'preview_param' => for input 'choice': query parameter that previews an option (see AdminSettingsController)
 */
+
+$eventPageLayouts = [
+    'premium' => [
+        'label' => 'Premium',
+        'description' => 'Full-width photo header with the title on top, a key-facts bar, and a "Save the date" band at the end. Best when the event has a strong cover photo.',
+    ],
+    'booking' => [
+        'label' => 'Booking',
+        'description' => 'Ticket-site style: a panel with the date, place and buttons stays in view while scrolling, and phones get a bottom action bar.',
+    ],
+    'minimal' => [
+        'label' => 'Minimal',
+        'description' => 'Clean white page with lots of space, the key facts in one row, and simple labelled sections.',
+    ],
+    'editorial' => [
+        'label' => 'Editorial',
+        'description' => 'Magazine style: a large serif headline beside a tall photo, a big date, and a numbered programme.',
+    ],
+    'corporate' => [
+        'label' => 'Corporate',
+        'description' => 'Structured panels with an event information sidebar and the activities as a schedule table.',
+    ],
+];
 
 return [
 
@@ -50,6 +75,10 @@ return [
         'reviews' => [
             'label' => 'Review Prompt',
             'description' => 'The "leave a review" popup: how often visitors are asked, and where each platform sends them. App visitors go to the App Store or Google Play; website visitors go to Google Reviews.',
+        ],
+        'events' => [
+            'label' => 'Events',
+            'description' => 'How the public event pages (/local-events) look. The same layout is used for every event; Christmas events keep their festive colours.',
         ],
         'system' => [
             'label' => 'System',
@@ -507,6 +536,37 @@ return [
             'default' => null,
             'rules' => ['nullable', 'email', 'max:255'],
             'hint' => 'Where the popup\'s "Send us feedback" button opens a message to. Falls back to the developer alert email when blank.',
+        ],
+
+        // Events
+        'event_page_layout' => [
+            'group' => 'events',
+            'label' => 'Event page layout',
+            'type' => 'string',
+            'input' => 'choice',
+            'options' => $eventPageLayouts,
+            'preview_param' => 'layout',
+            'default' => 'premium',
+            'rules' => ['required', 'string', 'in:'.implode(',', array_keys($eventPageLayouts))],
+            'hint' => 'Use Preview to see the next upcoming event in a layout before saving.',
+        ],
+        'event_accent_color' => [
+            'group' => 'events',
+            'label' => 'Button & icon colour',
+            'type' => 'string',
+            'input' => 'color',
+            'default' => '#2C5F5D',
+            'rules' => ['required', 'regex:/^#[0-9a-fA-F]{6}$/'],
+            'hint' => 'Buttons, icons, map markers and activity badges on event pages. Default is the brand green #2C5F5D. Button text turns dark automatically on light colours.',
+        ],
+        'event_christmas_accent_color' => [
+            'group' => 'events',
+            'label' => 'Christmas events button & icon colour',
+            'type' => 'string',
+            'input' => 'color',
+            'default' => '#B3202A',
+            'rules' => ['required', 'regex:/^#[0-9a-fA-F]{6}$/'],
+            'hint' => 'The same, for events with the Christmas theme. Default is festive red #B3202A.',
         ],
 
         // System

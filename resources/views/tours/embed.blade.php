@@ -1,11 +1,11 @@
-{{-- Map-only tour page for embedding in an iframe (no site header/footer). --}}
+{{-- Map-only tour or event page for embedding in an iframe (no site header/footer). Expects $title, $map, $mapboxToken, $fullPageUrl. --}}
 <!DOCTYPE html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="robots" content="noindex">
-    <title>{{ $tour->title }} — Route Map</title>
+    <title>{{ $title }} — Route Map</title>
     @include('tours._map-styles')
     <style>
         *, *::before, *::after { box-sizing: border-box; }
@@ -43,10 +43,10 @@
     </style>
 </head>
 <body>
-    <div id="tour-map" role="region" aria-label="{{ $tour->title }} route map"></div>
+    <div id="tour-map" role="region" aria-label="{{ $title }} route map"></div>
 
     <div class="embed-bar">
-        <span class="embed-chip"><span class="embed-chip-dot"></span>{{ $tour->title }}</span>
+        <span class="embed-chip"><span class="embed-chip-dot"></span>{{ $title }}</span>
     </div>
 
     <div class="embed-actions">

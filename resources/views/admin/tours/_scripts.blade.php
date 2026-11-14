@@ -264,7 +264,7 @@ function tourForm(availableTrails, availableFeatures, availableFacilities, exist
 }
 
 async function deleteTourCoverImage(url, button) {
-    if (!confirm('Delete the cover image for this tour?')) { return; }
+    if (!confirm('Delete the cover image?')) { return; }
     button.disabled = true;
 
     try {
@@ -620,7 +620,6 @@ const TOUR_TYPE_ICONS = {
     fishing: '🎣',
     heritage: '🏛️',
     scenic: '🌄',
-    christmas: '🎄',
 };
 
 function syncTourTypeIcon(type) {
@@ -670,53 +669,20 @@ window.tourRouteEditor = {
             this.route = [];
         }
 
+        this.currentLayer = this.mapStyles[container.dataset.defaultLayer] ? container.dataset.defaultLayer : 'standard';
+
         mapboxgl.accessToken = @json(config('services.mapbox.access_token'));
         this.map = new mapboxgl.Map({
             container: 'route-map',
-            style: 'mapbox://styles/mapbox/streets-v12',
+            style: this.mapStyles[this.currentLayer],
             center: [-127.17, 54.78],
             zoom: 13,
         });
         this.map.addControl(new mapboxgl.NavigationControl(), 'top-right');
 
-        this.map.on('load', () => {
-            this.addArrowImage();
-            this.map.addSource('editor-route', { type: 'geojson', data: this.routeGeoJson() });
-            this.map.addLayer({
-                id: 'editor-route-line',
-                type: 'line',
-                source: 'editor-route',
-                filter: ['==', '$type', 'LineString'],
-                layout: { 'line-join': 'round', 'line-cap': 'round' },
-                paint: { 'line-color': '#B3202A', 'line-width': 4 },
-            });
-            this.map.addLayer({
-                id: 'editor-route-arrows',
-                type: 'symbol',
-                source: 'editor-route',
-                filter: ['==', '$type', 'LineString'],
-                layout: {
-                    'symbol-placement': 'line',
-                    'symbol-spacing': 70,
-                    'icon-image': 'editor-arrow',
-                    'icon-size': 0.55,
-                    'icon-allow-overlap': true,
-                    'icon-rotation-alignment': 'map',
-                },
-            });
-            this.map.addLayer({
-                id: 'editor-route-points',
-                type: 'circle',
-                source: 'editor-route',
-                filter: ['==', '$type', 'Point'],
-                paint: {
-                    'circle-radius': ['case', ['get', 'isEnd'], 6, 3.5],
-                    'circle-color': ['case', ['get', 'isStart'], '#1E5B3A', '#ffffff'],
-                    'circle-stroke-color': '#B3202A',
-                    'circle-stroke-width': 2,
-                },
-            });
+        this.map.on('style.load', () => this.addEditorLayers());
 
+        this.map.on('load', () => {
             this.isReady = true;
             this.renderStops();
             this.updateRouteUi(false);
@@ -724,6 +690,70 @@ window.tourRouteEditor = {
         });
 
         this.map.on('click', (e) => this.handleMapClick(e));
+    },
+
+    mapStyles: {
+        standard: 'mapbox://styles/mapbox/streets-v12',
+        satellite: 'mapbox://styles/mapbox/satellite-streets-v12',
+    },
+    currentLayer: 'standard',
+
+    /**
+     * Switch the base map. Mapbox drops custom sources/layers on setStyle,
+     * so they are re-added from the 'style.load' handler.
+     */
+    setLayer(layer) {
+        if (!this.map || !this.mapStyles[layer] || layer === this.currentLayer) { return; }
+        this.currentLayer = layer;
+        this.map.setStyle(this.mapStyles[layer]);
+        document.querySelectorAll('.route-layer-btn').forEach((btn) => {
+            const active = btn.dataset.mapLayer === layer;
+            btn.classList.toggle('bg-green-600', active);
+            btn.classList.toggle('text-white', active);
+            btn.classList.toggle('bg-white', !active);
+            btn.classList.toggle('text-gray-700', !active);
+            btn.classList.toggle('hover:bg-gray-50', !active);
+        });
+    },
+
+    addEditorLayers() {
+        if (this.map.getSource('editor-route')) { return; }
+        if (!this.map.hasImage('editor-arrow')) { this.addArrowImage(); }
+        this.map.addSource('editor-route', { type: 'geojson', data: this.routeGeoJson() });
+        this.map.addLayer({
+            id: 'editor-route-line',
+            type: 'line',
+            source: 'editor-route',
+            filter: ['==', '$type', 'LineString'],
+            layout: { 'line-join': 'round', 'line-cap': 'round' },
+            paint: { 'line-color': '#B3202A', 'line-width': 4 },
+        });
+        this.map.addLayer({
+            id: 'editor-route-arrows',
+            type: 'symbol',
+            source: 'editor-route',
+            filter: ['==', '$type', 'LineString'],
+            layout: {
+                'symbol-placement': 'line',
+                'symbol-spacing': 70,
+                'icon-image': 'editor-arrow',
+                'icon-size': 0.55,
+                'icon-allow-overlap': true,
+                'icon-rotation-alignment': 'map',
+            },
+        });
+        this.map.addLayer({
+            id: 'editor-route-points',
+            type: 'circle',
+            source: 'editor-route',
+            filter: ['==', '$type', 'Point'],
+            paint: {
+                'circle-radius': ['case', ['get', 'isEnd'], 6, 3.5],
+                'circle-color': ['case', ['get', 'isStart'], '#1E5B3A', '#ffffff'],
+                'circle-stroke-color': '#B3202A',
+                'circle-stroke-width': 2,
+            },
+        });
     },
 
     addArrowImage() {
@@ -909,7 +939,7 @@ window.tourRouteEditor = {
         document.getElementById('route-snap-btn').disabled = this.route.length < 2;
 
         if (this.isReady) {
-            this.map.getSource('editor-route').setData(this.routeGeoJson());
+            this.map.getSource('editor-route')?.setData(this.routeGeoJson());
         }
     },
 

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Business;
+use App\Models\Event;
 use App\Models\Tour;
 use App\Models\Town;
 use App\Models\Trail;
@@ -68,9 +69,12 @@ class SitemapController extends Controller
             $urls[] = $this->url(route('businesses.public.show', $business->slug), $business->updated_at?->toAtomString(), '0.6');
         }
 
-        foreach (Tour::active()->get(['slug', 'tour_type', 'updated_at']) as $tour) {
-            $showRoute = $tour->isEvent() ? 'local-events.show' : 'tours.show';
-            $urls[] = $this->url(route($showRoute, $tour->slug), $tour->updated_at?->toAtomString(), '0.6');
+        foreach (Tour::active()->tours()->get(['slug', 'updated_at']) as $tour) {
+            $urls[] = $this->url(route('tours.show', $tour->slug), $tour->updated_at?->toAtomString(), '0.6');
+        }
+
+        foreach (Event::current()->get(['slug', 'updated_at']) as $event) {
+            $urls[] = $this->url(route('local-events.show', $event->slug), $event->updated_at?->toAtomString(), '0.6', 'weekly');
         }
 
         foreach (TrailNetwork::query()->where('is_active', true)->get(['slug', 'updated_at']) as $network) {

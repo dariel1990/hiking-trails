@@ -18,92 +18,40 @@ use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
-use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 use Intervention\Image\Drivers\Gd\Driver;
 use Intervention\Image\ImageManager;
 
 /**
- * Admin CRUD for tours. AdminLocalEventController extends this to manage
- * map-based events (tours of Tour::EVENT_TYPE) as their own admin section;
- * isEventSection() switches the query scope, labels, routes and tour type.
+ * Admin CRUD for tours. Events have their own admin (AdminEventController).
  */
 class AdminTourController extends Controller
 {
     /**
-     * Whether this controller manages events instead of regular tours.
-     */
-    protected function isEventSection(): bool
-    {
-        return false;
-    }
-
-    /**
-     * Labels and route names for the admin views of this section.
+     * Labels and route names for the admin views.
      *
-     * @return array{isEvent: bool, routePrefix: string, singular: string, plural: string, publicShowRoute: string, description: string, types: array<string, string>}
+     * @return array{routePrefix: string, singular: string, plural: string, publicShowRoute: string, description: string, types: array<string, string>}
      */
-    protected function section(): array
+    private function section(): array
     {
-        if ($this->isEventSection()) {
-            return [
-                'isEvent' => true,
-                'routePrefix' => 'admin.local-events',
-                'singular' => 'Event',
-                'plural' => 'Events',
-                'publicShowRoute' => 'local-events.show',
-                'description' => 'Map-based event pages (e.g. Christmas in the Valley) shown under Events on the site',
-                'types' => [Tour::EVENT_TYPE => Tour::getTourTypes()[Tour::EVENT_TYPE]],
-            ];
-        }
-
         return [
-            'isEvent' => false,
             'routePrefix' => 'admin.tours',
             'singular' => 'Tour',
             'plural' => 'Tours',
             'publicShowRoute' => 'tours.show',
             'description' => 'Manage themed tour packages that appear on the site',
-            'types' => Tour::getRegularTourTypes(),
+            'types' => Tour::getTourTypes(),
         ];
     }
 
     /**
-     * Tours or events, depending on the section.
+     * Regular tours (leftover rows of the old event type are not managed here).
      *
      * @return Builder<Tour>
      */
-    protected function sectionQuery(): Builder
+    private function sectionQuery(): Builder
     {
-        return $this->isEventSection() ? Tour::query()->events() : Tour::query()->tours();
-    }
-
-    /**
-     * A tour opened in the wrong section (e.g. an event under Tours) is sent to
-     * the right one; null when it belongs here.
-     */
-    protected function redirectToOwnSection(Tour $tour): ?RedirectResponse
-    {
-        if ($tour->isEvent() === $this->isEventSection()) {
-            return null;
-        }
-
-        return redirect()->route(($tour->isEvent() ? 'admin.local-events' : 'admin.tours').'.edit', $tour);
-    }
-
-    /**
-     * The submitted type must belong to this section (events can't be created
-     * under Tours and vice versa).
-     *
-     * @param  array<string, mixed>  $validated
-     */
-    protected function ensureTypeBelongsToSection(array $validated): void
-    {
-        if (! array_key_exists($validated['tour_type'] ?? '', $this->section()['types'])) {
-            throw ValidationException::withMessages([
-                'tour_type' => 'Choose a '.strtolower($this->section()['singular']).' type.',
-            ]);
-        }
+        return Tour::query()->tours();
     }
 
     public function index(): View
@@ -125,7 +73,6 @@ class AdminTourController extends Controller
     public function store(StoreTourRequest $request): RedirectResponse
     {
         $validated = $request->validated();
-        $this->ensureTypeBelongsToSection($validated);
         $validated['is_active'] = $request->boolean('is_active', true);
         $validated['is_featured'] = $request->boolean('is_featured');
         $validated['sort_order'] = $request->input('sort_order', 0);
@@ -151,11 +98,9 @@ class AdminTourController extends Controller
             ->with('success', $this->section()['singular'].' created successfully.');
     }
 
-    public function edit(Tour $tour): View|RedirectResponse
+    public function edit(Tour $tour): View
     {
-        if ($redirect = $this->redirectToOwnSection($tour)) {
-            return $redirect;
-        }
+        abort_if($tour->isLegacyEvent(), 404);
 
         $tour->load('stops.trail', 'stops.feature', 'stops.facility');
 
@@ -164,10 +109,9 @@ class AdminTourController extends Controller
 
     public function update(UpdateTourRequest $request, Tour $tour): RedirectResponse
     {
-        abort_if($tour->isEvent() !== $this->isEventSection(), 404);
+        abort_if($tour->isLegacyEvent(), 404);
 
         $validated = $request->validated();
-        $this->ensureTypeBelongsToSection($validated);
         $validated['is_active'] = $request->boolean('is_active', true);
         $validated['is_featured'] = $request->boolean('is_featured');
         $validated['sort_order'] = $request->input('sort_order', 0);
@@ -217,7 +161,7 @@ class AdminTourController extends Controller
 
     public function destroy(Tour $tour): RedirectResponse
     {
-        abort_if($tour->isEvent() !== $this->isEventSection(), 404);
+        abort_if($tour->isLegacyEvent(), 404);
 
         if ($tour->cover_image) {
             Storage::disk('public')->delete($tour->cover_image);

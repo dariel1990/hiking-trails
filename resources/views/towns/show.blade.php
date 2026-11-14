@@ -517,7 +517,7 @@
                     <ul class="space-y-3">
                         @foreach($events as $event)
                             <li>
-                                <a href="{{ route('events.show', $event) }}"
+                                <a href="{{ route('local-events.show', $event->slug) }}"
                                    class="group flex items-start gap-5 bg-white rounded-xl border-l-4 border-accent-500 p-5 shadow-sm hover:shadow-lg transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 focus-visible:ring-offset-2">
                                     <time class="flex-shrink-0 text-center leading-none pt-0.5" datetime="{{ $event->event_date?->toDateString() }}">
                                         <span class="block text-xs font-semibold uppercase tracking-wide text-accent-600">{{ $event->event_date?->format('M') }}</span>

@@ -12,6 +12,7 @@
     - $shareText    : text for X/WhatsApp shares
     - $emailSubject : email subject
     - $emailBody    : email body text (link is appended automatically)
+    - $flatHeader   : solid header in the page's --tour-primary-dark colour instead of the gradient (optional)
 --}}
 @php
     $shareId = $shareId ?? 'xs-share';
@@ -22,6 +23,7 @@
     $shareText = $shareText ?? ('Check out '.$title.'! 🥾⛰️');
     $emailSubject = $emailSubject ?? ('Check this out: '.$title);
     $emailBody = $emailBody ?? ('I found this and thought you might be interested!'."\n\n".$title);
+    $flatHeader = $flatHeader ?? false;
 @endphp
 
 @once
@@ -51,10 +53,15 @@
         .xs-share-modal.is-open .xs-share-dialog { animation: xsShareSlideUpDesktop 0.5s cubic-bezier(.22,1,.36,1) forwards; }
     }
 
+    @if($flatHeader)
+    .xs-share-head { position: relative; padding: 28px 28px 22px; text-align: center; color: #fff;
+        background: var(--tour-primary-dark, #1d4644); border-radius: 24px 24px 0 0; overflow: hidden; }
+    @else
     .xs-share-head { position: relative; padding: 28px 28px 22px; text-align: center; color: #fff;
         background: linear-gradient(150deg, #2C5F5D 0%, #1a2e2e 100%); border-radius: 24px 24px 0 0; overflow: hidden; }
     .xs-share-head::after { content: ''; position: absolute; top: -40%; right: -20%; width: 220px; height: 220px;
         background: radial-gradient(circle, rgba(232,123,53,.35), transparent 70%); }
+    @endif
     .xs-share-kicker { font-size: 11px; letter-spacing: .22em; text-transform: uppercase; color: #E87B35; font-weight: 700; position: relative; }
     .xs-share-title { font-size: 20px; font-weight: 700; color: #fff; margin-top: 8px; line-height: 1.25; position: relative; }
     .xs-share-sub { margin-top: 8px; font-size: 13px; color: rgba(255,255,255,.78); line-height: 1.5; position: relative; }

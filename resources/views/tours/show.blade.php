@@ -1,17 +1,13 @@
 @extends('layouts.public')
 
 @php
-    $isChristmas = $tour->isChristmasEvent();
     $tourTypeLabel = App\Models\Tour::getTourTypes()[$tour->tour_type] ?? ucfirst($tour->tour_type);
     $tourTypeText = explode(' ', $tourTypeLabel, 2)[1] ?? $tourTypeLabel;
     $stopCount = $tour->stops->count();
     // Roaming activities (no fixed spot) are listed separately and get no map pin.
     $mappedStops = $tour->stops->reject(fn ($stop) => $stop->is_roaming);
     $roamingStops = $tour->stops->filter(fn ($stop) => $stop->is_roaming);
-    // An event whose stops carry their own icons reads as a map of activities.
-    $isActivityMap = $isChristmas && $tour->stops->contains(fn ($stop) => $stop->hasIcon() || $stop->is_roaming);
-    $stopsHeading = $isActivityMap ? 'Activities' : ($isChristmas ? 'Route Stops' : 'Tour Stops');
-    $stopNoun = $isActivityMap ? 'activit' . ($stopCount === 1 ? 'y' : 'ies') : 'stop' . ($stopCount === 1 ? '' : 's');
+    $stopNoun = 'stop' . ($stopCount === 1 ? '' : 's');
 @endphp
 
 @section('title', $tour->title . ' — Xplore Smithers')
@@ -20,7 +16,7 @@
 <!-- Open Graph / Facebook Meta Tags -->
 <meta property="og:type" content="website">
 <meta property="og:url" content="{{ url()->current() }}">
-<meta property="og:title" content="{{ $tour->title }} — Xplore Smithers{{ $isChristmas ? '' : ' Tour' }}">
+<meta property="og:title" content="{{ $tour->title }} — Xplore Smithers Tour">
 <meta property="og:description" content="{{ Str::limit($tour->tagline ?: strip_tags($tour->description ?? ''), 200) }}">
 @if($tour->cover_image_url)
 <meta property="og:image" content="{{ url($tour->cover_image_url) }}">
@@ -34,7 +30,7 @@
 <!-- Twitter Card Meta Tags -->
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:url" content="{{ url()->current() }}">
-<meta name="twitter:title" content="{{ $tour->title }} — Xplore Smithers{{ $isChristmas ? '' : ' Tour' }}">
+<meta name="twitter:title" content="{{ $tour->title }} — Xplore Smithers Tour">
 <meta name="twitter:description" content="{{ Str::limit($tour->tagline ?: strip_tags($tour->description ?? ''), 200) }}">
 @if($tour->cover_image_url)
 <meta name="twitter:image" content="{{ url($tour->cover_image_url) }}">
@@ -62,78 +58,26 @@
     }
     .stop-timeline-item:last-child .timeline-connector { display: none; }
 </style>
-@if($isChristmas)
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Mountains+of+Christmas:wght@700&display=swap" rel="stylesheet">
-<style>
-    .christmas-hero { background: linear-gradient(160deg, #0F1B2D 0%, #13283f 45%, #1E5B3A 100%); }
-    .christmas-title { font-family: 'Mountains of Christmas', 'Playfair Display', Georgia, serif; letter-spacing: 0.01em; }
-
-    /* Gentle CSS snowfall: three layers of dots drifting down at different speeds. */
-    .christmas-snow {
-        position: absolute; inset: 0; pointer-events: none;
-        background-image:
-            radial-gradient(2px 2px at 20px 30px, rgba(255,255,255,0.9) 50%, transparent 51%),
-            radial-gradient(2px 2px at 120px 80px, rgba(255,255,255,0.8) 50%, transparent 51%),
-            radial-gradient(3px 3px at 60px 140px, rgba(255,255,255,0.7) 50%, transparent 51%),
-            radial-gradient(2px 2px at 170px 170px, rgba(255,255,255,0.85) 50%, transparent 51%),
-            radial-gradient(3px 3px at 90px 10px, rgba(255,255,255,0.6) 50%, transparent 51%);
-        background-size: 200px 200px;
-        animation: christmas-snowfall 14s linear infinite;
-        opacity: 0.85;
-    }
-    .christmas-snow.layer-2 { background-size: 300px 300px; animation-duration: 22s; opacity: 0.55; }
-    @keyframes christmas-snowfall {
-        from { background-position: 0 0; }
-        to { background-position: 40px 600px; }
-    }
-
-    /* String of lights along the bottom of the hero */
-    .christmas-lights {
-        position: absolute; left: 0; right: 0; bottom: 0; height: 18px; pointer-events: none;
-        background:
-            radial-gradient(circle, #ff4d5a 0 4px, transparent 5px) 0 6px / 60px 12px repeat-x,
-            radial-gradient(circle, #3ddc84 0 4px, transparent 5px) 20px 6px / 60px 12px repeat-x,
-            radial-gradient(circle, #ffd24a 0 4px, transparent 5px) 40px 6px / 60px 12px repeat-x,
-            linear-gradient(#0b1422, #0b1422) 0 5px / 100% 1px no-repeat;
-        animation: christmas-twinkle 2.4s ease-in-out infinite alternate;
-    }
-    @keyframes christmas-twinkle {
-        from { filter: brightness(0.85); }
-        to { filter: brightness(1.25) drop-shadow(0 0 4px rgba(255, 220, 120, 0.7)); }
-    }
-
-    @media (prefers-reduced-motion: reduce) {
-        .christmas-snow, .christmas-lights { animation: none; }
-    }
-</style>
-@endif
 @endpush
 
 @section('content')
 
 <!-- Hero -->
-<div class="{{ $isChristmas ? 'christmas-hero' : 'bg-hero-gradient' }} relative overflow-hidden" style="min-height: 340px;">
+<div class="bg-hero-gradient relative overflow-hidden" style="min-height: 340px;">
     @if($tour->cover_image_url)
         <img src="{{ $tour->cover_image_url }}" alt="{{ $tour->title }}"
-            class="absolute inset-0 w-full h-full object-cover {{ $isChristmas ? 'opacity-30' : 'opacity-40' }}">
+            class="absolute inset-0 w-full h-full object-cover opacity-40">
     @endif
     <div class="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent"></div>
-    @if($isChristmas)
-        <div class="christmas-snow" aria-hidden="true"></div>
-        <div class="christmas-snow layer-2" aria-hidden="true"></div>
-        <div class="christmas-lights" aria-hidden="true"></div>
-    @endif
 
     <!-- Back link -->
     <div class="relative z-10 pt-24 px-4 max-w-7xl mx-auto">
-        <a href="{{ $backUrl ?? route('tours.index') }}"
+        <a href="{{ route('tours.index') }}"
             class="inline-flex items-center gap-1.5 text-white/70 hover:text-white text-sm transition-colors">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
             </svg>
-            {{ $backLabel ?? 'All Tours' }}
+            All Tours
         </a>
     </div>
 
@@ -150,12 +94,12 @@
             </span>
             @if($tour->is_featured)
                 <span class="inline-flex items-center rounded-full bg-accent-500 px-3 py-1 text-xs font-semibold text-white">
-                    ★ Featured {{ $isChristmas ? 'Event' : 'Tour' }}
+                    ★ Featured Tour
                 </span>
             @endif
         </div>
 
-        <h1 class="{{ $isChristmas ? 'christmas-title text-4xl md:text-6xl' : 'text-3xl md:text-5xl' }} font-bold text-white mb-3 leading-tight drop-shadow-lg">
+        <h1 class="text-3xl md:text-5xl font-bold text-white mb-3 leading-tight drop-shadow-lg">
             {{ $tour->title }}
         </h1>
         @if($tour->tagline)
@@ -191,7 +135,7 @@
                     <svg class="w-4 h-4 text-sand-100" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/>
                     </svg>
-                    <strong class="text-white">{{ number_format($tour->total_driving_km, $isChristmas ? 1 : 0) }} km</strong><span class="text-white/60 ml-1">{{ $isChristmas ? 'route' : 'drive' }}</span>
+                    <strong class="text-white">{{ number_format($tour->total_driving_km, 0) }} km</strong><span class="text-white/60 ml-1">drive</span>
                 </div>
             @endif
             <button type="button" data-share-open="tour-share"
@@ -270,7 +214,7 @@
                     <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 mb-6"
                         x-data="{ open: false, clamped: false }"
                         x-init="$nextTick(() => clamped = $refs.desc.scrollHeight > $refs.desc.clientHeight + 1)">
-                        <h2 class="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-2">About This {{ $isChristmas ? 'Event' : 'Tour' }}</h2>
+                        <h2 class="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-2">About This Tour</h2>
                         <p x-ref="desc" :class="{ 'line-clamp-4': !open }"
                             class="text-gray-700 text-sm leading-relaxed whitespace-pre-line line-clamp-4">{{ $tour->description }}</p>
                         <button type="button" x-show="clamped" x-cloak @click="open = !open"
@@ -288,13 +232,13 @@
 
                 <div class="flex items-center justify-between mb-4">
                     <h2 class="text-base font-bold text-gray-900">
-                        {{ $stopsHeading }}
+                        Tour Stops
                         <span class="ml-1.5 text-xs font-semibold text-forest-700 bg-forest-50 border border-forest-200 rounded-full px-2 py-0.5">
                             {{ $stopCount }}
                         </span>
                     </h2>
                     @if($mappedStops->isNotEmpty())
-                        <p class="text-xs text-gray-400">Click {{ $isActivityMap ? 'an activity' : 'a stop' }} to zoom the map</p>
+                        <p class="text-xs text-gray-400">Click a stop to zoom the map</p>
                     @endif
                 </div>
 
@@ -334,7 +278,7 @@
 
                                         <div class="flex flex-wrap items-center gap-1.5 mt-1">
                                             @if($stop->estimated_visit_time)
-                                                <span class="text-xs {{ $isChristmas ? 'font-semibold text-red-700' : 'text-gray-400' }} flex items-center gap-1">
+                                                <span class="text-xs text-gray-400 flex items-center gap-1">
                                                     <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                                                     {{ $stop->estimated_visit_time }}
                                                 </span>
@@ -375,7 +319,7 @@
                                     @endif
 
                                     @if($stop->driving_notes)
-                                        <p class="text-xs {{ $isChristmas ? 'text-gray-600' : 'text-blue-600' }} mt-2 flex items-start gap-1">
+                                        <p class="text-xs text-blue-600 mt-2 flex items-start gap-1">
                                             <svg class="w-3 h-3 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/></svg>
                                             {{ $stop->driving_notes }}
                                         </p>
@@ -410,7 +354,7 @@
                                                 Get Directions
                                                 <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
                                             </a>
-                                            <span class="text-xs text-gray-400">{{ $isActivityMap ? 'Activity' : 'Stop' }} {{ $loop->iteration }} of {{ $mappedStops->count() }}</span>
+                                            <span class="text-xs text-gray-400">Stop {{ $loop->iteration }} of {{ $mappedStops->count() }}</span>
                                         </div>
                                     @endif
                                 </div>
@@ -431,7 +375,7 @@
                                     <div class="min-w-0 flex-1">
                                         <h3 class="font-bold text-gray-900 text-sm leading-snug">{{ $stop->displayName() }}</h3>
                                         @if($stop->estimated_visit_time)
-                                            <p class="text-xs font-semibold {{ $isChristmas ? 'text-red-700' : 'text-gray-500' }} mt-0.5">{{ $stop->estimated_visit_time }}</p>
+                                            <p class="text-xs font-semibold text-gray-500 mt-0.5">{{ $stop->estimated_visit_time }}</p>
                                         @endif
                                         @if($stop->description)
                                             <p class="text-xs text-gray-600 leading-relaxed whitespace-pre-line mt-1">{{ $stop->description }}</p>
@@ -460,13 +404,11 @@
 
 @include('partials.share-modal', [
     'shareId' => 'tour-share',
-    'kicker' => $isChristmas ? 'Share This Event' : 'Share This Tour',
+    'kicker' => 'Share This Tour',
     'title' => $tour->title,
     'subtitle' => $tour->tagline,
-    'shareText' => $isChristmas
-        ? 'Check out the '.$tour->title.' in Smithers, BC! 🎄🚚'
-        : 'Check out the '.$tour->title.' tour in Smithers, BC! 🥾⛰️',
-    'emailSubject' => ($isChristmas ? 'Check out this event: ' : 'Check out this tour: ').$tour->title,
-    'emailBody' => 'I found this '.($isChristmas ? 'event' : 'tour').' and thought you might be interested!'."\n\n".($isChristmas ? 'Event: ' : 'Tour: ').$tour->title.($tour->tagline ? "\n".$tour->tagline : ''),
+    'shareText' => 'Check out the '.$tour->title.' tour in Smithers, BC! 🥾⛰️',
+    'emailSubject' => 'Check out this tour: '.$tour->title,
+    'emailBody' => 'I found this tour and thought you might be interested!'."\n\n".'Tour: '.$tour->title.($tour->tagline ? "\n".$tour->tagline : ''),
 ])
 @endsection

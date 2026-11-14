@@ -93,7 +93,7 @@
                             Tours
                         </a>
 
-                        {{-- EVENTS LINK (map-based events, stored as tours of the event type) --}}
+                        {{-- EVENTS LINK (events shown on /local-events and the /events calendar) --}}
                         <a href="{{ route('admin.local-events.index') }}"
                         class="nav-item {{ request()->routeIs('admin.local-events.*') ? 'nav-item-active' : '' }}">
                             <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -231,7 +231,7 @@
         </div>
 
         <!-- Main Content -->
-        <div class="flex-1 flex flex-col min-h-0">
+        <div class="flex-1 flex flex-col min-h-0 min-w-0">
             <!-- Header -->
             <header class="bg-white border-b border-gray-200 sticky top-0 z-50 flex-shrink-0">
                 <div class="flex items-center justify-between h-16 px-6">
@@ -305,7 +305,7 @@
             @endif
 
             <!-- Page Content -->
-            <main class="flex-1 overflow-y-auto bg-gray-50">
+            <main class="flex-1 bg-gray-50">
                 <div class="p-6">
                     @yield('content')
                 </div>

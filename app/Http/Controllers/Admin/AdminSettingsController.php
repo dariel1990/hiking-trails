@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\UpdateSettingsRequest;
+use App\Models\Event;
 use App\Models\Setting;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -29,7 +30,18 @@ class AdminSettingsController extends Controller
             'definitionsByGroup' => $definitions,
             'values' => $values,
             'activeTab' => $activeTab,
+            'previewUrls' => ['event_page_layout' => $this->eventPreviewUrl()],
         ]);
+    }
+
+    /**
+     * Page of the next upcoming event, for previewing event page layouts.
+     */
+    private function eventPreviewUrl(): ?string
+    {
+        $event = Event::current()->orderBy('event_date')->orderBy('event_time')->first();
+
+        return $event ? route('local-events.show', $event->slug) : null;
     }
 
     public function update(UpdateSettingsRequest $request): RedirectResponse

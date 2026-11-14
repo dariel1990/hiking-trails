@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Models\Concerns\HasVideoEmbed;
 use App\Observers\TownContentObserver;
+use App\Support\RouteMapPayload;
 use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -82,11 +83,12 @@ class Tour extends Model
     }
 
     /**
-     * Tour type used for map-based events (e.g. Christmas in the Valley, the
-     * truck parade). Events share the tour engine but are listed, managed and
-     * linked separately under "Events".
+     * Tour type that map-based events used before Events got their own module
+     * (App\Models\Event). It is no longer offered; any leftover rows of this
+     * type stay hidden from tour listings and their old links redirect to the
+     * event of the same slug.
      */
-    public const EVENT_TYPE = 'christmas';
+    public const LEGACY_EVENT_TYPE = 'christmas';
 
     public function scopeActive($query)
     {
@@ -94,36 +96,17 @@ class Tour extends Model
     }
 
     /**
-     * Only regular tours (excludes events).
+     * Only regular tours (excludes leftover event-type rows).
      */
     public function scopeTours(Builder $query): Builder
     {
-        return $query->where('tour_type', '!=', self::EVENT_TYPE);
+        return $query->where('tour_type', '!=', self::LEGACY_EVENT_TYPE);
     }
 
     /**
-     * Only map-based events.
-     */
-    public function scopeEvents(Builder $query): Builder
-    {
-        return $query->where('tour_type', self::EVENT_TYPE);
-    }
-
-    /**
-     * Every type, including the event type (used for validation and labels).
+     * @return array<string, string>
      */
     public static function getTourTypes(): array
-    {
-        return [
-            ...self::getRegularTourTypes(),
-            self::EVENT_TYPE => '🎄 Christmas Event',
-        ];
-    }
-
-    /**
-     * Types offered when creating a regular tour.
-     */
-    public static function getRegularTourTypes(): array
     {
         return [
             'waterfalls' => '💧 Waterfalls',
@@ -133,18 +116,26 @@ class Tour extends Model
         ];
     }
 
-    public function isEvent(): bool
+    public function isLegacyEvent(): bool
     {
-        return $this->tour_type === self::EVENT_TYPE;
+        return $this->tour_type === self::LEGACY_EVENT_TYPE;
     }
 
     /**
-     * Christmas event tours (e.g. the truck parade) get the festive theme,
-     * a solid route line with direction arrows, and start/finish markers.
+     * Data for the shared route map script.
+     *
+     * @return array<string, mixed>
      */
-    public function isChristmasEvent(): bool
+    public function toMapPayload(bool $showPopups = false): array
     {
-        return $this->isEvent();
+        return RouteMapPayload::make(
+            stops: $this->stops,
+            route: $this->driving_route_coordinates,
+            iconImage: $this->icon_image_url,
+            iconEmoji: $this->tour_icon,
+            isChristmas: false,
+            showPopups: $showPopups,
+        );
     }
 
     protected static function booted(): void

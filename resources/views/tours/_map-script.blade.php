@@ -1,41 +1,25 @@
 {{--
-    Shared map script for the tour page and its embeddable map.
-    Expects $tour (stops eager loaded) and $mapboxToken.
-    Optional $showPopups (bool): open a popup with the stop's details on marker click
-    (always on for Christmas event tours).
+    Shared route map script for tour and event pages and their embeddable maps.
+    Expects $map (App\Support\RouteMapPayload::make(), via the model's toMapPayload())
+    and $mapboxToken.
+    Optional $showPopups (bool): this is an embed — open a popup with the stop's details
+    on marker click and use cooperative gestures.
     The map renders into #tour-map. Optional elements it wires up when present:
     #tour-layers-toggle / #tour-layers-dropdown / .tour-layer-card (style switcher),
     #tour-map-reset (reset view), .stop-card / #stop-card-{i} (stop list).
 --}}
-@php
-// Roaming activities have no map pin, so marker numbers count only the other stops.
-$stopNumber = 0;
-$tourStopsData = $tour->stops->values()->map(fn ($s, $i) => [
-    'index' => $i,
-    'number' => $s->is_roaming ? null : ++$stopNumber,
-    'label' => $s->displayName(),
-    'coords' => $s->coordinates(),
-    'time' => $s->estimated_visit_time,
-    'note' => $s->driving_notes,
-    'description' => $s->description,
-    'icon' => $s->icon,
-    'iconImage' => $s->icon_image_url,
-    'image' => $s->image_url,
-])->values();
-@endphp
-
 <script src="https://api.mapbox.com/mapbox-gl-js/v3.10.0/mapbox-gl.js"></script>
 <script>
 mapboxgl.accessToken = @json($mapboxToken);
 
-const tourStops = @json($tourStopsData);
-const drivingRoute = @json($tour->driving_route_coordinates);
-const tourIconImage = @json($tour->icon_image_url);
-// Guard against bad data (e.g. a stray non-emoji string saved to the tour's icon field)
+const tourStops = @json($map['stops']);
+const drivingRoute = @json($map['route']);
+const tourIconImage = @json($map['iconImage']);
+// Guard against bad data (e.g. a stray non-emoji string saved to the icon field)
 // blowing out the small icon slot in map marker labels — cap to a few characters.
-const tourIconEmoji = (@json($tour->tour_icon) || '📍').slice(0, 4);
-const isChristmasEvent = @json($tour->isChristmasEvent());
-const showStopPopups = @json(($showPopups ?? false) || $tour->isChristmasEvent());
+const tourIconEmoji = (@json($map['iconEmoji']) || '📍').slice(0, 4);
+const isChristmasEvent = @json($map['isChristmas']);
+const showStopPopups = @json(($showPopups ?? false) || $map['showPopups']);
 const usesCooperativeGestures = @json($showPopups ?? false);
 
 const ROUTE_COLOR = isChristmasEvent ? '#B3202A' : '#2C5F5D';
