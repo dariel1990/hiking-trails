@@ -5815,6 +5815,9 @@
                         }
                     }, 500);
                 }
+
+                // After the trail list is drawn, so switching to the Events tab is the last word on the sidebar.
+                this.openEventFromUrl();
             } catch (error) {
                 console.error('Error loading trails:', error);
             } finally {
@@ -5906,6 +5909,10 @@
                 'hidden',
                 !['trail', 'fishing_lake'].includes(filter)
             );
+            document.getElementById('town-legend')?.classList.toggle(
+                'hidden',
+                !['trail', 'fishing_lake'].includes(filter)
+            );
             document.getElementById('all-filters-btn')?.classList.toggle('hidden', filter === 'fishing_lake');
             document.getElementById('filter-bar')?.classList.toggle('season-solo', filter === 'fishing_lake');
             document.querySelectorAll('.trail-only-filter').forEach(el => {
@@ -5935,9 +5942,10 @@
                 this.renderBusinessMarkers();
 
                 const params = new URLSearchParams(window.location.search);
-                const businessId = params.get('business');
-                if (businessId) {
-                    const business = this.businessData.find(b => b.id == businessId);
+                // ?business= may be a slug (browsers) or an ID (apps, old links), like ?trail=.
+                const businessKey = params.get('business');
+                if (businessKey) {
+                    const business = this.businessData.find(b => window.trailMatchesKey(b, businessKey));
                     if (business && business.latitude && business.longitude) {
                         // Deep link from a business page: activate the Business tab
                         // so its marker is actually rendered under tab filtering
@@ -6325,6 +6333,22 @@
             }
 
             this.map.fitBounds(this._eventBounds(event, center), { padding: 80, maxZoom: 15 });
+        }
+
+        // Deep link from an event page (/map?event=slug): switch to the Events
+        // tab, then show that event's route, pins and details.
+        openEventFromUrl() {
+            // A slug (browsers) or an ID (apps, old links), like ?trail=.
+            const eventKey = new URLSearchParams(window.location.search).get('event');
+            if (!eventKey) { return; }
+
+            this.activateLocationTab('event');
+            this.ensureEventsLoaded().then(events => {
+                const event = events.find(e => window.trailMatchesKey(e, eventKey));
+                if (!event) { return; }
+                // Let the tab switch render the event markers before selecting one.
+                setTimeout(() => this.focusOnEvent(event.id), 800);
+            });
         }
 
         focusOnEvent(eventId) {
@@ -7954,6 +7978,10 @@
 
                 // Season + Filters controls only apply to trails and fishing lakes
                 document.getElementById('filter-bar')?.classList.toggle(
+                    'hidden',
+                    !['trail', 'fishing_lake'].includes(activeLocationFilter)
+                );
+                document.getElementById('town-legend')?.classList.toggle(
                     'hidden',
                     !['trail', 'fishing_lake'].includes(activeLocationFilter)
                 );

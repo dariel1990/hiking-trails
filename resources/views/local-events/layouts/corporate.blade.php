@@ -125,6 +125,7 @@
                         </p>
                     </div>
                     @include('local-events.partials._map', ['frameClass' => 'h-[340px] sm:h-[440px]'])
+                    @include('local-events.partials._interactive-map-link', ['class' => 'border-t border-gray-200 px-6 py-3', 'buttonClass' => 'rounded-md'])
                 </section>
             @endif
 

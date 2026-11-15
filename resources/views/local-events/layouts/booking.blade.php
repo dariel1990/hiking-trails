@@ -132,6 +132,7 @@
                         @if($hasMap)
                             <div class="mt-5">
                                 @include('local-events.partials._map', ['frameClass' => 'h-[320px] rounded-xl border border-gray-200 sm:h-[420px]'])
+                                @include('local-events.partials._interactive-map-link')
                             </div>
                         @endif
                         @if($mappedStops->isNotEmpty())

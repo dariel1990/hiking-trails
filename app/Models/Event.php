@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\HasUrlKey;
 use App\Models\Concerns\HasVideoEmbed;
 use App\Support\AccentPalette;
 use App\Support\RouteMapPayload;
@@ -22,6 +23,7 @@ use Illuminate\Support\Str;
 class Event extends Model
 {
     use HasFactory;
+    use HasUrlKey;
     use HasVideoEmbed;
 
     public const THEME_STANDARD = 'standard';

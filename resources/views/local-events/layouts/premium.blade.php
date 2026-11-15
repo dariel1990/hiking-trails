@@ -63,6 +63,13 @@
                     @include('local-events.partials._icon', ['name' => 'calendar'])
                     Add to Calendar
                 </a>
+                @if($hasMap && ! $event->has_passed)
+                    <a href="{{ route('map', ['event' => $event->urlKey()]) }}"
+                        class="inline-flex items-center gap-2 rounded-full border border-white/60 px-6 py-3 text-sm font-semibold text-white hover:bg-white/10">
+                        @include('local-events.partials._icon', ['name' => 'route'])
+                        View on Interactive Map
+                    </a>
+                @endif
                 <button type="button" data-share-open="event-share" aria-label="Share this event"
                     class="inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/60 text-white hover:bg-white/10">
                     @include('local-events.partials._icon', ['name' => 'share', 'class' => 'h-5 w-5'])

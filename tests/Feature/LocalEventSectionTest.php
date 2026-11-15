@@ -205,6 +205,29 @@ class LocalEventSectionTest extends TestCase
         $this->assertStringNotContainsString('gradient', Str::between($response->getContent(), 'class="event-page', '<footer'));
     }
 
+    public function test_view_on_interactive_map_links_to_the_event_on_the_map(): void
+    {
+        $event = Event::factory()->withRoute()->create();
+
+        $this->get(route('local-events.show', $event->slug))
+            ->assertOk()
+            ->assertSee('View on Interactive Map')
+            ->assertSee(route('map', ['event' => $event->slug]), false);
+
+        $this->get(route('map', ['event' => $event->slug]))
+            ->assertOk()
+            ->assertSee('openEventFromUrl()', false);
+    }
+
+    public function test_view_on_interactive_map_is_hidden_when_the_map_cannot_show_the_event(): void
+    {
+        $nothingToMap = Event::factory()->create();
+        $ended = Event::factory()->withRoute()->past()->create();
+
+        $this->get(route('local-events.show', $nothingToMap->slug))->assertOk()->assertDontSee('View on Interactive Map');
+        $this->get(route('local-events.show', $ended->slug))->assertOk()->assertDontSee('View on Interactive Map');
+    }
+
     public function test_the_activity_list_beside_the_map_uses_the_slim_scrollbar(): void
     {
         $event = Event::factory()->create();

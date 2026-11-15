@@ -93,6 +93,8 @@ class EventPageLayoutSettingTest extends TestCase
             ->assertSee(route('events.calendar', $event->id), false)
             ->assertSee('data-share-open="event-share"', false)
             ->assertSee('id="tour-map"', false)
+            ->assertSee('View on Interactive Map')
+            ->assertSee(route('map', ['event' => $event->slug]), false)
             ->assertSee('stop-card-0', false)
             ->assertSee('Hot Chocolate Tent')
             ->assertSee('Carollers')

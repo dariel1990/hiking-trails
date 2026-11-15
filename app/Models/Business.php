@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\HasUrlKey;
 use App\Observers\TownContentObserver;
 use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -13,6 +14,7 @@ use Illuminate\Support\Str;
 class Business extends Model
 {
     use HasFactory;
+    use HasUrlKey;
 
     protected $fillable = [
         'town_id',

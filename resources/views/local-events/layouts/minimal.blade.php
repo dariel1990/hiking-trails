@@ -121,6 +121,7 @@
                 <div class="space-y-8 md:col-span-9">
                     @if($hasMap)
                         @include('local-events.partials._map', ['frameClass' => 'h-[340px] rounded-2xl border border-gray-200 md:h-[460px]'])
+                        @include('local-events.partials._interactive-map-link')
                     @endif
                     @if($mappedStops->isNotEmpty())
                         @include('local-events.partials._stops', ['listClass' => 'grid gap-3 sm:grid-cols-2'])
