@@ -87,6 +87,7 @@
     </script>
 
     <!-- Scripts -->
+    @include('partials.upload-limits-meta')
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     
     @stack('styles')
