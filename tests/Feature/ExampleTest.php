@@ -18,4 +18,12 @@ class ExampleTest extends TestCase
 
         $response->assertStatus(200);
     }
+
+    public function test_home_page_links_to_events(): void
+    {
+        $this->get('/')
+            ->assertOk()
+            ->assertSee(route('local-events.index'), false)
+            ->assertSee('Events');
+    }
 }
