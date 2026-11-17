@@ -2,8 +2,10 @@
 
 namespace App\Models;
 
+use App\Support\RichText;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\HtmlString;
 
 class TourStop extends Model
 {
@@ -21,6 +23,7 @@ class TourStop extends Model
         'icon_image',
         'description',
         'image',
+        'gallery',
         'driving_notes',
         'estimated_visit_time',
     ];
@@ -31,6 +34,7 @@ class TourStop extends Model
             'latitude' => 'float',
             'longitude' => 'float',
             'is_roaming' => 'boolean',
+            'gallery' => 'array',
         ];
     }
 
@@ -42,6 +46,34 @@ class TourStop extends Model
     public function getImageUrlAttribute(): ?string
     {
         return $this->image ? asset('storage/'.$this->image) : null;
+    }
+
+    /**
+     * Max extra photos per stop, on top of the main image.
+     */
+    public const MAX_GALLERY_PHOTOS = 8;
+
+    /**
+     * Every photo for the stop, main image first, as public URLs.
+     *
+     * @return list<string>
+     */
+    public function photoUrls(): array
+    {
+        return collect([$this->image, ...($this->gallery ?? [])])
+            ->filter()
+            ->unique()
+            ->map(fn (string $path) => asset('storage/'.$path))
+            ->values()
+            ->all();
+    }
+
+    /**
+     * The description rendered from its light Markdown (bold, italic, links, lists).
+     */
+    public function descriptionHtml(): ?HtmlString
+    {
+        return RichText::toHtml($this->description);
     }
 
     /**
@@ -151,7 +183,7 @@ class TourStop extends Model
             'coords' => $this->coordinates(),
             'time' => $this->estimated_visit_time,
             'note' => $this->driving_notes,
-            'description' => $this->description,
+            'description' => RichText::toPlainText($this->description) ?: null,
             'icon' => $this->icon,
             'iconImage' => $this->icon_image_url,
             'image' => $this->image_url,

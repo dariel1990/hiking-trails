@@ -29,49 +29,30 @@ $availableFacilitiesJson = $availableFacilities->map(fn ($f) => [
     'start_coordinates' => [(float) $f->latitude, (float) $f->longitude],
 ])->values()->toJson();
 
-$existingStopsJson = $isEdit
-    ? $tour->stops->map(fn ($s) => [
-        'trail_id' => $s->trail_id,
-        'feature_id' => $s->trail_feature_id,
-        'facility_id' => $s->facility_id,
-        'latitude' => $s->isPinned() ? $s->latitude : null,
-        'longitude' => $s->isPinned() ? $s->longitude : null,
-        'item_type' => $s->is_roaming ? 'roaming' : ($s->isPinned() ? 'pinned' : ($s->facility_id ? 'facility' : ($s->trail_feature_id ? 'feature' : 'trail'))),
-        'feature_type' => $s->feature?->feature_type ?? null,
-        'facility_type_label' => $s->facility ? (\App\Models\Facility::getFacilityTypes()[$s->facility->facility_type] ?? $s->facility->facility_type) : null,
-        'name' => $s->is_roaming
-            ? 'Roaming activity'
-            : ($s->isPinned()
-                ? 'Pinned on map'
-                : ($s->feature?->name ?? ($s->facility?->name ?? ($s->trail?->name ?? 'Unknown')))),
-        'start_coordinates' => $s->is_roaming
-            ? null
-            : ($s->isPinned()
-                ? [$s->latitude, $s->longitude]
-                : ($s->feature?->coordinates
-                    ?? ($s->facility ? [(float) $s->facility->latitude, (float) $s->facility->longitude] : null)
-                    ?? ($s->trail?->start_coordinates ?? null))),
-        'stop_label' => $s->stop_label ?? '',
-        'estimated_visit_time' => $s->estimated_visit_time ?? '',
-        'driving_notes' => $s->driving_notes ?? '',
-        'icon' => $s->icon ?? '',
-        'icon_image' => $s->icon_image ?? '',
-        'icon_image_url' => $s->icon_image_url,
-        'description' => $s->description ?? '',
-        'existing_image' => $s->image ?? '',
-        'image_url' => $s->image_url,
-    ])->values()->toJson()
-    : '[]';
+$stopsWithErrors = \App\Support\TourStopFormData::positionsWithErrors($errors->getMessages());
+$formStops = is_array(old('stops'))
+    ? \App\Support\TourStopFormData::fromOldInput(old('stops'), $availableTrails, $availableFeatures, $availableFacilities, $stopsWithErrors)
+    : ($isEdit ? \App\Support\TourStopFormData::fromStops($tour->stops) : []);
+$existingStopsJson = json_encode($formStops);
+
+$formMeta = [
+    'title' => old('title', $isEdit ? $tour->title : ''),
+    'description' => old('description', $isEdit ? ($tour->description ?? '') : ''),
+    'hasCover' => $isEdit && $tour->cover_image,
+    'hasErrors' => $errors->any(),
+];
 @endphp
 
 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6" id="tour-form-root"
-     x-data="tourForm({{ $availableTrailsJson }}, {{ $availableFeaturesJson }}, {{ $availableFacilitiesJson }}, {{ $existingStopsJson }})">
+     x-data="tourForm({{ $availableTrailsJson }}, {{ $availableFeaturesJson }}, {{ $availableFacilitiesJson }}, {{ $existingStopsJson }}, {{ json_encode($formMeta) }})">
+
+    @include('admin.tours._form-toolbar')
 
     <!-- Left: Main fields -->
     <div class="lg:col-span-2 space-y-6">
 
         {{-- Basic Info --}}
-        <div class="rounded-lg border bg-card text-card-foreground shadow-sm">
+        <div id="tour-basics" class="scroll-mt-40 rounded-lg border bg-card text-card-foreground shadow-sm">
             <div class="flex flex-col space-y-1.5 p-6 border-b">
                 <h3 class="text-lg font-semibold leading-none tracking-tight">Basic Information</h3>
             </div>
@@ -143,7 +124,7 @@ $existingStopsJson = $isEdit
                     <label for="title" class="text-sm font-medium leading-none">
                         {{ $section['singular'] }} Title <span class="text-red-500">*</span>
                     </label>
-                    <input type="text" name="title" id="title" required
+                    <input type="text" name="title" id="title" required x-model="meta.title"
                         value="{{ old('title', $isEdit ? $tour->title : '') }}"
                         placeholder="e.g., Houston Waterfalls Tour"
                         class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
@@ -161,7 +142,7 @@ $existingStopsJson = $isEdit
 
                 <div class="space-y-2">
                     <label for="description" class="text-sm font-medium leading-none">Description</label>
-                    <textarea name="description" id="description" rows="4"
+                    <textarea name="description" id="description" rows="4" x-model="meta.description"
                         placeholder="Describe this tour experience..."
                         class="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">{{ old('description', $isEdit ? $tour->description : '') }}</textarea>
                     @error('description') <p class="text-sm text-red-600">{{ $message }}</p> @enderror
@@ -170,8 +151,48 @@ $existingStopsJson = $isEdit
             </div>
         </div>
 
+        {{-- Cover Image --}}
+        <div id="tour-cover" class="scroll-mt-40 rounded-lg border bg-card text-card-foreground shadow-sm">
+            <div class="flex flex-col space-y-1.5 p-6 border-b">
+                <h3 class="text-lg font-semibold leading-none tracking-tight">Cover Image</h3>
+                <p class="text-sm text-muted-foreground">The large photo at the top of the tour page and on tour cards. A wide (landscape) photo works best.</p>
+            </div>
+            <div class="p-6 space-y-4">
+                @if($isEdit && $tour->cover_image_url)
+                    <div id="current-cover-image" class="space-y-2">
+                        <p class="text-sm font-medium leading-none">Current Cover Image</p>
+                        <div class="relative w-full max-w-sm">
+                            <img src="{{ $tour->cover_image_url }}" alt="Current cover"
+                                class="w-full h-40 object-cover rounded-md border">
+                            <button type="button" title="Delete cover image"
+                                onclick="deleteTourCoverImage('{{ route('admin.tours.cover-image.delete', $tour) }}', this)"
+                                class="absolute top-2 right-2 inline-flex h-7 w-7 items-center justify-center rounded-full bg-black/60 text-white hover:bg-destructive transition-colors">
+                                <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                                </svg>
+                            </button>
+                        </div>
+                        <p class="text-xs text-muted-foreground">Upload a new image below to replace it, or delete it.</p>
+                    </div>
+                @endif
+                <div id="cover-image-dropzone" class="border-2 border-dashed border-input rounded-lg p-8 text-center hover:bg-muted/50 transition-colors cursor-pointer"
+                    onclick="document.getElementById('cover_image').click()">
+                    <input type="file" id="cover_image" name="cover_image" accept="image/*" class="hidden"
+                        onchange="previewCoverImage(this); hasNewCover = this.files.length > 0">
+                    <svg class="mx-auto h-12 w-12 text-muted-foreground mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                    </svg>
+                    <p class="text-sm font-medium text-muted-foreground">Click or drag cover image here to upload</p>
+                    <p class="text-xs text-muted-foreground mt-1">JPEG, PNG, WebP up to 50MB</p>
+                </div>
+                <div id="cover-preview" class="hidden">
+                    <img id="cover-preview-img" src="" alt="Preview" class="w-full max-w-sm h-40 object-cover rounded-md border">
+                </div>
+            </div>
+        </div>
+
         {{-- Tour Details --}}
-        <div class="rounded-lg border bg-card text-card-foreground shadow-sm">
+        <div id="tour-details" class="scroll-mt-40 rounded-lg border bg-card text-card-foreground shadow-sm">
             <div class="flex flex-col space-y-1.5 p-6 border-b">
                 <h3 class="text-lg font-semibold leading-none tracking-tight">{{ $section['singular'] }} Details</h3>
             </div>
@@ -233,10 +254,14 @@ $existingStopsJson = $isEdit
         </div>
 
         {{-- Stops Manager --}}
-        <div class="rounded-lg border bg-card text-card-foreground shadow-sm">
+        <div id="tour-stops" class="scroll-mt-40 rounded-lg border bg-card text-card-foreground shadow-sm">
             <div class="flex flex-col space-y-1.5 p-6 border-b">
                 <h3 class="text-lg font-semibold leading-none tracking-tight">Tour Stops</h3>
-                <p class="text-sm text-muted-foreground">Add trails, trail features, or facilities as stops in the order visitors should visit them — or pin any spot (e.g. a street corner or venue) with <strong>Pin stop on map</strong> in the Route &amp; Map section below.</p>
+                <p class="text-sm text-muted-foreground">
+                    Add stops in the order visitors should visit them. Search for a trail, feature or facility below,
+                    or <a href="#tour-route" class="font-medium text-foreground underline">pin any spot on the map</a> (e.g. a mural or street corner).
+                    Drag <span class="font-mono">⋮⋮</span> to reorder; click a stop to edit its details.
+                </p>
             </div>
             <div class="p-6 space-y-4">
 
@@ -244,7 +269,7 @@ $existingStopsJson = $isEdit
                 <div class="space-y-2">
                     <label class="text-sm font-medium leading-none">Add a Stop</label>
                     <div class="flex gap-2">
-                        <input type="text" x-model="search"
+                        <input type="text" x-model="search" data-no-dirty
                             placeholder="Search trails, features, or facilities..."
                             class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
                     </div>
@@ -273,34 +298,91 @@ $existingStopsJson = $isEdit
 
                 {{-- Stops list --}}
                 <div x-show="stops.length > 0" class="space-y-2">
+                    <div class="flex items-center justify-between text-xs text-muted-foreground">
+                        <span x-text="`${stops.length} stop${stops.length === 1 ? '' : 's'} · ${stopsNeedingDescription} without a description · ${stopsNeedingPhoto} without a photo`"></span>
+                        <span class="flex gap-2">
+                            <button type="button" @click="setAllExpanded(true)" class="font-medium hover:text-foreground">Expand all</button>
+                            <span>·</span>
+                            <button type="button" @click="setAllExpanded(false)" class="font-medium hover:text-foreground">Collapse all</button>
+                        </span>
+                    </div>
+
                     <template x-for="(stop, index) in stops" :key="stop.uid">
-                        <div class="flex gap-3 items-start p-3 rounded-md border bg-muted/30" data-stop-row>
-                            {{-- Number badge (shows the stop's icon when it has one) --}}
-                            <div class="flex-shrink-0 flex h-7 w-7 items-center justify-center rounded-full bg-black text-white text-xs font-bold mt-0.5 overflow-hidden">
-                                <template x-if="stop.icon_image_url">
-                                    <img :src="stop.icon_image_url" alt="" class="h-full w-full object-contain bg-white">
+                        <div class="rounded-md border bg-muted/30 transition-shadow" data-stop-row
+                            :class="{
+                                'ring-2 ring-red-400 border-red-300': stop.has_error,
+                                'ring-2 ring-blue-400': dragOverIndex === index && dragIndex !== index,
+                                'opacity-50': dragIndex === index,
+                            }"
+                            :draggable="stop.dragArmed ? 'true' : 'false'"
+                            @dragstart="startStopDrag(index, $event)"
+                            @dragover.prevent="dragOverIndex = index"
+                            @dragleave="if (dragOverIndex === index) { dragOverIndex = null }"
+                            @drop.prevent="dropStop(index)"
+                            @dragend="endStopDrag(stop)">
+
+                            {{-- Summary (always visible; click to expand) --}}
+                            <div class="flex items-center gap-2 p-2.5">
+                                <span class="cursor-grab select-none px-1 font-mono text-sm leading-none text-muted-foreground hover:text-foreground active:cursor-grabbing"
+                                    title="Drag to reorder"
+                                    @mousedown="stop.dragArmed = true" @mouseup="stop.dragArmed = false"
+                                    @touchstart.passive="stop.dragArmed = true">⋮⋮</span>
+
+                                {{-- Number badge (shows the stop's icon when it has one) --}}
+                                <div class="flex-shrink-0 flex h-7 w-7 items-center justify-center rounded-full bg-black text-white text-xs font-bold overflow-hidden">
+                                    <template x-if="stop.icon_image_url">
+                                        <img :src="stop.icon_image_url" alt="" class="h-full w-full object-contain bg-white">
+                                    </template>
+                                    <span x-show="!stop.icon_image_url" x-text="stop.icon || (index + 1)" :class="stop.icon ? 'text-base' : ''"></span>
+                                </div>
+
+                                <template x-if="stop.new_image_preview || (stop.image_url && !stop.remove_image) || stop.gallery.length">
+                                    <img :src="stop.new_image_preview || (!stop.remove_image && stop.image_url) || stop.gallery[0]?.url" alt=""
+                                        class="h-9 w-9 flex-shrink-0 rounded object-cover border">
                                 </template>
-                                <span x-show="!stop.icon_image_url" x-text="stop.icon || (index + 1)" :class="stop.icon ? 'text-base' : ''"></span>
+
+                                <button type="button" @click="stop.expanded = !stop.expanded"
+                                    class="min-w-0 flex-1 text-left" :aria-expanded="stop.expanded">
+                                    <span class="flex flex-wrap items-center gap-1.5">
+                                        <span class="truncate text-sm font-medium" x-text="stop.stop_label || stop.name"></span>
+                                        <span x-show="stop.stop_label && stop.stop_label !== stop.name && !isCustomStop(stop)"
+                                            class="truncate text-xs text-muted-foreground" x-text="'· ' + stop.name"></span>
+                                        <span x-show="stop.item_type === 'trail'"
+                                            class="inline-flex items-center rounded-full bg-green-50 border border-green-200 px-1.5 py-0.5 text-[11px] font-medium text-green-700">Trail</span>
+                                        <span x-show="stop.item_type === 'feature'"
+                                            class="inline-flex items-center rounded-full bg-blue-50 border border-blue-200 px-1.5 py-0.5 text-[11px] font-medium text-blue-700"
+                                            x-text="stop.feature_type || 'Feature'"></span>
+                                        <span x-show="stop.item_type === 'facility'"
+                                            class="inline-flex items-center rounded-full bg-amber-50 border border-amber-200 px-1.5 py-0.5 text-[11px] font-medium text-amber-700"
+                                            x-text="stop.facility_type_label || 'Facility'"></span>
+                                        <span x-show="stop.item_type === 'pinned'"
+                                            class="inline-flex items-center rounded-full bg-red-50 border border-red-200 px-1.5 py-0.5 text-[11px] font-medium text-red-700">📍 Pinned</span>
+                                        <span x-show="stop.item_type === 'roaming'"
+                                            class="inline-flex items-center rounded-full bg-purple-50 border border-purple-200 px-1.5 py-0.5 text-[11px] font-medium text-purple-700">🚶 Roaming · no map pin</span>
+                                    </span>
+                                    <span class="mt-0.5 flex flex-wrap gap-x-3 text-[11px] text-muted-foreground">
+                                        <span x-show="isCustomStop(stop) && !stop.stop_label" class="font-medium text-red-600">Needs a name</span>
+                                        <span x-text="stop.description ? '📝 Description' : 'No description'" :class="stop.description ? '' : 'text-amber-700'"></span>
+                                        <span x-text="photoCount(stop) ? `📷 ${photoCount(stop)} photo${photoCount(stop) === 1 ? '' : 's'}` : 'No photo'" :class="photoCount(stop) ? '' : 'text-amber-700'"></span>
+                                        <span x-show="stop.estimated_visit_time" x-text="'🕒 ' + stop.estimated_visit_time"></span>
+                                    </span>
+                                </button>
+
+                                <div class="flex flex-shrink-0 items-center gap-1">
+                                    <button type="button" @click="stop.expanded = !stop.expanded"
+                                        class="inline-flex h-7 items-center rounded border border-input bg-background px-2 text-xs font-medium hover:bg-accent"
+                                        x-text="stop.expanded ? 'Done' : 'Edit'"></button>
+                                    <button type="button" @click="moveUp(index)" :disabled="index === 0" title="Move up"
+                                        class="inline-flex items-center justify-center h-7 w-7 rounded border border-input bg-background hover:bg-accent disabled:opacity-30 disabled:cursor-not-allowed text-xs">▲</button>
+                                    <button type="button" @click="moveDown(index)" :disabled="index === stops.length - 1" title="Move down"
+                                        class="inline-flex items-center justify-center h-7 w-7 rounded border border-input bg-background hover:bg-accent disabled:opacity-30 disabled:cursor-not-allowed text-xs">▼</button>
+                                    <button type="button" @click="removeStop(index)" title="Remove stop"
+                                        class="inline-flex items-center justify-center h-7 w-7 rounded border border-red-200 bg-red-50 hover:bg-red-100 text-red-600 text-xs">✕</button>
+                                </div>
                             </div>
 
-                            {{-- Stop details --}}
-                            <div class="flex-1 space-y-2">
-                                <div class="flex items-center gap-2">
-                                    <span class="font-medium text-sm" x-text="stop.name"></span>
-                                    <span x-show="stop.item_type === 'feature'"
-                                        class="inline-flex items-center rounded-full bg-blue-50 border border-blue-200 px-1.5 py-0.5 text-xs font-medium text-blue-700"
-                                        x-text="stop.feature_type || 'Feature'"></span>
-                                    <span x-show="stop.item_type === 'facility'"
-                                        class="inline-flex items-center rounded-full bg-amber-50 border border-amber-200 px-1.5 py-0.5 text-xs font-medium text-amber-700"
-                                        x-text="stop.facility_type_label || 'Facility'"></span>
-                                    <span x-show="stop.item_type === 'pinned'"
-                                        class="inline-flex items-center rounded-full bg-red-50 border border-red-200 px-1.5 py-0.5 text-xs font-medium text-red-700"
-                                        x-text="'📍 ' + Number(stop.latitude).toFixed(5) + ', ' + Number(stop.longitude).toFixed(5)"></span>
-                                    <span x-show="stop.item_type === 'roaming'"
-                                        class="inline-flex items-center rounded-full bg-purple-50 border border-purple-200 px-1.5 py-0.5 text-xs font-medium text-purple-700">
-                                        🚶 Roaming · listed only, no map pin
-                                    </span>
-                                </div>
+                            {{-- Editor (hidden inputs stay in the DOM while collapsed so they still submit) --}}
+                            <div x-show="stop.expanded" class="space-y-3 border-t bg-background/60 p-3">
                                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
                                     <input type="text"
                                         :name="`stops[${index}][stop_label]`"
@@ -329,15 +411,15 @@ $existingStopsJson = $isEdit
                                     <input type="hidden" :name="`stops[${index}][icon_image]`" :value="stop.icon_image || ''">
                                     <input type="hidden" :name="`stops[${index}][existing_image]`" :value="stop.existing_image || ''">
                                     <input type="hidden" :name="`stops[${index}][remove_image]`" :value="stop.remove_image ? 1 : 0">
+                                    <template x-for="photo in stop.gallery" :key="photo.path">
+                                        <input type="hidden" :name="`stops[${index}][existing_gallery][]`" :value="photo.path">
+                                    </template>
+                                    <input type="file" multiple accept="image/*" class="hidden" data-gallery-upload
+                                        :name="`stops[${index}][gallery][]`">
                                 </div>
 
-                                <button type="button" x-show="!isCustomStop(stop) && !stop.showDetails" @click="stop.showDetails = true"
-                                    class="text-xs font-medium text-muted-foreground hover:text-foreground">
-                                    ＋ Icon, description &amp; photo
-                                </button>
 
-                                {{-- Icon, description & photo (always shown for pinned / roaming activities) --}}
-                                <div x-show="isCustomStop(stop) || stop.showDetails" class="space-y-2 rounded-md border bg-background p-2.5">
+                                <div class="space-y-3">
                                     {{-- Icon --}}
                                     <div class="space-y-1.5">
                                         <p class="text-xs font-medium">Map icon</p>
@@ -375,10 +457,28 @@ $existingStopsJson = $isEdit
                                         </div>
                                     </div>
 
-                                    {{-- Description --}}
-                                    <textarea :name="`stops[${index}][description]`" x-model="stop.description" rows="2" maxlength="2000"
-                                        placeholder="What's happening (e.g., Free horse-drawn wagon rides around downtown, starting at Bugwood Beans)"
-                                        class="flex w-full rounded-md border border-input bg-background px-2 py-1.5 text-xs placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"></textarea>
+                                    {{-- Description (light Markdown) --}}
+                                    <div class="space-y-1">
+                                        <div class="flex flex-wrap items-center gap-1">
+                                            <button type="button" @click="formatStopDescription(stop, $el, 'bold')" title="Bold"
+                                                class="h-6 min-w-6 rounded border border-input bg-background px-1.5 text-xs font-bold hover:bg-muted">B</button>
+                                            <button type="button" @click="formatStopDescription(stop, $el, 'italic')" title="Italic"
+                                                class="h-6 min-w-6 rounded border border-input bg-background px-1.5 text-xs italic hover:bg-muted">I</button>
+                                            <button type="button" @click="formatStopDescription(stop, $el, 'link')" title="Link"
+                                                class="h-6 rounded border border-input bg-background px-1.5 text-xs hover:bg-muted">🔗 Link</button>
+                                            <button type="button" @click="formatStopDescription(stop, $el, 'list')" title="Bulleted list"
+                                                class="h-6 rounded border border-input bg-background px-1.5 text-xs hover:bg-muted">• List</button>
+                                            <span class="ml-auto text-[11px] text-muted-foreground tabular-nums"
+                                                x-text="`${(stop.description || '').length.toLocaleString()} / 10,000`"></span>
+                                        </div>
+                                        <textarea :name="`stops[${index}][description]`" x-model="stop.description" rows="6" maxlength="10000"
+                                            data-stop-description
+                                            placeholder="What visitors should know about this stop. Leave a blank line between paragraphs."
+                                            class="flex w-full rounded-md border border-input bg-background px-2 py-1.5 text-xs leading-relaxed placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"></textarea>
+                                        <p class="text-[11px] text-muted-foreground">
+                                            Formatting: <code>**bold**</code>, <code>*italic*</code>, <code>[link text](https://…)</code>, lines starting with <code>- </code> for a list.
+                                        </p>
+                                    </div>
 
                                     {{-- Photo --}}
                                     <div class="flex items-center gap-2">
@@ -393,23 +493,37 @@ $existingStopsJson = $isEdit
                                             @click="removeStopImage(stop, $el)"
                                             class="text-xs text-red-600 hover:underline">Remove photo</button>
                                     </div>
-                                </div>
-                            </div>
 
-                            {{-- Order + remove buttons --}}
-                            <div class="flex flex-col gap-1 flex-shrink-0">
-                                <button type="button" @click="moveUp(index)" :disabled="index === 0"
-                                    class="inline-flex items-center justify-center h-6 w-6 rounded border border-input bg-background hover:bg-accent disabled:opacity-30 disabled:cursor-not-allowed text-xs">
-                                    ▲
-                                </button>
-                                <button type="button" @click="moveDown(index)" :disabled="index === stops.length - 1"
-                                    class="inline-flex items-center justify-center h-6 w-6 rounded border border-input bg-background hover:bg-accent disabled:opacity-30 disabled:cursor-not-allowed text-xs">
-                                    ▼
-                                </button>
-                                <button type="button" @click="removeStop(index)"
-                                    class="inline-flex items-center justify-center h-6 w-6 rounded border border-red-200 bg-red-50 hover:bg-red-100 text-red-600 text-xs">
-                                    ✕
-                                </button>
+                                    {{-- Extra photos --}}
+                                    <div class="space-y-1.5">
+                                        <p class="text-xs font-medium">
+                                            More photos
+                                            <span class="font-normal text-muted-foreground"
+                                                x-text="`(${stop.gallery.length + stop.new_gallery.length} / {{ \App\Models\TourStop::MAX_GALLERY_PHOTOS }})`"></span>
+                                        </p>
+                                        <div class="flex flex-wrap items-center gap-2">
+                                            <template x-for="(photo, photoIndex) in stop.gallery" :key="photo.path">
+                                                <div class="group relative h-14 w-14">
+                                                    <img :src="photo.url" alt="" class="h-full w-full rounded-md border object-cover">
+                                                    <button type="button" @click="stop.gallery.splice(photoIndex, 1)" title="Remove photo"
+                                                        class="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-red-600 text-[10px] text-white shadow">✕</button>
+                                                </div>
+                                            </template>
+                                            <template x-for="(photo, photoIndex) in stop.new_gallery" :key="photo.preview">
+                                                <div class="relative h-14 w-14">
+                                                    <img :src="photo.preview" alt="" class="h-full w-full rounded-md border border-dashed border-green-500 object-cover">
+                                                    <button type="button" @click="removeNewGalleryPhoto(stop, photoIndex, $el)" title="Remove photo"
+                                                        class="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-red-600 text-[10px] text-white shadow">✕</button>
+                                                </div>
+                                            </template>
+                                            <label x-show="stop.gallery.length + stop.new_gallery.length < {{ \App\Models\TourStop::MAX_GALLERY_PHOTOS }}"
+                                                class="inline-flex h-14 cursor-pointer items-center gap-1.5 rounded-md border border-dashed border-input bg-background px-3 text-xs text-muted-foreground hover:bg-muted">
+                                                ＋ Add photos
+                                                <input type="file" multiple accept="image/*" class="hidden" @change="addGalleryPhotos(stop, $event)">
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </template>
@@ -422,54 +536,17 @@ $existingStopsJson = $isEdit
             </div>
         </div>
 
-        {{-- Cover Image --}}
-        <div class="rounded-lg border bg-card text-card-foreground shadow-sm">
-            <div class="flex flex-col space-y-1.5 p-6 border-b">
-                <h3 class="text-lg font-semibold leading-none tracking-tight">Cover Image</h3>
-                <p class="text-sm text-muted-foreground">Upload a hero photo for this tour</p>
-            </div>
-            <div class="p-6 space-y-4">
-                @if($isEdit && $tour->cover_image_url)
-                    <div id="current-cover-image" class="space-y-2">
-                        <p class="text-sm font-medium leading-none">Current Cover Image</p>
-                        <div class="relative w-full max-w-sm">
-                            <img src="{{ $tour->cover_image_url }}" alt="Current cover"
-                                class="w-full h-40 object-cover rounded-md border">
-                            <button type="button" title="Delete cover image"
-                                onclick="deleteTourCoverImage('{{ route('admin.tours.cover-image.delete', $tour) }}', this)"
-                                class="absolute top-2 right-2 inline-flex h-7 w-7 items-center justify-center rounded-full bg-black/60 text-white hover:bg-destructive transition-colors">
-                                <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-                                </svg>
-                            </button>
-                        </div>
-                        <p class="text-xs text-muted-foreground">Upload a new image below to replace it, or delete it.</p>
-                    </div>
-                @endif
-                <div id="cover-image-dropzone" class="border-2 border-dashed border-input rounded-lg p-8 text-center hover:bg-muted/50 transition-colors cursor-pointer"
-                    onclick="document.getElementById('cover_image').click()">
-                    <input type="file" id="cover_image" name="cover_image" accept="image/*" class="hidden"
-                        onchange="previewCoverImage(this)">
-                    <svg class="mx-auto h-12 w-12 text-muted-foreground mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
-                    </svg>
-                    <p class="text-sm font-medium text-muted-foreground">Click or drag cover image here to upload</p>
-                    <p class="text-xs text-muted-foreground mt-1">JPEG, PNG, WebP up to 50MB</p>
-                </div>
-                <div id="cover-preview" class="hidden">
-                    <img id="cover-preview-img" src="" alt="Preview" class="w-full max-w-sm h-40 object-cover rounded-md border">
-                </div>
-            </div>
-        </div>
-
         {{-- Route & Map editor --}}
-        <div class="rounded-lg border bg-card text-card-foreground shadow-sm">
+        <div id="tour-route" class="scroll-mt-40 rounded-lg border bg-card text-card-foreground shadow-sm">
             <div class="flex flex-col space-y-1.5 p-6 border-b">
                 <h3 class="text-lg font-semibold leading-none tracking-tight">Route &amp; Map</h3>
                 <p class="text-sm text-muted-foreground">
-                    Draw the route yourself by clicking along the streets in order, or compute a driving route through the stops.
-                    The route line shows arrows in the direction you draw it.
+                    Use <strong>📍 Pin stop on map</strong> to add a stop anywhere by clicking the map.
                 </p>
+                <div class="rounded-md border border-green-200 bg-green-50 px-3 py-2 text-xs text-green-800">
+                    <strong>Drawing a route is optional.</strong> Leave it empty and the public page automatically draws a street route through your stops
+                    (walking when the stops are close together, driving otherwise). Only draw one if you need the line to follow a specific path.
+                </div>
             </div>
             <div class="p-6 space-y-3">
                 <div class="flex flex-wrap gap-2">
@@ -498,7 +575,7 @@ $existingStopsJson = $isEdit
                     </button>
                     <button type="button" id="compute-route-btn" onclick="computeTourRoute()" x-show="stops.length >= 2"
                         class="inline-flex items-center gap-1.5 rounded-md border border-input bg-background hover:bg-accent h-9 px-3 text-sm font-medium transition-colors">
-                        🚗 Compute route through stops
+                        🚗 Compute driving route
                     </button>
                 </div>
 
@@ -518,23 +595,28 @@ $existingStopsJson = $isEdit
     </div>
 
     <!-- Right: Settings sidebar -->
-    <div class="space-y-6">
+    <div class="space-y-6 lg:sticky lg:top-40 lg:self-start">
 
-        {{-- Save --}}
+        {{-- Ready-to-publish checklist --}}
         <div class="rounded-lg border bg-card text-card-foreground shadow-sm">
-            <div class="flex flex-col space-y-1.5 p-6 border-b">
-                <h3 class="text-lg font-semibold leading-none tracking-tight">{{ $isEdit ? 'Save Changes' : 'Publish' }}</h3>
+            <div class="flex items-center justify-between p-4 border-b">
+                <h3 class="text-sm font-semibold">Ready to publish?</h3>
+                <span class="text-xs font-medium tabular-nums text-muted-foreground"
+                    x-text="`${checklist.filter((item) => item.done).length} / ${checklist.length}`"></span>
             </div>
-            <div class="p-6 flex flex-col gap-2">
-                <button type="submit"
-                    class="inline-flex items-center justify-center rounded-md bg-black text-white hover:bg-black/90 h-10 px-4 py-2 text-sm font-medium ring-offset-background transition-colors w-full">
-                    {{ ($isEdit ? 'Update ' : 'Create ') . $section['singular'] }}
-                </button>
-                <a href="{{ route($section['routePrefix'] . '.index') }}"
-                    class="inline-flex items-center justify-center rounded-md border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2 text-sm font-medium ring-offset-background transition-colors w-full">
-                    Cancel
-                </a>
-            </div>
+            <ul class="p-4 space-y-2 text-sm">
+                <template x-for="item in checklist" :key="item.label">
+                    <li class="flex items-start gap-2">
+                        <span class="mt-0.5 flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-full text-[10px] font-bold"
+                            :class="item.done ? 'bg-green-600 text-white' : 'border border-gray-300 text-transparent'">✓</span>
+                        <a :href="item.anchor" class="hover:underline" :class="item.done ? 'text-muted-foreground' : 'text-foreground'">
+                            <span x-text="item.label"></span>
+                            <span x-show="item.hint && !item.done" x-text="item.hint" class="block text-xs text-amber-700"></span>
+                        </a>
+                    </li>
+                </template>
+            </ul>
+            <p class="px-4 pb-4 text-xs text-muted-foreground">Only the title and type are required — the rest makes the tour page look its best.</p>
         </div>
 
         {{-- Settings --}}
@@ -570,13 +652,6 @@ $existingStopsJson = $isEdit
                     </div>
                 </div>
             </div>
-        </div>
-
-        {{-- Stops count summary --}}
-        <div class="rounded-lg border bg-card text-card-foreground shadow-sm p-4">
-            <p class="text-sm text-muted-foreground">
-                <span class="font-semibold text-foreground" x-text="stops.length"></span> stop<span x-show="stops.length !== 1">s</span> added
-            </p>
         </div>
 
     </div>

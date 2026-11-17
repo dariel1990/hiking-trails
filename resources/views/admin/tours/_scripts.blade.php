@@ -32,13 +32,17 @@ function makeTourStop(fields) {
         image_url: null,
         new_image_preview: null,
         remove_image: false,
-        showDetails: false,
+        gallery: [],
+        new_gallery: [],
+        has_error: false,
+        expanded: true,
+        dragArmed: false,
         showIconPicker: false,
         ...fields,
     };
 }
 
-function tourForm(availableTrails, availableFeatures, availableFacilities, existingStops) {
+function tourForm(availableTrails, availableFeatures, availableFacilities, existingStops, meta = {}) {
     return {
         availableTrails: availableTrails,
         availableFeatures: availableFeatures,
@@ -63,8 +67,20 @@ function tourForm(availableTrails, availableFeatures, availableFacilities, exist
             description: s.description || '',
             existing_image: s.existing_image || '',
             image_url: s.image_url || null,
-            showDetails: Boolean(s.icon || s.icon_image || s.description || s.existing_image),
+            gallery: Array.isArray(s.gallery) ? s.gallery : [],
+            has_error: Boolean(s.has_error),
+            // Saved stops start collapsed to keep the list short; ones with errors open.
+            expanded: Boolean(s.has_error),
         })),
+        meta: {
+            title: meta.title || '',
+            description: meta.description || '',
+            hasCover: Boolean(meta.hasCover),
+        },
+        hasNewCover: false,
+        dirty: Boolean(meta.hasErrors),
+        dragIndex: null,
+        dragOverIndex: null,
         search: '',
         iconPresets: ['🐴', '🎅', '📸', '🤶', '🎵', '🎶', '🎨', '🔥', '🍿', '🛍️', '🎄', '☕', '🍪', '🎁', '⛸️', '🚚'],
         iconGallery: [],
@@ -74,6 +90,119 @@ function tourForm(availableTrails, availableFeatures, availableFacilities, exist
         init() {
             window.tourRouteEditor.attachForm(this);
             this.$watch('stops', () => window.tourRouteEditor.renderStops());
+            this.trackUnsavedChanges();
+        },
+
+        // ── Unsaved changes ──────────────────────────────────────────────────
+
+        trackUnsavedChanges() {
+            const form = this.$root.closest('form');
+            if (!form) { return; }
+
+            const markDirty = (event) => {
+                if (event?.target?.closest?.('[data-no-dirty]')) { return; }
+                this.dirty = true;
+            };
+            form.addEventListener('input', markDirty);
+            form.addEventListener('change', markDirty);
+            // Stop list edits that don't fire input events (reorder, add, remove, map pins).
+            this.$nextTick(() => this.$watch('stops', () => markDirty()));
+
+            // Any form on the page (save, or the delete form) leaves intentionally.
+            document.addEventListener('submit', () => { this.dirty = false; });
+            window.addEventListener('beforeunload', (event) => {
+                if (this.dirty) {
+                    event.preventDefault();
+                    event.returnValue = '';
+                }
+            });
+        },
+
+        // ── Stop list helpers ────────────────────────────────────────────────
+
+        photoCount(stop) {
+            const main = stop.new_image_preview || (stop.image_url && !stop.remove_image) ? 1 : 0;
+            return main + stop.gallery.length + stop.new_gallery.length;
+        },
+
+        get stopsNeedingDescription() {
+            return this.stops.filter((stop) => !stop.description.trim()).length;
+        },
+
+        get stopsNeedingPhoto() {
+            return this.stops.filter((stop) => this.photoCount(stop) === 0).length;
+        },
+
+        get checklist() {
+            const descriptionMissing = this.stopsNeedingDescription;
+            const photoMissing = this.stopsNeedingPhoto;
+            const unnamed = this.stops.filter((stop) => this.isCustomStop(stop) && !stop.stop_label.trim()).length;
+
+            return [
+                { label: 'Title', done: this.meta.title.trim() !== '', anchor: '#tour-basics' },
+                { label: 'Tour description', done: this.meta.description.trim() !== '', anchor: '#tour-basics' },
+                { label: 'Cover photo', done: this.meta.hasCover || this.hasNewCover, anchor: '#tour-cover' },
+                { label: 'At least 2 stops', done: this.stops.length >= 2, anchor: '#tour-stops' },
+                {
+                    label: 'Every pinned stop has a name',
+                    done: unnamed === 0,
+                    hint: unnamed ? `${unnamed} still need${unnamed === 1 ? 's' : ''} a name` : '',
+                    anchor: '#tour-stops',
+                },
+                {
+                    label: 'Every stop has a description',
+                    done: this.stops.length > 0 && descriptionMissing === 0,
+                    hint: descriptionMissing ? `${descriptionMissing} missing` : '',
+                    anchor: '#tour-stops',
+                },
+                {
+                    label: 'Every stop has a photo',
+                    done: this.stops.length > 0 && photoMissing === 0,
+                    hint: photoMissing ? `${photoMissing} missing` : '',
+                    anchor: '#tour-stops',
+                },
+            ];
+        },
+
+        setAllExpanded(expanded) {
+            this.stops.forEach((stop) => { stop.expanded = expanded; });
+        },
+
+        /** Scroll a newly added stop into view so the admin sees where it went. */
+        revealLastStop() {
+            this.$nextTick(() => {
+                const rows = this.$root.querySelectorAll('[data-stop-row]');
+                rows[rows.length - 1]?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            });
+        },
+
+        // ── Drag to reorder (armed from the ⋮⋮ handle so text inputs stay selectable) ──
+
+        startStopDrag(index, event) {
+            if (!this.stops[index]?.dragArmed) {
+                event.preventDefault();
+                return;
+            }
+            this.dragIndex = index;
+            event.dataTransfer.effectAllowed = 'move';
+            event.dataTransfer.setData('text/plain', String(index));
+        },
+
+        dropStop(targetIndex) {
+            const from = this.dragIndex;
+            this.dragOverIndex = null;
+            if (from === null || from === targetIndex) { return; }
+
+            const reordered = [...this.stops];
+            const [moved] = reordered.splice(from, 1);
+            reordered.splice(targetIndex, 0, moved);
+            this.stops = reordered;
+        },
+
+        endStopDrag(stop) {
+            stop.dragArmed = false;
+            this.dragIndex = null;
+            this.dragOverIndex = null;
         },
 
         /** Pinned and roaming stops are custom activities that need their own name. */
@@ -99,6 +228,7 @@ function tourForm(availableTrails, availableFeatures, availableFacilities, exist
         /** Add an activity with no fixed spot (listed on the page, no map pin). */
         addRoamingStop() {
             this.stops.push(makeTourStop({ item_type: 'roaming', name: 'Roaming activity' }));
+            this.revealLastStop();
         },
 
         movePinnedStop(index, lat, lng) {
@@ -158,9 +288,16 @@ function tourForm(availableTrails, availableFeatures, availableFacilities, exist
                 }));
             }
             this.search = '';
+            this.revealLastStop();
         },
 
         removeStop(index) {
+            const stop = this.stops[index];
+            const hasContent = stop && (stop.description.trim() || this.photoCount(stop) || stop.stop_label.trim());
+            const name = stop?.stop_label || stop?.name || 'this stop';
+            if (hasContent && !confirm(`Remove "${name}"? Its description and photos will be lost when you save.`)) {
+                return;
+            }
             this.stops.splice(index, 1);
         },
 
@@ -251,6 +388,64 @@ function tourForm(availableTrails, availableFeatures, availableFacilities, exist
             if (stop.new_image_preview) { URL.revokeObjectURL(stop.new_image_preview); }
             stop.new_image_preview = file ? URL.createObjectURL(file) : null;
             if (file) { stop.remove_image = false; }
+        },
+
+        // ── Stop gallery ─────────────────────────────────────────────────────
+        // New files are collected on the stop and mirrored into the row's named
+        // file input, so picking more photos adds to the batch instead of replacing it.
+
+        addGalleryPhotos(stop, event) {
+            const room = {{ \App\Models\TourStop::MAX_GALLERY_PHOTOS }} - stop.gallery.length - stop.new_gallery.length;
+            Array.from(event.target.files || []).slice(0, Math.max(room, 0)).forEach((file) => {
+                stop.new_gallery.push({ file, preview: URL.createObjectURL(file) });
+            });
+            this.syncGalleryInput(stop, event.target);
+            event.target.value = '';
+        },
+
+        removeNewGalleryPhoto(stop, photoIndex, button) {
+            const [removed] = stop.new_gallery.splice(photoIndex, 1);
+            if (removed) { URL.revokeObjectURL(removed.preview); }
+            this.syncGalleryInput(stop, button);
+        },
+
+        syncGalleryInput(stop, elementInRow) {
+            const input = elementInRow.closest('[data-stop-row]')?.querySelector('input[data-gallery-upload]');
+            if (!input) { return; }
+            const transfer = new DataTransfer();
+            stop.new_gallery.forEach((photo) => transfer.items.add(photo.file));
+            input.files = transfer.files;
+        },
+
+        // ── Stop description formatting ──────────────────────────────────────
+
+        formatStopDescription(stop, button, format) {
+            const textarea = button.closest('[data-stop-row]')?.querySelector('textarea[data-stop-description]');
+            if (!textarea) { return; }
+
+            const { selectionStart: start, selectionEnd: end, value } = textarea;
+            const selected = value.slice(start, end);
+            let replacement;
+
+            if (format === 'bold') {
+                replacement = `**${selected || 'bold text'}**`;
+            } else if (format === 'italic') {
+                replacement = `*${selected || 'italic text'}*`;
+            } else if (format === 'link') {
+                const url = prompt('Link address (https://…)', 'https://');
+                if (!url || url === 'https://') { return; }
+                replacement = `[${selected || 'link text'}](${url.trim()})`;
+            } else {
+                const lines = (selected || 'List item').split('\n');
+                replacement = lines.map((line) => line.startsWith('- ') ? line : `- ${line}`).join('\n');
+                if (start > 0 && value[start - 1] !== '\n') { replacement = '\n' + replacement; }
+            }
+
+            stop.description = value.slice(0, start) + replacement + value.slice(end);
+            this.$nextTick(() => {
+                textarea.focus();
+                textarea.setSelectionRange(start, start + replacement.length);
+            });
         },
 
         removeStopImage(stop, button) {
@@ -930,6 +1125,7 @@ window.tourRouteEditor = {
             document.getElementById('driving_route_coordinates').value = JSON.stringify(this.route);
             const kmInput = document.getElementById('total_driving_km');
             if (kmInput) { kmInput.value = this.route.length >= 2 ? km.toFixed(1) : ''; }
+            if (this.form) { this.form.dirty = true; }
         }
 
         document.getElementById('route-point-count').textContent = this.route.length;

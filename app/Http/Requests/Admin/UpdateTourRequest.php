@@ -37,10 +37,19 @@ class UpdateTourRequest extends FormRequest
         ];
     }
 
+    /**
+     * @return array<string, string>
+     */
+    public function attributes(): array
+    {
+        return StoreTourRequest::stopAttributes();
+    }
+
     public function messages(): array
     {
         return [
             'video_url.regex' => 'The video link must be a YouTube or Vimeo URL.',
+            ...StoreTourRequest::stopMessages(),
         ];
     }
 }

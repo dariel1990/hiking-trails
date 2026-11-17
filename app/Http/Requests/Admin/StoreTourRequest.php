@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Admin;
 
 use App\Models\Tour;
+use App\Models\TourStop;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -68,10 +69,14 @@ class StoreTourRequest extends FormRequest
             'stops.*.stop_label' => ['nullable', 'string', 'max:255'],
             'stops.*.icon' => ['nullable', 'string', 'max:16'],
             'stops.*.icon_image' => ['nullable', 'string', 'max:500', 'starts_with:feature-icons/', 'not_regex:/\.\./'],
-            'stops.*.description' => ['nullable', 'string', 'max:2000'],
+            'stops.*.description' => ['nullable', 'string', 'max:10000'],
             'stops.*.image' => ['nullable', 'image', 'max:10240'],
             'stops.*.existing_image' => ['nullable', 'string', 'max:500'],
             'stops.*.remove_image' => ['nullable', 'boolean'],
+            'stops.*.gallery' => ['nullable', 'array', 'max:'.TourStop::MAX_GALLERY_PHOTOS],
+            'stops.*.gallery.*' => ['image', 'max:10240'],
+            'stops.*.existing_gallery' => ['nullable', 'array', 'max:'.TourStop::MAX_GALLERY_PHOTOS],
+            'stops.*.existing_gallery.*' => ['string', 'max:500'],
             'stops.*.driving_notes' => ['nullable', 'string', 'max:500'],
             'stops.*.estimated_visit_time' => ['nullable', 'string', 'max:100'],
         ];
@@ -81,6 +86,51 @@ class StoreTourRequest extends FormRequest
     {
         return [
             'video_url.regex' => 'The video link must be a YouTube or Vimeo URL.',
+            ...self::stopMessages(),
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public function attributes(): array
+    {
+        return self::stopAttributes();
+    }
+
+    /**
+     * Readable names for stop fields in validation messages (instead of "stops.0.stop_label").
+     *
+     * @return array<string, string>
+     */
+    public static function stopAttributes(): array
+    {
+        return [
+            'stops.*.stop_label' => 'stop name',
+            'stops.*.estimated_visit_time' => 'visit time',
+            'stops.*.driving_notes' => 'notes',
+            'stops.*.description' => 'description',
+            'stops.*.image' => 'photo',
+            'stops.*.gallery' => 'extra photos',
+            'stops.*.gallery.*' => 'extra photo',
+            'stops.*.icon' => 'icon',
+            'stops.*.latitude' => 'latitude',
+            'stops.*.longitude' => 'longitude',
+        ];
+    }
+
+    /**
+     * Messages for the stop rules, shared by the create and update requests.
+     *
+     * @return array<string, string>
+     */
+    public static function stopMessages(): array
+    {
+        return [
+            'stops.*.gallery.max' => 'Each stop can have up to '.TourStop::MAX_GALLERY_PHOTOS.' extra photos.',
+            'stops.*.gallery.*.image' => 'Stop gallery files must be images.',
+            'stops.*.gallery.*.max' => 'Each stop gallery photo must be 10 MB or smaller.',
+            'stops.*.description.max' => 'A stop description can be up to 10,000 characters.',
         ];
     }
 }

@@ -76,19 +76,7 @@ function addRouteLayers() {
         });
     }
 
-    if (!isChristmasEvent) {
-        if (!map.getLayer('tour-route-line')) {
-            map.addLayer({
-                id: 'tour-route-line',
-                type: 'line',
-                source: 'tour-route',
-                paint: { 'line-color': ROUTE_COLOR, 'line-width': 3, 'line-dasharray': [2, 1] },
-            });
-        }
-        return;
-    }
-
-    // Christmas event route: white casing, solid red line, direction arrows.
+    // White casing, solid line in the route colour, and arrows showing the direction of travel.
     if (!map.getLayer('tour-route-casing')) {
         map.addLayer({
             id: 'tour-route-casing',
@@ -421,6 +409,7 @@ function focusStop(index, coords) {
         m.style.zIndex = i === index ? '10' : '';
     });
     layoutLabels();
+    document.dispatchEvent(new CustomEvent('tour:stop-focused', { detail: { index } }));
 
     // Scroll the active stop card into view
     if (card) { card.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }

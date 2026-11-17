@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Models\Concerns\HasVideoEmbed;
 use App\Observers\TownContentObserver;
+use App\Support\GeoDistance;
 use App\Support\RouteMapPayload;
 use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 use Illuminate\Database\Eloquent\Builder;
@@ -122,20 +123,105 @@ class Tour extends Model
     }
 
     /**
-     * Data for the shared route map script.
+     * Data for the shared route map script. A route the admin saved always wins;
+     * otherwise $fallbackRoute ([[lng, lat], ...], e.g. from TourRouteService) is drawn.
      *
+     * @param  list<array{0: float, 1: float}>|null  $fallbackRoute
      * @return array<string, mixed>
      */
-    public function toMapPayload(bool $showPopups = false): array
+    public function toMapPayload(bool $showPopups = false, ?array $fallbackRoute = null): array
     {
         return RouteMapPayload::make(
             stops: $this->stops,
-            route: $this->driving_route_coordinates,
+            route: $this->driving_route_coordinates ?: $fallbackRoute,
             iconImage: $this->icon_image_url,
             iconEmoji: $this->tour_icon,
             isChristmas: false,
             showPopups: $showPopups,
         );
+    }
+
+    /**
+     * Legs longer than this (in estimated route km) are shown as a drive.
+     */
+    public const WALKING_LEG_MAX_KM = 1.5;
+
+    /**
+     * Straight-line distance understates real streets/paths; pad it to estimate the route.
+     */
+    private const ROUTE_DETOUR_FACTOR = 1.25;
+
+    private const WALKING_SPEED_KMH = 5;
+
+    private const DRIVING_SPEED_KMH = 50;
+
+    /**
+     * Mapped (non-roaming) stops that have a location, keyed as in $this->stops.
+     *
+     * @return array<int, array{0: float, 1: float}>
+     */
+    public function locatedStopCoordinates(): array
+    {
+        return $this->stops
+            ->reject(fn (TourStop $stop) => $stop->is_roaming)
+            ->map(fn (TourStop $stop) => $stop->coordinates())
+            ->filter()
+            ->all();
+    }
+
+    /**
+     * Leg from each located stop to the next located stop, keyed by the departing
+     * stop's key in $this->stops. The last stop has no leg. Uses the real street
+     * route's legs when given (see TourRouteService), otherwise estimates them.
+     *
+     * @param  array{profile: 'walking'|'driving', legs: list<array{distance_km: float, minutes: int}>}|null  $route
+     * @return array<int, array{distance_km: float, minutes: int, mode: 'walk'|'drive'}>
+     */
+    public function stopLegs(?array $route = null): array
+    {
+        $coordinates = $this->locatedStopCoordinates();
+        $keys = array_keys($coordinates);
+        $legs = [];
+
+        if ($route && count($route['legs']) === count($keys) - 1) {
+            $mode = $route['profile'] === 'walking' ? 'walk' : 'drive';
+
+            foreach ($route['legs'] as $position => $leg) {
+                $legs[$keys[$position]] = [...$leg, 'mode' => $mode];
+            }
+
+            return $legs;
+        }
+
+        foreach ($keys as $position => $key) {
+            $nextKey = $keys[$position + 1] ?? null;
+
+            if ($nextKey === null) {
+                break;
+            }
+
+            $distanceKm = GeoDistance::kilometersBetween($coordinates[$key], $coordinates[$nextKey]) * self::ROUTE_DETOUR_FACTOR;
+            $mode = $distanceKm <= self::WALKING_LEG_MAX_KM ? 'walk' : 'drive';
+            $speedKmh = $mode === 'walk' ? self::WALKING_SPEED_KMH : self::DRIVING_SPEED_KMH;
+
+            $legs[$key] = [
+                'distance_km' => $distanceKm,
+                'minutes' => max(1, (int) round($distanceKm / $speedKmh * 60)),
+                'mode' => $mode,
+            ];
+        }
+
+        return $legs;
+    }
+
+    /**
+     * Whether every leg between stops is short enough to walk.
+     */
+    public function isWalkable(): bool
+    {
+        $legs = $this->stopLegs();
+
+        return $legs !== [] && collect($legs)->every(fn (array $leg) => $leg['mode'] === 'walk');
     }
 
     protected static function booted(): void

@@ -236,6 +236,8 @@ class TownPageTest extends TestCase
 
     public function test_the_hub_page_moves_towns_beyond_six_into_a_grid_below(): void
     {
+        config(['services.mapbox.access_token' => 'pk.test-token']);
+
         foreach (['Alpha', 'Bravo', 'Charlie', 'Delta', 'Echo', 'Foxtrot', 'Golf', 'Hotel'] as $order => $name) {
             Town::factory()->create(['name' => $name, 'sort_order' => $order]);
         }

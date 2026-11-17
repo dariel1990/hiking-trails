@@ -94,7 +94,7 @@ class AdminTourController extends Controller
 
         $this->syncStops($request, $tour);
 
-        return redirect()->route($this->section()['routePrefix'].'.index')
+        return $this->redirectAfterSave($request, $tour)
             ->with('success', $this->section()['singular'].' created successfully.');
     }
 
@@ -142,8 +142,20 @@ class AdminTourController extends Controller
         $tour->update($validated);
         $this->syncStops($request, $tour);
 
-        return redirect()->route($this->section()['routePrefix'].'.index')
+        return $this->redirectAfterSave($request, $tour)
             ->with('success', $this->section()['singular'].' updated successfully.');
+    }
+
+    /**
+     * "Save & keep editing" returns to the edit page; the default goes back to the list.
+     */
+    private function redirectAfterSave(Request $request, Tour $tour): RedirectResponse
+    {
+        $routePrefix = $this->section()['routePrefix'];
+
+        return $request->input('after_save') === 'edit'
+            ? redirect()->route($routePrefix.'.edit', $tour)
+            : redirect()->route($routePrefix.'.index');
     }
 
     /**
@@ -266,11 +278,49 @@ class AdminTourController extends Controller
      */
     private function deleteStopImages(Tour $tour): void
     {
-        $images = TourStop::where('tour_id', $tour->id)->whereNotNull('image')->pluck('image')->all();
+        $images = $this->stopPhotoPaths($tour);
 
         if ($images) {
             Storage::disk('public')->delete($images);
         }
+    }
+
+    /**
+     * Every stored photo (main image and gallery) across the tour's stops.
+     *
+     * @return list<string>
+     */
+    private function stopPhotoPaths(Tour $tour): array
+    {
+        return TourStop::where('tour_id', $tour->id)
+            ->get(['image', 'gallery'])
+            ->flatMap(fn (TourStop $stop) => [$stop->image, ...($stop->gallery ?? [])])
+            ->filter()
+            ->values()
+            ->all();
+    }
+
+    /**
+     * A stop's extra photos: the ones it already had (sent back as `existing_gallery`,
+     * kept only when they really belong to this tour) followed by new uploads.
+     *
+     * @param  array<string, mixed>  $stop
+     * @param  list<string>  $previousImages
+     * @return list<string>
+     */
+    private function resolveStopGallery(Request $request, int|string $index, array $stop, Tour $tour, array $previousImages): array
+    {
+        $kept = collect($stop['existing_gallery'] ?? [])
+            ->filter(fn ($path) => is_string($path) && in_array($path, $previousImages, true))
+            ->unique()
+            ->take(TourStop::MAX_GALLERY_PHOTOS);
+
+        $uploaded = collect($request->file("stops.{$index}.gallery", []))
+            ->filter(fn ($file) => $file instanceof UploadedFile)
+            ->take(TourStop::MAX_GALLERY_PHOTOS - $kept->count())
+            ->map(fn (UploadedFile $file) => $this->compressAndStoreImage($file, 'tours/'.$tour->id.'/stops', 1600, 1600));
+
+        return $kept->merge($uploaded)->values()->all();
     }
 
     /**
@@ -298,7 +348,7 @@ class AdminTourController extends Controller
 
     private function syncStops(Request $request, Tour $tour): void
     {
-        $previousImages = TourStop::where('tour_id', $tour->id)->whereNotNull('image')->pluck('image')->all();
+        $previousImages = $this->stopPhotoPaths($tour);
         $keptImages = [];
 
         TourStop::where('tour_id', $tour->id)->delete();
@@ -322,6 +372,9 @@ class AdminTourController extends Controller
                 $keptImages[] = $image;
             }
 
+            $gallery = $this->resolveStopGallery($request, $index, $stop, $tour, $previousImages);
+            array_push($keptImages, ...$gallery);
+
             TourStop::create([
                 'tour_id' => $tour->id,
                 'trail_id' => ! empty($stop['trail_id']) ? $stop['trail_id'] : null,
@@ -336,6 +389,7 @@ class AdminTourController extends Controller
                 'icon_image' => filled($stop['icon_image'] ?? null) ? $stop['icon_image'] : null,
                 'description' => $stop['description'] ?? null,
                 'image' => $image,
+                'gallery' => $gallery ?: null,
                 'driving_notes' => $stop['driving_notes'] ?? null,
                 'estimated_visit_time' => $stop['estimated_visit_time'] ?? null,
             ]);

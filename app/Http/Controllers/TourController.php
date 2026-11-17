@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Tour;
+use App\Services\TourRouteService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Response;
 use Illuminate\View\View;
@@ -25,7 +26,7 @@ class TourController extends Controller
      * Events used to be tours of a special type. Links to those old tours are
      * permanently redirected to the event page with the same slug.
      */
-    public function show(Tour $tour): View|RedirectResponse
+    public function show(Tour $tour, TourRouteService $routes): View|RedirectResponse
     {
         abort_unless($tour->is_active, 404);
 
@@ -35,9 +36,12 @@ class TourController extends Controller
 
         $tour->load('stops.trail.features', 'stops.feature', 'stops.facility');
 
+        $streetRoute = $tour->driving_route_coordinates ? null : $routes->forTour($tour);
+
         return view('tours.show', [
             'tour' => $tour,
-            'map' => $tour->toMapPayload(),
+            'streetRoute' => $streetRoute,
+            'map' => $tour->toMapPayload(fallbackRoute: $streetRoute['coordinates'] ?? null),
             'mapboxToken' => config('services.mapbox.access_token'),
         ]);
     }
@@ -45,7 +49,7 @@ class TourController extends Controller
     /**
      * Map-only version of a tour for embedding in an iframe on other sites.
      */
-    public function embed(Tour $tour): Response|RedirectResponse
+    public function embed(Tour $tour, TourRouteService $routes): Response|RedirectResponse
     {
         abort_unless($tour->is_active, 404);
 
@@ -58,7 +62,9 @@ class TourController extends Controller
         return response()
             ->view('tours.embed', [
                 'title' => $tour->title,
-                'map' => $tour->toMapPayload(),
+                'map' => $tour->toMapPayload(
+                    fallbackRoute: $tour->driving_route_coordinates ? null : ($routes->forTour($tour)['coordinates'] ?? null),
+                ),
                 'mapboxToken' => config('services.mapbox.access_token'),
                 'fullPageUrl' => route('tours.show', $tour),
             ])
