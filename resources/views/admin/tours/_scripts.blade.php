@@ -81,6 +81,7 @@ function tourForm(availableTrails, availableFeatures, availableFacilities, exist
         dirty: Boolean(meta.hasErrors),
         dragIndex: null,
         dragOverIndex: null,
+        activeStopUid: null,
         search: '',
         iconPresets: ['🐴', '🎅', '📸', '🤶', '🎵', '🎶', '🎨', '🔥', '🍿', '🛍️', '🎄', '☕', '🍪', '🎁', '⛸️', '🚚'],
         iconGallery: [],
@@ -90,6 +91,7 @@ function tourForm(availableTrails, availableFeatures, availableFacilities, exist
         init() {
             window.tourRouteEditor.attachForm(this);
             this.$watch('stops', () => window.tourRouteEditor.renderStops());
+            this.$watch('activeStopUid', () => window.tourRouteEditor.renderStops());
             this.trackUnsavedChanges();
         },
 
@@ -162,6 +164,33 @@ function tourForm(availableTrails, availableFeatures, availableFacilities, exist
                     anchor: '#tour-stops',
                 },
             ];
+        },
+
+        // ── List ⇄ map ───────────────────────────────────────────────────────
+
+        /** Open/close a stop from the list, and show it on the map when opening. */
+        toggleStop(index) {
+            const stop = this.stops[index];
+            if (!stop) { return; }
+            stop.expanded = !stop.expanded;
+            if (stop.expanded) {
+                this.activeStopUid = stop.uid;
+                window.tourRouteEditor.focusStop(stop);
+            } else if (this.activeStopUid === stop.uid) {
+                this.activeStopUid = null;
+            }
+        },
+
+        /** A map pin was clicked: open that stop in the list and scroll to it. */
+        selectStopFromMap(index) {
+            const stop = this.stops[index];
+            if (!stop) { return; }
+            stop.expanded = true;
+            this.activeStopUid = stop.uid;
+            this.$nextTick(() => {
+                this.$root.querySelectorAll('[data-stop-row]')[index]
+                    ?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            });
         },
 
         setAllExpanded(expanded) {
@@ -600,7 +629,7 @@ async function computeTourRoute() {
         status.textContent = 'Failed to reach route service. Check your internet connection.';
     } finally {
         btn.disabled = false;
-        btn.textContent = '🚗 Recompute route through stops';
+        btn.textContent = '🚗 Driving route';
     }
 }
 
@@ -999,7 +1028,7 @@ window.tourRouteEditor = {
         const hint = document.getElementById('route-mode-hint');
         const hints = {
             draw: 'Drawing: click along the streets in parade order. Each click adds a point to the end of the route. Click "Draw route" again to stop.',
-            pin: 'Pinning: click the map to add a stop there, then type its name in the Tour Stops list. Click "Pin stop on map" again to stop.',
+            pin: 'Pinning: click the map to add a stop there, then type its name in the stops list. Click "Pin stop" again to stop.',
         };
         if (hint) {
             hint.textContent = hints[this.mode] || '';
@@ -1151,13 +1180,16 @@ window.tourRouteEditor = {
             if (!coords || coords.length < 2) { return; }
 
             const isPinned = stop.item_type === 'pinned';
+            const isActive = this.form.activeStopUid === stop.uid;
             const hasIcon = Boolean(stop.icon_image_url || stop.icon);
             const el = document.createElement('div');
-            el.className = 'flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold border-2 shadow overflow-hidden';
+            // Size via h/w only: Mapbox positions markers with a CSS transform, so no scale-* classes.
+            el.className = 'flex items-center justify-center rounded-full text-xs font-bold border-2 shadow overflow-hidden cursor-pointer '
+                + (isActive ? 'h-9 w-9 ring-4 ring-amber-400' : 'h-7 w-7');
             el.style.background = hasIcon ? '#ffffff' : (isPinned ? '#B3202A' : '#111827');
             el.style.borderColor = hasIcon ? '#B3202A' : '#ffffff';
             el.style.color = '#ffffff';
-            el.style.cursor = isPinned ? 'grab' : 'default';
+            if (isPinned) { el.style.cursor = 'grab'; }
             if (stop.icon_image_url) {
                 const img = document.createElement('img');
                 img.src = stop.icon_image_url;
@@ -1171,11 +1203,16 @@ window.tourRouteEditor = {
             } else {
                 el.textContent = index + 1;
             }
-            el.title = (stop.stop_label || stop.name) + (isPinned ? ' — drag to move' : '');
+            el.title = (stop.stop_label || stop.name) + (isPinned ? ' — click to edit, drag to move' : ' — click to edit');
+            el.addEventListener('click', (event) => {
+                event.stopPropagation();
+                this.form.selectStopFromMap(index);
+            });
 
             const marker = new mapboxgl.Marker({ element: el, draggable: isPinned })
                 .setLngLat([coords[1], coords[0]])
                 .addTo(this.map);
+            if (isActive) { el.style.zIndex = '10'; }
 
             if (isPinned) {
                 marker.on('dragend', () => {
@@ -1186,6 +1223,13 @@ window.tourRouteEditor = {
 
             this.stopMarkers.push(marker);
         });
+    },
+
+    /** Center the map on a stop chosen in the list. */
+    focusStop(stop) {
+        const coords = stop?.start_coordinates;
+        if (!this.isReady || !coords || coords.length < 2) { return; }
+        this.map.easeTo({ center: [coords[1], coords[0]], zoom: Math.max(this.map.getZoom(), 15), duration: 600 });
     },
 
     fitToContent() {

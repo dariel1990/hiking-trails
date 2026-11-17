@@ -188,7 +188,60 @@ class TourFormUsabilityTest extends TestCase
             ->assertSee('Save &amp; keep editing', false)
             ->assertSee('Ready to publish?')
             ->assertSee('href="'.route('tours.show', $tour).'"', false)
-            ->assertSee('Drawing a route is optional.');
+            ->assertSee('Drawing a route is optional');
+    }
+
+    public function test_route_map_and_stops_share_one_full_width_row_map_first(): void
+    {
+        $tour = $this->makeTour();
+
+        $html = $this->actingAs($this->makeAdmin())
+            ->get(route('admin.tours.edit', $tour))
+            ->assertOk()
+            ->assertSee('Click a pin to open that stop')
+            ->getContent();
+
+        $row = strpos($html, 'lg:col-span-3 grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,11fr)_minmax(0,9fr)]');
+        $sidebar = strpos($html, 'Ready to publish?');
+        $stops = strpos($html, 'id="tour-stops"');
+        $map = strpos($html, 'id="tour-route"');
+
+        $this->assertNotFalse($row);
+        $this->assertGreaterThan($sidebar, $row, 'The stops & route row sits below the sidebar, not inside the main column.');
+        $this->assertGreaterThan($row, $map);
+        $this->assertGreaterThan($map, $stops, 'The route map comes before the stops list.');
+        // The sidebar must not be sticky: its parent is the whole form, so it would
+        // float over the full-width route & stops row when scrolling.
+        $this->assertStringNotContainsString('space-y-6 lg:sticky', $html);
+    }
+
+    public function test_danger_zone_sits_in_the_sidebar_below_settings_and_deletes_the_tour(): void
+    {
+        $admin = $this->makeAdmin();
+        $tour = $this->makeTour();
+
+        $html = $this->actingAs($admin)
+            ->get(route('admin.tours.edit', $tour))
+            ->assertOk()
+            ->assertSee('<form id="delete-tour-form"', false)
+            ->assertSee('form="delete-tour-form"', false)
+            ->getContent();
+
+        $this->assertGreaterThan(strpos($html, '>Settings<'), strpos($html, 'Danger Zone'));
+        $this->assertLessThan(strpos($html, 'id="tour-route"'), strpos($html, 'Danger Zone'));
+
+        $this->actingAs($admin)
+            ->delete(route('admin.tours.destroy', $tour))
+            ->assertRedirect();
+        $this->assertModelMissing($tour);
+    }
+
+    public function test_create_page_has_no_danger_zone(): void
+    {
+        $this->actingAs($this->makeAdmin())
+            ->get(route('admin.tours.create'))
+            ->assertOk()
+            ->assertDontSee('Danger Zone');
     }
 
     public function test_create_page_has_no_view_on_site_link(): void

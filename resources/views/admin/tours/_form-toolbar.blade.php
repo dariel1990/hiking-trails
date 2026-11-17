@@ -10,8 +10,8 @@
                 'tour-basics' => 'Basics',
                 'tour-cover' => 'Cover photo',
                 'tour-details' => 'Details',
-                'tour-stops' => 'Stops',
                 'tour-route' => 'Route & map',
+                'tour-stops' => 'Stops',
             ] as $anchor => $label)
                 <a href="#{{ $anchor }}"
                     class="inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors">
