@@ -11,6 +11,7 @@
     <link href="https://fonts.bunny.net/css?family=Inter:400,500,600,700" rel="stylesheet">
 
     <!-- Scripts -->
+    @include('partials.upload-limits-meta')
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 <body class="font-sans antialiased bg-gray-50">

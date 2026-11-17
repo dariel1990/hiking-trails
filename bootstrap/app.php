@@ -4,10 +4,13 @@ use App\Http\Middleware\AdminMiddleware;
 use App\Http\Middleware\SharePendingLegalDocuments;
 use App\Http\Middleware\VerifyAppKey;
 use App\Support\DeveloperAlert;
+use App\Support\UploadLimits;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Illuminate\Http\Exceptions\PostTooLargeException;
+use Illuminate\Http\Request;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -59,5 +62,19 @@ return Application::configure(basePath: dirname(__DIR__))
             ->withoutOverlapping();
     })
     ->withExceptions(function (Exceptions $exceptions): void {
-        //
+        // Thrown by ValidatePostSize before sessions start, so a redirect-with-errors
+        // can't flash. AJAX callers get a JSON message their error handlers already
+        // display; full-page posts get a friendly 413 page with a "go back" action.
+        $exceptions->render(function (PostTooLargeException $e, Request $request) {
+            $message = UploadLimits::tooLargeMessage();
+
+            if ($request->expectsJson() || $request->ajax() || $request->is('api/*')) {
+                return response()->json([
+                    'message' => $message,
+                    'error' => $message,
+                ], 413);
+            }
+
+            return response()->view('errors.413', ['message' => $message], 413);
+        });
     })->create();
