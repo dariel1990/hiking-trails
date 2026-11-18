@@ -137,6 +137,17 @@ class FishingLakeSeasonFilterTest extends TestCase
         $this->assertStringContainsString('fishingLakesPage(', $html);
     }
 
+    public function test_the_tabs_sit_in_the_lake_list_header_not_the_hero(): void
+    {
+        $html = $this->get(route('fishing-lakes.index'))->assertOk()->getContent();
+
+        $this->assertSame(1, substr_count($html, 'aria-label="Fishing season"'));
+        $this->assertMatchesRegularExpression(
+            '/<!-- Lake Cards Section -->.*<h3[^>]*>Fishing Lakes<\/h3>.*aria-label="Fishing season".*x-ref="grid"/su',
+            $html,
+        );
+    }
+
     public function test_the_season_rides_along_with_the_filters_form_without_a_duplicate_dropdown(): void
     {
         $html = $this->get(route('fishing-lakes.index', ['season' => 'winter']))->assertOk()->getContent();

@@ -5253,6 +5253,22 @@
             }
         }
 
+        // Deep link from a tour page (/map?tour=slug): switch to the Tours
+        // tab, then show that tour's stops and details.
+        openTourFromUrl() {
+            // A slug (browsers) or an ID (apps, old links), like ?trail=.
+            const tourKey = new URLSearchParams(window.location.search).get('tour');
+            if (!tourKey) { return; }
+
+            this.activateLocationTab('tour');
+            this.ensureToursLoaded().then(tours => {
+                const tour = tours.find(t => window.trailMatchesKey(t, tourKey));
+                if (!tour) { return; }
+                // Let the tab switch render the tour markers before selecting one.
+                setTimeout(() => this.focusOnTour(tour.id), 800);
+            });
+        }
+
         focusOnTour(tourId) {
             this.ensureToursLoaded().then(tours => {
                 const tour = tours.find(t => t.id == tourId);
@@ -5818,6 +5834,7 @@
 
                 // After the trail list is drawn, so switching to the Events tab is the last word on the sidebar.
                 this.openEventFromUrl();
+                this.openTourFromUrl();
             } catch (error) {
                 console.error('Error loading trails:', error);
             } finally {

@@ -4,9 +4,9 @@
     Optional $class: wrapper spacing/alignment; $buttonClass: shape of the button.
 --}}
 @if($hasMap && ! $event->has_passed)
-    <div class="{{ $class ?? 'mt-4' }}">
+    <div class="flex justify-center md:justify-start {{ $class ?? 'mt-4' }}">
         <a href="{{ route('map', ['event' => $event->urlKey()]) }}"
-            class="event-accent-text event-accent-border inline-flex items-center gap-2 border px-4 py-2 text-sm font-semibold transition-colors hover:bg-[var(--tour-primary-soft)] {{ $buttonClass ?? 'rounded-full' }}">
+            class="inline-flex items-center gap-2 bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-emerald-700 {{ $buttonClass ?? 'rounded-full' }}">
             @include('local-events.partials._icon', ['name' => 'route'])
             View on Interactive Map
         </a>

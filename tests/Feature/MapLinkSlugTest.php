@@ -4,6 +4,9 @@ namespace Tests\Feature;
 
 use App\Models\Business;
 use App\Models\Event;
+use App\Models\Tour;
+use App\Models\TourStop;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -28,6 +31,27 @@ class MapLinkSlugTest extends TestCase
             'longitude' => -127.1686,
             'is_active' => true,
         ]);
+    }
+
+    private function makeTour(bool $withStop = true): Tour
+    {
+        $tour = Tour::create([
+            'title' => 'Heritage Tour',
+            'tour_type' => 'scenic',
+            'is_active' => true,
+        ]);
+
+        if ($withStop) {
+            TourStop::create([
+                'tour_id' => $tour->id,
+                'stop_order' => 1,
+                'stop_label' => 'Central Park Building',
+                'latitude' => 54.78,
+                'longitude' => -127.17,
+            ]);
+        }
+
+        return $tour;
     }
 
     public function test_business_pages_link_to_the_map_by_slug(): void
@@ -87,5 +111,54 @@ class MapLinkSlugTest extends TestCase
 
         $this->getJson('/api/businesses')->assertOk()->assertJsonFragment(['slug' => 'bugwood-bean']);
         $this->getJson('/api/events')->assertOk()->assertJsonFragment(['slug' => 'light-up-night']);
+    }
+
+    public function test_tour_pages_link_to_the_map_by_slug_below_the_map(): void
+    {
+        $tour = $this->makeTour();
+
+        $this->withHeader('User-Agent', self::BROWSER_UA)
+            ->get(route('tours.show', $tour))
+            ->assertOk()
+            ->assertSeeInOrder(['id="tour-map"', 'View on Interactive Map', '<!-- Stop list'], false)
+            ->assertSee(route('map', ['tour' => 'heritage-tour']), false)
+            ->assertDontSee(route('map', ['tour' => $tour->id]).'"', false);
+    }
+
+    public function test_tour_pages_in_the_apps_link_to_the_map_by_id(): void
+    {
+        $tour = $this->makeTour();
+
+        $this->withHeader('User-Agent', self::APP_UA)
+            ->get(route('tours.show', $tour))
+            ->assertOk()
+            ->assertSee(route('map', ['tour' => $tour->id]).'"', false);
+    }
+
+    public function test_tour_pages_without_mapped_stops_have_no_interactive_map_link(): void
+    {
+        $tour = $this->makeTour(withStop: false);
+
+        $this->get(route('tours.show', $tour))
+            ->assertOk()
+            ->assertDontSee('View on Interactive Map');
+    }
+
+    public function test_the_map_opens_a_tour_from_a_slug_or_an_id(): void
+    {
+        $this->get(route('map'))
+            ->assertOk()
+            ->assertSee('this.openTourFromUrl();', false)
+            ->assertSee('tours.find(t => window.trailMatchesKey(t, tourKey))', false);
+    }
+
+    public function test_premium_event_pages_show_the_interactive_map_link_below_the_map(): void
+    {
+        $admin = User::factory()->create(['is_admin' => true]);
+        $event = Event::factory()->withRoute()->create(['title' => 'Light Up Night']);
+
+        $this->actingAs($admin)->get(route('local-events.show', $event->slug).'?layout=premium')
+            ->assertOk()
+            ->assertSeeInOrder(['event-map-frame', 'View on Interactive Map'], false);
     }
 }

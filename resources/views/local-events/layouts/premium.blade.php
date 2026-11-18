@@ -69,13 +69,6 @@
                     @include('local-events.partials._icon', ['name' => 'calendar'])
                     Add to Calendar
                 </a>
-                @if($hasMap && ! $event->has_passed)
-                    <a href="{{ route('map', ['event' => $event->urlKey()]) }}"
-                        class="inline-flex items-center gap-2 rounded-full border border-white/60 px-6 py-3 text-sm font-semibold text-white hover:bg-white/10">
-                        @include('local-events.partials._icon', ['name' => 'route'])
-                        View on Interactive Map
-                    </a>
-                @endif
                 <button type="button" data-share-open="event-share" aria-label="Share this event"
                     class="inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/60 text-white hover:bg-white/10">
                     @include('local-events.partials._icon', ['name' => 'share', 'class' => 'h-5 w-5'])
@@ -149,7 +142,10 @@
                 <div class="mt-12 {{ $hasMap && $mappedStops->isNotEmpty() ? 'lg:grid lg:grid-cols-5 lg:gap-8' : '' }}">
                     @if($hasMap)
                         <div class="lg:col-span-3">
-                            @include('local-events.partials._map', ['frameClass' => 'h-[360px] rounded-2xl border border-sand-300 sm:h-[460px] lg:sticky lg:top-28 lg:h-[600px]'])
+                            <div class="lg:sticky lg:top-28">
+                                @include('local-events.partials._map', ['frameClass' => 'h-[360px] rounded-2xl border border-sand-300 sm:h-[460px] lg:h-[560px]'])
+                                @include('local-events.partials._interactive-map-link')
+                            </div>
                         </div>
                     @endif
                     @if($mappedStops->isNotEmpty())

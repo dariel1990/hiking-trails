@@ -74,23 +74,6 @@
                 ['name' => 'season', 'hidden' => true],
             ]"
         />
-
-        {{-- Summer (open water) / Winter (ice fishing) tabs; Summer is selected by default. They swap
-             the list in place; the hrefs are the no-JavaScript fallback. --}}
-        <nav class="mt-4 w-full max-w-xs mx-auto grid grid-cols-2 gap-1 rounded-2xl bg-white/20 backdrop-blur-md p-1.5 border border-white/30 shadow-xl text-sm font-semibold sm:inline-grid sm:w-auto"
-             aria-label="Fishing season">
-            @foreach(\App\Models\Trail::getFishingSeasons() as $value => $label)
-                @php $isActive = $season === $value; @endphp
-                <a href="{{ $seasonUrl($value) }}"
-                   @if($isActive) aria-current="page" @endif
-                   :aria-current="season === '{{ $value }}' ? 'page' : null"
-                   @click.prevent="setSeason('{{ $value }}')"
-                   class="flex items-center justify-center whitespace-nowrap rounded-xl px-5 py-2.5 transition-colors {{ $isActive ? 'bg-white text-forest-700 shadow-md' : 'text-white hover:bg-white/15' }}"
-                   :class="{ 'bg-white text-forest-700 shadow-md': season === '{{ $value }}', 'text-white hover:bg-white/15': season !== '{{ $value }}' }">
-                    {{ $label }}
-                </a>
-            @endforeach
-        </nav>
     </div>
 </section>
 
@@ -98,21 +81,39 @@
 <section class="section bg-white">
     <div class="max-w-7xl mx-auto px-4">
 
+        <div x-show="total > 0" @if($total === 0) style="display: none" @endif class="text-center mb-12">
+            <h2 class="section-title text-forest-600">Pristine Fishing Lakes</h2>
+            <p class="section-subtitle">
+                Every lake supports sustainable tourism and local communities. Cast your line responsibly.
+            </p>
+        </div>
+
+        {{-- Stays visible with no results so the other season is always one tap away. --}}
+        <div class="flex flex-wrap items-center gap-3 mb-6">
+            <span class="text-2xl">🐟</span>
+            <h3 class="text-2xl font-bold text-gray-800">Fishing Lakes</h3>
+            <span class="text-sm text-gray-500 font-medium">(<span x-text="total">{{ $total }}</span>)</span>
+            <div class="flex-1 h-px bg-gray-200"></div>
+
+            {{-- Summer (open water) / Winter (ice fishing) tabs; Summer is selected by default. They swap
+                 the list in place; the hrefs are the no-JavaScript fallback. --}}
+            <nav class="w-full sm:w-auto grid grid-cols-2 gap-1 rounded-xl bg-gray-100 p-1 text-sm font-semibold"
+                 aria-label="Fishing season">
+                @foreach(\App\Models\Trail::getFishingSeasons() as $value => $label)
+                    @php $isActive = $season === $value; @endphp
+                    <a href="{{ $seasonUrl($value) }}"
+                       @if($isActive) aria-current="page" @endif
+                       :aria-current="season === '{{ $value }}' ? 'page' : null"
+                       @click.prevent="setSeason('{{ $value }}')"
+                       class="flex items-center justify-center whitespace-nowrap rounded-lg px-4 py-2 transition-colors {{ $isActive ? 'bg-white text-forest-700 shadow-sm' : 'text-gray-600 hover:text-gray-900' }}"
+                       :class="{ 'bg-white text-forest-700 shadow-sm': season === '{{ $value }}', 'text-gray-600 hover:text-gray-900': season !== '{{ $value }}' }">
+                        {{ $label }}
+                    </a>
+                @endforeach
+            </nav>
+        </div>
+
         <div x-show="total > 0" @if($total === 0) style="display: none" @endif>
-            <div class="text-center mb-12">
-                <h2 class="section-title text-forest-600">Pristine Fishing Lakes</h2>
-                <p class="section-subtitle">
-                    Every lake supports sustainable tourism and local communities. Cast your line responsibly.
-                </p>
-            </div>
-
-            <div class="flex items-center gap-3 mb-6">
-                <span class="text-2xl">🐟</span>
-                <h3 class="text-2xl font-bold text-gray-800">Fishing Lakes</h3>
-                <span class="text-sm text-gray-500 font-medium">(<span x-text="total">{{ $total }}</span>)</span>
-                <div class="flex-1 h-px bg-gray-200"></div>
-            </div>
-
             <div x-ref="grid" class="grid md:grid-cols-2 lg:grid-cols-3 gap-8 mb-6 transition-opacity duration-200"
                  :class="switching && 'opacity-40 pointer-events-none'" :aria-busy="switching">
                 @include('trails._cards', ['trails' => $fishingLakes, 'type' => 'lakes'])

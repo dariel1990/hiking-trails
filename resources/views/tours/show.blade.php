@@ -173,12 +173,13 @@
         <div class="lg:grid lg:grid-cols-5 lg:gap-8">
 
             <!-- Map (left 3/5) -->
-            <div id="tour-map-sticky" class="lg:col-span-3 w-auto md:w-full h-[300px] md:h-[400px] lg:h-[560px] relative md:sticky md:top-20 lg:top-24 z-20 pt-4 pb-6 px-[5px] md:p-0 bg-white rounded-none md:rounded-2xl -mx-4 md:mx-0">
+            <div id="tour-map-sticky" class="lg:col-span-3 w-auto md:w-full md:sticky md:top-20 lg:top-24 z-20 pt-4 pb-6 px-[5px] md:p-0 bg-white md:bg-gray-50 rounded-none md:rounded-2xl -mx-4 md:mx-0">
+                <div class="relative h-[260px] md:h-[400px] lg:h-[560px]">
                 <div id="tour-map" class="w-full h-full rounded-none md:rounded-2xl overflow-hidden shadow-lg border border-gray-200 bg-gray-200"></div>
 
                 <!-- Reset view -->
                 <button type="button" id="tour-map-reset" title="Show the whole route"
-                    class="absolute bottom-9 left-4 md:bottom-3 md:left-3 z-10 inline-flex items-center gap-1.5 bg-white rounded-xl shadow-md px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-50 transition-colors border border-gray-200">
+                    class="absolute bottom-3 left-3 z-10 inline-flex items-center gap-1.5 bg-white rounded-xl shadow-md px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-50 transition-colors border border-gray-200">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4h4M20 8V4h-4M4 16v4h4M20 16v4h-4"/>
                     </svg>
@@ -188,7 +189,7 @@
                 @if($mappedStops->count() > 1)
                     <!-- Previous / next stop -->
                     <div id="tour-stepper"
-                        class="absolute bottom-9 right-4 md:bottom-8 md:right-3 z-10 flex items-center rounded-xl border border-gray-200 bg-white shadow-md">
+                        class="absolute bottom-8 right-3 z-10 flex items-center rounded-xl border border-gray-200 bg-white shadow-md">
                         <button type="button" id="tour-stepper-prev" onclick="stepTourStop(-1)"
                             class="flex h-8 w-8 items-center justify-center rounded-l-xl text-gray-600 hover:bg-gray-50 disabled:opacity-30 transition-colors"
                             aria-label="Previous stop" disabled>
@@ -204,7 +205,7 @@
                 @endif
 
                 <!-- Map Style Switcher -->
-                <div class="absolute top-7 right-14 md:top-3 z-10">
+                <div class="absolute top-3 right-14 z-10">
                     <div class="relative">
                         <button id="tour-layers-toggle" title="Change Map Style"
                             class="bg-white rounded-xl shadow-md p-2 hover:bg-gray-50 transition-colors border border-gray-200">
@@ -241,6 +242,17 @@
                         </div>
                     </div>
                 </div>
+                </div>
+
+                @if($mappedStops->isNotEmpty())
+                    <div class="mt-3 flex justify-center md:justify-start">
+                        <a href="{{ route('map', ['tour' => $tour->urlKey()]) }}"
+                            class="inline-flex items-center gap-2 rounded-full bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-emerald-700">
+                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/></svg>
+                            View on Interactive Map
+                        </a>
+                    </div>
+                @endif
             </div>
 
             <!-- Stop list (right 2/5) -->

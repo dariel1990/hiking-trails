@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\HasUrlKey;
 use App\Models\Concerns\HasVideoEmbed;
 use App\Observers\TownContentObserver;
 use App\Support\GeoDistance;
@@ -16,6 +17,7 @@ use Illuminate\Support\Str;
 #[ObservedBy(TownContentObserver::class)]
 class Tour extends Model
 {
+    use HasUrlKey;
     use HasVideoEmbed;
 
     protected $fillable = [
