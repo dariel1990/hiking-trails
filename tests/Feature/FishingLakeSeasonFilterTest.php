@@ -91,15 +91,21 @@ class FishingLakeSeasonFilterTest extends TestCase
             ->assertDontSee('Open Water Lake');
     }
 
-    public function test_old_season_links_show_every_lake(): void
+    public function test_summer_is_the_default_also_for_old_season_links(): void
     {
         $this->makeLakes();
 
-        $this->get(route('fishing-lakes.index', ['season' => 'spring']))
-            ->assertOk()
-            ->assertSee('Open Water Lake')
-            ->assertSee('Ice Lake')
-            ->assertSee('Winter Pick Lake');
+        foreach ([[], ['season' => 'spring']] as $query) {
+            $html = $this->get(route('fishing-lakes.index', $query))
+                ->assertOk()
+                ->assertSee('Open Water Lake')
+                ->assertSee('Mystery Lake')
+                ->assertDontSee('Ice Lake')
+                ->assertDontSee('Winter Pick Lake')
+                ->getContent();
+
+            $this->assertMatchesRegularExpression('/aria-current="page"[^>]*>\s*☀️ Summer/u', $html);
+        }
     }
 
     public function test_the_switch_marks_the_active_season_and_keeps_other_filters(): void
@@ -114,10 +120,10 @@ class FishingLakeSeasonFilterTest extends TestCase
 
         $this->assertMatchesRegularExpression('/aria-current="page"[^>]*>\s*❄️ Winter/u', $html);
         $this->assertStringContainsString('href="'.e(route('fishing-lakes.index').'?town=houston-bc&search=lake&season=summer').'"', $html);
-        $this->assertStringContainsString('href="'.e(route('fishing-lakes.index').'?town=houston-bc&search=lake').'"', $html, 'Tapping the selected season turns it off.');
+        $this->assertStringContainsString('href="'.e(route('fishing-lakes.index').'?town=houston-bc&search=lake&season=winter').'"', $html, 'The selected tab stays selected.');
     }
 
-    public function test_the_switch_has_only_summer_and_winter_and_the_sheet_offers_both(): void
+    public function test_the_tabs_have_only_summer_and_winter_and_switch_without_reloading(): void
     {
         $html = $this->get(route('fishing-lakes.index'))->assertOk()->getContent();
 
@@ -125,10 +131,33 @@ class FishingLakeSeasonFilterTest extends TestCase
         $this->assertStringContainsString('☀️ Summer', $switch[0]);
         $this->assertStringContainsString('❄️ Winter', $switch[0]);
         $this->assertStringNotContainsString('All', $switch[0]);
-        $this->assertStringNotContainsString('aria-current', $switch[0], 'Nothing is selected without a season.');
-        $this->assertStringContainsString('<option value="summer"', $html);
-        $this->assertStringContainsString('<option value="winter"', $html);
-        $this->assertStringNotContainsString('<option value="spring"', $html);
+        $this->assertMatchesRegularExpression('/aria-current="page"[^>]*>\s*☀️ Summer/u', $switch[0], 'Summer is selected by default.');
+        $this->assertSame(1, substr_count($switch[0], 'aria-current="page"'));
+        $this->assertStringContainsString("@click.prevent=\"setSeason('summer')\"", $switch[0]);
+        $this->assertStringContainsString('fishingLakesPage(', $html);
+    }
+
+    public function test_the_season_rides_along_with_the_filters_form_without_a_duplicate_dropdown(): void
+    {
+        $html = $this->get(route('fishing-lakes.index', ['season' => 'winter']))->assertOk()->getContent();
+
+        $this->assertStringContainsString('<input type="hidden" name="season" id="filter-season" value="winter"', $html);
+        $this->assertStringNotContainsString('<select name="season"', $html);
+        $this->assertStringNotContainsString('Remove Season filter', $html, 'The tabs replace the season chip.');
+
+        $this->assertMatchesRegularExpression(
+            '/<input type="hidden" name="season" id="filter-season" value=""\s+disabled/',
+            $this->get(route('fishing-lakes.index'))->getContent(),
+        );
+    }
+
+    public function test_the_list_endpoint_returns_totals_for_the_tabs(): void
+    {
+        $this->makeLakes();
+
+        $this->getJson(route('fishing-lakes.index', ['season' => 'winter', 'ajax_type' => 'lakes', 'lake_page' => 1]))
+            ->assertOk()
+            ->assertJson(['total' => 4, 'count' => 4, 'has_more' => false]);
     }
 
     public function test_load_more_keeps_the_season(): void
@@ -147,7 +176,7 @@ class FishingLakeSeasonFilterTest extends TestCase
     {
         $this->makeLake('Ice Lake', $this->activity('ice-fishing', 'winter'));
 
-        $this->get(route('fishing-lakes.index'))
+        $this->get(route('fishing-lakes.index', ['season' => 'winter']))
             ->assertOk()
             ->assertSee('aria-label="Fishing seasons"', false)
             ->assertSeeInOrder(['Ice Lake', '❄️ Winter']);
@@ -156,13 +185,13 @@ class FishingLakeSeasonFilterTest extends TestCase
         $this->assertSame(['summer', 'winter'], $this->makeLake('Mystery Lake')->fishingSeasons());
     }
 
-    public function test_empty_season_explains_and_links_back_to_all_seasons(): void
+    public function test_empty_season_explains_and_offers_the_other_season(): void
     {
         $this->makeLake('Open Water Lake', $this->activity('fishing', 'summer'));
 
         $this->get(route('fishing-lakes.index', ['season' => 'winter']))
             ->assertOk()
             ->assertSee('No lakes are listed for winter fishing yet.')
-            ->assertSee('Show all seasons');
+            ->assertSee('See summer lakes');
     }
 }
