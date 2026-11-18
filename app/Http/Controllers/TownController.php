@@ -121,6 +121,7 @@ class TownController extends Controller
     {
         return Event::query()
             ->current()
+            ->with('days')
             ->where(function ($q) use ($town) {
                 $q->where('town_id', $town->id)
                     ->orWhere('location', 'like', "%{$town->name}%")

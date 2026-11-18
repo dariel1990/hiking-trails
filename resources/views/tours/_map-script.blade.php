@@ -382,7 +382,7 @@ function openStopPopup(index) {
         : (stop.icon ? `<span class="tour-popup-icon">${escapeHtml(stop.icon)}</span>` : `<span class="tour-popup-number">${stop.number ?? index + 1}</span>`);
     const directionsUrl = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
     const html = `
-        ${stop.image ? `<img src="${escapeHtml(stop.image)}" alt="" class="tour-popup-photo">` : ''}
+        ${stop.image ? `<a href="${escapeHtml(stop.image)}" target="_blank" rel="noopener" class="tour-popup-photo-link" title="Open full image"><img src="${escapeHtml(stop.image)}" alt="${escapeHtml(stop.label || '')}" class="tour-popup-photo"></a>` : ''}
         <div class="tour-popup-head">${iconHtml}<h3>${escapeHtml(stop.label)}</h3></div>
         ${stop.time ? `<p class="tour-popup-time">${escapeHtml(stop.time)}</p>` : ''}
         ${stop.note ? `<p class="tour-popup-note">${escapeHtml(stop.note)}</p>` : ''}

@@ -80,7 +80,13 @@
             </div>
             <div class="border-r border-gray-300 py-6 pr-4 lg:px-8">
                 <dt class="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500">Time</dt>
-                <dd class="mt-2 font-display text-lg font-semibold">{{ $event->time_range_label ?: 'See details' }}</dd>
+                <dd class="mt-2 font-display text-lg font-semibold">
+                    @if($event->day_times->isNotEmpty())
+                        <div class="font-sans text-sm">@include('local-events.partials._day-times', ['mutedClass' => 'text-gray-600'])</div>
+                    @else
+                        {{ $event->time_range_label ?: 'See details' }}
+                    @endif
+                </dd>
             </div>
             <div class="py-6 pl-4 lg:border-r lg:border-gray-300 lg:px-8">
                 <dt class="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500">Where</dt>

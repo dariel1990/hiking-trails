@@ -35,6 +35,7 @@ class AdminEventController extends Controller
         $today = Carbon::today()->toDateString();
 
         $events = Event::query()
+            ->with('days')
             ->withCount('stops')
             ->when($search !== '', fn ($q) => $q->where(fn ($q) => $q
                 ->where('title', 'like', "%{$search}%")
@@ -74,16 +75,17 @@ class AdminEventController extends Controller
             $event->update(['cover_image' => $this->storeCoverImage($request->file('cover_image'), $event)]);
         }
 
+        $this->syncDays($request, $event);
         $this->syncStops($request, $event);
         $this->syncMedia($request, $event);
 
-        return redirect()->route('admin.local-events.index')
+        return $this->redirectAfterSave($request, $event)
             ->with('success', 'Event created successfully.');
     }
 
     public function edit(Event $event): View
     {
-        $event->load('stops', 'media');
+        $event->load('stops', 'media', 'days');
 
         return view('admin.events.edit', ['event' => $event, 'categories' => $this->categories()]);
     }
@@ -100,11 +102,22 @@ class AdminEventController extends Controller
         }
 
         $event->update($attributes);
+        $this->syncDays($request, $event);
         $this->syncStops($request, $event);
         $this->syncMedia($request, $event);
 
-        return redirect()->route('admin.local-events.index')
+        return $this->redirectAfterSave($request, $event)
             ->with('success', 'Event updated successfully.');
+    }
+
+    /**
+     * "Save & keep editing" returns to the edit page; the default goes back to the list.
+     */
+    private function redirectAfterSave(Request $request, Event $event): RedirectResponse
+    {
+        return $request->input('after_save') === 'edit'
+            ? redirect()->route('admin.local-events.edit', $event)
+            : redirect()->route('admin.local-events.index');
     }
 
     public function destroy(Event $event): RedirectResponse
@@ -218,8 +231,13 @@ class AdminEventController extends Controller
     private function eventAttributes(StoreEventRequest $request, ?Event $event = null): array
     {
         $attributes = collect($request->validated())
-            ->except(['cover_image', 'stops', 'slug', 'route_coordinates', 'media', 'media_sync'])
+            ->except(['cover_image', 'stops', 'slug', 'route_coordinates', 'media', 'media_sync', 'schedule_mode', 'days'])
             ->all();
+
+        // A per-day schedule sets the summary date/time columns used by lists and filters.
+        if ($this->usesDaySchedule($request)) {
+            $attributes = array_merge($attributes, Event::summaryFromDays($this->scheduleDays($request)));
+        }
 
         $attributes['is_active'] = $request->boolean('is_active');
         $attributes['is_featured'] = $request->boolean('is_featured');
@@ -298,6 +316,44 @@ class AdminEventController extends Controller
         $existing = $stop['existing_image'] ?? null;
 
         return $existing && in_array($existing, $previousImages, true) ? $existing : null;
+    }
+
+    private function usesDaySchedule(StoreEventRequest $request): bool
+    {
+        return $request->validated('schedule_mode') === 'days';
+    }
+
+    /**
+     * The submitted schedule days, sorted by date, with blank times as null.
+     *
+     * @return list<array{date: string, start_time: ?string, end_time: ?string, note: ?string}>
+     */
+    private function scheduleDays(StoreEventRequest $request): array
+    {
+        return collect($request->validated('days', []))
+            ->map(fn (array $day) => [
+                'date' => Carbon::parse($day['date'])->toDateString(),
+                'start_time' => filled($day['start_time'] ?? null) ? $day['start_time'] : null,
+                'end_time' => filled($day['end_time'] ?? null) ? $day['end_time'] : null,
+                'note' => filled($day['note'] ?? null) ? trim($day['note']) : null,
+            ])
+            ->sortBy([['date', 'asc'], ['start_time', 'asc']])
+            ->values()
+            ->all();
+    }
+
+    /**
+     * Days are re-created on every save; "Same hours every day" removes them.
+     */
+    private function syncDays(StoreEventRequest $request, Event $event): void
+    {
+        $event->days()->delete();
+
+        if (! $this->usesDaySchedule($request)) {
+            return;
+        }
+
+        $event->days()->createMany($this->scheduleDays($request));
     }
 
     private function syncStops(Request $request, Event $event): void

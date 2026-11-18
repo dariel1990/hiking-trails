@@ -118,6 +118,10 @@ class EventsController extends Controller
      */
     protected function generateIcsFile(Event $event)
     {
+        if ($event->hasSchedule()) {
+            return $this->generateScheduleIcsFile($event);
+        }
+
         $startDateTime = $event->event_date;
         if ($event->event_time) {
             $startDateTime = Carbon::parse($event->event_date->format('Y-m-d').' '.$event->event_time->format('H:i:s'));
@@ -156,6 +160,58 @@ class EventsController extends Controller
             $ics .= "URL:{$event->external_url}\r\n";
         }
         $ics .= "END:VEVENT\r\n";
+        $ics .= "END:VCALENDAR\r\n";
+
+        return $ics;
+    }
+
+    /**
+     * One calendar entry per schedule day, each with that day's hours. A day without
+     * times is an all-day entry; without an end time it lasts an hour, like single events.
+     */
+    protected function generateScheduleIcsFile(Event $event): string
+    {
+        $dtstamp = now()->format('Ymd\THis');
+        $title = $this->escapeIcsString($event->title);
+        $location = $this->escapeIcsString($event->location ?? '');
+        $host = parse_url(config('app.url'), PHP_URL_HOST) ?: 'localhost';
+
+        $ics = "BEGIN:VCALENDAR\r\n";
+        $ics .= "VERSION:2.0\r\n";
+        $ics .= "PRODID:-//Smithers Events//EN\r\n";
+
+        foreach ($event->days as $day) {
+            $date = $day->date->format('Y-m-d');
+            $description = $this->escapeIcsString(trim(($day->note ? $day->note."\n\n" : '').($event->description ?? '')));
+
+            $ics .= "BEGIN:VEVENT\r\n";
+            $ics .= "UID:event-{$event->id}-{$day->date->format('Ymd')}@{$host}\r\n";
+            $ics .= "DTSTAMP:{$dtstamp}\r\n";
+
+            if ($day->start_time) {
+                $start = Carbon::parse($date.' '.$day->start_time->format('H:i:s'));
+                $end = $day->end_time
+                    ? Carbon::parse($date.' '.$day->end_time->format('H:i:s'))
+                    : $start->copy()->addHour();
+                if ($end->lte($start)) {
+                    $end->addDay();
+                }
+                $ics .= 'DTSTART:'.$start->format('Ymd\THis')."\r\n";
+                $ics .= 'DTEND:'.$end->format('Ymd\THis')."\r\n";
+            } else {
+                $ics .= 'DTSTART;VALUE=DATE:'.$day->date->format('Ymd')."\r\n";
+                $ics .= 'DTEND;VALUE=DATE:'.$day->date->copy()->addDay()->format('Ymd')."\r\n";
+            }
+
+            $ics .= "SUMMARY:{$title}\r\n";
+            $ics .= "DESCRIPTION:{$description}\r\n";
+            $ics .= "LOCATION:{$location}\r\n";
+            if ($event->external_url) {
+                $ics .= "URL:{$event->external_url}\r\n";
+            }
+            $ics .= "END:VEVENT\r\n";
+        }
+
         $ics .= "END:VCALENDAR\r\n";
 
         return $ics;

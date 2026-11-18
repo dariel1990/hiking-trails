@@ -29,22 +29,11 @@
         @include('admin.events._form', ['event' => $event])
     </form>
 
-    <!-- Danger Zone -->
-    <div class="rounded-lg border border-red-200 bg-red-50">
-        <div class="p-6">
-            <h3 class="text-sm font-semibold text-red-800 mb-1">Danger Zone</h3>
-            <p class="text-sm text-red-700 mb-4">Permanently delete this event and its map activities. It also disappears from the events calendar.</p>
-            <form method="POST" action="{{ route('admin.local-events.destroy', $event) }}"
-                onsubmit="return confirm(@js('Delete "' . $event->title . '"? This cannot be undone.'))">
-                @csrf
-                @method('DELETE')
-                <button type="submit"
-                    class="inline-flex items-center justify-center rounded-md bg-red-600 text-white hover:bg-red-700 h-9 px-4 py-2 text-sm font-medium transition-colors">
-                    Delete Event
-                </button>
-            </form>
-        </div>
-    </div>
+    {{-- Submitted by the Delete button in the form's sidebar (forms can't be nested). --}}
+    <form id="delete-event-form" method="POST" action="{{ route('admin.local-events.destroy', $event) }}" class="hidden">
+        @csrf
+        @method('DELETE')
+    </form>
 </div>
 
 @include('admin.events._gallery-script')

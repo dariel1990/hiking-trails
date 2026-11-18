@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Observers\TownContentObserver;
 use App\Support\AppClient;
 use Illuminate\Database\Eloquent\Attributes\ObservedBy;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -436,6 +437,60 @@ class Trail extends Model
             '10-20' => '10 – 20 km',
             '20+' => 'Over 20 km',
         ];
+    }
+
+    /**
+     * Seasons a fishing lake can be filtered by (summer = open water, winter = ice fishing).
+     *
+     * @return array<string, string>
+     */
+    public static function getFishingSeasons(): array
+    {
+        return [
+            'summer' => '☀️ Summer',
+            'winter' => '❄️ Winter',
+        ];
+    }
+
+    /**
+     * Fishing lakes worth visiting in a season, using the interactive map's rule: an
+     * activity for that season (or "both"), or that season picked as the best fishing
+     * season. A lake with neither (no season info at all) shows in every season.
+     *
+     * @param  Builder<Trail>  $query
+     * @return Builder<Trail>
+     */
+    public function scopeFishableInSeason(Builder $query, string $season): Builder
+    {
+        return $query->where(function (Builder $q) use ($season) {
+            $q->whereHas('activities', fn (Builder $a) => $a->whereIn('season_applicable', [$season, 'both']))
+                ->orWhereRaw('LOWER(best_fishing_season) = ?', [$season])
+                ->orWhere(fn (Builder $none) => $none
+                    ->whereDoesntHave('activities')
+                    ->where(fn (Builder $b) => $b->whereNull('best_fishing_season')->orWhere('best_fishing_season', '')));
+        });
+    }
+
+    /**
+     * The seasons this lake shows under (same rule as scopeFishableInSeason).
+     *
+     * @return list<string> Subset of ['summer', 'winter']
+     */
+    public function fishingSeasons(): array
+    {
+        $bestSeason = strtolower((string) $this->best_fishing_season);
+        $activitySeasons = $this->activities->pluck('season_applicable');
+
+        if ($activitySeasons->isEmpty() && $bestSeason === '') {
+            return array_keys(self::getFishingSeasons());
+        }
+
+        return collect(array_keys(self::getFishingSeasons()))
+            ->filter(fn (string $season) => $bestSeason === $season
+                || $activitySeasons->contains($season)
+                || $activitySeasons->contains('both'))
+            ->values()
+            ->all();
     }
 
     public function scopeInTown($query, Town|string $town)

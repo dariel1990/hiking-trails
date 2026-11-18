@@ -46,9 +46,15 @@
                 <p class="mt-6 max-w-2xl text-lg leading-relaxed text-sand-100/90 md:text-xl">{{ $event->tagline }}</p>
             @endif
 
-            <p class="mt-6 text-sm font-medium text-white/90 md:text-base">
-                {{ $event->date_range_label }}@if($event->time_range_label)<span class="mx-2 text-white/40">·</span>{{ $event->time_range_label }}@endif
-            </p>
+            @if($event->day_times->isNotEmpty())
+                <div class="mt-6">
+                    @include('local-events.partials._day-times', ['style' => 'pills'])
+                </div>
+            @else
+                <p class="mt-6 text-sm font-medium text-white/90 md:text-base">
+                    {{ $event->date_range_label }}@if($event->time_range_label)<span class="mx-2 text-white/40">·</span>{{ $event->time_range_label }}@endif
+                </p>
+            @endif
 
             <div class="mt-9 flex flex-wrap items-center justify-center gap-3">
                 @if($event->external_url)
@@ -93,7 +99,13 @@
                     </span>
                     <div class="min-w-0">
                         <dt class="text-xs font-semibold uppercase tracking-[0.12em] text-forest-500">{{ $label }}</dt>
-                        <dd class="mt-1 text-[15px] font-semibold leading-snug text-gray-900">{{ $value }}</dd>
+                        <dd class="mt-1 text-[15px] font-semibold leading-snug text-gray-900">
+                            @if($label === 'Time' && $event->day_times->isNotEmpty())
+                                @include('local-events.partials._day-times', ['mutedClass' => 'text-gray-600'])
+                            @else
+                                {{ $value }}
+                            @endif
+                        </dd>
                         @if($detail)
                             <dd class="mt-0.5 text-sm text-gray-500">{{ $detail }}</dd>
                         @endif
@@ -173,7 +185,7 @@
                 <div>
                     <p class="event-cta-eyebrow text-xs font-semibold uppercase tracking-[0.2em] text-accent-400">Save the date</p>
                     <h2 class="mt-3 font-display text-3xl font-semibold text-white lg:text-4xl">{{ $event->title }}</h2>
-                    <p class="mt-3 text-sand-100/80">{{ $event->date_range_label }}@if($event->time_range_label) · {{ $event->time_range_label }}@endif @if($place) · {{ $place }}@endif</p>
+                    <p class="mt-3 text-sand-100/80">{{ $event->date_range_label }}@if($event->time_range_label && $event->day_times->isEmpty()) · {{ $event->time_range_label }}@endif @if($place) · {{ $place }}@endif</p>
                 </div>
                 <div class="flex flex-wrap gap-3">
                     <a href="{{ route('events.calendar', $event->id) }}"

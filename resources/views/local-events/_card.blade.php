@@ -58,7 +58,17 @@
                 <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
                 {{ $event->date_range_label }}
             </span>
-            @if($event->time_range_label)
+            @if($event->day_times->isNotEmpty())
+                @foreach($event->day_times->take(3) as $day)
+                    <span class="inline-flex items-center gap-1 rounded-md bg-forest-50 border border-forest-100 px-2 py-0.5 text-xs font-medium text-forest-700">
+                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                        <span class="font-semibold">{{ $day['weekday'] }} {{ $day['short_date'] }}</span> {{ $day['time'] }}
+                    </span>
+                @endforeach
+                @if($event->day_times->count() > 3)
+                    <span class="inline-flex items-center rounded-md bg-forest-50 border border-forest-100 px-2 py-0.5 text-xs font-medium text-forest-700">+{{ $event->day_times->count() - 3 }} more days</span>
+                @endif
+            @elseif($event->time_range_label)
                 <span class="inline-flex items-center gap-1 rounded-md bg-forest-50 border border-forest-100 px-2 py-0.5 text-xs font-medium text-forest-700">
                     <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                     {{ $event->time_range_label }}

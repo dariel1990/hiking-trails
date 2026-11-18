@@ -100,7 +100,14 @@
                     View Lake
                     <svg class="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
                 </a>
-                @if($trail->best_seasons)
+                {{-- The lakes page loads activities, so it can show the same Summer / Winter seasons as its filter. --}}
+                @if($trail->relationLoaded('activities'))
+                    <div class="flex flex-wrap gap-1" aria-label="Fishing seasons">
+                        @foreach($trail->fishingSeasons() as $fishingSeason)
+                            <span class="text-xs font-medium px-2 py-1 rounded-full border {{ $fishingSeason === 'winter' ? 'bg-sky-50 border-sky-200 text-sky-700' : 'bg-amber-50 border-amber-200 text-amber-700' }}">{{ \App\Models\Trail::getFishingSeasons()[$fishingSeason] }}</span>
+                        @endforeach
+                    </div>
+                @elseif($trail->best_seasons)
                     <div class="flex flex-wrap gap-1">
                         @foreach(array_slice($trail->best_seasons, 0, 2) as $season)
                             <span class="season-{{ strtolower($season) }} text-xs px-2 py-1 rounded border">{{ $season }}</span>

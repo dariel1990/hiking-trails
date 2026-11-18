@@ -132,9 +132,13 @@
         max-height: 60vh; overflow-y: auto;
     }
     .tour-popup .mapboxgl-popup-close-button { font-size: 1.1rem; padding: 0 0.4rem; z-index: 1; }
-    .tour-popup-photo {
+    /* Show the whole photo (flyers and posters are often tall): letterbox it rather than crop. */
+    .tour-popup-photo-link {
         display: block; width: calc(100% + 1.6rem); margin: -0.65rem -0.8rem 0.55rem;
-        max-height: 170px; object-fit: cover; border-radius: 0.7rem 0.7rem 0 0;
+        background: #f3f4f6; border-radius: 0.7rem 0.7rem 0 0; overflow: hidden; cursor: zoom-in;
+    }
+    .tour-popup-photo {
+        display: block; width: 100%; height: auto; max-height: 260px; object-fit: contain;
     }
     .tour-popup-head { display: flex; align-items: center; gap: 0.45rem; margin-right: 1rem; }
     .tour-popup-icon { font-size: 1.35rem; line-height: 1; }
