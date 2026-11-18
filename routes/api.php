@@ -15,6 +15,7 @@ use App\Http\Middleware\VerifyAppKey;
 use App\Models\ActivityType;
 use App\Models\Business;
 use App\Models\Event;
+use App\Models\EventDay;
 use App\Models\Facility;
 use App\Models\Tour;
 use App\Models\Town;
@@ -339,7 +340,7 @@ Route::withoutMiddleware(VerifyAppKey::class)->middleware('throttle:public-api')
     Route::get('/events', function () {
         return Event::query()
             ->current()
-            ->with('stops')
+            ->with('stops', 'days')
             ->orderBy('event_date')
             ->orderBy('event_time')
             ->get()
@@ -356,6 +357,12 @@ Route::withoutMiddleware(VerifyAppKey::class)->middleware('throttle:public-api')
                 'accent_color' => $event->accentColor(),
                 'date_label' => $event->date_range_label,
                 'time_label' => $event->time_range_label,
+                'schedule' => $event->days->map(fn (EventDay $day) => [
+                    'date' => $day->date->toDateString(),
+                    'date_label' => $day->date->format('D, M j'),
+                    'time_label' => $day->time_range_label,
+                    'note' => $day->note,
+                ])->values(),
                 'venue' => $event->venue,
                 'location' => $event->location,
                 'cover_image_url' => $event->cover_image_url,

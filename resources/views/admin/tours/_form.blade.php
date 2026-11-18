@@ -52,11 +52,11 @@ $formMeta = [
     <div class="lg:col-span-2 space-y-6">
 
         {{-- Basic Info --}}
-        <div id="tour-basics" class="scroll-mt-40 rounded-lg border bg-card text-card-foreground shadow-sm">
-            <div class="px-5 py-3 border-b">
+        <div id="tour-basics" class="scroll-mt-56 xl:scroll-mt-40 rounded-lg border bg-card text-card-foreground shadow-sm">
+            <div class="px-5 py-4 border-b">
                 <h3 class="text-base font-semibold leading-none tracking-tight">Basic Information</h3>
             </div>
-            <div class="p-5 space-y-3">
+            <div class="p-5 space-y-4">
 
                 <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     <div class="sm:col-span-2 space-y-1.5">
@@ -102,58 +102,24 @@ $formMeta = [
                     @error('description') <p class="text-sm text-red-600">{{ $message }}</p> @enderror
                 </div>
 
-                {{-- Map icon: saved icons, upload, or an emoji fallback — all on one line --}}
-                <div class="space-y-1.5">
-                    <p class="text-sm font-medium leading-none">Map icon</p>
-                    <div class="flex flex-wrap items-center gap-2 rounded-md border border-input bg-muted/30 px-2.5 py-2">
-                        <div class="flex flex-wrap items-center gap-1.5" id="tour-icon-gallery">
-                            <span class="text-xs text-muted-foreground italic">Loading icons…</span>
-                        </div>
-
-                        <label for="tour-icon-image-input" id="tour-icon-dropzone" title="Upload or drag a new icon"
-                            class="cursor-pointer inline-flex h-10 items-center gap-1 rounded-md border border-dashed border-input bg-background px-2.5 text-xs text-muted-foreground hover:bg-muted hover:text-foreground transition-colors">
-                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
-                            Upload
-                        </label>
-                        <input type="file" id="tour-icon-image-input" accept="image/*" class="hidden">
-
-                        {{-- Shown while an image icon is selected (the selected thumbnail is outlined) --}}
-                        <div id="tour-icon-image-preview" class="hidden items-center">
-                            <img id="tour-icon-image-preview-img" src="" alt="" class="hidden">
-                            <span id="tour-icon-image-name" class="hidden"></span>
-                            <button type="button" id="tour-icon-image-clear" title="Stop using the image icon"
-                                class="inline-flex h-10 items-center rounded-md px-2 text-xs text-red-600 hover:bg-red-50">Remove image</button>
-                        </div>
-
-                        <span class="mx-1 hidden h-6 w-px bg-border sm:block"></span>
-
-                        <label for="tour_icon" class="text-xs text-muted-foreground">or emoji</label>
-                        <input type="text" name="icon" id="tour_icon"
-                            value="{{ old('icon', $isEdit ? ($tour->icon ?? '') : '') }}"
-                            placeholder="🏔️"
-                            maxlength="10"
-                            title="Used when no image icon is selected"
-                            class="h-10 w-16 rounded-md border border-input bg-background px-2 text-center text-xl ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-                        <button type="button" onclick="document.getElementById('tour_icon').value=''" title="Clear emoji"
-                            class="h-10 w-8 rounded-md text-xs text-muted-foreground hover:bg-muted">✕</button>
-
-                        <span id="tour-icon-upload-status" class="text-xs text-muted-foreground"></span>
-                    </div>
-                    <input type="hidden" name="icon_image" id="tour-icon-image-path" value="{{ old('icon_image', $isEdit ? ($tour->icon_image ?? '') : '') }}">
-                    @error('icon') <p class="text-sm text-red-600">{{ $message }}</p> @enderror
-                    @error('icon_image') <p class="text-sm text-red-600">{{ $message }}</p> @enderror
-                </div>
+                @include('admin.tours._icon-picker', [
+                    'iconLabel' => 'Map icon',
+                    'iconValue' => old('icon', $isEdit ? ($tour->icon ?? '') : ''),
+                    'iconImageValue' => old('icon_image', $isEdit ? ($tour->icon_image ?? '') : ''),
+                    'iconMaxLength' => 10,
+                    'iconPlaceholder' => '🏔️',
+                ])
 
             </div>
         </div>
 
         {{-- Cover Image --}}
-        <div id="tour-cover" class="scroll-mt-40 rounded-lg border bg-card text-card-foreground shadow-sm">
-            <div class="flex flex-col space-y-1.5 p-6 border-b">
-                <h3 class="text-lg font-semibold leading-none tracking-tight">Cover Image</h3>
+        <div id="tour-cover" class="scroll-mt-56 xl:scroll-mt-40 rounded-lg border bg-card text-card-foreground shadow-sm">
+            <div class="px-5 py-4 border-b space-y-1.5">
+                <h3 class="text-base font-semibold leading-none tracking-tight">Cover Image</h3>
                 <p class="text-sm text-muted-foreground">The large photo at the top of the tour page and on tour cards. A wide (landscape) photo works best.</p>
             </div>
-            <div class="p-6 space-y-4">
+            <div class="p-5 space-y-4">
                 @if($isEdit && $tour->cover_image_url)
                     <div id="current-cover-image" class="space-y-2">
                         <p class="text-sm font-medium leading-none">Current Cover Image</p>
@@ -184,15 +150,16 @@ $formMeta = [
                 <div id="cover-preview" class="hidden">
                     <img id="cover-preview-img" src="" alt="Preview" class="w-full max-w-sm h-40 object-cover rounded-md border">
                 </div>
+                @error('cover_image') <p class="text-sm text-red-600">{{ $message }}</p> @enderror
             </div>
         </div>
 
         {{-- Tour Details --}}
-        <div id="tour-details" class="scroll-mt-40 rounded-lg border bg-card text-card-foreground shadow-sm">
-            <div class="flex flex-col space-y-1.5 p-6 border-b">
-                <h3 class="text-lg font-semibold leading-none tracking-tight">{{ $section['singular'] }} Details</h3>
+        <div id="tour-details" class="scroll-mt-56 xl:scroll-mt-40 rounded-lg border bg-card text-card-foreground shadow-sm">
+            <div class="px-5 py-4 border-b space-y-1.5">
+                <h3 class="text-base font-semibold leading-none tracking-tight">{{ $section['singular'] }} Details</h3>
             </div>
-            <div class="p-6 grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div class="p-5 grid grid-cols-1 sm:grid-cols-3 gap-4">
 
                 <div class="space-y-2">
                     <label for="difficulty_summary" class="text-sm font-medium leading-none">Difficulty</label>
@@ -216,8 +183,9 @@ $formMeta = [
                     <label for="total_driving_km" class="text-sm font-medium leading-none">Total Driving km</label>
                     <input type="number" name="total_driving_km" id="total_driving_km" step="0.1" min="0"
                         value="{{ old('total_driving_km', $isEdit ? $tour->total_driving_km : '') }}"
-                        placeholder="Auto-filled by route"
-                        class="flex h-10 w-full rounded-md border border-input bg-muted px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
+                        placeholder="e.g., 42.5"
+                        class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
+                    <p class="text-xs text-muted-foreground">Filled in when you compute a driving route; you can edit it.</p>
                     @error('total_driving_km') <p class="text-sm text-red-600">{{ $message }}</p> @enderror
                 </div>
 
@@ -256,12 +224,12 @@ $formMeta = [
 
         {{-- Ready-to-publish checklist --}}
         <div class="rounded-lg border bg-card text-card-foreground shadow-sm">
-            <div class="flex items-center justify-between p-4 border-b">
-                <h3 class="text-sm font-semibold">Ready to publish?</h3>
+            <div class="flex items-center justify-between px-5 py-4 border-b">
+                <h3 class="text-base font-semibold leading-none tracking-tight">Ready to publish?</h3>
                 <span class="text-xs font-medium tabular-nums text-muted-foreground"
                     x-text="`${checklist.filter((item) => item.done).length} / ${checklist.length}`"></span>
             </div>
-            <ul class="p-4 space-y-2 text-sm">
+            <ul class="px-5 py-4 space-y-2 text-sm">
                 <template x-for="item in checklist" :key="item.label">
                     <li class="flex items-start gap-2">
                         <span class="mt-0.5 flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-full text-[10px] font-bold"
@@ -273,15 +241,15 @@ $formMeta = [
                     </li>
                 </template>
             </ul>
-            <p class="px-4 pb-4 text-xs text-muted-foreground">Only the title and type are required — the rest makes the tour page look its best.</p>
+            <p class="px-5 pb-4 text-xs text-muted-foreground">Only the title and type are required — the rest makes the tour page look its best.</p>
         </div>
 
         {{-- Settings --}}
         <div class="rounded-lg border bg-card text-card-foreground shadow-sm">
-            <div class="flex flex-col space-y-1.5 p-6 border-b">
-                <h3 class="text-lg font-semibold leading-none tracking-tight">Settings</h3>
+            <div class="px-5 py-4 border-b space-y-1.5">
+                <h3 class="text-base font-semibold leading-none tracking-tight">Settings</h3>
             </div>
-            <div class="p-6 space-y-4">
+            <div class="p-5 space-y-4">
                 @include('admin._town-select', ['selected' => $isEdit ? $tour->town_id : null])
 
                 <div class="space-y-2">
@@ -330,8 +298,8 @@ $formMeta = [
     <div class="lg:col-span-3 grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,11fr)_minmax(0,9fr)] xl:items-start">
         <div class="min-w-0 xl:sticky xl:top-40">
         {{-- Route & Map editor --}}
-        <div id="tour-route" class="scroll-mt-40 rounded-lg border bg-card text-card-foreground shadow-sm">
-            <div class="flex flex-col gap-2 px-4 py-3 border-b">
+        <div id="tour-route" class="scroll-mt-56 xl:scroll-mt-40 rounded-lg border bg-card text-card-foreground shadow-sm">
+            <div class="flex flex-col gap-2 px-5 py-4 border-b">
                 <div class="flex items-center justify-between gap-2">
                     <h3 class="text-base font-semibold leading-none tracking-tight">Route &amp; Map</h3>
                     <span class="text-xs text-muted-foreground">Click a pin to open that stop</span>
@@ -394,16 +362,16 @@ $formMeta = [
 
         <div class="min-w-0">
         {{-- Stops Manager --}}
-        <div id="tour-stops" class="scroll-mt-40 rounded-lg border bg-card text-card-foreground shadow-sm">
-            <div class="flex flex-col space-y-1.5 p-6 border-b">
-                <h3 class="text-lg font-semibold leading-none tracking-tight">Tour Stops</h3>
+        <div id="tour-stops" class="scroll-mt-56 xl:scroll-mt-40 rounded-lg border bg-card text-card-foreground shadow-sm">
+            <div class="px-5 py-4 border-b space-y-1.5">
+                <h3 class="text-base font-semibold leading-none tracking-tight">Tour Stops</h3>
                 <p class="text-sm text-muted-foreground">
                     Add stops in the order visitors should visit them. Search for a trail, feature or facility below,
                     or use <a href="#tour-route" class="font-medium text-foreground underline">📍 Pin stop</a> on the map for any spot (e.g. a mural or street corner).
                     Drag <span class="font-mono">⋮⋮</span> to reorder; click a stop to edit it and see it on the map.
                 </p>
             </div>
-            <div class="p-6 space-y-4">
+            <div class="p-5 space-y-4">
 
                 {{-- Trail/Feature/Facility search --}}
                 <div class="space-y-2">

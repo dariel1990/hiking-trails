@@ -79,7 +79,13 @@
                         <span class="text-gray-400">@include('local-events.partials._icon', ['name' => $icon, 'class' => 'h-5 w-5'])</span>
                         <div>
                             <dt class="sr-only">{{ $label }}</dt>
-                            <dd class="font-medium text-gray-900">{{ $value }}</dd>
+                            <dd class="font-medium text-gray-900">
+                                @if($label === 'Time' && $event->day_times->isNotEmpty())
+                                    @include('local-events.partials._day-times', ['mutedClass' => 'text-gray-500'])
+                                @else
+                                    {{ $value }}
+                                @endif
+                            </dd>
                         </div>
                     </div>
                 @endforeach
@@ -177,7 +183,13 @@
                         ]) as $label => $value)
                             <div class="grid grid-cols-[6rem_1fr] gap-3 px-6 py-3">
                                 <dt class="text-gray-500">{{ $label }}</dt>
-                                <dd class="font-medium text-gray-900">{{ $value }}</dd>
+                                <dd class="font-medium text-gray-900">
+                                    @if($label === 'Time' && $event->day_times->isNotEmpty())
+                                        @include('local-events.partials._day-times', ['mutedClass' => 'text-gray-500'])
+                                    @else
+                                        {{ $value }}
+                                    @endif
+                                </dd>
                             </div>
                         @endforeach
                     </dl>

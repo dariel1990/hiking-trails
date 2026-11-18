@@ -52,7 +52,7 @@
             {{-- Event content --}}
             <div class="min-w-0">
                 <p class="event-accent-text text-sm font-semibold">
-                    {{ $event->is_multi_day ? $event->date_range_label : $event->event_date->format('l, F j') }}@if($event->formatted_time) · {{ $event->formatted_time }}@endif
+                    {{ $event->is_multi_day ? $event->date_range_label : $event->event_date->format('l, F j') }}@if($event->time_range_label && $event->day_times->isEmpty()) · {{ $event->time_range_label }}@endif
                 </p>
                 <h1 class="{{ $isChristmas ? 'event-title-festive text-4xl sm:text-5xl lg:text-6xl' : 'font-sans text-3xl font-bold tracking-tight sm:text-4xl lg:text-[2.75rem]' }} mt-2 leading-tight text-forest-900">{{ $event->title }}</h1>
                 @if($event->tagline)
@@ -87,7 +87,11 @@
                             <span class="event-accent-soft event-accent-text flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-lg">@include('local-events.partials._icon', ['name' => 'calendar', 'class' => 'h-5 w-5'])</span>
                             <div>
                                 <p class="font-semibold text-gray-900"><time datetime="{{ $event->event_date->toDateString() }}">{{ $event->date_range_label }}</time></p>
-                                @if($event->time_range_label)<p class="mt-0.5 text-sm text-gray-600">{{ $event->time_range_label }}</p>@endif
+                                @if($event->day_times->isNotEmpty())
+                                    <div class="mt-1.5 text-sm font-medium text-gray-900">@include('local-events.partials._day-times')</div>
+                                @elseif($event->time_range_label)
+                                    <p class="mt-0.5 text-sm text-gray-600">{{ $event->time_range_label }}</p>
+                                @endif
                                 <a href="{{ route('events.calendar', $event->id) }}" class="event-accent-text mt-2 inline-block text-sm font-semibold hover:underline">Add to Calendar</a>
                             </div>
                         </div>
@@ -166,7 +170,11 @@
                         </div>
                         <div class="min-w-0">
                             <p class="font-semibold leading-snug text-gray-900"><time datetime="{{ $event->event_date->toDateString() }}">{{ $event->date_range_label }}</time></p>
-                            @if($event->time_range_label)<p class="text-sm text-gray-600">{{ $event->time_range_label }}</p>@endif
+                            @if($event->day_times->isNotEmpty())
+                                <div class="mt-1 text-sm font-medium text-gray-900">@include('local-events.partials._day-times')</div>
+                            @elseif($event->time_range_label)
+                                <p class="text-sm text-gray-600">{{ $event->time_range_label }}</p>
+                            @endif
                         </div>
                     </div>
 
@@ -223,7 +231,11 @@
         <div class="mx-auto flex max-w-xl items-center justify-between gap-4">
             <div class="min-w-0">
                 <p class="truncate text-sm font-semibold text-gray-900">{{ $event->is_multi_day ? $event->date_range_label : $event->event_date->format('D, M j') }}</p>
-                @if($event->time_range_label)<p class="truncate text-xs text-gray-500">{{ $event->time_range_label }}</p>@endif
+                @if($event->day_times->isNotEmpty())
+                    <p class="truncate text-xs text-gray-500">{{ $event->day_times->count() }} days · hours vary</p>
+                @elseif($event->time_range_label)
+                    <p class="truncate text-xs text-gray-500">{{ $event->time_range_label }}</p>
+                @endif
             </div>
             @if($event->external_url)
                 <a href="{{ $event->external_url }}" target="_blank" rel="noopener" class="event-accent-bg inline-flex flex-shrink-0 items-center gap-2 rounded-xl px-5 py-3 text-sm font-semibold text-white">

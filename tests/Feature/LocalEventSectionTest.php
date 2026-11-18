@@ -448,6 +448,84 @@ class LocalEventSectionTest extends TestCase
         $this->assertDatabaseCount('events', 0);
     }
 
+    public function test_create_event_can_keep_editing_the_new_event(): void
+    {
+        $response = $this->actingAs($this->makeAdmin())
+            ->post(route('admin.local-events.store'), $this->eventPayload(['after_save' => 'edit']));
+
+        $event = Event::where('title', 'Winter Carnival')->firstOrFail();
+        $response->assertRedirect(route('admin.local-events.edit', $event))
+            ->assertSessionHas('success');
+    }
+
+    public function test_update_event_can_keep_editing_and_unknown_values_return_to_the_list(): void
+    {
+        $admin = $this->makeAdmin();
+        $event = Event::factory()->create();
+
+        $this->actingAs($admin)
+            ->put(route('admin.local-events.update', $event), $this->eventPayload(['after_save' => 'edit']))
+            ->assertRedirect(route('admin.local-events.edit', $event));
+
+        $this->actingAs($admin)
+            ->put(route('admin.local-events.update', $event), $this->eventPayload(['after_save' => 'https://evil.example']))
+            ->assertRedirect(route('admin.local-events.index'));
+    }
+
+    public function test_event_form_uses_the_editor_toolbar_with_map_beside_activities(): void
+    {
+        $html = $this->actingAs($this->makeAdmin())
+            ->get(route('admin.local-events.create'))
+            ->assertOk()
+            ->assertSee('Create &amp; keep editing', false)
+            ->assertSee('href="#event-activities"', false)
+            ->assertSee('Click a pin to open that activity')
+            ->assertDontSee('View on site')
+            ->assertDontSee('Danger Zone')
+            ->getContent();
+
+        $row = strpos($html, 'lg:col-span-3 grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,11fr)_minmax(0,9fr)]');
+        $this->assertNotFalse($row);
+        $this->assertGreaterThan($row, strpos($html, 'id="tour-route"'));
+        $this->assertGreaterThan(strpos($html, 'id="tour-route"'), strpos($html, 'id="event-activities"'));
+        $this->assertStringNotContainsString('space-y-6 lg:sticky', $html);
+        $this->assertSame(1, substr_count($html, 'for="theme"'), 'The Christmas toggle has a single label.');
+    }
+
+    public function test_event_edit_page_has_no_view_link_and_a_sidebar_danger_zone(): void
+    {
+        $admin = $this->makeAdmin();
+        $event = Event::factory()->create(['is_active' => true]);
+
+        $this->actingAs($admin)
+            ->get(route('admin.local-events.edit', $event))
+            ->assertOk()
+            ->assertSee('Save &amp; keep editing', false)
+            ->assertDontSee('View on site')
+            ->assertSee('<form id="delete-event-form"', false)
+            ->assertSee('form="delete-event-form"', false);
+
+        $this->actingAs($admin)
+            ->delete(route('admin.local-events.destroy', $event))
+            ->assertRedirect(route('admin.local-events.index'));
+        $this->assertModelMissing($event);
+    }
+
+    public function test_event_activity_errors_are_listed_in_the_toolbar_summary(): void
+    {
+        $this->actingAs($this->makeAdmin())
+            ->from(route('admin.local-events.create'))
+            ->followingRedirects()
+            ->post(route('admin.local-events.store'), $this->eventPayload([
+                'stops' => [['stop_label' => '', 'is_roaming' => 1]],
+            ]))
+            ->assertOk()
+            ->assertSee('Please fix this problem and save again')
+            ->assertSee('<a href="#event-activities" class="font-medium underline">Activity 1</a>', false);
+
+        $this->assertDatabaseCount('events', 0);
+    }
+
     public function test_admin_event_map_defaults_to_satellite_with_a_layer_toggle(): void
     {
         $event = Event::factory()->create();

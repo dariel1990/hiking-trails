@@ -71,7 +71,13 @@
             </div>
             <div class="sm:pl-6 sm:border-l sm:border-gray-200 lg:px-6">
                 <dt class="text-xs font-medium uppercase tracking-[0.14em] text-gray-400">Time</dt>
-                <dd class="mt-2 text-[15px] font-medium text-gray-900">{{ $event->time_range_label ?: 'See details' }}</dd>
+                <dd class="mt-2 text-[15px] font-medium text-gray-900">
+                    @if($event->day_times->isNotEmpty())
+                        @include('local-events.partials._day-times', ['mutedClass' => 'text-gray-500'])
+                    @else
+                        {{ $event->time_range_label ?: 'See details' }}
+                    @endif
+                </dd>
             </div>
             <div class="lg:border-l lg:border-gray-200 lg:px-6">
                 <dt class="text-xs font-medium uppercase tracking-[0.14em] text-gray-400">Location</dt>

@@ -6419,6 +6419,18 @@
                     </div>`);
             }
 
+            // Per-day schedule (events with different dates or hours)
+            const schedule = Array.isArray(event.schedule) ? event.schedule : [];
+            const scheduleList = schedule.length
+                ? `<hr class="biz-panel-divider">
+                   <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Schedule</p>
+                   ${schedule.map(d => `
+                       <div class="biz-panel-info-row">
+                           <span class="font-semibold text-gray-900" style="min-width:5.5rem;">${escapeHtml(d.date_label)}</span>
+                           <span>${escapeHtml(d.time_label || 'All day')}${d.note ? ` <span class="text-gray-400">· ${escapeHtml(d.note)}</span>` : ''}</span>
+                       </div>`).join('')}`
+                : '';
+
             // Long descriptions start clamped with a Read more toggle
             const descriptionBlock = event.description
                 ? `<hr class="biz-panel-divider">
@@ -6464,6 +6476,7 @@
                     ${tagline}
                     ${actions}
                     ${infoRows.length ? `<hr class="biz-panel-divider">${infoRows.join('')}` : ''}
+                    ${scheduleList}
                     ${descriptionBlock}
                     ${stopsList}
                 </div>
@@ -6726,8 +6739,11 @@
             document.getElementById('mobile-trail-diff-row').innerHTML = metaParts.join('');
             document.getElementById('mobile-trail-stats').textContent = event.tagline || [event.venue, event.location].filter(Boolean).join(', ');
             const descEl = document.getElementById('mobile-trail-description');
-            descEl.textContent = event.description || '';
-            descEl.classList.toggle('hidden', !event.description);
+            const scheduleText = (Array.isArray(event.schedule) ? event.schedule : [])
+                .map(d => `${d.date_label}: ${d.time_label || 'All day'}${d.note ? ` (${d.note})` : ''}`)
+                .join('\n');
+            descEl.textContent = [scheduleText, event.description].filter(Boolean).join('\n\n');
+            descEl.classList.toggle('hidden', !scheduleText && !event.description);
             document.getElementById('mobile-trail-actions').innerHTML =
                 `<a href="${escapeHtml(event.url)}" class="${btnClass}"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>View Event</a>`;
             document.getElementById('trail-info-panel')?.classList.add('hidden');

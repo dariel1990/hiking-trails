@@ -4,6 +4,11 @@
     /** Every param the filter panel owns, so the empty state stays in step with it. */
     $filterKeys = ['town', 'search', 'activity', 'season'];
     $isFiltered = request()->hasAny($filterKeys);
+
+    /** Link for the season switch: the current filters with only the season changed, back on page one. */
+    $seasonUrl = fn (?string $value) => route('fishing-lakes.index').(($query = http_build_query(
+        collect(request()->query())->except(['season', 'lake_page', 'ajax_type'])->when($value, fn ($c) => $c->put('season', $value))->all()
+    )) ? '?'.$query : '');
 @endphp
 
 
@@ -54,9 +59,23 @@
             :filters="[
                 ['name' => 'town', 'label' => 'Town', 'placeholder' => 'All towns', 'options' => $towns->pluck('name', 'slug')],
                 ['name' => 'activity', 'label' => 'Activity', 'placeholder' => 'All activities', 'options' => $activities->pluck('name', 'slug')],
-                ['name' => 'season', 'label' => 'Best season', 'placeholder' => 'Any season', 'options' => \App\Models\Trail::getSeasons()],
+                ['name' => 'season', 'label' => 'Season', 'placeholder' => 'All seasons', 'options' => \App\Models\Trail::getFishingSeasons()],
             ]"
         />
+
+        {{-- Summer (open water) / Winter (ice fishing) switch, always visible. Plain links, like the filter chips.
+             Tapping the selected season again turns the filter off. --}}
+        <nav class="mt-4 w-full max-w-xs mx-auto grid grid-cols-2 gap-1 rounded-2xl bg-white/20 backdrop-blur-md p-1.5 border border-white/30 shadow-xl text-sm font-semibold sm:inline-grid sm:w-auto"
+             aria-label="Fishing season">
+            @foreach(\App\Models\Trail::getFishingSeasons() as $value => $label)
+                @php $isActive = $season === $value; @endphp
+                <a href="{{ $seasonUrl($isActive ? null : $value) }}"
+                   @if($isActive) aria-current="page" title="Show all seasons" @endif
+                   class="flex items-center justify-center whitespace-nowrap rounded-xl px-5 py-2.5 transition-colors {{ $isActive ? 'bg-white text-forest-700 shadow-md' : 'text-white hover:bg-white/15' }}">
+                    {{ $label }}
+                </a>
+            @endforeach
+        </nav>
     </div>
 </section>
 
@@ -132,13 +151,19 @@
                     </div>
                     <h3 class="text-2xl font-bold text-gray-900 mb-4">No Lakes Found</h3>
                     <p class="text-gray-600 mb-8">
-                        @if($isFiltered)
+                        @if($season && request()->hasAny(['town', 'search', 'activity']))
+                            No lakes match your filters for {{ $season }} fishing. Try another season or fewer filters.
+                        @elseif($season)
+                            No lakes are listed for {{ $season }} fishing yet.
+                        @elseif($isFiltered)
                             We couldn't find fishing lakes matching your criteria. Try adjusting your search filters.
                         @else
                             We're curating pristine fishing destinations for you. Check back soon!
                         @endif
                     </p>
-                    @if($isFiltered)
+                    @if($season)
+                        <a href="{{ $seasonUrl(null) }}" class="btn-primary">Show all seasons</a>
+                    @elseif($isFiltered)
                         <a href="{{ route('fishing-lakes.index') }}" class="btn-primary">View All Lakes</a>
                     @endif
                 </div>

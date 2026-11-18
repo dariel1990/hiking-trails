@@ -12,6 +12,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 
 /**
@@ -113,6 +114,43 @@ class Event extends Model
     public function stops(): HasMany
     {
         return $this->hasMany(EventStop::class)->orderBy('stop_order');
+    }
+
+    /**
+     * Optional per-day schedule (any dates, each with its own hours).
+     */
+    public function days(): HasMany
+    {
+        return $this->hasMany(EventDay::class)->orderBy('date')->orderBy('start_time');
+    }
+
+    /**
+     * Whether the event has a per-day schedule rather than one date range with one set of hours.
+     */
+    public function hasSchedule(): bool
+    {
+        return $this->days->isNotEmpty();
+    }
+
+    /**
+     * The event's summary columns for a list of schedule days: first and last date,
+     * and the first day's hours. Keeps lists, sorting and filters working unchanged.
+     *
+     * @param  array<int, array{date: string, start_time?: ?string, end_time?: ?string}>  $days
+     * @return array{event_date: string, end_date: ?string, event_time: ?string, end_time: ?string}
+     */
+    public static function summaryFromDays(array $days): array
+    {
+        $sorted = collect($days)->sortBy('date')->values();
+        $first = $sorted->first();
+        $last = $sorted->last();
+
+        return [
+            'event_date' => $first['date'],
+            'end_date' => $last['date'] !== $first['date'] ? $last['date'] : null,
+            'event_time' => $first['start_time'] ?? null,
+            'end_time' => $first['end_time'] ?? null,
+        ];
     }
 
     /**
@@ -269,6 +307,10 @@ class Event extends Model
      */
     public function getDateRangeLabelAttribute(): string
     {
+        if ($this->hasSchedule() && $this->days->count() > 1 && $this->days->count() <= 4 && ! $this->scheduleIsConsecutive()) {
+            return $this->listedDatesLabel();
+        }
+
         if (! $this->is_multi_day) {
             return $this->event_date->format('l, M j, Y');
         }
@@ -283,6 +325,19 @@ class Event extends Model
      */
     public function getTimeRangeLabelAttribute(): ?string
     {
+        if ($this->hasSchedule()) {
+            $hours = $this->days->map(fn (EventDay $day) => $day->hoursKey())->unique();
+
+            if ($hours->count() === 1) {
+                return $this->days->first()->time_range_label;
+            }
+
+            // Different hours each day: "Nov 21: 7 PM – 9 PM, Nov 22: 2 PM – 6:30 PM"
+            return $this->day_times
+                ->map(fn (array $day) => $day['short_date'].': '.$day['time'])
+                ->implode(', ');
+        }
+
         if (! $this->event_time) {
             return null;
         }
@@ -294,6 +349,53 @@ class Event extends Model
         }
 
         return $label;
+    }
+
+    /**
+     * Each day with its own hours, for showing one line per day. Empty when the
+     * event has no schedule or every day has the same hours (the time label says it all).
+     *
+     * @return Collection<int, array{date: string, short_date: string, weekday: string, time: string}>
+     */
+    public function getDayTimesAttribute(): Collection
+    {
+        if (! $this->hasSchedule() || $this->days->map(fn (EventDay $day) => $day->hoursKey())->unique()->count() === 1) {
+            return collect();
+        }
+
+        return $this->days->map(fn (EventDay $day) => [
+            'date' => $day->date->toDateString(),
+            'short_date' => $day->date->format('M j'),
+            'weekday' => $day->date->format('D'),
+            'time' => $day->compact_time_label ?? 'All day',
+        ])->values();
+    }
+
+    /**
+     * Whether the schedule days follow each other with no gaps.
+     */
+    private function scheduleIsConsecutive(): bool
+    {
+        $dates = $this->days->pluck('date')->unique(fn (Carbon $date) => $date->toDateString())->values();
+
+        return $dates->every(fn (Carbon $date, int $i) => $i === 0 || $dates[$i - 1]->copy()->addDay()->isSameDay($date));
+    }
+
+    /**
+     * Listed schedule dates, e.g. "Dec 5, 12 & 19, 2026" or "Nov 28, Dec 5 & 12, 2026".
+     */
+    private function listedDatesLabel(): string
+    {
+        $dates = $this->days->pluck('date')->unique(fn (Carbon $date) => $date->toDateString())->values();
+        $last = $dates->last();
+        $parts = $dates->map(function (Carbon $date, int $i) use ($dates, $last) {
+            $previous = $i > 0 ? $dates[$i - 1] : null;
+            $format = $previous && $previous->isSameMonth($date) ? 'j' : 'M j';
+
+            return $date->format($date->year !== $last->year ? $format.', Y' : $format);
+        });
+
+        return $parts->slice(0, -1)->implode(', ').' & '.$parts->last().', '.$last->year;
     }
 
     /**

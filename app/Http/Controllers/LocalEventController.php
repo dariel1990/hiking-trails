@@ -28,6 +28,7 @@ class LocalEventController extends Controller
     public function index(Request $request): View
     {
         $allEvents = Event::current()
+            ->with('days')
             ->withCount('stops')
             ->orderByDesc('is_featured')
             ->orderBy('event_date')
@@ -88,7 +89,7 @@ class LocalEventController extends Controller
 
     private function showView(Event $event): View
     {
-        $event->load('stops', 'media');
+        $event->load('stops', 'media', 'days');
         $layout = $this->pageLayout();
 
         return view('local-events.layouts.'.$layout, [

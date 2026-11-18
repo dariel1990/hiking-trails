@@ -58,6 +58,21 @@ class EventFactory extends Factory
     }
 
     /**
+     * A per-day schedule; the event's date/time columns are set from it like the admin does.
+     *
+     * @param  array<int, array{date: string, start_time?: ?string, end_time?: ?string, note?: ?string}>  $days
+     */
+    public function withDays(array $days): static
+    {
+        return $this->state(fn () => Event::summaryFromDays($days))
+            ->afterCreating(function (Event $event) use ($days) {
+                foreach ($days as $day) {
+                    $event->days()->create($day);
+                }
+            });
+    }
+
+    /**
      * A drawn route through downtown Smithers ([lng, lat] pairs).
      */
     public function withRoute(): static

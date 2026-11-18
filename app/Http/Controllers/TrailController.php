@@ -121,8 +121,13 @@ class TrailController extends Controller
      */
     public function fishingLakes(Request $request)
     {
-        $fishingLakes = $this->buildListingQuery($request)
+        // Lakes filter by Summer / Winter with the map's rule; other values (old ?season=spring links) show all lakes.
+        $season = array_key_exists((string) $request->season, Trail::getFishingSeasons()) ? $request->season : null;
+
+        $fishingLakes = $this->buildListingQuery($request, filterBySeason: false)
             ->where('location_type', 'fishing_lake')
+            ->when($season, fn (Builder $q) => $q->fishableInSeason($season))
+            ->with(['activities' => fn ($q) => $q->select('activity_types.id', 'activity_types.slug', 'activity_types.season_applicable')])
             ->orderBy('is_featured', 'desc')
             ->orderBy('name')
             ->paginate(setting('trails_per_page'), ['*'], 'lake_page');
@@ -141,13 +146,14 @@ class TrailController extends Controller
             ]);
         }
 
-        return view('fishing-lakes.index', compact('fishingLakes', 'activities', 'towns'));
+        return view('fishing-lakes.index', compact('fishingLakes', 'activities', 'towns', 'season'));
     }
 
     /**
      * Build a filtered listing query shared by trail/lake index pages.
+     * The lakes page filters seasons its own way, so it turns off the best_seasons filter.
      */
-    private function buildListingQuery(Request $request): Builder
+    private function buildListingQuery(Request $request, bool $filterBySeason = true): Builder
     {
         $query = Trail::query()->where('status', 'active')
             ->whereDoesntHave('trailNetwork', function ($q) {
@@ -193,7 +199,7 @@ class TrailController extends Controller
             });
         }
 
-        if ($request->season) {
+        if ($filterBySeason && $request->season) {
             $query->whereJsonContains('best_seasons', ucfirst($request->season));
         }
 
