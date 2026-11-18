@@ -121,12 +121,13 @@ class TrailController extends Controller
      */
     public function fishingLakes(Request $request)
     {
-        // Lakes filter by Summer / Winter with the map's rule; other values (old ?season=spring links) show all lakes.
-        $season = array_key_exists((string) $request->season, Trail::getFishingSeasons()) ? $request->season : null;
+        // Lakes filter by Summer / Winter with the map's rule. Summer is the default, also for
+        // unknown values such as old ?season=spring links.
+        $season = array_key_exists((string) $request->season, Trail::getFishingSeasons()) ? $request->season : 'summer';
 
         $fishingLakes = $this->buildListingQuery($request, filterBySeason: false)
             ->where('location_type', 'fishing_lake')
-            ->when($season, fn (Builder $q) => $q->fishableInSeason($season))
+            ->fishableInSeason($season)
             ->with(['activities' => fn ($q) => $q->select('activity_types.id', 'activity_types.slug', 'activity_types.season_applicable')])
             ->orderBy('is_featured', 'desc')
             ->orderBy('name')
@@ -143,6 +144,9 @@ class TrailController extends Controller
                 'html' => view('trails._cards', ['trails' => $fishingLakes, 'type' => 'lakes'])->render(),
                 'has_more' => $fishingLakes->hasMorePages(),
                 'next_page' => $fishingLakes->currentPage() + 1,
+                // The Summer / Winter tabs swap the list in place and need the new totals.
+                'total' => $fishingLakes->total(),
+                'count' => $fishingLakes->count(),
             ]);
         }
 

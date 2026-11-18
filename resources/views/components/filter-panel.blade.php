@@ -20,14 +20,16 @@
 
         return [
             'name' => $filter['name'],
-            'label' => $filter['label'],
+            'label' => $filter['label'] ?? $filter['name'],
             'placeholder' => $filter['placeholder'] ?? 'Any',
             'options' => $options instanceof \Illuminate\Support\Collection ? $options->all() : $options,
             'value' => request($filter['name']),
+            // Hidden filters are controlled elsewhere on the page (e.g. tabs): they only ride along with the form.
+            'hidden' => (bool) ($filter['hidden'] ?? false),
         ];
     })->values();
 
-    $active = $resolved->filter(fn ($filter) => filled($filter['value']));
+    $active = $resolved->filter(fn ($filter) => ! $filter['hidden'] && filled($filter['value']));
     $searchTerm = request('search');
     $activeCount = $active->count() + (filled($searchTerm) ? 1 : 0);
 
@@ -122,10 +124,15 @@
         @endif
 
         @if($resultCount !== null && $activeCount > 0)
-            <p class="mt-3 text-sm font-medium text-white/90">
+            <p class="mt-3 text-sm font-medium text-white/90" data-filter-result-count data-noun="{{ $resultNoun }}">
                 {{ number_format($resultCount) }} {{ Str::plural($resultNoun, $resultCount) }} found
             </p>
         @endif
+
+        @foreach($resolved->where('hidden', true) as $filter)
+            <input type="hidden" name="{{ $filter['name'] }}" id="filter-{{ $filter['name'] }}" value="{{ $filter['value'] }}"
+                @if(blank($filter['value'])) disabled @endif>
+        @endforeach
 
         {{-- The sheet lives inside the form, so its selects submit with the
              search field above. Fixed positioning does not break that: form
@@ -156,7 +163,7 @@
                 </header>
 
                 <div class="flex-1 overflow-y-auto px-5 py-4 space-y-4">
-                    @foreach($resolved as $filter)
+                    @foreach($resolved->where('hidden', false) as $filter)
                         <div>
                             <label for="filter-{{ $filter['name'] }}" class="block text-sm font-semibold text-gray-700 mb-1.5">
                                 {{ $filter['label'] }}
