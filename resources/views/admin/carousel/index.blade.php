@@ -18,6 +18,7 @@
                 </button>
                 <form id="delete-form" method="POST">
                     @csrf @method('DELETE')
+                    <input type="hidden" name="return_status" value="{{ $status }}">
                     <button type="submit" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-medium text-sm transition-colors">
                         Delete
                     </button>
@@ -34,6 +35,15 @@
         <div class="bg-green-50 border border-green-200 text-green-800 rounded-lg px-4 py-3 text-sm flex items-center gap-2">
             <svg class="w-4 h-4 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
             {{ session('success') }}
+        </div>
+    @endif
+
+    @if(session('error') || $errors->any())
+        <div class="bg-red-50 border border-red-200 text-red-800 rounded-lg px-4 py-3 text-sm" role="alert">
+            @if(session('error'))<p>{{ session('error') }}</p>@endif
+            @foreach($errors->all() as $message)
+                <p>{{ $message }}</p>
+            @endforeach
         </div>
     @endif
 
@@ -123,12 +133,25 @@
     @endif
 
     {{-- Existing slides --}}
+    @php
+        $tabs = ['active' => 'Active', 'inactive' => 'Inactive', 'all' => 'All'];
+        $fieldClass = 'border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500';
+    @endphp
     <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-        <div class="px-6 py-4 border-b border-gray-100">
-            <h2 class="text-base font-semibold text-gray-900">
-                Current Slides
-                <span class="ml-2 text-sm font-normal text-gray-400">({{ $slides->count() }} total)</span>
-            </h2>
+        <div class="px-6 py-4 border-b border-gray-100 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <h2 class="text-base font-semibold text-gray-900">Slides</h2>
+
+            {{-- Status filter; Active is the default --}}
+            <nav class="inline-flex rounded-lg bg-gray-100 p-1 text-sm font-medium" aria-label="Filter slides by status">
+                @foreach($tabs as $value => $label)
+                    <a href="{{ route('admin.carousel.index', $value === 'active' ? [] : ['status' => $value]) }}"
+                       @if($status === $value) aria-current="page" @endif
+                       class="inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 transition-colors {{ $status === $value ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-900' }}">
+                        {{ $label }}
+                        <span class="rounded-full px-1.5 text-xs tabular-nums {{ $status === $value ? 'bg-gray-900 text-white' : 'bg-gray-200 text-gray-600' }}">{{ $counts[$value] }}</span>
+                    </a>
+                @endforeach
+            </nav>
         </div>
 
         @if($slides->isEmpty())
@@ -136,92 +159,130 @@
                 <svg class="w-12 h-12 mx-auto mb-3 opacity-40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
                 </svg>
-                <p class="text-sm">No slides yet. Upload one above.</p>
+                <p class="text-sm">
+                    @if($counts['all'] === 0)
+                        No slides yet. Upload one above.
+                    @elseif($status === 'active')
+                        No active slides. The carousel is hidden on the events page.
+                    @else
+                        No {{ $status === 'inactive' ? 'inactive' : '' }} slides.
+                    @endif
+                </p>
             </div>
         @else
-            <div class="divide-y divide-gray-100">
-                @foreach($slides as $slide)
-                <div class="flex items-start gap-4 px-6 py-4 hover:bg-gray-50 transition-colors">
+            {{-- One hidden form per row; the row's inputs point at it with form="…" (a form can't wrap a <tr>). --}}
+            @foreach($slides as $slide)
+                <form id="slide-form-{{ $slide->id }}" action="{{ route('admin.carousel.update', $slide) }}" method="POST" class="hidden">
+                    @csrf @method('PATCH')
+                    <input type="hidden" name="return_status" value="{{ $status }}">
+                </form>
+            @endforeach
 
-                    {{-- Thumbnail --}}
-                    <div class="w-24 h-16 rounded-lg overflow-hidden bg-gray-100 shrink-0 border border-gray-200">
-                        <img src="{{ $slide->url }}" alt="{{ $slide->caption }}"
-                             data-zoomable data-caption="{{ $slide->caption }}"
-                             class="w-full h-full object-cover cursor-zoom-in hover:opacity-90 transition-opacity">
-                    </div>
+            <div class="overflow-x-auto">
+                <table class="w-full min-w-[880px] text-sm">
+                    <thead class="bg-gray-50 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">
+                        <tr>
+                            <th scope="col" class="px-6 py-3">Slide</th>
+                            <th scope="col" class="px-3 py-3">Status</th>
+                            <th scope="col" class="px-3 py-3">Schedule</th>
+                            <th scope="col" class="px-3 py-3 text-center">Order</th>
+                            <th scope="col" class="px-3 py-3 text-center">Active</th>
+                            <th scope="col" class="px-6 py-3 text-right"><span class="sr-only">Actions</span></th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-100">
+                        @foreach($slides as $slide)
+                            @php $formId = 'slide-form-'.$slide->id; @endphp
+                            <tr class="align-middle hover:bg-gray-50 transition-colors {{ $slide->is_active ? '' : 'bg-gray-50/60' }}">
+                                {{-- Slide: thumbnail + caption --}}
+                                <td class="px-6 py-3">
+                                    <div class="flex items-center gap-3">
+                                        <div class="w-24 h-14 rounded-lg overflow-hidden bg-gray-100 shrink-0 border border-gray-200 {{ $slide->is_active ? '' : 'opacity-60 grayscale' }}">
+                                            <img src="{{ $slide->url }}" alt="{{ $slide->caption }}"
+                                                 data-zoomable data-caption="{{ $slide->caption }}"
+                                                 class="w-full h-full object-cover cursor-zoom-in hover:opacity-90 transition-opacity">
+                                        </div>
+                                        <input type="text" name="caption" form="{{ $formId }}" value="{{ $slide->caption }}"
+                                               placeholder="Caption" aria-label="Caption"
+                                               class="{{ $fieldClass }} w-full min-w-[12rem] px-3 py-1.5">
+                                    </div>
+                                </td>
 
-                    {{-- Edit form --}}
-                    <form action="{{ route('admin.carousel.update', $slide) }}" method="POST"
-                          class="flex-1 flex flex-col gap-2">
-                        @csrf @method('PATCH')
+                                {{-- Status --}}
+                                <td class="px-3 py-3 whitespace-nowrap">
+                                    @if($slide->has_ended)
+                                        <span class="inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-gray-100 px-2.5 py-0.5 text-xs font-semibold text-gray-600"
+                                              title="Turned off automatically after its end date. Change or clear the To date to show it again.">
+                                            <span class="h-1.5 w-1.5 rounded-full bg-gray-400"></span>Ended {{ $slide->ends_at->format('M j') }}
+                                        </span>
+                                    @elseif(! $slide->is_active)
+                                        <span class="inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-gray-100 px-2.5 py-0.5 text-xs font-semibold text-gray-600">
+                                            <span class="h-1.5 w-1.5 rounded-full bg-gray-400"></span>Inactive
+                                        </span>
+                                    @elseif(! $slide->is_within_schedule)
+                                        <span class="inline-flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-0.5 text-xs font-semibold text-amber-700">
+                                            <span class="h-1.5 w-1.5 rounded-full bg-amber-500"></span>Starts {{ $slide->starts_at->format('M j') }}
+                                        </span>
+                                    @else
+                                        <span class="inline-flex items-center gap-1.5 rounded-full border border-green-200 bg-green-50 px-2.5 py-0.5 text-xs font-semibold text-green-700">
+                                            <span class="h-1.5 w-1.5 rounded-full bg-green-500"></span>Live
+                                        </span>
+                                    @endif
+                                </td>
 
-                        <div class="flex flex-wrap items-center gap-3">
-                            <div class="flex-1 min-w-40">
-                                <input type="text" name="caption" value="{{ $slide->caption }}"
-                                       placeholder="Caption"
-                                       class="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
-                            </div>
+                                {{-- Schedule --}}
+                                <td class="px-3 py-3">
+                                    <div class="flex items-center gap-1.5 whitespace-nowrap">
+                                        <input type="date" name="starts_at" form="{{ $formId }}" value="{{ $slide->starts_at?->toDateString() }}"
+                                               aria-label="Show from" class="{{ $fieldClass }} px-2 py-1 text-xs">
+                                        <span class="text-gray-400">→</span>
+                                        <input type="date" name="ends_at" form="{{ $formId }}" value="{{ $slide->ends_at?->toDateString() }}"
+                                               aria-label="Show until" title="Leave blank to keep showing" class="{{ $fieldClass }} px-2 py-1 text-xs">
+                                    </div>
+                                </td>
 
-                            <div class="w-20">
-                                <input type="number" name="sort_order" value="{{ $slide->sort_order }}" min="0"
-                                       title="Sort order"
-                                       class="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm text-center focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
-                            </div>
+                                {{-- Order --}}
+                                <td class="px-3 py-3 text-center">
+                                    <input type="number" name="sort_order" form="{{ $formId }}" value="{{ $slide->sort_order }}" min="0"
+                                           aria-label="Sort order" class="{{ $fieldClass }} w-16 px-2 py-1 text-center">
+                                </td>
 
-                            <label class="flex items-center gap-2 text-sm text-gray-700 cursor-pointer select-none">
-                                <input type="hidden" name="is_active" value="0">
-                                <input type="checkbox" name="is_active" value="1"
-                                       {{ $slide->is_active ? 'checked' : '' }}
-                                       class="rounded border-gray-300 text-primary-600 focus:ring-primary-500">
-                                Active
-                            </label>
+                                {{-- Active toggle --}}
+                                <td class="px-3 py-3 text-center">
+                                    <input type="hidden" name="is_active" value="0" form="{{ $formId }}">
+                                    <label class="relative inline-flex cursor-pointer items-center" title="Show on the events page">
+                                        <input type="checkbox" name="is_active" value="1" form="{{ $formId }}" class="peer sr-only"
+                                               {{ $slide->is_active ? 'checked' : '' }} aria-label="Active">
+                                        <span class="h-6 w-11 rounded-full bg-gray-300 transition-colors peer-checked:bg-green-600 peer-focus-visible:ring-2 peer-focus-visible:ring-primary-500 peer-focus-visible:ring-offset-2"></span>
+                                        <span class="absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform peer-checked:translate-x-5"></span>
+                                    </label>
+                                </td>
 
-                            @if($slide->is_active)
-                                @if(!$slide->is_within_schedule)
-                                    <span class="text-xs font-semibold text-red-700 bg-red-50 border border-red-200 rounded-full px-2 py-0.5">
-                                        {{ $slide->starts_at && \Illuminate\Support\Carbon::today()->lt($slide->starts_at) ? 'Scheduled' : 'Expired' }}
-                                    </span>
-                                @else
-                                    <span class="text-xs font-semibold text-green-700 bg-green-50 border border-green-200 rounded-full px-2 py-0.5">
-                                        Live
-                                    </span>
-                                @endif
-                            @endif
-
-                            <button type="submit"
-                                    class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors">
-                                Save
-                            </button>
-                        </div>
-
-                        <div class="flex flex-wrap items-center gap-3">
-                            <div class="flex items-center gap-1.5">
-                                <label class="text-xs text-gray-500">From</label>
-                                <input type="date" name="starts_at" value="{{ $slide->starts_at?->toDateString() }}"
-                                       class="border border-gray-300 rounded-lg px-2 py-1 text-xs focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
-                            </div>
-                            <div class="flex items-center gap-1.5">
-                                <label class="text-xs text-gray-500">To</label>
-                                <input type="date" name="ends_at" value="{{ $slide->ends_at?->toDateString() }}"
-                                       class="border border-gray-300 rounded-lg px-2 py-1 text-xs focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
-                            </div>
-                            <p class="text-xs text-gray-400">Leave blank to control manually</p>
-                        </div>
-                    </form>
-
-                    {{-- Delete --}}
-                    <button type="button"
-                            onclick="confirmDelete('{{ route('admin.carousel.destroy', $slide) }}')"
-                            class="text-red-500 hover:text-red-700 p-2 rounded-lg hover:bg-red-50 transition-colors shrink-0"
-                            title="Delete slide">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-                        </svg>
-                    </button>
-
-                </div>
-                @endforeach
+                                {{-- Actions --}}
+                                <td class="px-6 py-3">
+                                    <div class="flex items-center justify-end gap-1">
+                                        <button type="submit" form="{{ $formId }}"
+                                                class="bg-gray-900 hover:bg-gray-700 text-white px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors">
+                                            Save
+                                        </button>
+                                        <button type="button"
+                                                onclick="confirmDelete('{{ route('admin.carousel.destroy', $slide) }}')"
+                                                class="text-red-500 hover:text-red-700 p-2 rounded-lg hover:bg-red-50 transition-colors"
+                                                title="Delete slide" aria-label="Delete slide">
+                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                                            </svg>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
             </div>
+            <p class="border-t border-gray-100 px-6 py-3 text-xs text-gray-400">
+                Live slides show on the events page in order (lowest first). Leave "Show until" blank to keep a slide showing; slides are switched off automatically after their end date.
+            </p>
         @endif
     </div>
 
