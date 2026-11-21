@@ -33,21 +33,51 @@ class CarouselSlide extends Model
     }
 
     /**
+     * Today's date in the site's local timezone (Smithers), as "Y-m-d". Schedules flip at
+     * local midnight, so a slide ending Nov 15 shows through the end of Nov 15 locally.
+     */
+    public static function today(): string
+    {
+        return Carbon::now(config('app.local_timezone'))->toDateString();
+    }
+
+    /**
+     * Turn off slides whose end date has passed, so they read as inactive in the admin
+     * too (not just hidden from the site). Returns how many were turned off.
+     */
+    public static function deactivateExpired(): int
+    {
+        return static::query()
+            ->where('is_active', true)
+            ->whereNotNull('ends_at')
+            ->whereDate('ends_at', '<', static::today())
+            ->update(['is_active' => false]);
+    }
+
+    /**
      * Whether the slide is within its scheduled date window (or has no window set).
      */
     public function getIsWithinScheduleAttribute(): bool
     {
-        $today = Carbon::today();
+        $today = static::today();
 
-        if ($this->starts_at && $today->lt($this->starts_at)) {
+        if ($this->starts_at && $today < $this->starts_at->toDateString()) {
             return false;
         }
 
-        if ($this->ends_at && $today->gt($this->ends_at)) {
+        if ($this->ends_at && $today > $this->ends_at->toDateString()) {
             return false;
         }
 
         return true;
+    }
+
+    /**
+     * Whether the end date has passed.
+     */
+    public function getHasEndedAttribute(): bool
+    {
+        return $this->ends_at !== null && static::today() > $this->ends_at->toDateString();
     }
 
     /**
@@ -69,7 +99,7 @@ class CarouselSlide extends Model
      */
     public function scopeCurrentlyActive(Builder $query): void
     {
-        $today = Carbon::today()->toDateString();
+        $today = static::today();
 
         $query->where('is_active', true)
             ->where(fn (Builder $q) => $q->whereNull('starts_at')->orWhereDate('starts_at', '<=', $today))

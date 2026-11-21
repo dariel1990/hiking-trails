@@ -94,6 +94,12 @@ return [
     'timezone' => 'UTC',
 
     /*
+    | Local timezone of the region the site covers (Smithers, BC). Used where a
+    | calendar date must flip at local midnight, e.g. carousel slide schedules.
+    */
+    'local_timezone' => env('APP_LOCAL_TIMEZONE', 'America/Vancouver'),
+
+    /*
     |--------------------------------------------------------------------------
     | Application Locale Configuration
     |--------------------------------------------------------------------------
