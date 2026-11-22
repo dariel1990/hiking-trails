@@ -3125,6 +3125,42 @@
                 });
             }
 
+            // Arrows along the event route showing the direction of travel (e.g. which way a
+            // parade goes), like the event page map. The route is stored start → finish.
+            if (!this.map.hasImage('event-route-arrow')) {
+                const size = 48;
+                const canvas = document.createElement('canvas');
+                canvas.width = size;
+                canvas.height = size;
+                const ctx = canvas.getContext('2d');
+                ctx.strokeStyle = '#ffffff';
+                ctx.lineWidth = 7;
+                ctx.lineCap = 'round';
+                ctx.lineJoin = 'round';
+                ctx.beginPath();
+                ctx.moveTo(16, 12);
+                ctx.lineTo(32, 24);
+                ctx.lineTo(16, 36);
+                ctx.stroke();
+                this.map.addImage('event-route-arrow', ctx.getImageData(0, 0, size, size), { pixelRatio: 2 });
+            }
+            if (!this.map.getLayer('event-route-arrows')) {
+                this.map.addLayer({
+                    id: 'event-route-arrows',
+                    type: 'symbol',
+                    source: 'event-route',
+                    layout: {
+                        'symbol-placement': 'line',
+                        'symbol-spacing': 70,
+                        'icon-image': 'event-route-arrow',
+                        'icon-size': 0.55,
+                        'icon-allow-overlap': true,
+                        'icon-ignore-placement': true,
+                        'icon-rotation-alignment': 'map',
+                    },
+                });
+            }
+
             // Dashed connector lines from an event's marker to each of its stops (like tours)
             if (!this.map.getSource('event-connectors')) {
                 this.map.addSource('event-connectors', {

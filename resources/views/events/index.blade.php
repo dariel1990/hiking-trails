@@ -457,8 +457,68 @@
             <!-- List View -->
             <div class="mb-8">
                 
-                @if($upcomingEvents->count() > 0)
+                @if($upcomingEvents->count() > 0 || $listSlides->isNotEmpty())
                     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6" style="overflow: visible;">
+                        {{-- Carousel slides added to the events calendar --}}
+                        @foreach($listSlides as $slide)
+                            @php $slideDayTimes = $slide->scheduleDayTimes(); $slideTime = $slide->scheduleTimeRangeLabel(); @endphp
+                            <div class="event-card calendar-slide-card bg-white rounded-xl flex flex-col">
+                                <div class="p-4 sm:p-6 flex-1 flex flex-col">
+                                    @if($slide->calendar_category)
+                                        <span class="category-badge text-xs font-semibold px-3 py-1 rounded-full inline-block mb-3 w-fit">
+                                            {{ $slide->calendar_category }}
+                                        </span>
+                                    @endif
+
+                                    <h3 class="text-sm sm:text-base font-bold mb-3 leading-snug line-clamp-3 flex-shrink-0" style="color: var(--color-accent);">
+                                        <a href="#" onclick="event.preventDefault(); openSlideModal({{ $slide->id }})" class="hover:opacity-80 transition">
+                                            {{ $slide->calendar_display_title }}
+                                        </a>
+                                    </h3>
+
+                                    <div class="space-y-2 mb-4">
+                                        <div class="flex items-center text-gray-600">
+                                            <i class="far fa-calendar mr-3 text-base" style="color: var(--color-primary);"></i>
+                                            <span class="text-sm font-medium">{{ $slide->scheduleDateRangeLabel() }}</span>
+                                        </div>
+
+                                        @if($slideDayTimes->isNotEmpty())
+                                            <div class="flex items-start text-gray-600">
+                                                <i class="far fa-clock mr-3 text-base mt-0.5" style="color: var(--color-primary);"></i>
+                                                <ul class="text-sm font-medium space-y-0.5">
+                                                    @foreach($slideDayTimes->take(4) as $day)
+                                                        <li>{{ $day['weekday'] }} {{ $day['short_date'] }} · {{ $day['time'] }}</li>
+                                                    @endforeach
+                                                    @if($slideDayTimes->count() > 4)
+                                                        <li class="text-gray-400">+{{ $slideDayTimes->count() - 4 }} more days</li>
+                                                    @endif
+                                                </ul>
+                                            </div>
+                                        @elseif($slideTime)
+                                            <div class="flex items-center text-gray-600">
+                                                <i class="far fa-clock mr-3 text-base" style="color: var(--color-primary);"></i>
+                                                <span class="text-sm font-medium">{{ $slideTime }}</span>
+                                            </div>
+                                        @endif
+
+                                        @if($slide->calendar_location)
+                                            <div class="flex items-start text-gray-600">
+                                                <i class="fas fa-map-marker-alt mr-3 text-base mt-0.5" style="color: var(--color-primary);"></i>
+                                                <span class="text-sm font-medium line-clamp-2">{{ $slide->calendar_location }}</span>
+                                            </div>
+                                        @endif
+                                    </div>
+
+                                    <div class="mt-auto">
+                                        <button type="button" onclick="openSlideModal({{ $slide->id }})"
+                                                class="w-full btn-primary text-center py-2.5 px-4 rounded-lg transition font-medium text-sm">
+                                            View Details
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        @endforeach
+
                         @foreach($upcomingEvents as $event)
                             <div class="event-card bg-white rounded-xl flex flex-col">
                                 <div class="p-4 sm:p-6 flex-1 flex flex-col" style="overflow: visible;">
@@ -480,18 +540,26 @@
                                     <div class="space-y-2 mb-4">
                                         <div class="flex items-center text-gray-600">
                                             <i class="far fa-calendar mr-3 text-base" style="color: var(--color-primary);"></i>
-                                            <span class="text-sm font-medium">{{ $event->formatted_date }}</span>
+                                            <span class="text-sm font-medium">{{ $event->date_range_label }}</span>
                                         </div>
-                                        
-                                        @if($event->event_time)
+
+                                        @if($event->day_times->isNotEmpty())
+                                            {{-- Different hours each day: one line per day --}}
+                                            <div class="flex items-start text-gray-600">
+                                                <i class="far fa-clock mr-3 text-base mt-0.5" style="color: var(--color-primary);"></i>
+                                                <ul class="text-sm font-medium space-y-0.5">
+                                                    @foreach($event->day_times->take(4) as $day)
+                                                        <li>{{ $day['weekday'] }} {{ $day['short_date'] }} · {{ $day['time'] }}</li>
+                                                    @endforeach
+                                                    @if($event->day_times->count() > 4)
+                                                        <li class="text-gray-400">+{{ $event->day_times->count() - 4 }} more days</li>
+                                                    @endif
+                                                </ul>
+                                            </div>
+                                        @elseif($event->time_range_label)
                                             <div class="flex items-center text-gray-600">
                                                 <i class="far fa-clock mr-3 text-base" style="color: var(--color-primary);"></i>
-                                                <span class="text-sm font-medium">
-                                                    {{ $event->formatted_time }}
-                                                    @if($event->end_time)
-                                                        - {{ \Carbon\Carbon::parse($event->end_time)->format('g:i A') }}
-                                                    @endif
-                                                </span>
+                                                <span class="text-sm font-medium">{{ $event->time_range_label }}</span>
                                             </div>
                                         @endif
                                         
@@ -595,9 +663,24 @@
                     @for($day = 1; $day <= $daysInMonth; $day++)
                         @php
                             $currentDate = Carbon\Carbon::create($year, $month, $day);
-                            $dayEvents = $calendarEvents->filter(function($event) use ($currentDate) {
-                                return $event->event_date->isSameDay($currentDate);
-                            });
+                            // Every day an event or calendar slide runs (schedule days skip gaps).
+                            $dayEntries = $calendarSlides
+                                ->filter(fn ($slide) => $slide->occursOn($currentDate))
+                                ->map(fn ($slide) => [
+                                    'onclick' => 'openSlideModal('.$slide->id.')',
+                                    'title' => $slide->calendar_display_title,
+                                    'time' => $slide->timeLabelOn($currentDate),
+                                    'is_slide' => true,
+                                ])
+                                ->concat($calendarEvents
+                                    ->filter(fn ($event) => $event->occursOn($currentDate))
+                                    ->map(fn ($event) => [
+                                        'onclick' => 'openEventModal('.$event->id.')',
+                                        'title' => $event->title,
+                                        'time' => $event->timeLabelOn($currentDate),
+                                        'is_slide' => false,
+                                    ]))
+                                ->values();
                             $isToday = $currentDate->isToday();
                         @endphp
                         
@@ -609,21 +692,28 @@
                                 @endif
                             </div>
                             
-                            @foreach($dayEvents->take(3) as $event)
+                            @foreach($dayEntries->take(3) as $entry)
                                 <div class="mb-1">
-                                    <a href="#" onclick="openEventModal({{ $event->id }})"
-                                       class="block text-xs rounded px-1 sm:px-2 py-1 sm:py-1.5 truncate transition hover:opacity-80"
-                                       style="background-color: #fef3e2; color: var(--color-primary);"
-                                       title="{{ $event->title }}">
-                                        <span class="event-dot inline-block mr-0.5 sm:mr-1"></span>
-                                        <span class="font-medium hidden sm:inline">{{ \Str::limit($event->title, 18) }}</span>
+                                    <a href="#" onclick="event.preventDefault(); {{ $entry['onclick'] }}"
+                                       class="block text-xs rounded px-1 sm:px-2 py-1 sm:py-1.5 truncate transition hover:opacity-80 {{ $entry['is_slide'] ? 'calendar-slide-entry' : '' }}"
+                                       style="background-color: {{ $entry['is_slide'] ? '#e0f2fe' : '#fef3e2' }}; color: var(--color-primary);"
+                                       title="{{ $entry['title'] }}{{ $entry['time'] ? ' · '.$entry['time'] : '' }}">
+                                        @if($entry['is_slide'])
+                                            <i class="fas fa-star mr-0.5 sm:mr-1" style="font-size: 0.6rem;" aria-hidden="true"></i>
+                                        @else
+                                            <span class="event-dot inline-block mr-0.5 sm:mr-1"></span>
+                                        @endif
+                                        @if($entry['time'])
+                                            <span class="hidden sm:inline font-semibold">{{ $entry['time'] }}</span>
+                                        @endif
+                                        <span class="font-medium hidden sm:inline">{{ \Str::limit($entry['title'], 18) }}</span>
                                     </a>
                                 </div>
                             @endforeach
-                            
-                            @if($dayEvents->count() > 3)
+
+                            @if($dayEntries->count() > 3)
                                 <div class="text-xs font-semibold mt-1" style="color: var(--color-primary);">
-                                    +{{ $dayEvents->count() - 3 }} more
+                                    +{{ $dayEntries->count() - 3 }} more
                                 </div>
                             @endif
                         </div>
@@ -824,18 +914,11 @@
                                         <i class="far fa-calendar mr-3 text-base sm:text-xl shrink-0" style="color: var(--color-primary);"></i>
                                         <div>
                                             <div class="font-semibold text-xs text-gray-500 uppercase">Date</div>
-                                            <div class="font-medium text-sm sm:text-base">${data.formatted_date}</div>
+                                            <div class="font-medium text-sm sm:text-base">${escapeHtml(data.date_range_label || data.formatted_date)}</div>
                                         </div>
                                     </div>
 
-                                    ${data.event_time ? `
-                                    <div class="flex items-center text-gray-700">
-                                        <i class="far fa-clock mr-3 text-base sm:text-xl shrink-0" style="color: var(--color-primary);"></i>
-                                        <div>
-                                            <div class="font-semibold text-xs text-gray-500 uppercase">Time</div>
-                                            <div class="font-medium text-sm sm:text-base">${data.formatted_time}${data.end_time ? ' - ' + data.end_time : ''}</div>
-                                        </div>
-                                    </div>` : ''}
+                                    ${timeBlockHtml(data.time_range_label, data.day_times)}
                                 </div>
 
                                 <div class="space-y-3">
@@ -862,7 +945,7 @@
                             ${data.description ? `
                             <div class="mb-4 sm:mb-6">
                                 <h3 class="text-base sm:text-lg font-bold mb-2 sm:mb-3" style="color: var(--color-secondary);">About This Event</h3>
-                                <p class="text-gray-700 leading-relaxed text-sm sm:text-base">${data.description}</p>
+                                ${descriptionHtml(data.description)}
                             </div>` : ''}
 
                             <div class="flex flex-col sm:flex-row gap-2 sm:gap-3 pt-4 sm:pt-6 border-t border-gray-200">
@@ -899,6 +982,107 @@
                 });
         }
         
+        /* ── Calendar slides & shared modal helpers ───────── */
+        const calendarSlides = @json($slideDetails);
+
+        function escapeHtml(value) {
+            return String(value ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+        }
+
+        /** Description text as spaced paragraphs: blank lines split paragraphs, single line breaks stay. */
+        function descriptionHtml(text) {
+            return '<div class="space-y-3 text-gray-700 leading-relaxed text-sm sm:text-base">'
+                + String(text ?? '')
+                    .replace(/\r\n?/g, '\n')
+                    .split(/\n\s*\n/)
+                    .map((paragraph) => paragraph.trim())
+                    .filter(Boolean)
+                    .map((paragraph) => `<p>${escapeHtml(paragraph).replace(/\n/g, '<br>')}</p>`)
+                    .join('')
+                + '</div>';
+        }
+
+        /** Time row: one line per day when the hours differ, otherwise the single time range. */
+        function timeBlockHtml(timeLabel, dayTimes) {
+            let body = '';
+            if (Array.isArray(dayTimes) && dayTimes.length) {
+                body = '<ul class="space-y-0.5">' + dayTimes.map((day) =>
+                    `<li>${escapeHtml(day.weekday)} ${escapeHtml(day.short_date)} · ${escapeHtml(day.time)}</li>`).join('') + '</ul>';
+            } else if (timeLabel) {
+                body = escapeHtml(timeLabel);
+            }
+            if (!body) {
+                return '';
+            }
+            return `
+                <div class="flex items-start text-gray-700">
+                    <i class="far fa-clock mr-3 text-base sm:text-xl shrink-0 mt-0.5" style="color: var(--color-primary);"></i>
+                    <div>
+                        <div class="font-semibold text-xs text-gray-500 uppercase">Time</div>
+                        <div class="font-medium text-sm sm:text-base">${body}</div>
+                    </div>
+                </div>`;
+        }
+
+        // Open a carousel slide's calendar entry (details are on the page, no fetch needed)
+        function openSlideModal(slideId) {
+            const data = calendarSlides[slideId];
+            if (!data) {
+                return;
+            }
+
+            document.getElementById('eventModal').classList.add('active');
+            document.getElementById('modalBody').innerHTML = `
+                <div>
+                    <img src="${escapeHtml(data.image_url)}" alt="${escapeHtml(data.title)}" class="w-full max-h-72 object-cover rounded-lg mb-4 sm:mb-6">
+
+                    ${data.category ? `<span class="category-badge text-xs font-semibold px-3 py-1.5 rounded-full inline-block mb-3">${escapeHtml(data.category)}</span>` : ''}
+
+                    <h2 class="text-xl sm:text-3xl font-bold mb-4 sm:mb-6 leading-snug" style="color: var(--color-accent);">${escapeHtml(data.title)}</h2>
+
+                    <div class="grid sm:grid-cols-2 gap-3 sm:gap-6 mb-4 sm:mb-6">
+                        <div class="space-y-3">
+                            <div class="flex items-center text-gray-700">
+                                <i class="far fa-calendar mr-3 text-base sm:text-xl shrink-0" style="color: var(--color-primary);"></i>
+                                <div>
+                                    <div class="font-semibold text-xs text-gray-500 uppercase">Date</div>
+                                    <div class="font-medium text-sm sm:text-base">${escapeHtml(data.date_label)}</div>
+                                </div>
+                            </div>
+                            ${timeBlockHtml(data.time_label, data.day_times)}
+                        </div>
+
+                        <div class="space-y-3">
+                            ${data.location ? `
+                            <div class="flex items-start text-gray-700">
+                                <i class="fas fa-map-marker-alt mr-3 text-base sm:text-xl mt-0.5 shrink-0" style="color: var(--color-primary);"></i>
+                                <div>
+                                    <div class="font-semibold text-xs text-gray-500 uppercase">Location</div>
+                                    <div class="font-medium text-sm sm:text-base">${escapeHtml(data.location)}</div>
+                                </div>
+                            </div>` : ''}
+                        </div>
+                    </div>
+
+                    ${data.description ? `
+                    <div class="mb-4 sm:mb-6">
+                        <h3 class="text-base sm:text-lg font-bold mb-2 sm:mb-3" style="color: var(--color-secondary);">About This Event</h3>
+                        ${descriptionHtml(data.description)}
+                    </div>` : ''}
+
+                    <div class="flex flex-col sm:flex-row gap-2 sm:gap-3 pt-4 sm:pt-6 border-t border-gray-200">
+                        ${data.url ? `
+                        <a href="${escapeHtml(data.url)}" target="_blank" rel="noopener" class="flex-1 btn-primary text-center py-3 px-4 rounded-lg transition font-medium text-sm sm:text-base">
+                            <i class="fas fa-external-link-alt mr-2"></i>More Info
+                        </a>` : ''}
+                        <a href="${escapeHtml(data.google_calendar_url)}" target="_blank" rel="noopener" class="flex-1 btn-secondary text-center py-3 px-4 rounded-lg transition font-medium text-sm sm:text-base">
+                            <i class="fab fa-google mr-2"></i>Add to Google Calendar
+                        </a>
+                    </div>
+                </div>
+            `;
+        }
+
         // Close modal
         function closeEventModal() {
             document.getElementById('eventModal').classList.remove('active');

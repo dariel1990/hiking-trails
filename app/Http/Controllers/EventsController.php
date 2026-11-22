@@ -6,6 +6,7 @@ use App\Models\CarouselSlide;
 use App\Models\Event;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 
 class EventsController extends Controller
 {
@@ -14,6 +15,13 @@ class EventsController extends Controller
      */
     public function index(Request $request)
     {
+        // Switch off finished events and slides (also done nightly by events:expire and
+        // carousel:expire); once a day here too, in case the server's scheduler is not running.
+        if (Cache::add('events:expired-on:'.Event::localToday(), true, now()->addDay())) {
+            Event::deactivateFinished();
+            CarouselSlide::deactivateExpired();
+        }
+
         // Get current month and year
         $month = $request->get('month', now()->month);
         $year = $request->get('year', now()->year);
@@ -33,21 +41,54 @@ class EventsController extends Controller
         }
 
         // Get upcoming events for list view
-        $upcomingEvents = (clone $query)->upcoming()->paginate(setting('events_per_page'));
+        $upcomingEvents = (clone $query)->with('days')->upcoming()->paginate(setting('events_per_page'));
 
-        // Get events for calendar view (current month)
+        // Events on the calendar this month: every day they run, including multi-day
+        // events that started last month and schedule days (each with its own hours).
         $calendarEvents = (clone $query)
-            ->whereYear('event_date', $year)
-            ->whereMonth('event_date', $month)
+            ->with('days')
+            ->overlappingMonth((int) $year, (int) $month)
             ->orderBy('event_date')
             ->orderBy('event_time')
             ->get();
 
+        // Carousel slides added to the calendar (Admin → Carousel → Calendar).
+        $calendarSlides = CarouselSlide::onCalendarInMonth((int) $year, (int) $month)
+            ->when($categoryFilter, fn ($q) => $q->where('calendar_category', $categoryFilter))
+            ->with('days')
+            ->orderBy('calendar_date')
+            ->orderBy('calendar_start_time')
+            ->get();
+
+        // Upcoming calendar slides lead the list view's first page; with a category
+        // filter on, only slides in that category.
+        $listSlides = $upcomingEvents->onFirstPage()
+            ? CarouselSlide::upcomingOnCalendar()
+                ->when($categoryFilter, fn ($q) => $q->where('calendar_category', $categoryFilter))
+                ->with('days')
+                ->get()
+            : collect();
+
+        // Details for the slide popup, from either view.
+        $slideDetails = $calendarSlides->concat($listSlides)
+            ->unique('id')
+            ->mapWithKeys(fn (CarouselSlide $slide) => [$slide->id => $slide->toCalendarPayload()]);
+
         // Get all categories for filter
+        // (events and calendar slides share categories)
         $categories = Event::where('is_active', true)
             ->whereNotNull('category')
             ->distinct()
-            ->pluck('category');
+            ->pluck('category')
+            ->concat(CarouselSlide::where('is_active', true)
+                ->where('show_on_calendar', true)
+                ->whereNotNull('calendar_category')
+                ->distinct()
+                ->pluck('calendar_category'))
+            ->filter()
+            ->unique()
+            ->sort()
+            ->values();
 
         // Calendar data
         $firstDayOfMonth = Carbon::create($year, $month, 1);
@@ -79,7 +120,10 @@ class EventsController extends Controller
             'daysInMonth',
             'prevMonth',
             'nextMonth',
-            'slides'
+            'slides',
+            'calendarSlides',
+            'listSlides',
+            'slideDetails'
         ));
     }
 
@@ -233,6 +277,8 @@ class EventsController extends Controller
      */
     public function getEventDetails(Event $event)
     {
+        $event->loadMissing('days');
+
         $googleCalendarUrl = 'https://calendar.google.com/calendar/render?action=TEMPLATE&text='.urlencode($event->title).
             '&dates='.$event->event_date->format('Ymd').'T'.($event->event_time ? Carbon::parse($event->event_time)->format('His') : '000000').
             '/'.($event->end_date ? $event->end_date->format('Ymd') : $event->event_date->format('Ymd')).'T'.($event->end_time ? Carbon::parse($event->end_time)->format('His') : '235959').
@@ -253,6 +299,9 @@ class EventsController extends Controller
             'title' => $event->title,
             'description' => $event->description,
             'formatted_date' => $event->formatted_date,
+            'date_range_label' => $event->date_range_label,
+            'time_range_label' => $event->time_range_label,
+            'day_times' => $event->day_times->all(),
             'event_time' => $event->event_time,
             'formatted_time' => $event->formatted_time,
             'end_time' => $event->end_time ? Carbon::parse($event->end_time)->format('g:i A') : null,

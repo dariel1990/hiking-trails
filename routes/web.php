@@ -272,6 +272,8 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::post('carousel', [CarouselSlideController::class, 'store'])->name('carousel.store');
         Route::post('carousel/import', [CarouselSlideController::class, 'import'])->name('carousel.import');
         Route::patch('carousel/{carousel}', [CarouselSlideController::class, 'update'])->name('carousel.update');
+        Route::get('carousel/{carousel}/calendar', [CarouselSlideController::class, 'editCalendar'])->name('carousel.calendar.edit');
+        Route::put('carousel/{carousel}/calendar', [CarouselSlideController::class, 'updateCalendar'])->name('carousel.calendar.update');
         Route::delete('carousel/{carousel}', [CarouselSlideController::class, 'destroy'])->name('carousel.destroy');
 
         // Facilities Management (Standalone - Global)

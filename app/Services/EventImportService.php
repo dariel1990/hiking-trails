@@ -41,14 +41,13 @@ class EventImportService
     }
 
     /**
-     * Deactivate events whose date has passed.
+     * Deactivate events whose last day has passed (multi-day events stay active until
+     * their end date; events an admin switched back on are left alone).
      *
      * @return int Number of events deactivated
      */
     public function deactivatePastEvents(): int
     {
-        return Event::where('event_date', '<', now())
-            ->where('is_active', true)
-            ->update(['is_active' => false]);
+        return Event::deactivateFinished();
     }
 }

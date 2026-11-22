@@ -161,6 +161,9 @@
                                     <div class="flex flex-col gap-1.5">
                                         @if($event->is_active)
                                             <span class="inline-flex items-center rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-semibold text-green-800 w-fit">Active</span>
+                                        @elseif($event->auto_deactivated_at)
+                                            <span class="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-semibold text-gray-600 w-fit"
+                                                title="Switched off automatically after its last day. Switch it back on to show it again.">Ended · Inactive</span>
                                         @else
                                             <span class="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-semibold text-gray-600 w-fit">Inactive</span>
                                         @endif

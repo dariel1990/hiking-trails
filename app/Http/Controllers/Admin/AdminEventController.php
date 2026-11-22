@@ -30,6 +30,10 @@ class AdminEventController extends Controller
 {
     public function index(Request $request): View
     {
+        // Also done nightly by events:expire; repeated here so the list is right even
+        // if the server's scheduler is not running.
+        Event::deactivateFinished();
+
         $when = $request->input('when', 'upcoming');
         $search = trim((string) $request->input('q', ''));
         $today = Carbon::today()->toDateString();

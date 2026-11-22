@@ -179,12 +179,13 @@
             @endforeach
 
             <div class="overflow-x-auto">
-                <table class="w-full min-w-[880px] text-sm">
+                <table class="w-full min-w-[1000px] text-sm">
                     <thead class="bg-gray-50 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">
                         <tr>
                             <th scope="col" class="px-6 py-3">Slide</th>
                             <th scope="col" class="px-3 py-3">Status</th>
                             <th scope="col" class="px-3 py-3">Schedule</th>
+                            <th scope="col" class="px-3 py-3">Calendar</th>
                             <th scope="col" class="px-3 py-3 text-center">Order</th>
                             <th scope="col" class="px-3 py-3 text-center">Active</th>
                             <th scope="col" class="px-6 py-3 text-right"><span class="sr-only">Actions</span></th>
@@ -210,7 +211,12 @@
 
                                 {{-- Status --}}
                                 <td class="px-3 py-3 whitespace-nowrap">
-                                    @if($slide->has_ended)
+                                    @if(! $slide->is_active && $slide->calendar_ended_at && $slide->calendar_last_day)
+                                        <span class="inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-gray-100 px-2.5 py-0.5 text-xs font-semibold text-gray-600"
+                                              title="Turned off automatically after its calendar event finished. Switch Active on and save to show it again.">
+                                            <span class="h-1.5 w-1.5 rounded-full bg-gray-400"></span>Event ended {{ $slide->calendar_last_day->format('M j') }}
+                                        </span>
+                                    @elseif($slide->has_ended && ! $slide->show_on_calendar)
                                         <span class="inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-gray-100 px-2.5 py-0.5 text-xs font-semibold text-gray-600"
                                               title="Turned off automatically after its end date. Change or clear the To date to show it again.">
                                             <span class="h-1.5 w-1.5 rounded-full bg-gray-400"></span>Ended {{ $slide->ends_at->format('M j') }}
@@ -218,6 +224,11 @@
                                     @elseif(! $slide->is_active)
                                         <span class="inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-gray-100 px-2.5 py-0.5 text-xs font-semibold text-gray-600">
                                             <span class="h-1.5 w-1.5 rounded-full bg-gray-400"></span>Inactive
+                                        </span>
+                                    @elseif($slide->has_ended)
+                                        <span class="inline-flex items-center gap-1.5 rounded-full border border-blue-200 bg-blue-50 px-2.5 py-0.5 text-xs font-semibold text-blue-700"
+                                              title="Out of the slideshow since {{ $slide->ends_at->format('M j') }}. Stays on the events calendar until its event's last day{{ $slide->calendar_last_day ? ' ('.$slide->calendar_last_day->format('M j').')' : '' }}.">
+                                            <span class="h-1.5 w-1.5 rounded-full bg-blue-500"></span>Calendar only
                                         </span>
                                     @elseif(! $slide->is_within_schedule)
                                         <span class="inline-flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-0.5 text-xs font-semibold text-amber-700">
@@ -239,6 +250,19 @@
                                         <input type="date" name="ends_at" form="{{ $formId }}" value="{{ $slide->ends_at?->toDateString() }}"
                                                aria-label="Show until" title="Leave blank to keep showing" class="{{ $fieldClass }} px-2 py-1 text-xs">
                                     </div>
+                                </td>
+
+                                {{-- Events calendar entry --}}
+                                <td class="px-3 py-3 whitespace-nowrap">
+                                    <a href="{{ route('admin.carousel.calendar.edit', $slide) }}"
+                                       title="{{ $slide->show_on_calendar ? 'Shown on the events calendar. Click to edit its details.' : 'Add this slide to the events calendar' }}"
+                                       class="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors {{ $slide->show_on_calendar ? 'border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100' : 'border-dashed border-gray-300 text-gray-500 hover:bg-gray-100' }}">
+                                        @if($slide->show_on_calendar && $slide->calendar_date)
+                                            📅 {{ $slide->calendar_date->format('M j') }}{{ $slide->calendar_end_date ? ' – '.$slide->calendar_end_date->format('M j') : '' }}
+                                        @else
+                                            + Add to calendar
+                                        @endif
+                                    </a>
                                 </td>
 
                                 {{-- Order --}}
@@ -282,6 +306,7 @@
             </div>
             <p class="border-t border-gray-100 px-6 py-3 text-xs text-gray-400">
                 Live slides show on the events page in order (lowest first). Leave "Show until" blank to keep a slide showing; slides are switched off automatically after their end date.
+                Slides on the events calendar are switched off (slideshow and calendar) after their event's last day; switch them back on any time.
             </p>
         @endif
     </div>

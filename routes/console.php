@@ -14,7 +14,13 @@ Schedule::command('events:scrape --force')
     ->appendOutputTo(storage_path('logs/scraper.log'))
     ->onFailure(fn () => DeveloperAlert::send('events:scrape', 'Command exited with a non-zero status. See storage/logs/scraper.log for output.'));
 
-// Carousel slides past their end date are switched off just after local midnight.
+// Carousel slides past their end date (or whose calendar event has finished) are
+// switched off just after local midnight.
 Schedule::command('carousel:expire')
+    ->dailyAt('00:05')
+    ->timezone(config('app.local_timezone'));
+
+// Events are switched off after their last day (multi-day events after their end date).
+Schedule::command('events:expire')
     ->dailyAt('00:05')
     ->timezone(config('app.local_timezone'));

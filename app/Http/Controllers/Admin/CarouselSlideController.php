@@ -3,9 +3,12 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\UpdateCarouselSlideCalendarRequest;
 use App\Models\CarouselSlide;
+use App\Models\Event;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
 
@@ -102,9 +105,10 @@ class CarouselSlideController extends Controller
             'starts_at' => 'nullable|date',
             'ends_at' => [
                 'nullable', 'date', 'after_or_equal:starts_at',
-                // Re-activating a slide whose end date has passed would be switched off again.
-                function (string $attribute, mixed $value, \Closure $fail) use ($request) {
-                    if ($value && $request->boolean('is_active') && $value < CarouselSlide::today()) {
+                // Re-activating a slide whose end date has passed would be switched off again
+                // (slides on the events calendar follow their calendar dates instead).
+                function (string $attribute, mixed $value, \Closure $fail) use ($request, $carousel) {
+                    if ($value && ! $carousel->show_on_calendar && $request->boolean('is_active') && $value < CarouselSlide::today()) {
                         $fail('This slide\'s end date has passed. Change or clear the "To" date to make it active again.');
                     }
                 },
@@ -122,6 +126,46 @@ class CarouselSlideController extends Controller
         // Back to the same tab (Active / Inactive / All) the slide was edited from.
         return redirect()->route('admin.carousel.index', array_filter(['status' => $request->input('return_status')]))
             ->with('success', 'Slide updated.');
+    }
+
+    /**
+     * What the slide shows on the /events calendar (title, dates/hours, location, details).
+     */
+    public function editCalendar(CarouselSlide $carousel): View
+    {
+        $carousel->load('days');
+
+        // Categories already in use, suggested so the calendar filter stays tidy.
+        $categories = Event::query()->whereNotNull('category')->distinct()->pluck('category')
+            ->concat(CarouselSlide::query()->whereNotNull('calendar_category')->distinct()->pluck('calendar_category'))
+            ->filter()
+            ->unique()
+            ->sort()
+            ->values();
+
+        return view('admin.carousel.calendar', ['slide' => $carousel, 'categories' => $categories]);
+    }
+
+    public function updateCalendar(UpdateCarouselSlideCalendarRequest $request, CarouselSlide $carousel): RedirectResponse
+    {
+        DB::transaction(function () use ($request, $carousel) {
+            $carousel->update($request->calendarAttributes());
+
+            // Days are re-created on every save; "Same hours every day" removes them.
+            // Turning the calendar off leaves them, so turning it back on restores them.
+            if ($request->showsOnCalendar()) {
+                $carousel->days()->delete();
+
+                if ($request->usesDaySchedule()) {
+                    $carousel->days()->createMany($request->scheduleDays());
+                }
+            }
+        });
+
+        return redirect()->route('admin.carousel.calendar.edit', $carousel)
+            ->with('success', $request->showsOnCalendar()
+                ? 'Calendar details saved. The slide shows on the events calendar.'
+                : 'Saved. The slide is not shown on the events calendar.');
     }
 
     public function destroy(Request $request, CarouselSlide $carousel): RedirectResponse

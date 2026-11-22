@@ -6,11 +6,41 @@ use App\Models\Event;
 use App\Models\EventStop;
 use App\Models\Setting;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Tests\TestCase;
 
 class MapEventsTabTest extends TestCase
 {
     use RefreshDatabase;
+
+    protected function tearDown(): void
+    {
+        Carbon::setTestNow();
+
+        parent::tearDown();
+    }
+
+    public function test_event_route_lines_have_direction_arrows(): void
+    {
+        $html = $this->get(route('map'))->assertOk()->getContent();
+
+        $this->assertStringContainsString("id: 'event-route-arrows'", $html);
+        $this->assertStringContainsString("'icon-image': 'event-route-arrow'", $html);
+        $this->assertStringContainsString("addImage('event-route-arrow'", $html);
+    }
+
+    public function test_an_event_stays_on_the_map_through_the_evening_of_its_last_day(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2030-12-19 20:00', config('app.local_timezone')));
+        Event::factory()->withRoute()->create(['title' => 'Christmas Truck Parade', 'event_date' => '2030-12-19', 'end_date' => null]);
+
+        // 8 PM in Smithers is already Dec 20 in UTC.
+        $this->assertSame('2030-12-20', Carbon::now('UTC')->toDateString());
+        $this->getJson('/api/events')->assertOk()->assertJsonCount(1)->assertJsonPath('0.title', 'Christmas Truck Parade');
+
+        Carbon::setTestNow(Carbon::parse('2030-12-20 08:00', config('app.local_timezone')));
+        $this->getJson('/api/events')->assertOk()->assertJsonCount(0);
+    }
 
     public function test_the_map_has_an_events_tab_after_recreational_sites(): void
     {

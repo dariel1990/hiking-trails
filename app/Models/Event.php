@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\HasScheduleDays;
 use App\Models\Concerns\HasUrlKey;
 use App\Models\Concerns\HasVideoEmbed;
 use App\Support\AccentPalette;
@@ -24,6 +25,7 @@ use Illuminate\Support\Str;
 class Event extends Model
 {
     use HasFactory;
+    use HasScheduleDays;
     use HasUrlKey;
     use HasVideoEmbed;
 
@@ -69,6 +71,7 @@ class Event extends Model
             'end_time' => 'datetime',
             'is_active' => 'boolean',
             'is_featured' => 'boolean',
+            'auto_deactivated_at' => 'datetime',
             'scraped_at' => 'datetime',
             'route_coordinates' => 'array',
             'route_distance_km' => 'decimal:2',
@@ -82,6 +85,85 @@ class Event extends Model
                 $event->slug = static::uniqueSlug($event->title);
             }
         });
+
+        // Dates moved into the future: it can be switched off again after its new last day.
+        // An admin switching a finished event back on: leave it on (don't switch it off again).
+        static::saving(function (Event $event) {
+            if (! $event->event_date) {
+                return;
+            }
+
+            if (! $event->isFinished()) {
+                $event->auto_deactivated_at = null;
+            } elseif ($event->exists && $event->is_active && $event->isDirty('is_active')) {
+                $event->auto_deactivated_at ??= now();
+            }
+        });
+    }
+
+    /**
+     * Today's date in the site's local timezone (Smithers), as "Y-m-d", so events
+     * finish at local midnight after their last day.
+     */
+    public static function localToday(): string
+    {
+        return Carbon::now(config('app.local_timezone'))->toDateString();
+    }
+
+    /**
+     * Switch off active events whose last day (end date, or the start date for one-day
+     * events) has passed. Each event is switched off once; an admin can switch it back on.
+     * Returns how many were switched off.
+     */
+    public static function deactivateFinished(): int
+    {
+        return static::query()
+            ->where('is_active', true)
+            ->whereNull('auto_deactivated_at')
+            ->finished()
+            ->update(['is_active' => false, 'auto_deactivated_at' => now()]);
+    }
+
+    /**
+     * Whether its last day is before today (multi-day events run until their end date).
+     */
+    public function isFinished(): bool
+    {
+        $lastDay = ($this->end_date ?? $this->event_date)?->toDateString();
+
+        return $lastDay !== null && $lastDay < static::localToday();
+    }
+
+    /**
+     * Events whose last day is before today.
+     */
+    public function scopeFinished(Builder $query): void
+    {
+        $today = static::localToday();
+
+        $query->where(fn (Builder $q) => $q
+            ->whereDate('end_date', '<', $today)
+            ->orWhere(fn (Builder $q) => $q->whereNull('end_date')->whereDate('event_date', '<', $today)));
+    }
+
+    protected function scheduleStartDateColumn(): string
+    {
+        return 'event_date';
+    }
+
+    protected function scheduleEndDateColumn(): string
+    {
+        return 'end_date';
+    }
+
+    protected function scheduleStartTimeColumn(): string
+    {
+        return 'event_time';
+    }
+
+    protected function scheduleEndTimeColumn(): string
+    {
+        return 'end_time';
     }
 
     /**
@@ -125,14 +207,6 @@ class Event extends Model
     }
 
     /**
-     * Whether the event has a per-day schedule rather than one date range with one set of hours.
-     */
-    public function hasSchedule(): bool
-    {
-        return $this->days->isNotEmpty();
-    }
-
-    /**
      * The event's summary columns for a list of schedule days: first and last date,
      * and the first day's hours. Keeps lists, sorting and filters working unchanged.
      *
@@ -141,15 +215,13 @@ class Event extends Model
      */
     public static function summaryFromDays(array $days): array
     {
-        $sorted = collect($days)->sortBy('date')->values();
-        $first = $sorted->first();
-        $last = $sorted->last();
+        $summary = static::scheduleSummaryFromDays($days);
 
         return [
-            'event_date' => $first['date'],
-            'end_date' => $last['date'] !== $first['date'] ? $last['date'] : null,
-            'event_time' => $first['start_time'] ?? null,
-            'end_time' => $first['end_time'] ?? null,
+            'event_date' => $summary['start_date'],
+            'end_date' => $summary['end_date'],
+            'event_time' => $summary['start_time'],
+            'end_time' => $summary['end_time'],
         ];
     }
 
@@ -226,7 +298,7 @@ class Event extends Model
      */
     public function scopeCurrent(Builder $query): Builder
     {
-        $today = Carbon::today()->toDateString();
+        $today = static::localToday();
 
         return $query->where('is_active', true)
             ->where(fn ($q) => $q->where('end_date', '>=', $today)
@@ -252,11 +324,16 @@ class Event extends Model
     }
 
     /**
-     * Scope to get upcoming events
+     * Active events that have not finished yet, soonest first. Multi-day events stay
+     * until their last day, not just their first.
      */
     public function scopeUpcoming($query)
     {
-        return $query->where('event_date', '>=', Carbon::today())
+        $today = static::localToday();
+
+        return $query->where(fn (Builder $q) => $q
+            ->whereDate('end_date', '>=', $today)
+            ->orWhere(fn (Builder $q) => $q->whereNull('end_date')->whereDate('event_date', '>=', $today)))
             ->where('is_active', true)
             ->orderBy('event_date', 'asc')
             ->orderBy('event_time', 'asc');
@@ -307,17 +384,7 @@ class Event extends Model
      */
     public function getDateRangeLabelAttribute(): string
     {
-        if ($this->hasSchedule() && $this->days->count() > 1 && $this->days->count() <= 4 && ! $this->scheduleIsConsecutive()) {
-            return $this->listedDatesLabel();
-        }
-
-        if (! $this->is_multi_day) {
-            return $this->event_date->format('l, M j, Y');
-        }
-
-        $sameYear = $this->event_date->year === $this->end_date->year;
-
-        return $this->event_date->format($sameYear ? 'M j' : 'M j, Y').' – '.$this->end_date->format('M j, Y');
+        return $this->scheduleDateRangeLabel();
     }
 
     /**
@@ -325,30 +392,7 @@ class Event extends Model
      */
     public function getTimeRangeLabelAttribute(): ?string
     {
-        if ($this->hasSchedule()) {
-            $hours = $this->days->map(fn (EventDay $day) => $day->hoursKey())->unique();
-
-            if ($hours->count() === 1) {
-                return $this->days->first()->time_range_label;
-            }
-
-            // Different hours each day: "Nov 21: 7 PM – 9 PM, Nov 22: 2 PM – 6:30 PM"
-            return $this->day_times
-                ->map(fn (array $day) => $day['short_date'].': '.$day['time'])
-                ->implode(', ');
-        }
-
-        if (! $this->event_time) {
-            return null;
-        }
-
-        $label = $this->formatted_time;
-
-        if ($this->end_time) {
-            $label .= ' – '.Carbon::parse($this->end_time)->format('g:i A');
-        }
-
-        return $label;
+        return $this->scheduleTimeRangeLabel();
     }
 
     /**
@@ -359,43 +403,7 @@ class Event extends Model
      */
     public function getDayTimesAttribute(): Collection
     {
-        if (! $this->hasSchedule() || $this->days->map(fn (EventDay $day) => $day->hoursKey())->unique()->count() === 1) {
-            return collect();
-        }
-
-        return $this->days->map(fn (EventDay $day) => [
-            'date' => $day->date->toDateString(),
-            'short_date' => $day->date->format('M j'),
-            'weekday' => $day->date->format('D'),
-            'time' => $day->compact_time_label ?? 'All day',
-        ])->values();
-    }
-
-    /**
-     * Whether the schedule days follow each other with no gaps.
-     */
-    private function scheduleIsConsecutive(): bool
-    {
-        $dates = $this->days->pluck('date')->unique(fn (Carbon $date) => $date->toDateString())->values();
-
-        return $dates->every(fn (Carbon $date, int $i) => $i === 0 || $dates[$i - 1]->copy()->addDay()->isSameDay($date));
-    }
-
-    /**
-     * Listed schedule dates, e.g. "Dec 5, 12 & 19, 2026" or "Nov 28, Dec 5 & 12, 2026".
-     */
-    private function listedDatesLabel(): string
-    {
-        $dates = $this->days->pluck('date')->unique(fn (Carbon $date) => $date->toDateString())->values();
-        $last = $dates->last();
-        $parts = $dates->map(function (Carbon $date, int $i) use ($dates, $last) {
-            $previous = $i > 0 ? $dates[$i - 1] : null;
-            $format = $previous && $previous->isSameMonth($date) ? 'j' : 'M j';
-
-            return $date->format($date->year !== $last->year ? $format.', Y' : $format);
-        });
-
-        return $parts->slice(0, -1)->implode(', ').' & '.$parts->last().', '.$last->year;
+        return $this->scheduleDayTimes();
     }
 
     /**
