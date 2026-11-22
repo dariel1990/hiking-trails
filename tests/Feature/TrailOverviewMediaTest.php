@@ -142,6 +142,18 @@ class TrailOverviewMediaTest extends TestCase
         $this->assertStringNotContainsString('photo-5.jpg', $block);
     }
 
+    public function test_the_create_form_defaults_to_featured_top_and_full_gallery_layout(): void
+    {
+        $html = $this->actingAs($this->admin())
+            ->get(route('admin.trails.create'))
+            ->assertOk()
+            ->getContent();
+
+        $this->assertMatchesRegularExpression('/name="is_featured" value="1"\s+checked/', $html);
+        $this->assertMatchesRegularExpression('/<option value="top"\s+selected/', $html);
+        $this->assertMatchesRegularExpression('/<option value="gallery"\s+selected/', $html);
+    }
+
     public function test_new_trails_default_to_the_gallery_layout(): void
     {
         $this->assertSame('gallery', $this->makeTrail()->fresh()->overview_media_layout);

@@ -1158,7 +1158,7 @@
 
                     <div class="flex items-center space-x-2">
                         <input type="checkbox" name="is_featured" value="1" 
-                               {{ old('is_featured') ? 'checked' : '' }}
+                               {{ old('is_featured', ! $errors->any()) ? 'checked' : '' }}
                                class="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary">
                         <label class="text-sm font-medium cursor-pointer">Feature this trail on homepage</label>
                     </div>
