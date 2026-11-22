@@ -129,6 +129,8 @@ class AdminTrailController extends Controller
             'parking_info' => 'nullable|string',
             'safety_notes' => 'nullable|string',
             'is_featured' => 'boolean',
+            'overview_media_position' => 'nullable|in:top,below_description,hidden',
+            'overview_media_layout' => 'nullable|in:gallery,featured_video,featured_only',
             'photos' => 'nullable|array',
             'photos.*' => 'image|mimes:jpeg,png,jpg,gif|max:51200',
             'uploaded_photos' => 'nullable|string',
@@ -192,6 +194,8 @@ class AdminTrailController extends Controller
             'activity_id' => 'Activity',
             'activity_notes' => 'Activity Notes',
             'trail_network_id' => 'Trail Network',
+            'overview_media_position' => 'Photos & Videos on Overview',
+            'overview_media_layout' => 'Overview Media Layout',
             // Trail-specific
             'difficulty_level' => 'Difficulty Level',
             'distance_km' => 'Distance (km)',
@@ -234,6 +238,8 @@ class AdminTrailController extends Controller
             'parking_info' => $request->parking_info,
             'safety_notes' => $request->safety_notes,
             'is_featured' => $request->has('is_featured'),
+            'overview_media_position' => $request->input('overview_media_position') ?: 'top',
+            'overview_media_layout' => $request->input('overview_media_layout') ?: 'gallery',
             'town_id' => $request->input('town_id') ?: null,
             'trail_network_id' => $request->trail_network_id,
         ];
@@ -587,6 +593,8 @@ class AdminTrailController extends Controller
             'parking_info' => 'nullable|string',
             'safety_notes' => 'nullable|string',
             'is_featured' => 'boolean',
+            'overview_media_position' => 'nullable|in:top,below_description,hidden',
+            'overview_media_layout' => 'nullable|in:gallery,featured_video,featured_only',
             'photos' => 'nullable|array',
             'photos.*' => 'image|mimes:jpeg,png,jpg,gif|max:51200',
             'uploaded_photos' => 'nullable|string',
@@ -652,6 +660,8 @@ class AdminTrailController extends Controller
             'activity_id' => 'Activity',
             'activity_notes' => 'Activity Notes',
             'trail_network_id' => 'Trail Network',
+            'overview_media_position' => 'Photos & Videos on Overview',
+            'overview_media_layout' => 'Overview Media Layout',
             // Trail-specific
             'difficulty_level' => 'Difficulty Level',
             'distance_km' => 'Distance (km)',
@@ -694,6 +704,8 @@ class AdminTrailController extends Controller
             'parking_info' => $request->parking_info,
             'safety_notes' => $request->safety_notes,
             'is_featured' => $request->has('is_featured'),
+            'overview_media_position' => $request->input('overview_media_position') ?: 'top',
+            'overview_media_layout' => $request->input('overview_media_layout') ?: 'gallery',
             'town_id' => $request->input('town_id') ?: null,
             'trail_network_id' => $request->trail_network_id,
         ];

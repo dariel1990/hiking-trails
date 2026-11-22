@@ -1126,6 +1126,27 @@
                                class="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary">
                         <label class="text-sm font-medium cursor-pointer">Feature this trail on homepage</label>
                     </div>
+
+                    <div class="space-y-2">
+                        <label for="overview_media_position" class="text-sm font-medium">Photos &amp; Videos on Overview</label>
+                        @php $overviewMediaPosition = old('overview_media_position', $trail->overview_media_position ?? 'top'); @endphp
+                        <select id="overview_media_position" name="overview_media_position" class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
+                            <option value="top" {{ $overviewMediaPosition === 'top' ? 'selected' : '' }}>Top of Overview (above description)</option>
+                            <option value="below_description" {{ $overviewMediaPosition === 'below_description' ? 'selected' : '' }}>Below the description</option>
+                            <option value="hidden" {{ $overviewMediaPosition === 'hidden' ? 'selected' : '' }}>Don't show on Overview (Gallery tab only)</option>
+                        </select>
+                    </div>
+
+                    <div class="space-y-2">
+                        <label for="overview_media_layout" class="text-sm font-medium">Overview Media Layout</label>
+                        @php $overviewMediaLayout = old('overview_media_layout', $trail->overview_media_layout ?? 'gallery'); @endphp
+                        <select id="overview_media_layout" name="overview_media_layout" class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
+                            <option value="gallery" {{ $overviewMediaLayout === 'gallery' ? 'selected' : '' }}>Featured image + video beside it + thumbnails</option>
+                            <option value="featured_video" {{ $overviewMediaLayout === 'featured_video' ? 'selected' : '' }}>Featured image + video beside it</option>
+                            <option value="featured_only" {{ $overviewMediaLayout === 'featured_only' ? 'selected' : '' }}>Featured image only</option>
+                        </select>
+                        <p class="text-xs text-muted-foreground">Choose what the Overview shows: the featured image only, the featured image with the first video beside it, or both plus up to 4 more thumbnails.</p>
+                    </div>
                 </div>
             </div>
         </div>
