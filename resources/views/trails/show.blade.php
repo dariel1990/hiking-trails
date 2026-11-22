@@ -505,8 +505,16 @@
                 <!-- Overview Tab -->
                 <div id="overview-tab" class="tab-content active">
                     <div class="prose prose-lg max-w-none">
+                        @if(($trail->overview_media_position ?? 'top') === 'top')
+                            @include('trails.partials.overview-media')
+                        @endif
+
                         <h2 class="text-forest-700">{{ $trail->isFishingLake() ? 'About This Lake' : 'About This Trail' }}</h2>
                         <div class="trail-description text-gray-700 leading-relaxed">{!! $trail->description !!}</div>
+
+                        @if($trail->overview_media_position === 'below_description')
+                            @include('trails.partials.overview-media')
+                        @endif
 
                         @if($trail->isTrail())
                         <!-- Leave No Trace callout — hiking trails only -->

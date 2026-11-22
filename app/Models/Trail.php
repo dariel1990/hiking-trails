@@ -48,6 +48,8 @@ class Trail extends Model
         'parking_info',
         'safety_notes',
         'is_featured',
+        'overview_media_position',
+        'overview_media_layout',
         'trail_network_id',
         // Fishing lake fields
         'geometry_type',
